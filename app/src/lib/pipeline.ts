@@ -3,6 +3,7 @@ import { readConfigs, readCreators, readVideos, writeVideos } from "./csv";
 import { scrapeReels } from "./apify";
 import { uploadVideo, analyzeVideo } from "./gemini";
 import { generateNewConcepts } from "./claude";
+import { ANALYSIS_PROMPT, buildConceptsPrompt } from "./prompts";
 import type { PipelineParams, PipelineProgress, Video, ActiveTask } from "./types";
 
 const VIDEO_CONCURRENCY = 3;
@@ -180,13 +181,13 @@ export async function runPipeline(
         const analysis = await analyzeVideo(
           fileData.uri,
           fileData.mimeType,
-          config.analysisInstruction
+          ANALYSIS_PROMPT
         );
 
         updateTask(taskId, "Claude generating concepts");
         log(`@${video.username} (${label}): Claude generating concepts`);
 
-        const newConcepts = await generateNewConcepts(analysis, config.newConceptsInstruction);
+        const newConcepts = await generateNewConcepts(analysis, buildConceptsPrompt(config));
 
         const videoRecord: Video = {
           id: uuid(),

@@ -2,8 +2,26 @@ export interface Config {
   id: string;
   configName: string;
   creatorsCategory: string;
-  analysisInstruction: string;
-  newConceptsInstruction: string;
+  // Prompt variables (replaces raw analysisInstruction / newConceptsInstruction)
+  clientDescription: string;
+  contentNiche: string;
+  targetAudience: string;
+  toneNotes: string;
+  // Client info
+  name: string;
+  company: string;
+  role: string;
+  location: string;
+  businessContext: string;
+  professionalBackground: string;
+  keyAchievements: string;
+  // Social & web
+  website: string;
+  instagram: string;
+  tiktok: string;
+  youtube: string;
+  linkedin: string;
+  twitter: string;
 }
 
 export interface Creator {

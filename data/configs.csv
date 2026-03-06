@@ -1,4 +1,4 @@
-id,configName,creatorsCategory,analysisInstruction,newConceptsInstruction
+id,configName,creatorsCategory,analysisInstruction,newConceptsInstruction,name,company,role,location,businessContext,professionalBackground,keyAchievements,website,instagram,tiktok,youtube,linkedin,twitter
 11280395-1ce7-4d15-8c6d-649cd5b82519,FABODXB,dubai-real-estate,"# CONCEPT
 Overall description of the concept of this video, and what makes it valuable and interesting (1-3 sentences).
 -> Clarify the core tension: what belief is challenged, what mistake is exposed, or what outcome is promised.
@@ -80,7 +80,7 @@ Include:
 ...
 
 # CONCEPT 3
-..."
+...",Fabian Kinder,Premium Estate Group,Founder & CEO ,"Dubai, UAE",,,,,https://www.instagram.com/iamfabo1/reels/,iamfabo1,https://www.youtube.com/@iamfabo,,
 4bfa69dd-35ab-405a-8089-dd1452059c4f,AI Blog Content,ai-creators,"# CONCEPT
 Overall description of the concept of this video, and what makes it valuable and interesting (1-3 sentences).
 -> Clarify the core tension: what belief is challenged, what mistake is exposed, or what outcome is promised.
@@ -162,7 +162,7 @@ Include:
 ...
 
 # CONCEPT 3
-..."
+...",,,,,,,,,,,,,
 bd9ed494-1523-4cb7-b43e-dba2305aecef,Real Estate Videos Fabo,dubai-real-estate,"""# CONCEPT
 Overall description of the concept of this video, and what makes it valuable and interesting (1–3 sentences).
 → Clarify the core tension: what belief is challenged, what mistake is exposed, or what outcome is promised.
@@ -244,4 +244,4 @@ Include:
 ...
 
 # CONCEPT 3
-..."
+...",,,,,,,,,,,,,
