@@ -1,0 +1,331 @@
+{
+  "name": "Instagram Viral Searcher General",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Million Dollar Virality System",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Config Name",
+              "placeholder": "Talking Heads About Biohacking For Jeff",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Max Number Of Videos To Scrape For Each Creator (Max: 100)",
+              "fieldType": "number",
+              "placeholder": "20",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "How Many Top Videos To Analyse For Each Creator (Max: 10)",
+              "fieldType": "number",
+              "placeholder": "3",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "From How Many Last Days To Analyse Videos From (e.g. Last 30 Days)",
+              "fieldType": "number",
+              "placeholder": "30",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        1248,
+        1248
+      ],
+      "id": "c9c3e670-6465-4fd6-acfb-fbb8d78ec7e9",
+      "name": "On form submission",
+      "webhookId": "0525bd86-8c60-4cd2-bf4a-d66a28fba14e"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198",
+          "mode": "list",
+          "cachedResultName": "Million Dollar Virality System",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1383073096,
+          "mode": "list",
+          "cachedResultName": "System Configuration",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198/edit#gid=1383073096"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Config Name",
+              "lookupValue": "={{ $json['Config Name'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        1248
+      ],
+      "id": "18d2fbf7-5f6f-49a2-b949-c4fe927df344",
+      "name": "Get config",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4RV9yyUnFEAn0JNc",
+          "name": "olegrows"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198",
+          "mode": "list",
+          "cachedResultName": "Million Dollar Virality System",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1008045766,
+          "mode": "list",
+          "cachedResultName": "Creators",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198/edit#gid=1008045766"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Category",
+              "lookupValue": "={{ $json['Creators Category'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1696,
+        1248
+      ],
+      "id": "0d69bf49-0491-4dcf-93b6-06760f5f4af4",
+      "name": "Get creators",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4RV9yyUnFEAn0JNc",
+          "name": "olegrows"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1920,
+        1248
+      ],
+      "id": "32c49ac0-abfa-49b2-821f-b82454513672",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DidFVdnONbbKKNBN",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/DidFVdnONbbKKNBN",
+          "cachedResultName": "Instagram Viral Searcher Sub"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "n_videos": "={{ $('On form submission').item.json[\"Max Number Of Videos To Scrape For Each Creator (Max: 100)\"] }}",
+            "top_k": "={{ $('On form submission').item.json[\"How Many Top Videos To Analyse For Each Creator (Max: 10)\"] }}",
+            "n_days": "={{ $('On form submission').item.json[\"From How Many Last Days To Analyse Videos From (e.g. Last 30 Days)\"] }}",
+            "config_name": "={{ $('On form submission').item.json[\"Config Name\"] }}",
+            "username": "={{ $json.Username }}",
+            "analysis": "={{ $('Get config').item.json[\"Analysis Instruction\"] }}",
+            "new_concepts": "={{ $('Get config').item.json[\"New Concepts Instruction\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "config_name",
+              "displayName": "config_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "analysis",
+              "displayName": "analysis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "new_concepts",
+              "displayName": "new_concepts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "n_videos",
+              "displayName": "n_videos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "n_days",
+              "displayName": "n_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2144,
+        1248
+      ],
+      "id": "b891e0a1-a89e-47d0-a998-2985e1c95745",
+      "name": "Instagram Viral Searcher Sub"
+    }
+  ],
+  "pinData": {
+    "On form submission": [
+      {
+        "json": {
+          "Config Name": "Real Estate Videos for Anja Thorsten",
+          "Max Number Of Videos To Scrape For Each Creator (Max: 100)": 30,
+          "How Many Top Videos To Analyse For Each Creator (Max: 10)": 5,
+          "From How Many Last Days To Analyse Videos From (e.g. Last 30 Days)": 30,
+          "submittedAt": "2025-12-18T13:16:30.836+04:00",
+          "formMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Get config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get config": {
+      "main": [
+        [
+          {
+            "node": "Get creators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get creators": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Instagram Viral Searcher Sub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Viral Searcher Sub": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "94aa7263-e50d-4329-a2d4-d7c9b3146951",
+  "meta": {
+    "templateId": "2993",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "69f54ab0f1afba7dd61c0a7a7609df8a8bd98642cf42d92572ea26f947c9a1d8"
+  },
+  "id": "1cKi0405KgNjfTwx",
+  "tags": []
+}

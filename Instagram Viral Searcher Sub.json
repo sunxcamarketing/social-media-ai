@@ -1,0 +1,728 @@
+{
+  "name": "Instagram Viral Searcher Sub",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"config_name\": \"Aesthetic Videos For Oleg\",\n  \"username\": \"danieldalen\",\n  \"analysis\": \"text\",\n  \"new_concepts\": \"text\",\n  \"n_videos\": 20,\n  \"top_k\": 3,\n  \"n_days\": 30\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -656,
+        624
+      ],
+      "id": "6d114d91-fb19-4299-840b-0ec7a7994cbf",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"addParentData\": false,\n  \"directUrls\": [\n    \"https://www.instagram.com/{{ $json.username }}/\"\n  ],\n  \"enhanceUserSearchWithFacebookPage\": false,\n  \"isUserReelFeedURL\": false,\n  \"isUserTaggedFeedURL\": false,\n  \"onlyPostsNewerThan\": \"{{ new Date(new Date().setDate(new Date().getDate() - $json.n_days)).toISOString().slice(0, 10) }}\",\n  \"resultsLimit\": {{ $json.n_videos }},\n  \"resultsType\": \"stories\"\n}",
+        "options": {}
+      },
+      "id": "d0dce522-1704-455c-accb-8deea8d16a6b",
+      "name": "Scrape Reels",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -432,
+        624
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "6QcBQ6PyYdX4a8HE",
+          "name": "APIFY"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"direct_video_url\": {{ JSON.stringify($json.videoUrl) }},\n  \"post_url\": {{ JSON.stringify($json.url) }},\n  \"views\": {{ $json.videoPlayCount }},\n  \"likes\": {{ $json.likesCount }},\n  \"comments\": {{ $json.commentsCount }},\n  \"username\": \"{{ $json.ownerUsername }}\",\n  \"thumbnail\": {{ JSON.stringify($json.images[0]) }},\n  \"date_posted\": \"{{ $json.timestamp.split('T')[0] }}\"\n}",
+        "options": {}
+      },
+      "id": "8ffdfbc9-ec85-4f3d-ab57-a05bf6347e67",
+      "name": "Save fields",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -208,
+        624
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "views",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e2b1dc7-f2b5-4118-af9e-24fe5511f2e4",
+      "name": "Sort by views",
+      "type": "n8n-nodes-base.sort",
+      "position": [
+        240,
+        624
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "maxItems": "={{ $('When Executed by Another Workflow').item.json.top_k }}"
+      },
+      "id": "f938fd10-9492-472f-a5c2-2c1059480e1c",
+      "name": "Take top-K",
+      "type": "n8n-nodes-base.limit",
+      "position": [
+        464,
+        624
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        688,
+        624
+      ],
+      "id": "87bcf536-bc66-4e19-8f67-ced6ca598c65",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.direct_video_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "161cdd7d-f143-4acd-b079-2c5ef8e52625",
+      "name": "Download video",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        912,
+        560
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/upload/v1beta/files",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Goog-Upload-Command",
+              "value": "start, upload, finalize"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Length",
+              "value": "={{ $binary.data.fileSize }}"
+            },
+            {
+              "name": "X-Goog-Upload-Header-Content-Type",
+              "value": "={{ $binary.data.fileType }}/{{ $binary.data.fileExtension }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ $binary.data.fileType }}/{{ $binary.data.fileExtension }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1136,
+        304
+      ],
+      "id": "e2ed6b5f-54c7-4014-a9aa-d42babf18374",
+      "name": "Upload to Gemini",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Exlfwsduj3mAlkh3",
+          "name": "Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1360,
+        304
+      ],
+      "id": "4ed9e953-e34b-4a52-b495-ffbc7f6caf30",
+      "name": "Wait",
+      "webhookId": "8464eba5-c86c-4a2e-8fdd-b94eee252de9"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [\n        {\n          \"fileData\": {\n            \"fileUri\": \"{{ $json.file.uri }}\",\n            \"mimeType\": \"{{ $json.file.mimeType }}\"\n          }\n        },\n        {\n          \"text\": {{ JSON.stringify($('When Executed by Another Workflow').first().json.analysis) }}\n        }\n      ]\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1584,
+        304
+      ],
+      "id": "d2689a83-cc4f-4253-82d2-6342e3a5a9f8",
+      "name": "Gemini analyse",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Exlfwsduj3mAlkh3",
+          "name": "Gemini"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198",
+          "mode": "list",
+          "cachedResultName": "Million Dollar Virality System",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Videos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VSwAoJhJf0WapxZdOgG-pE1Cndv9fUWuPfTwmeC-198/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Link": "={{ $('Loop Over Items').item.json.post_url }}",
+            "Creator": "={{ $('Loop Over Items').item.json.username }}",
+            "Views": "={{ $('Loop Over Items').item.json.views }}",
+            "Likes": "={{ $('Loop Over Items').item.json.likes }}",
+            "Comments": "={{ $('Loop Over Items').item.json.comments }}",
+            "Thumbnail": "==IMAGE(\"{{ $('Loop Over Items').item.json.thumbnail }}\")",
+            "Analysis": "={{ \n  $('Gemini analyse').item.json.candidates[0].content.parts[0].text\n    .substring(\n      $('Gemini analyse').item.json.candidates[0].content.parts[0].text.indexOf('#')\n    ) \n}}",
+            "Config Name": "={{ $('When Executed by Another Workflow').first().json.config_name }}",
+            "Date Added": "={{ $now.format('yyyy-MM-dd') }}",
+            "New Concepts": "={{ $json.output }}",
+            "Date Posted": "={{ $('Loop Over Items').item.json.date_posted }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Link",
+              "displayName": "Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Thumbnail",
+              "displayName": "Thumbnail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Creator",
+              "displayName": "Creator",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Views",
+              "displayName": "Views",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Likes",
+              "displayName": "Likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Comments",
+              "displayName": "Comments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Analysis",
+              "displayName": "Analysis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "New Concepts",
+              "displayName": "New Concepts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date Posted",
+              "displayName": "Date Posted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date Added",
+              "displayName": "Date Added",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Config Name",
+              "displayName": "Config Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2160,
+        432
+      ],
+      "id": "c3d4a699-9343-42d5-95eb-835af70fd3f0",
+      "name": "Save video",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4RV9yyUnFEAn0JNc",
+          "name": "olegrows"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1872,
+        128
+      ],
+      "id": "f6d599e2-3155-4e32-a9eb-23c2a97c9224",
+      "name": "5 sec",
+      "webhookId": "a2ac5336-9194-4ba5-a32c-d6f33bc03b8d"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# ROLE\nYou're an expert in creating viral Reels on Instagram.\n\n# OBJECTIVE\nTake as input viral video from my competitor and based on it generate new concepts for me. Adapt this reference for me.\n\n# REFERENCE VIDEO DESCRIPTION\n------\n{{ $json.candidates[0].content.parts[0].text }}\n------\n\n# MY INSTRUCTIONS FOR NEW CONCEPTS\n------\n{{ $('When Executed by Another Workflow').first().json.new_concepts }}\n------\n\n# BEGIN YOUR WORK",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1808,
+        432
+      ],
+      "id": "0e14f4b2-1834-4c22-a0cc-a1555c840d66",
+      "name": "New concepts",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5-20250929",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1888,
+        656
+      ],
+      "id": "cdc12f8e-622c-4b4f-b938-1ad38fa2259c",
+      "name": "Claude",
+      "credentials": {
+        "anthropicApi": {
+          "id": "cDzE1yMMKhQLngT6",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2384,
+        432
+      ],
+      "id": "839bec80-e1c2-41ff-98c4-13dc1907456a",
+      "name": "Wait1",
+      "webhookId": "c305c04a-f329-455b-ad86-d083c5b721f2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2608,
+        672
+      ],
+      "id": "7d389454-3678-4e81-8b00-c414cff4664e",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7260f17f-40fa-415e-bd0e-dc6097a609f1",
+              "leftValue": "={{\n  Boolean(\n    new Date($json.date_posted).getTime() >=\n    new Date(Date.now() - ($('When Executed by Another Workflow').item.json.n_days * 24 * 60 * 60 * 1000)).setHours(0,0,0,0)\n  )\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        16,
+        624
+      ],
+      "id": "71f036d9-fcf2-411a-aed1-af1d2190123d",
+      "name": "Filter"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "config_name": "FABODXB",
+          "username": "marcel.remus",
+          "analysis": "\"# CONCEPT\nOverall description of the concept of this video, and what makes it valuable and interesting (1–3 sentences).\n→ Clarify the core tension: what belief is challenged, what mistake is exposed, or what outcome is promised.\n→ One clear idea only. No subtopics.\n\n# HOOK\nDetailed description of the first 5 seconds of the video, what makes it scroll-stopping and attention-grabbing, why a viewer needs to stop to watch it (1–3 sentences).\n→ Break it down into:\n- VISUAL (what is seen in the first 1–2 seconds: movement, facial expression, contrast, pattern break)\n- TEXT (short on-screen statement: danger, promise, or contradiction, max 6–8 words)\n- AUDIO (first spoken words: confident, direct, no intro, no context)\n→ The hook must create either fear of loss, strong curiosity, or identity relevance.\n\n# RETENTION MECHANISMS\nDetailed description of how the creator manages to retain viewers throughout the video (1–7 sentences).\n→ Open loops (“in a second I’ll show you why…”, “most people miss this part…”)\n→ Delayed payoff (main insight is intentionally held back)\n→ Micro-escalations every 3–5 seconds (new angle, sharper wording, visual or tonal shift)\n→ Pattern interrupts (pauses, emphasis, cut, zoom, gesture)\n→ Clear forward momentum: the viewer feels the video is going somewhere.\n\n# REWARD\nDescribe the ultimate value that the viewer gets by watching this video (1–3 sentences).\n→ Be explicit: what does the viewer now understand, feel, or see differently?\n→ Define whether the reward is Education (clarity), Entertainment (emotional release), or Inspiration (self-belief / action).\n→ The reward should feel proportional to the time invested.\n\n# SCRIPT\nDescribe the full script of the video (1–20 sentences, as many as needed).\n→ Structure:\n1. Immediate hook (no greeting)\n2. Problem framing / tension escalation\n3. Why this matters (stakes)\n4. Main insight or shift in perspective (this comes AFTER retention is established)\n5. Clean close (no rambling; optional CTA only if natural)\n→ Include: scenes, actions, voiceover, exact wording if possible.\n→ Keep sentences short. Spoken language only.\n\nOVERALL RULE:\nTHE SHORTER THE ANALYSIS – THE BETTER.\nIf it can be said in fewer words, it should be.\nClarity > cleverness.\nRetention > information.\"",
+          "new_concepts": "Adapt this video fabo, he is a Real Estate Agent in Dubai and has Premium and Luxus Real Estate working with Celebreties and Influencer. He Combines knowledge and lifestyle. Like Selling-Sunset he has a group of beautiful real estate agents working for him, he is a Owner of Real Estate Agency\n\nTask:\nGive us 3 NEW video concepts inspired by the ORIGINAL reference.\nDo not copy the original.\nTranslate the core idea into the real estate / investor context of Anja and Thorsten.\nMAINLY iterate and sharpen the HOOKS.\n\nFocus:\n– First 3 seconds must stop an investor from scrolling  \n– Hooks should challenge a belief, fear, or misconception investors have  \n– Calm authority > hype  \n– Emotional credibility > performance  \n– No shouting, no buzzwords, no exaggeration  \n\nThe output should have this format:\n\n# CONCEPT 1\nText description (1–3 sentences)\n\n## HOOK\nDetailed hook description (1–3 sentences)\nDescribe:\n– What is seen in the first 2 seconds  \n– What is said in the first line  \n– Why this hook works specifically for investors 35+  \n\n## SCRIPT\nDetailed script description (1–20 sentences, as many as needed)\nInclude:\n– Scene flow  \n– Spoken text / voiceover  \n– Clear but understated payoff  \n– Subtle authority, not selling  \n\n# CONCEPT 2\n...\n\n# CONCEPT 3\n...",
+          "n_videos": 20,
+          "top_k": 3,
+          "n_days": 30
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Scrape Reels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Reels": {
+      "main": [
+        [
+          {
+            "node": "Save fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save fields": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by views": {
+      "main": [
+        [
+          {
+            "node": "Take top-K",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Take top-K": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Download video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download video": {
+      "main": [
+        [
+          {
+            "node": "Upload to Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Upload to Gemini": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Gemini analyse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini analyse": {
+      "main": [
+        [
+          {
+            "node": "New concepts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "5 sec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save video": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5 sec": {
+      "main": [
+        [
+          {
+            "node": "Gemini analyse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New concepts": {
+      "main": [
+        [
+          {
+            "node": "Save video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "New concepts",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Sort by views",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "935d7bef-caef-4977-9dd8-8f81de67468f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "69f54ab0f1afba7dd61c0a7a7609df8a8bd98642cf42d92572ea26f947c9a1d8"
+  },
+  "id": "DidFVdnONbbKKNBN",
+  "tags": []
+}

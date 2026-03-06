@@ -1,0 +1,5 @@
+.env
+.DS_Store
+*.png
+*.jpg
+node_modules/
