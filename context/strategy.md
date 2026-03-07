@@ -1,24 +1,15 @@
 # Strategy
 
-## Current Focus Period
+## Current Status
 
-Q1 2026 — Migration and enhancement of the virality system.
+The tool is fully implemented as a Next.js local app with all core features working:
+- Pipeline: scrape, filter, rank, analyze with Gemini, generate concepts with Claude
+- UI: Dashboard, Videos browser, Run page, Configs CRUD, Creators CRUD
+- Storage: CSV-based local data in `data/`
 
-## Strategic Priorities
+## Next Steps
 
-1. **Migrate from n8n to code** — Rebuild the Instagram Viral Searcher pipeline as a standalone application with full control over the logic
-2. **Maintain feature parity** — Ensure the code version does everything the n8n version did (scrape, filter, rank, analyze with Gemini, generate concepts with Claude, save results)
-3. **Improve and extend** — Once parity is achieved, add capabilities that were hard to do in n8n
-
-## What Success Looks Like
-
-- A working code-based pipeline that can take a config, scrape competitors, analyze top viral videos, generate new concepts, and output results
-- Easy to configure for different clients (different creators, prompts, parameters)
-- Reliable and debuggable compared to the n8n version
-
-## Key Decisions / Open Questions
-
-- Tech stack choice (language, framework, storage format)
-- How to handle configuration (files, database, CLI args?)
-- Whether to keep Google Sheets integration or move to local/other storage
-- How to handle the video download + Gemini upload flow efficiently
+- Test pipeline end-to-end with real API calls
+- Improve error handling and retry logic for API failures
+- Add more advanced filtering and sorting to the Videos page
+- Consider persistent storage beyond CSV if data grows

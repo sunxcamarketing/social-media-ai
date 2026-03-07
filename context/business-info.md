@@ -1,16 +1,17 @@
 # Business Info
 
-## Organization Overview
+## What The Tool Does
 
-Oleg runs a social media / content creation business helping brands and creators produce viral Instagram Reels. The core offering is a systematic, AI-powered approach to viral content creation — analyzing what already works for competitors and adapting proven concepts for clients.
+Social Media AI is an automated pipeline that scrapes competitor Instagram Reels, identifies the most viral ones, analyzes them with AI, and generates new adapted video concepts for a given brand.
 
-## Products / Services
+## Use Cases
 
-- **Million Dollar Virality System** — An automated pipeline that scrapes competitor Instagram Reels, identifies the most viral ones, analyzes them with AI, and generates new adapted video concepts for clients
-- Clients include real estate agents, lifestyle brands, and other creators who want to grow on Instagram
+- Real estate agents wanting viral Reels content
+- Lifestyle brands growing on Instagram
+- Content creators looking for proven viral formats to adapt
 
-## Key Context
+## External Services
 
-- The system was previously built and running inside **n8n** (low-code automation platform)
-- Now migrating to a standalone code-based implementation for more control, flexibility, and scalability
-- External services used: Apify (scraping), Google Gemini (video analysis), Anthropic Claude (concept generation), Google Sheets (data storage in n8n version)
+- **Apify** — Instagram scraping (Reels data, thumbnails, metrics)
+- **Google Gemini 2.0 Flash** — Multimodal video analysis (upload video + analyze)
+- **Anthropic Claude Sonnet** — Concept generation (adapt viral references for a brand)

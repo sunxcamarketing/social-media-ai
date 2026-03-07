@@ -6,9 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-**Social Media AI** — a system that helps create viral Instagram Reels by analyzing competitor content. It scrapes competitors' recent videos, identifies the most viral ones, analyzes them with AI (video understanding + content breakdown), and generates new adapted video concepts for the user's brand.
-
-Originally built as an n8n workflow ("Million Dollar Virality System"), now implemented as a **Next.js local app**.
+**Social Media AI** — a tool that helps create viral Instagram Reels by analyzing competitor content. It scrapes competitors' recent videos, identifies the most viral ones, analyzes them with AI (video understanding + content breakdown), and generates new adapted video concepts for a given brand.
 
 ---
 
@@ -43,7 +41,7 @@ npm run dev
 
 ### Pipeline Overview
 
-1. **Input** — User selects a config and parameters (max videos, top-K, days lookback) via the Run page
+1. **Input** — Select a config and parameters (max videos, top-K, days lookback) via the Run page
 2. **Load Config** — Retrieve analysis prompt, new concepts prompt, and creator list from CSV
 3. **Scrape** — For each competitor creator, scrape recent Instagram Reels via Apify
 4. **Filter & Rank** — Filter by date, sort by views, take top-K most viral
@@ -88,10 +86,7 @@ npm run dev
 │   └── videos.csv                         # Analyzed video results
 ├── context/                               # Background context for Claude
 ├── plans/                                 # Implementation plans
-├── .claude/commands/                      # Slash commands (prime, create-plan, implement)
-├── Instagram Viral Searcher.json          # n8n main workflow (reference)
-├── Instagram Viral Searcher Sub.json      # n8n sub-workflow (reference)
-└── Million Dollar Virality System Videos.csv  # Sample output from n8n
+└── .claude/commands/                      # Slash commands (prime, create-plan, implement)
 ```
 
 ---
@@ -124,7 +119,7 @@ Execute a plan step by step.
 ## Critical Instruction: Maintain This File
 
 After any change to the workspace, ask:
-1. Does this change add new functionality users need to know about?
+1. Does this change add new functionality?
 2. Does it modify the workspace structure documented above?
 3. Should a new command be listed?
 4. Does context/ need updates?
@@ -140,6 +135,3 @@ If yes, update the relevant sections.
 3. **Plan changes**: Use `/create-plan` before significant additions
 4. **Execute**: Use `/implement` to execute plans
 5. **Maintain**: Claude updates CLAUDE.md and context/ as the workspace evolves
-
-# currentDate
-Today's date is 2026-03-06.
