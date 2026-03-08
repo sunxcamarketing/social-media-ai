@@ -22,6 +22,7 @@ export interface VideoInsight {
   views: number;
   likes: number;
   datePosted: string;
+  durationSeconds: number;
   topic: string;
   audioHook: string;
   textHook: string;
@@ -106,7 +107,7 @@ export async function POST(
     const mime = resp.headers.get("content-type") || "video/mp4";
     const fileData = await uploadVideo(buf, mime);
     const raw = await analyzeVideo(fileData.uri, fileData.mimeType, PERFORMANCE_PROMPT);
-    return { url: video.url, thumbnail: video.thumbnail, views: video.views, likes: video.likes, datePosted: video.datePosted, ...parseAnalysis(raw) };
+    return { url: video.url, thumbnail: video.thumbnail, views: video.views, likes: video.likes, datePosted: video.datePosted, durationSeconds: 0, ...parseAnalysis(raw) };
   }
 
   const [top30Results, topAllResults] = await Promise.all([

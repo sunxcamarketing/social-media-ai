@@ -7,6 +7,7 @@ export interface Config {
   strategyPillars: string; // JSON: [{name: string, subTopics: string}]
   strategyWeekly: string; // JSON: {Mon: {type: string, format: string}, ...}
   performanceInsights: string; // JSON: PerformanceInsights
+  postsPerWeek: string;
   // Client info
   name: string;
   company: string;
@@ -15,6 +16,17 @@ export interface Config {
   businessContext: string;
   professionalBackground: string;
   keyAchievements: string;
+  // Brand & audience
+  brandFeeling: string;
+  brandProblem: string;
+  brandingStatement: string;
+  humanDifferentiation: string;
+  dreamCustomer: string; // JSON
+  customerProblems: string; // JSON array
+  providerRole: string;
+  providerBeliefs: string;
+  providerStrengths: string;
+  authenticityZone: string;
   // Social & web
   website: string;
   instagram: string;
@@ -43,12 +55,37 @@ export interface Video {
   views: number;
   likes: number;
   comments: number;
+  durationSeconds: number;
   analysis: string;
   newConcepts: string;
   datePosted: string;
   dateAdded: string;
   configName: string;
   starred: boolean;
+}
+
+export interface Idea {
+  id: string;
+  clientId: string;
+  title: string;
+  description: string;
+  contentType: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface Script {
+  id: string;
+  clientId: string;
+  title: string;
+  pillar: string;
+  contentType: string;
+  format: string;
+  hook: string;
+  body: string;
+  cta: string;
+  status: string;
+  createdAt: string;
 }
 
 export interface PipelineParams {

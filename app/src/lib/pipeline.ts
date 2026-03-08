@@ -14,6 +14,7 @@ interface ScrapedVideo {
   views: number;
   likes: number;
   comments: number;
+  durationSeconds: number;
   username: string;
   thumbnail: string;
   datePosted: string;
@@ -113,6 +114,7 @@ export async function runPipeline(
             views: r.videoPlayCount || 0,
             likes: r.likesCount || 0,
             comments: r.commentsCount || 0,
+            durationSeconds: r.videoDuration || 0,
             username: r.ownerUsername || creator.username,
             thumbnail: r.images?.[0] || "",
             datePosted: r.timestamp?.split("T")[0] || "",
@@ -197,6 +199,7 @@ export async function runPipeline(
           views: video.views,
           likes: video.likes,
           comments: video.comments,
+          durationSeconds: video.durationSeconds || 0,
           analysis,
           newConcepts,
           datePosted: video.datePosted,

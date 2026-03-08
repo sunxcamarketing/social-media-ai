@@ -4,6 +4,7 @@ export interface ApifyReel {
   videoPlayCount: number;
   likesCount: number;
   commentsCount: number;
+  videoDuration?: number;
   ownerUsername: string;
   images: string[];
   timestamp: string;

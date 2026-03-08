@@ -32,6 +32,17 @@ export async function POST(request: Request) {
     strategyPillars: body.strategyPillars || "",
     strategyWeekly: body.strategyWeekly || "",
     performanceInsights: body.performanceInsights || "",
+    postsPerWeek: body.postsPerWeek || "5",
+    brandFeeling: body.brandFeeling || "",
+    brandProblem: body.brandProblem || "",
+    brandingStatement: body.brandingStatement || "",
+    humanDifferentiation: body.humanDifferentiation || "",
+    dreamCustomer: body.dreamCustomer || "",
+    customerProblems: body.customerProblems || "",
+    providerRole: body.providerRole || "",
+    providerBeliefs: body.providerBeliefs || "",
+    providerStrengths: body.providerStrengths || "",
+    authenticityZone: body.authenticityZone || "",
   };
   configs.push(newConfig);
   writeConfigs(configs);
