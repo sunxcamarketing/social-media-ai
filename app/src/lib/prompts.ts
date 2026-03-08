@@ -44,21 +44,32 @@ If it can be said in fewer words, it should be.
 Clarity > cleverness.
 Retention > information.`;
 
-export function buildConceptsPrompt(config: Pick<Config, "clientDescription" | "contentNiche" | "targetAudience" | "toneNotes">): string {
-  const { clientDescription, contentNiche, targetAudience, toneNotes } = config;
+export function buildConceptsPrompt(config: Pick<Config, "configName" | "name" | "company" | "role" | "location" | "businessContext" | "professionalBackground" | "keyAchievements" | "creatorsCategory">): string {
+  const clientName = config.name || config.configName;
+  const identity = [config.role, config.company, config.location].filter(Boolean).join(", ");
 
-  return `Adapt this video for ${clientDescription}
+  const clientBlock = [
+    `${clientName}${identity ? ` — ${identity}` : ""}`,
+    config.businessContext && `Context: ${config.businessContext}`,
+    config.professionalBackground && `Background: ${config.professionalBackground}`,
+    config.keyAchievements && `Achievements: ${config.keyAchievements}`,
+  ].filter(Boolean).join("\n");
+
+  return `Adapt this video for the following client:
+
+${clientBlock}
 
 Task:
 Give us 3 NEW video concepts inspired by the ORIGINAL reference.
 Do not copy the original.
-Translate the core idea into the ${contentNiche} context.
+Translate the core idea into this client's niche and audience context.
 MAINLY iterate and sharpen the HOOKS.
 
 Focus:
-- First 3 seconds must stop ${targetAudience} from scrolling
-- Hooks should challenge a belief, fear, or misconception
-${toneNotes ? `- ${toneNotes}` : "- Calm authority > hype"}
+- First 3 seconds must stop this client's ideal audience from scrolling
+- Hooks should challenge a belief, fear, or misconception relevant to their niche
+- Match the client's voice, authority level, and positioning
+- Calm authority > hype
 
 The output should have this format:
 
@@ -70,7 +81,7 @@ Detailed hook description (1-3 sentences)
 Describe:
 - What is seen in the first 2 seconds
 - What is said in the first line
-- Why this hook works specifically for ${targetAudience}
+- Why this hook works for this client's specific audience
 
 ## SCRIPT
 Detailed script description (1-20 sentences, as many as needed)

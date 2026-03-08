@@ -28,7 +28,7 @@ function writeCsv(filename: string, data: Record<string, unknown>[], columns: st
 }
 
 // Configs
-const CONFIG_COLUMNS = ["id", "configName", "creatorsCategory", "clientDescription", "contentNiche", "targetAudience", "toneNotes", "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements", "website", "instagram", "tiktok", "youtube", "linkedin", "twitter"];
+const CONFIG_COLUMNS = ["id", "configName", "creatorsCategory", "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements", "website", "instagram", "tiktok", "youtube", "linkedin", "twitter", "strategyGoal", "strategyPillars", "strategyWeekly", "performanceInsights"];
 
 export function readConfigs(): Config[] {
   return readCsv<Config>("configs.csv");

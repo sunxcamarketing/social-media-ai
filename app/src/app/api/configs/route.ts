@@ -15,10 +15,6 @@ export async function POST(request: Request) {
     id: uuid(),
     configName: body.configName,
     creatorsCategory: body.creatorsCategory,
-    clientDescription: body.clientDescription || "",
-    contentNiche: body.contentNiche || "",
-    targetAudience: body.targetAudience || "",
-    toneNotes: body.toneNotes || "",
     name: body.name || "",
     company: body.company || "",
     role: body.role || "",
@@ -32,6 +28,10 @@ export async function POST(request: Request) {
     youtube: body.youtube || "",
     linkedin: body.linkedin || "",
     twitter: body.twitter || "",
+    strategyGoal: body.strategyGoal || "",
+    strategyPillars: body.strategyPillars || "",
+    strategyWeekly: body.strategyWeekly || "",
+    performanceInsights: body.performanceInsights || "",
   };
   configs.push(newConfig);
   writeConfigs(configs);

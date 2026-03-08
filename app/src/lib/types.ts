@@ -2,11 +2,11 @@ export interface Config {
   id: string;
   configName: string;
   creatorsCategory: string;
-  // Prompt variables (replaces raw analysisInstruction / newConceptsInstruction)
-  clientDescription: string;
-  contentNiche: string;
-  targetAudience: string;
-  toneNotes: string;
+  // Strategy
+  strategyGoal: string; // "reach" | "trust" | "revenue"
+  strategyPillars: string; // JSON: [{name: string, subTopics: string}]
+  strategyWeekly: string; // JSON: {Mon: {type: string, format: string}, ...}
+  performanceInsights: string; // JSON: PerformanceInsights
   // Client info
   name: string;
   company: string;

@@ -14,16 +14,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Settings2, Sparkles, Users, Film } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Film, Settings2, User } from "lucide-react";
 import type { Config, Creator, Video } from "@/lib/types";
 
 const emptyForm = {
   configName: "",
   creatorsCategory: "",
-  clientDescription: "",
-  contentNiche: "",
-  targetAudience: "",
-  toneNotes: "",
   name: "",
   company: "",
   role: "",
@@ -72,10 +68,6 @@ export default function ConfigsPage() {
     setForm({
       configName: config.configName,
       creatorsCategory: config.creatorsCategory,
-      clientDescription: config.clientDescription || "",
-      contentNiche: config.contentNiche || "",
-      targetAudience: config.targetAudience || "",
-      toneNotes: config.toneNotes || "",
       name: config.name || "",
       company: config.company || "",
       role: config.role || "",
@@ -224,35 +216,6 @@ export default function ConfigsPage() {
                 </div>
               </div>
 
-              {/* AI Prompt Variables */}
-              <div className="space-y-4 border-t border-white/[0.06] pt-4">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="h-3 w-3 text-indigo-400" />
-                    Concept Generation
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">These variables fill the AI prompt — no need to write the full prompt.</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Who is the client?</Label>
-                  <Textarea {...f("clientDescription")} placeholder="e.g. Fabo, a luxury real estate agent in Dubai who works with celebrities and combines knowledge with lifestyle." rows={3} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm leading-relaxed" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Content niche</Label>
-                    <Input {...f("contentNiche")} placeholder="e.g. luxury real estate" className="mt-1.5 rounded-xl glass border-white/[0.08] h-11" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Target audience</Label>
-                    <Input {...f("targetAudience")} placeholder="e.g. investors 35+" className="mt-1.5 rounded-xl glass border-white/[0.08] h-11" />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Tone & style</Label>
-                  <Input {...f("toneNotes")} placeholder="e.g. Calm authority > hype. No buzzwords." className="mt-1.5 rounded-xl glass border-white/[0.08] h-11" />
-                </div>
-              </div>
-
               <Button
                 onClick={handleSave}
                 className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0"
@@ -328,7 +291,7 @@ export default function ConfigsPage() {
 
         {configs.length === 0 && (
           <div className="glass rounded-2xl p-12 text-center">
-            <Settings2 className="mx-auto h-10 w-10 text-muted-foreground/30" />
+            <User className="mx-auto h-10 w-10 text-muted-foreground/30" />
             <h3 className="mt-4 font-semibold">No clients yet</h3>
             <p className="mt-1 text-sm text-muted-foreground">Create one to get started.</p>
           </div>
