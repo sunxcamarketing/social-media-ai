@@ -110,7 +110,7 @@ export default function ClientIdeasPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openNew} className="rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 gap-1.5">
+            <Button onClick={openNew} className="rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-1.5">
               <Plus className="h-4 w-4" />
               Add Idea
             </Button>
@@ -170,7 +170,7 @@ export default function ClientIdeasPage() {
               <Button
                 onClick={handleSave}
                 disabled={!form.title}
-                className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0"
+                className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0"
               >
                 {editing ? "Save Changes" : "Add Idea"}
               </Button>
@@ -187,7 +187,7 @@ export default function ClientIdeasPage() {
             onClick={() => setFilterStatus(s.value)}
             className={`rounded-xl px-4 py-1.5 text-xs font-medium transition-all ${
               filterStatus === s.value
-                ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
                 : "glass border-white/[0.06] text-muted-foreground hover:text-foreground"
             }`}
           >

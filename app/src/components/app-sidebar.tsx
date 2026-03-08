@@ -3,14 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Film, Plus, BookOpen, BarChart2, FileText, Video, Users, ChevronRight } from "lucide-react";
+import { Film, Plus, BookOpen, BarChart2, FileText, Video, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
   Dialog,
@@ -23,11 +20,11 @@ import { Label } from "@/components/ui/label";
 import type { Config } from "@/lib/types";
 
 const clientTabs = [
-  { title: "Context",   href: "information", icon: BookOpen   },
-  { title: "Strategie", href: "strategy",    icon: BarChart2  },
-  { title: "Posts",     href: "scripts",     icon: FileText   },
-  { title: "Videos",    href: "videos",      icon: Video      },
-  { title: "Creators",  href: "creators",    icon: Users      },
+  { title: "Context",   href: "information", icon: BookOpen  },
+  { title: "Strategie", href: "strategy",    icon: BarChart2 },
+  { title: "Posts",     href: "scripts",     icon: FileText  },
+  { title: "Videos",    href: "videos",      icon: Video     },
+  { title: "Creators",  href: "creators",    icon: Users     },
 ];
 
 export function AppSidebar() {
@@ -38,9 +35,9 @@ export function AppSidebar() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Determine active client id from URL /clients/[id]/...
   const clientMatch = pathname.match(/^\/clients\/([^/]+)/);
   const activeClientId = clientMatch?.[1] ?? null;
+  const activeTab = pathname.split("/")[3] ?? "information";
 
   useEffect(() => {
     fetch("/api/configs").then((r) => r.json()).then(setClients).catch(() => {});
@@ -68,7 +65,8 @@ export function AppSidebar() {
   return (
     <>
       <Sidebar className="border-r border-white/[0.06]">
-        <SidebarHeader className="px-5 py-5">
+        {/* Logo */}
+        <SidebarHeader className="px-5 py-5 shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 glow-sm">
               <Film className="h-4 w-4 text-white" />
@@ -80,72 +78,84 @@ export function AppSidebar() {
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="px-3">
-          {/* New Client Button */}
-          <div className="px-2 mb-3">
-            <button
-              onClick={() => setNewOpen(true)}
-              className="flex w-full items-center gap-2 rounded-xl border border-dashed border-white/[0.12] px-3 py-2 text-[12px] text-muted-foreground hover:border-white/20 hover:text-foreground transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Neuer Client
-            </button>
+        <SidebarContent className="flex flex-col overflow-hidden">
+
+          {/* ── Client List (top) ── */}
+          <div className="flex flex-col px-3 pt-1 pb-3">
+            <div className="flex items-center justify-between px-2 mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Clients</span>
+              <button
+                onClick={() => setNewOpen(true)}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+              >
+                <Plus className="h-3 w-3" /> Neu
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 space-y-0.5">
+              {clients.map((client) => {
+                const isActive = activeClientId === client.id;
+                return (
+                  <Link
+                    key={client.id}
+                    href={`/clients/${client.id}/information`}
+                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                      isActive
+                        ? "bg-white/[0.07] text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-purple-400" : "bg-white/20"}`} />
+                    <span className="truncate">{client.configName || client.name || "Unnamed"}</span>
+                  </Link>
+                );
+              })}
+
+              {clients.length === 0 && (
+                <p className="px-3 py-4 text-center text-[12px] text-muted-foreground/50">
+                  Noch keine Clients
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Client List */}
-          <SidebarMenu className="gap-1">
-            {clients.map((client) => {
-              const isActive = activeClientId === client.id;
-              const activeTab = pathname.split("/")[3] ?? "information";
+          {/* ── Divider ── */}
+          <div className="mx-4 border-t border-white/[0.06] shrink-0" />
 
-              return (
-                <SidebarMenuItem key={client.id}>
-                  {/* Client Row */}
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    className="h-9 rounded-xl px-3 transition-all duration-200"
-                  >
-                    <Link href={`/clients/${client.id}/information`}>
-                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${isActive ? "rotate-90" : ""}`} />
-                      <span className="text-[13px] font-medium truncate">
-                        {client.configName || client.name || "Unnamed"}
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
+          {/* ── Tabs for active client (bottom) ── */}
+          <div className="px-3 py-4 shrink-0">
+            {activeClientId ? (
+              <>
+                <span className="block px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  {clients.find((c) => c.id === activeClientId)?.configName ?? "Client"}
+                </span>
+                <div className="space-y-0.5">
+                  {clientTabs.map((tab) => {
+                    const isActive = activeTab === tab.href;
+                    return (
+                      <Link
+                        key={tab.href}
+                        href={`/clients/${activeClientId}/${tab.href}`}
+                        className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                          isActive
+                            ? "bg-white/[0.07] text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        <tab.icon className="h-3.5 w-3.5 shrink-0" />
+                        {tab.title}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="px-2 text-[12px] text-muted-foreground/50">
+                Wähle einen Client aus
+              </p>
+            )}
+          </div>
 
-                  {/* Per-client tabs — only shown for active client */}
-                  {isActive && (
-                    <div className="mt-1 mb-1 ml-4 flex flex-col gap-0.5 border-l border-white/[0.06] pl-3">
-                      {clientTabs.map((tab) => {
-                        const tabActive = activeTab === tab.href;
-                        return (
-                          <Link
-                            key={tab.href}
-                            href={`/clients/${client.id}/${tab.href}`}
-                            className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] transition-colors ${
-                              tabActive
-                                ? "bg-white/[0.07] text-foreground font-medium"
-                                : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
-                            }`}
-                          >
-                            <tab.icon className="h-3.5 w-3.5 shrink-0" />
-                            {tab.title}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-
-          {clients.length === 0 && (
-            <p className="px-4 py-6 text-center text-[12px] text-muted-foreground/60">
-              Noch keine Clients.<br />Erstelle deinen ersten.
-            </p>
-          )}
         </SidebarContent>
       </Sidebar>
 

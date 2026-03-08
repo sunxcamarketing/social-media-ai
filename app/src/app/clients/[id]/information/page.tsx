@@ -308,8 +308,8 @@ export default function ClientInformationPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/20 to-red-500/20 border border-rose-500/20">
-            <User className="h-6 w-6 text-rose-400" />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20">
+            <User className="h-6 w-6 text-purple-400" />
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{client.name || client.configName}</h1>
@@ -347,7 +347,7 @@ export default function ClientInformationPage() {
             size="sm"
             onClick={handleAutoFill}
             disabled={enriching || (!client.instagram && !client.website && !client.linkedin && !client.tiktok && !client.youtube)}
-            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-40"
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 disabled:opacity-40"
           >
             {enriching ? (
               <><Loader2 className="h-3 w-3 animate-spin" /> Filling…</>
@@ -364,7 +364,7 @@ export default function ClientInformationPage() {
         </div>
       )}
       {enriching && (
-        <div className="rounded-xl glass border border-rose-500/20 px-4 py-3 text-sm text-muted-foreground">
+        <div className="rounded-xl glass border border-purple-500/20 px-4 py-3 text-sm text-muted-foreground">
           Scraping profiles and extracting information with AI… this takes 15–30 seconds.
         </div>
       )}
@@ -385,7 +385,7 @@ export default function ClientInformationPage() {
       )}
 
       {/* Basic Info */}
-      <SectionCard icon={Briefcase} iconColor="text-rose-400" title="Basic Information" onEdit={openBasic} empty={basicEmpty}>
+      <SectionCard icon={Briefcase} iconColor="text-purple-400" title="Basic Information" onEdit={openBasic} empty={basicEmpty}>
         <div className="space-y-5">
           {(client.name || client.company || client.role || client.location) && (
             <div className="grid gap-5 md:grid-cols-2">
@@ -406,7 +406,7 @@ export default function ClientInformationPage() {
       </SectionCard>
 
       {/* Brand Identity */}
-      <SectionCard icon={Heart} iconColor="text-rose-400" title="Brand Identity" onEdit={openBrand} empty={brandEmpty}>
+      <SectionCard icon={Heart} iconColor="text-purple-400" title="Brand Identity" onEdit={openBrand} empty={brandEmpty}>
         <div className="space-y-5">
           <InfoRow label="Feeling you sell" value={client.brandFeeling} />
           <InfoRow label="Core problem you solve" value={client.brandProblem} />
@@ -491,7 +491,7 @@ export default function ClientInformationPage() {
             <Button
               onClick={handleAddInfo}
               disabled={addInfoLoading || !addInfoText.trim()}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0"
+              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0"
             >
               {addInfoLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</> : "Add to Profile"}
             </Button>
@@ -529,7 +529,7 @@ export default function ClientInformationPage() {
               ))}
             </div>
             <Button onClick={async () => { await savePartial(basicForm); setBasicOpen(false); }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>
@@ -572,7 +572,7 @@ export default function ClientInformationPage() {
               });
               setBrandOpen(false);
             }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>
@@ -623,7 +623,7 @@ export default function ClientInformationPage() {
               });
               setCustomerOpen(false);
             }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>
@@ -646,7 +646,7 @@ export default function ClientInformationPage() {
               <Textarea value={messageForm.humanDifferentiation} onChange={(e) => setMessageForm({ ...messageForm, humanDifferentiation: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
             </div>
             <Button onClick={async () => { await savePartial(messageForm); setMessageOpen(false); }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>

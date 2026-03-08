@@ -68,7 +68,7 @@ type WeekSlotState =
 const STATUS_OPTIONS = [
   { value: "entwurf",        label: "Entwurf",        color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
   { value: "bereit",         label: "Bereit",          color: "bg-green-500/10 text-green-400 border-green-500/20" },
-  { value: "veröffentlicht", label: "Veröffentlicht",  color: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
+  { value: "veröffentlicht", label: "Veröffentlicht",  color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
 ];
 
 function statusColor(s: string) {
@@ -172,7 +172,7 @@ function ScriptCard({ script, onEdit, onDelete }: {
             </div>
           )}
           <div className="flex items-center gap-3 pt-1">
-            {script.pillar && <span className="text-[10px] text-rose-300/70 rounded-md bg-rose-500/10 border border-rose-500/20 px-2 py-0.5">{script.pillar}</span>}
+            {script.pillar && <span className="text-[10px] text-purple-300/70 rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5">{script.pillar}</span>}
             {script.format && <span className="text-[10px] text-muted-foreground/50">{script.format}</span>}
             <button onClick={copyScript} className="ml-auto flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors">
               {copied ? <><Check className="h-3 w-3 text-green-400" /> Kopiert</> : <><Copy className="h-3 w-3" /> Skript kopieren</>}
@@ -214,7 +214,7 @@ function WeekScriptCard({
       <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.05] bg-white/[0.01]">
         <span className="text-[11px] font-bold text-muted-foreground/30 w-6 shrink-0">{dayLabel}</span>
         {slot.status === "loading"
-          ? <Loader2 className="h-3.5 w-3.5 text-rose-400/60 animate-spin" />
+          ? <Loader2 className="h-3.5 w-3.5 text-purple-400/60 animate-spin" />
           : <div className="h-3.5 w-24 rounded bg-white/[0.04]" />}
       </div>
     );
@@ -262,7 +262,7 @@ function WeekScriptCard({
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
       >
-        <span className="text-[11px] font-bold text-rose-300/80 w-6 shrink-0">{dayLabel}</span>
+        <span className="text-[11px] font-bold text-purple-300/80 w-6 shrink-0">{dayLabel}</span>
         <ChevronDown className={`h-3 w-3 text-muted-foreground/30 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
 
         <span className="flex-1 text-sm font-medium truncate">{s.title || "Skript"}</span>
@@ -315,7 +315,7 @@ function WeekScriptCard({
             </div>
           )}
           <div className="flex items-center gap-2 pt-1">
-            {s.pillar && <span className="text-[10px] text-rose-300/60 rounded bg-rose-500/10 border border-rose-500/20 px-2 py-0.5">{s.pillar}</span>}
+            {s.pillar && <span className="text-[10px] text-purple-300/60 rounded bg-purple-500/10 border border-purple-500/20 px-2 py-0.5">{s.pillar}</span>}
             {s.format && <span className="text-[10px] text-muted-foreground/40">{s.format}</span>}
             {/* Mobile save */}
             <button onClick={handleSave} disabled={saving || saved}
@@ -697,12 +697,12 @@ export default function ClientScriptsPage() {
       </div>
 
       {/* ── Week Generation Panel ───────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/5 to-red-500/5 p-5 space-y-5">
+      <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 p-5 space-y-5">
         {/* Panel header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/20 border border-rose-500/30 shrink-0">
-              <Calendar className="h-4 w-4 text-rose-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/30 shrink-0">
+              <Calendar className="h-4 w-4 text-purple-400" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">Wochenplanung</p>
@@ -722,7 +722,7 @@ export default function ClientScriptsPage() {
               <Users className="h-3 w-3 shrink-0" />
               {creatorVideoCount > 0 ? <span>{creatorVideoCount} Creator-Videos</span> : <span>Keine Creator-Videos</span>}
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-rose-400/80">
+            <div className="flex items-center gap-1.5 text-[11px] text-purple-400/80">
               <Brain className="h-3 w-3 shrink-0" />
               <span>Strategie + Profil</span>
             </div>
@@ -734,7 +734,7 @@ export default function ClientScriptsPage() {
           <Button
             onClick={generateWeek}
             disabled={weekGenerating}
-            className="h-10 px-6 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 gap-2 shrink-0"
+            className="h-10 px-6 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-2 shrink-0"
           >
             {weekGenerating
               ? <><Loader2 className="h-4 w-4 animate-spin" /> Generiert…</>
@@ -830,14 +830,14 @@ export default function ClientScriptsPage() {
 
             {/* Script suggestion banner */}
             {(aiSuggestsScript || hasEnoughContext) && !chatScriptResult && (
-              <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl bg-rose-500/10 border border-rose-500/20 px-4 py-3">
-                <Lightbulb className="h-4 w-4 text-rose-400 shrink-0" />
-                <p className="text-xs text-rose-300/80 flex-1">Genug Input für ein starkes Skript.</p>
+              <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3">
+                <Lightbulb className="h-4 w-4 text-purple-400 shrink-0" />
+                <p className="text-xs text-purple-300/80 flex-1">Genug Input für ein starkes Skript.</p>
                 <Button
                   onClick={generateScriptFromChat}
                   disabled={chatScriptLoading}
                   size="sm"
-                  className="h-7 px-3 text-xs rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 gap-1.5"
+                  className="h-7 px-3 text-xs rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 gap-1.5"
                 >
                   {chatScriptLoading
                     ? <><Loader2 className="h-3 w-3 animate-spin" /> Generiert…</>
@@ -848,10 +848,10 @@ export default function ClientScriptsPage() {
 
             {/* Generated script from chat */}
             {chatScriptResult && (
-              <div className="mx-4 mb-3 rounded-xl border border-rose-500/25 bg-rose-500/5 overflow-hidden">
-                <div className="px-4 py-3 border-b border-rose-500/15 flex items-center justify-between">
+              <div className="mx-4 mb-3 rounded-xl border border-purple-500/25 bg-purple-500/5 overflow-hidden">
+                <div className="px-4 py-3 border-b border-purple-500/15 flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold text-rose-300">{chatScriptResult.title}</p>
+                    <p className="text-xs font-semibold text-purple-300">{chatScriptResult.title}</p>
                     <p className="text-[10px] text-muted-foreground/50 mt-0.5">{chatScriptResult.contentType} · {chatScriptResult.pillar}</p>
                   </div>
                   <div className="flex gap-2">
@@ -921,7 +921,7 @@ export default function ClientScriptsPage() {
           <button key={s.value} onClick={() => setFilterStatus(s.value)}
             className={`rounded-xl px-4 py-1.5 text-xs font-medium transition-all ${
               filterStatus === s.value
-                ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
                 : "glass border-white/[0.06] text-muted-foreground hover:text-foreground"
             }`}>
             {s.label}
@@ -1008,7 +1008,7 @@ export default function ClientScriptsPage() {
             </div>
 
             <Button onClick={handleSave} disabled={!form.title}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
               {editing ? "Änderungen speichern" : "Skript speichern"}
             </Button>
           </div>

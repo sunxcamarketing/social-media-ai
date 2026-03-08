@@ -44,7 +44,7 @@ const GOAL_LABELS: Record<string, { label: string; description: string; color: s
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  "Authority":                 "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  "Authority":                 "bg-purple-500/10 text-purple-400 border-purple-500/20",
   "Story / Personality":       "bg-pink-500/10 text-pink-400 border-pink-500/20",
   "Social Proof":              "bg-green-500/10 text-green-400 border-green-500/20",
   "Education":                 "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -52,10 +52,10 @@ const TYPE_COLORS: Record<string, string> = {
   "Polarisation":              "bg-orange-500/10 text-orange-400 border-orange-500/20",
   "Opinion / Polarisation":    "bg-orange-500/10 text-orange-400 border-orange-500/20",
   "Behind the Scenes":         "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  "Inspiration / Motivation":  "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  "Inspiration / Motivation":  "bg-purple-500/10 text-purple-400 border-purple-500/20",
   "Entertainment":             "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   "Community / Interaction":   "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  "Promotion / Offer":         "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  "Promotion / Offer":         "bg-purple-500/10 text-purple-400 border-purple-500/20",
 };
 
 interface Pillar { name: string; subTopics: string; }
@@ -108,7 +108,7 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
           <div className="mt-2.5 space-y-1.5">
             {video.audioHook && video.audioHook !== "none" && (
               <div className="flex items-start gap-1.5">
-                <span className="text-[10px] font-medium text-rose-400 uppercase tracking-wider shrink-0 mt-0.5">Audio</span>
+                <span className="text-[10px] font-medium text-purple-400 uppercase tracking-wider shrink-0 mt-0.5">Audio</span>
                 <p className="text-xs text-muted-foreground italic leading-relaxed">&ldquo;{video.audioHook}&rdquo;</p>
               </div>
             )}
@@ -196,7 +196,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
                   onClick={() => setForm({ ...form, strategyGoal: form.strategyGoal === key ? "" : key })}
                   className={`rounded-xl border p-3 text-left transition-all ${
                     form.strategyGoal === key
-                      ? "bg-rose-500/20 border-rose-500/40 text-foreground"
+                      ? "bg-purple-500/20 border-purple-500/40 text-foreground"
                       : "glass border-white/[0.08] text-muted-foreground hover:border-white/[0.15]"
                   }`}>
                   <p className="text-sm font-medium">{label}</p>
@@ -269,7 +269,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
           </div>
 
           <Button onClick={handleSave} disabled={saving}
-            className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+            className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
             {saving ? "Wird gespeichert…" : "Strategie speichern"}
           </Button>
         </div>
@@ -406,11 +406,11 @@ export default function ClientStrategyPage() {
       </div>
 
       {/* Framework Connection Strip */}
-      <div className="rounded-2xl border border-rose-500/20 bg-gradient-to-r from-rose-500/5 to-red-500/5 px-5 py-4">
+      <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-500/5 to-indigo-500/5 px-5 py-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-rose-400 shrink-0" />
-            <p className="text-xs font-medium text-rose-300">Strategie-Framework aktiv</p>
+            <Brain className="h-4 w-4 text-purple-400 shrink-0" />
+            <p className="text-xs font-medium text-purple-300">Strategie-Framework aktiv</p>
           </div>
           <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1.5">
@@ -429,23 +429,23 @@ export default function ClientStrategyPage() {
             </span>
             <span className="text-white/[0.15]">·</span>
             <span className="flex items-center gap-1.5">
-              <Brain className="h-3 w-3 text-rose-400" />
+              <Brain className="h-3 w-3 text-purple-400" />
               <span>
-                <strong className={meta.trainingCount > 0 ? "text-rose-300" : "text-foreground"}>
+                <strong className={meta.trainingCount > 0 ? "text-purple-300" : "text-foreground"}>
                   {meta.trainingCount}
                 </strong>{" "}
                 Training-Beispiele
               </span>
             </span>
-            <a href="/strategy" className="flex items-center gap-1 text-rose-400/70 hover:text-rose-300 transition-colors ml-1">
+            <a href="/strategy" className="flex items-center gap-1 text-purple-400/70 hover:text-purple-300 transition-colors ml-1">
               Framework ansehen <ArrowRight className="h-3 w-3" />
             </a>
           </div>
         </div>
         {/* Formula mini */}
         <div className="mt-3 flex items-center gap-2 text-[11px]">
-          <span className="flex items-center gap-1 rounded-lg bg-rose-500/10 border border-rose-500/20 px-2 py-0.5">
-            <Layers className="h-2.5 w-2.5 text-rose-400" /><span className="text-rose-300 font-medium">PILLAR</span>
+          <span className="flex items-center gap-1 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2 py-0.5">
+            <Layers className="h-2.5 w-2.5 text-purple-400" /><span className="text-purple-300 font-medium">PILLAR</span>
           </span>
           <span className="text-muted-foreground/40">+</span>
           <span className="flex items-center gap-1 rounded-lg bg-blue-500/10 border border-blue-500/20 px-2 py-0.5">
@@ -517,7 +517,7 @@ export default function ClientStrategyPage() {
             )}
             {insights.topAllTime.length > 0 && (
               <div>
-                <p className="text-[11px] font-medium text-rose-400 uppercase tracking-wider mb-3">
+                <p className="text-[11px] font-medium text-purple-400 uppercase tracking-wider mb-3">
                   Top — Letzte {insights.scrapeWindowDays ? `${insights.scrapeWindowDays} Tage` : "12 Monate"} (ohne letzte 30)
                 </p>
                 <div className="space-y-3">
@@ -537,7 +537,7 @@ export default function ClientStrategyPage() {
           </h2>
           <div className="flex gap-1.5">
             <Button variant="ghost" size="sm" onClick={generateStrategy} disabled={generating}
-              className="h-8 gap-1.5 rounded-lg px-3 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 disabled:opacity-40">
+              className="h-8 gap-1.5 rounded-lg px-3 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 disabled:opacity-40">
               {generating
                 ? <><Loader2 className="h-3 w-3 animate-spin" /> Generiert…</>
                 : <><Wand2 className="h-3 w-3" /> {hasStrategy ? "Neu generieren" : "Mit KI generieren"}</>
@@ -558,10 +558,10 @@ export default function ClientStrategyPage() {
           </div>
         )}
         {generating && (
-          <div className="rounded-xl bg-rose-500/5 border border-rose-500/20 px-4 py-3 space-y-1">
+          <div className="rounded-xl bg-purple-500/5 border border-purple-500/20 px-4 py-3 space-y-1">
             <p className="text-sm text-muted-foreground">KI analysiert das Kundenprofil und erstellt eine Strategie…</p>
             {meta.trainingCount > 0 && (
-              <p className="text-[11px] text-rose-400/70">
+              <p className="text-[11px] text-purple-400/70">
                 {meta.trainingCount} Training-Beispiele aus der Strategie-Bibliothek werden berücksichtigt.
               </p>
             )}
@@ -578,7 +578,7 @@ export default function ClientStrategyPage() {
             </p>
             <div className="flex items-center justify-center gap-2">
               <Button size="sm" onClick={generateStrategy} disabled={generating}
-                className="rounded-xl h-9 gap-1.5 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 text-xs">
+                className="rounded-xl h-9 gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 text-xs">
                 <Wand2 className="h-3 w-3" /> Mit KI generieren
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setStrategyOpen(true)}
@@ -609,7 +609,7 @@ export default function ClientStrategyPage() {
                   {pillars.filter(p => p.name).map((pillar, i) => (
                     <div key={i} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-rose-500/20 text-[10px] font-bold text-rose-400">{i + 1}</span>
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-purple-500/20 text-[10px] font-bold text-purple-400">{i + 1}</span>
                         <p className="text-sm font-medium">{pillar.name}</p>
                       </div>
                       {pillar.subTopics && (

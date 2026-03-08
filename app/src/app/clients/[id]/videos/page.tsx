@@ -139,7 +139,7 @@ function ClientVideosContent() {
         <Button
           onClick={() => setPipelineOpen(!pipelineOpen)}
           disabled={running}
-          className="rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 gap-1.5"
+          className="rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-1.5"
         >
           {running ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Running…</>
@@ -192,7 +192,7 @@ function ClientVideosContent() {
           )}
 
           {!running && !progress && (
-            <Button onClick={handleRun} disabled={!client} className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 font-semibold gap-2">
+            <Button onClick={handleRun} disabled={!client} className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 font-semibold gap-2">
               <Play className="h-4 w-4" /> Run Pipeline
             </Button>
           )}
@@ -202,7 +202,7 @@ function ClientVideosContent() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {progress.status === "running" && <Loader2 className="h-4 w-4 text-rose-400 animate-spin" />}
+                  {progress.status === "running" && <Loader2 className="h-4 w-4 text-purple-400 animate-spin" />}
                   {progress.status === "completed" && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
                   {progress.status === "error" && <XCircle className="h-4 w-4 text-red-400" />}
                   <span className="text-sm font-medium">
@@ -232,7 +232,7 @@ function ClientVideosContent() {
                   className={`h-full rounded-full transition-all duration-500 ${
                     progress.status === "completed" ? "bg-gradient-to-r from-emerald-500 to-teal-500"
                     : progress.status === "error" ? "bg-gradient-to-r from-red-500 to-orange-500"
-                    : "bg-gradient-to-r from-rose-500 to-red-500"
+                    : "bg-gradient-to-r from-purple-500 to-indigo-500"
                   }`}
                   style={{ width: `${progress.status === "completed" ? 100 : totalProgress}%` }}
                 />
@@ -242,7 +242,7 @@ function ClientVideosContent() {
                 <div className="space-y-1.5">
                   {progress.activeTasks.map((task) => (
                     <div key={task.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2">
-                      <Loader2 className="h-3 w-3 text-rose-400 animate-spin shrink-0" />
+                      <Loader2 className="h-3 w-3 text-purple-400 animate-spin shrink-0" />
                       <span className="text-xs font-medium">@{task.creator}</span>
                       <span className="text-[11px] text-muted-foreground">{task.step}</span>
                       {task.views && <span className="ml-auto text-[11px] text-muted-foreground/60">{formatViews(task.views)} views</span>}
@@ -385,7 +385,7 @@ function ClientVideosContent() {
           <Film className="mx-auto h-10 w-10 text-muted-foreground/30" />
           <h3 className="mt-4 font-semibold">No videos yet</h3>
           <p className="mt-1 text-sm text-muted-foreground">Run the pipeline to analyze competitor reels.</p>
-          <Button onClick={() => setPipelineOpen(true)} className="mt-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 gap-1.5">
+          <Button onClick={() => setPipelineOpen(true)} className="mt-4 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-1.5">
             <Play className="h-4 w-4" /> Run Pipeline
           </Button>
         </div>
@@ -413,7 +413,7 @@ function ClientVideosContent() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">@{modalVideo.creator}</p>
-                    <a href={modalVideo.link} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-rose-400 transition-colors">
+                    <a href={modalVideo.link} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-purple-400 transition-colors">
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   </div>
@@ -425,7 +425,7 @@ function ClientVideosContent() {
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                   <Button variant="ghost" size="sm" onClick={() => setModalSection("analysis")}
-                    className={`rounded-xl text-xs h-8 gap-1.5 ${modalSection === "analysis" ? "bg-rose-500/15 text-rose-300 border border-rose-500/20" : "text-muted-foreground hover:text-foreground"}`}>
+                    className={`rounded-xl text-xs h-8 gap-1.5 ${modalSection === "analysis" ? "bg-purple-500/15 text-purple-300 border border-purple-500/20" : "text-muted-foreground hover:text-foreground"}`}>
                     <Search className="h-3 w-3" /> Analysis
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setModalSection("concepts")}

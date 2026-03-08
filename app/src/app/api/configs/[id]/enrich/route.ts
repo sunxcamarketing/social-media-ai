@@ -21,26 +21,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       youtube: config.youtube || "",
     });
 
-    // Only overwrite fields that are currently empty
-    const updated = { ...config };
-    if (enriched.name && !config.name) updated.name = enriched.name;
-    if (enriched.company && !config.company) updated.company = enriched.company;
-    if (enriched.role && !config.role) updated.role = enriched.role;
-    if (enriched.location && !config.location) updated.location = enriched.location;
-    if (enriched.businessContext && !config.businessContext) updated.businessContext = enriched.businessContext;
-    if (enriched.professionalBackground && !config.professionalBackground) updated.professionalBackground = enriched.professionalBackground;
-    if (enriched.keyAchievements && !config.keyAchievements) updated.keyAchievements = enriched.keyAchievements;
-    // Brand positioning fields
-    if (enriched.brandFeeling && !config.brandFeeling) updated.brandFeeling = enriched.brandFeeling;
-    if (enriched.brandProblem && !config.brandProblem) updated.brandProblem = enriched.brandProblem;
-    if (enriched.dreamCustomer && !config.dreamCustomer) updated.dreamCustomer = enriched.dreamCustomer;
-    if (enriched.customerProblems && !config.customerProblems) updated.customerProblems = enriched.customerProblems;
-    if (enriched.providerRole && !config.providerRole) updated.providerRole = enriched.providerRole;
-    if (enriched.providerBeliefs && !config.providerBeliefs) updated.providerBeliefs = enriched.providerBeliefs;
-    if (enriched.providerStrengths && !config.providerStrengths) updated.providerStrengths = enriched.providerStrengths;
-    if (enriched.authenticityZone && !config.authenticityZone) updated.authenticityZone = enriched.authenticityZone;
-    if (enriched.brandingStatement && !config.brandingStatement) updated.brandingStatement = enriched.brandingStatement;
-    if (enriched.humanDifferentiation && !config.humanDifferentiation) updated.humanDifferentiation = enriched.humanDifferentiation;
+    // Overwrite all fields from enriched data
+    const updated = {
+      ...config,
+      ...Object.fromEntries(
+        Object.entries(enriched).filter(([, v]) => v !== "")
+      ),
+    };
 
     configs[index] = updated;
     writeConfigs(configs);

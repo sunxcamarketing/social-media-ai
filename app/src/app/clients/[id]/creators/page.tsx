@@ -30,7 +30,7 @@ function formatNumber(n: number): string {
 
 const TIER_STYLES: Record<string, { label: string; color: string }> = {
   mega:  { label: "Mega",  color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-  macro: { label: "Macro", color: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
+  macro: { label: "Macro", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
   mid:   { label: "Mid",   color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   micro: { label: "Micro", color: "bg-green-500/10 text-green-400 border-green-500/20" },
 };
@@ -50,7 +50,7 @@ function SuggestionCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <a href={`https://www.instagram.com/${s.username}/`} target="_blank" rel="noopener noreferrer"
-              className="text-sm font-semibold hover:text-rose-400 transition-colors">
+              className="text-sm font-semibold hover:text-purple-400 transition-colors">
               @{s.username}
             </a>
             {s.name && s.name !== s.username && (
@@ -84,7 +84,7 @@ function SuggestionCard({
             </span>
           ) : (
             <Button size="sm" onClick={onAdd} disabled={adding}
-              className="h-8 rounded-xl gap-1.5 text-xs bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+              className="h-8 rounded-xl gap-1.5 text-xs bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
               {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
               {adding ? "Wird hinzugefügt…" : "Hinzufügen"}
             </Button>
@@ -338,14 +338,14 @@ export default function ClientCreatorsPage() {
                   </p>
                 )}
                 <Button onClick={handleSave} disabled={saving || !form.username || !form.category}
-                  className="w-full rounded-xl h-11 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+                  className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
                   {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{editing ? "Speichert…" : "Füge hinzu…"}</> : editing ? "Speichern" : "Hinzufügen"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
           <Button onClick={() => setResearchOpen(!researchOpen)}
-            className="rounded-xl h-10 gap-1.5 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 text-xs">
+            className="rounded-xl h-10 gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 text-xs">
             <Search className="h-3.5 w-3.5" /> Creators recherchieren
             {researchOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </Button>
@@ -354,10 +354,10 @@ export default function ClientCreatorsPage() {
 
       {/* Research Panel */}
       {researchOpen && (
-        <div className="rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/5 to-red-500/5 p-5 space-y-5">
+        <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 p-5 space-y-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/20 border border-rose-500/30">
-              <Sparkles className="h-4 w-4 text-rose-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/30">
+              <Sparkles className="h-4 w-4 text-purple-400" />
             </div>
             <div>
               <p className="text-sm font-semibold">KI-Recherche</p>
@@ -376,7 +376,7 @@ export default function ClientCreatorsPage() {
               className="flex-1 rounded-xl glass border-white/[0.08] h-11 text-sm"
             />
             <Button onClick={runResearch} disabled={researching}
-              className="h-11 px-5 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 gap-2 shrink-0">
+              className="h-11 px-5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-2 shrink-0">
               {researching
                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Recherchiert…</>
                 : <><Search className="h-4 w-4" /> Recherchieren</>}
@@ -390,7 +390,7 @@ export default function ClientCreatorsPage() {
           {researching && (
             <div className="space-y-2 px-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-rose-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
                 KI generiert Hashtags → sucht echte Creator auf Instagram…
               </div>
               <p className="text-xs text-muted-foreground/60 pl-6">Echte Accounts direkt aus Instagram-Hashtags der Nische. Kann bis zu 60 Sekunden dauern.</p>
@@ -481,7 +481,7 @@ export default function ClientCreatorsPage() {
               <div className="flex items-start justify-between">
                 <a href={`https://www.instagram.com/${creator.username}/`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                  <div className="relative h-12 w-12 shrink-0 rounded-full overflow-hidden bg-gradient-to-br from-rose-500/20 to-red-500/20 border border-white/[0.1]">
+                  <div className="relative h-12 w-12 shrink-0 rounded-full overflow-hidden bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-white/[0.1]">
                     {creator.profilePicUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={`/api/proxy-image?url=${encodeURIComponent(creator.profilePicUrl)}`}
@@ -493,7 +493,7 @@ export default function ClientCreatorsPage() {
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold hover:text-rose-400 transition-colors">@{creator.username}</p>
+                    <p className="text-sm font-semibold hover:text-purple-400 transition-colors">@{creator.username}</p>
                     <Badge variant="secondary" className="mt-0.5 rounded-md text-[10px] bg-white/[0.05] border border-white/[0.06]">
                       {creator.category}
                     </Badge>
@@ -523,7 +523,7 @@ export default function ClientCreatorsPage() {
                     <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Follower</p>
                   </div>
                   <div className="rounded-xl bg-black/20 border border-white/[0.04] p-2.5 text-center">
-                    <Film className="mx-auto h-3.5 w-3.5 text-rose-400 mb-1" />
+                    <Film className="mx-auto h-3.5 w-3.5 text-purple-400 mb-1" />
                     <p className="text-sm font-bold">{creator.reelsCount30d}</p>
                     <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Reels/30d</p>
                   </div>
@@ -548,7 +548,7 @@ export default function ClientCreatorsPage() {
                   </p>
                 ) : <span />}
                 <Link href={`/clients/${id}/videos?creator=${creator.username}`}
-                  className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 transition-colors">
+                  className="inline-flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-300 transition-colors">
                   Videos ansehen <ExternalLink className="h-3 w-3" />
                 </Link>
               </div>
@@ -562,7 +562,7 @@ export default function ClientCreatorsPage() {
             <h3 className="mt-4 font-semibold">Noch keine Creators</h3>
             <p className="mt-1 text-sm text-muted-foreground mb-5">Lass die KI die besten Creators in der Nische finden oder füge manuell hinzu.</p>
             <Button onClick={() => setResearchOpen(true)}
-              className="rounded-xl h-9 gap-1.5 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 text-xs">
+              className="rounded-xl h-9 gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 text-xs">
               <Search className="h-3.5 w-3.5" /> KI-Recherche starten
             </Button>
           </div>

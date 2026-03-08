@@ -18,16 +18,16 @@ import type { TrainingExample } from "@/app/api/strategy/route";
 import { FormatPicker } from "@/components/format-picker";
 
 const TYPE_COLORS: Record<string, string> = {
-  "Authority":              "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  "Authority":              "bg-purple-500/10 text-purple-400 border-purple-500/20",
   "Story / Personality":    "bg-pink-500/10 text-pink-400 border-pink-500/20",
   "Social Proof":           "bg-green-500/10 text-green-400 border-green-500/20",
   "Education / Value":      "bg-blue-500/10 text-blue-400 border-blue-500/20",
   "Opinion / Polarisation": "bg-orange-500/10 text-orange-400 border-orange-500/20",
   "Behind the Scenes":      "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  "Inspiration / Motivation": "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  "Inspiration / Motivation": "bg-purple-500/10 text-purple-400 border-purple-500/20",
   "Entertainment":          "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   "Community / Interaction": "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  "Promotion / Offer":      "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  "Promotion / Offer":      "bg-purple-500/10 text-purple-400 border-purple-500/20",
 };
 
 const EXAMPLE_CALENDAR = [
@@ -179,8 +179,8 @@ export default function StrategyPage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500/20 to-red-500/20 border border-rose-500/20">
-            <BookOpen className="h-4 w-4 text-rose-400" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20">
+            <BookOpen className="h-4 w-4 text-purple-400" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Content Strategy Framework</h1>
         </div>
@@ -191,9 +191,9 @@ export default function StrategyPage() {
       <div className="glass-strong rounded-2xl border border-white/[0.08] p-6">
         <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-4">The Formula</p>
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 px-4 py-2.5">
-            <Layers className="h-4 w-4 text-rose-400" />
-            <span className="text-sm font-semibold text-rose-300">PILLAR</span>
+          <div className="flex items-center gap-2 rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-2.5">
+            <Layers className="h-4 w-4 text-purple-400" />
+            <span className="text-sm font-semibold text-purple-300">PILLAR</span>
           </div>
           <span className="text-xl text-muted-foreground font-light">+</span>
           <div className="flex items-center gap-2 rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-2.5">
@@ -206,7 +206,7 @@ export default function StrategyPage() {
             <span className="text-sm font-semibold text-green-300">FORMAT</span>
           </div>
           <span className="text-xl text-muted-foreground font-light">=</span>
-          <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500/20 to-red-500/20 border border-rose-500/30 px-4 py-2.5">
+          <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/30 px-4 py-2.5">
             <span className="text-sm font-bold text-foreground">CONTENT</span>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function StrategyPage() {
       {/* Training Library */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2"><Brain className="h-5 w-5 text-rose-400" /> Training Library</h2>
+          <h2 className="text-lg font-semibold flex items-center gap-2"><Brain className="h-5 w-5 text-purple-400" /> Training Library</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Add content links. AI classifies type &amp; format. Every saved example is used when generating strategies for clients.
           </p>
@@ -240,7 +240,7 @@ export default function StrategyPage() {
               />
             </div>
             <Button onClick={analyzeLink} disabled={trainAnalyzing || !trainUrl.trim()}
-              className="h-11 rounded-xl px-4 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 gap-1.5 text-sm shrink-0">
+              className="h-11 rounded-xl px-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-1.5 text-sm shrink-0">
               {trainAnalyzing ? <><Loader2 className="h-4 w-4 animate-spin" /> Analysing…</> : <><Brain className="h-4 w-4" /> Analyse</>}
             </Button>
           </div>
@@ -252,8 +252,8 @@ export default function StrategyPage() {
           {(trainSuggestion || trainType) && (
             <div className="space-y-3 border-t border-white/[0.06] pt-4">
               {trainSuggestion && (
-                <div className="flex items-start gap-2 rounded-xl bg-rose-500/5 border border-rose-500/20 px-3 py-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2 rounded-xl bg-purple-500/5 border border-purple-500/20 px-3 py-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-purple-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-muted-foreground leading-relaxed">{trainSuggestion.reasoning}</p>
                 </div>
               )}
@@ -284,7 +284,7 @@ export default function StrategyPage() {
                   className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
               </div>
               <Button onClick={saveTrainingExample} disabled={trainSaving || !trainType || !trainFormat}
-                className="w-full h-10 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0 text-sm">
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 text-sm">
                 {trainSaving ? "Saving…" : "Save to Training Library"}
               </Button>
             </div>
@@ -464,8 +464,8 @@ export default function StrategyPage() {
           {/* Step 1 */}
           <div className="glass rounded-2xl border border-white/[0.06] p-5 space-y-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 border border-rose-500/20">
-                <span className="text-xs font-bold text-rose-400">1</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 border border-purple-500/20">
+                <span className="text-xs font-bold text-purple-400">1</span>
               </div>
               <p className="text-sm font-semibold">Define Your Pillars</p>
             </div>
@@ -567,7 +567,7 @@ export default function StrategyPage() {
             <Button
               onClick={saveType}
               disabled={typeSaving || !typeForm.name.trim()}
-              className="w-full rounded-xl h-10 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0"
+              className="w-full rounded-xl h-10 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0"
             >
               {typeSaving ? "Saving…" : "Add Content Type"}
             </Button>
@@ -608,7 +608,7 @@ export default function StrategyPage() {
                   rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
               </div>
               <Button onClick={saveEditExample}
-                className="w-full h-10 rounded-xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0">
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
                 Save Changes
               </Button>
             </div>
@@ -662,7 +662,7 @@ export default function StrategyPage() {
             <Button
               onClick={saveFormat}
               disabled={formatSaving || !formatForm.name.trim()}
-              className="w-full rounded-xl h-10 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 border-0"
+              className="w-full rounded-xl h-10 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0"
             >
               {formatSaving ? "Saving…" : "Add Format"}
             </Button>
