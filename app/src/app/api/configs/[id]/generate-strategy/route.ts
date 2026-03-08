@@ -73,7 +73,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     max_tokens: 1024,
     messages: [{
       role: "user",
-      content: `You are a social media content strategist. Based on the client profile below, create a complete content strategy for their Instagram/social media presence.
+      content: `You are a social media content strategist using the following framework:
+
+CONTENT STRATEGY FRAMEWORK (Content = Pillar + Type + Format):
+
+1. CONTENT PILLARS (3–5 core topics the account is known for)
+   - Each pillar must connect directly to the offer, expertise, or dream customer problems
+   - Pillars answer: "What should this account be known for?"
+
+2. CONTENT TYPES & THEIR GOALS:
+   - Authority → Establish expertise & credibility (high-ticket positioning)
+   - Story / Personality → Emotional connection & trust (brand differentiation)
+   - Social Proof → Trigger buying decisions (converting followers)
+   - Education / Value → Drive saves, shares & reach (algorithm performance)
+   - Opinion / Polarisation → Drive comments & engagement (visibility boost)
+   - Behind the Scenes → Authenticity & process (humanising the brand)
+   - Inspiration / Motivation → Emotional resonance (shares & saves)
+   - Entertainment → Retention & virality (new audience discovery)
+   - Community / Interaction → Engagement & loyalty (relationship building)
+   - Promotion / Offer → Direct sales or sign-ups (conversion & revenue)
+
+3. CONTENT FORMATS (how the content is presented):
+   - Face to Camera: personal, direct, best for Opinion/Authority/Story
+   - Voice Over + B-Roll: no face needed, best for Education/Authority
+   - Storytelling: narrative arc, best for Story/Social Proof
+   - Carousel / Slideshow: list/educational, best for Education/Authority
+   - Screen Recording: tutorials, best for Education/BTS
+   - Reaction: respond to existing content, best for Opinion/Entertainment
+   - Behind the Scenes: raw/authentic, best for Story/Community
+   - Talking Head (sit-down): longer interview-style, best for Authority/Education
+
+POSTING FORMULA: Each post = Pillar + Type + Format
+
+Based on the client profile below, create a complete content strategy for their Instagram/social media presence.
 
 CLIENT PROFILE:
 ${clientContext}

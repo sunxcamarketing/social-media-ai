@@ -131,7 +131,26 @@ export async function enrichFromLinks(links: {
     max_tokens: 2048,
     messages: [{
       role: "user",
-      content: `Based on the following profile data scraped from a client's online presence, extract and infer their information. Return ONLY a valid JSON object with these exact fields:
+      content: `You are a brand positioning expert using the following framework to analyze clients:
+
+FRAMEWORK — Brand & Positioning Workbook:
+
+Phase 1 — Brand Identity:
+- What FEELING does the person sell? (Sicherheit, Klarheit, Selbstvertrauen, Freiheit...) — People don't buy methods, they buy feelings and clarity.
+- What is their core problem they want to be THE solution for?
+
+Phase 2 — Dream Customer & Authenticity Zone:
+- Concrete dream customer profile: tonality, age, gender, income, country, profession, values, and a concrete person description
+- Customer problems across 5 categories: mental, physical, financial, social, aesthetic
+- Authenticity Zone = where the client's core problem overlaps with the provider's identity and strength
+
+Phase 3 — Brand Message:
+- Branding Statement formula: "Ich helfe [Zielgruppe], von [Transformation], damit [Ergebnis]."
+- Human differentiation (AND factor): "Ich bin [Anbieter] UND...?" — what makes them human and non-interchangeable
+
+Use this framework to analyze the scraped profile data and extract/infer all fields. Make intelligent inferences even when not explicitly stated — a positioning expert reads between the lines of someone's messaging.
+
+Based on the following profile data scraped from a client's online presence, extract and infer their information. Return ONLY a valid JSON object with these exact fields:
 
 {
   "name": "Full name of the person",

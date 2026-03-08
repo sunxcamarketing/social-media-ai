@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,9 @@ import {
   MessageSquare,
   Plus,
   CheckCircle2,
+  RefreshCw,
+  UserCheck,
+  Film,
 } from "lucide-react";
 import type { Config } from "@/lib/types";
 
@@ -129,11 +133,61 @@ function parseCustomerProblems(val: string): CustomerProblems {
   try { return JSON.parse(val); } catch { return { mental: "", physical: "", financial: "", social: "", aesthetic: "" }; }
 }
 
+interface InstagramProfile {
+  username: string;
+  fullName: string;
+  bio: string;
+  followers: number;
+  following: number;
+  postsCount: number;
+  profilePicUrl: string;
+  category: string;
+  verified: boolean;
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return n.toString();
+}
+
+const FOLLOWUP_QUESTIONS: { field: keyof Config; label: string; question: string; rows?: number }[] = [
+  { field: "businessContext",        label: "Business Context",       question: "Was machst du genau, und wen hilfst du damit?", rows: 3 },
+  { field: "professionalBackground", label: "Beruflicher Hintergrund", question: "Was ist dein beruflicher Hintergrund und deine Expertise?", rows: 2 },
+  { field: "keyAchievements",        label: "Erfolge & Meilensteine",  question: "Was sind deine größten Erfolge, Zahlen oder Auszeichnungen?", rows: 2 },
+  { field: "brandFeeling",           label: "Gefühl das du verkaufst", question: "Welches Gefühl vermittelst du deinen Kunden? (z.B. Sicherheit, Klarheit, Freiheit)", rows: 2 },
+  { field: "brandProblem",           label: "Kernproblem",             question: "Was ist das eine Problem das du für deine Kunden löst?", rows: 2 },
+  { field: "providerRole",           label: "Deine Rolle",             question: "Wie würdest du deine Rolle beschreiben? (Mentor, Coach, Stratege, Sparringspartner...)", rows: 2 },
+  { field: "providerBeliefs",        label: "Deine Überzeugungen",     question: "Was glaubst du, was in deiner Branche falsch gemacht wird?", rows: 2 },
+  { field: "providerStrengths",      label: "Deine Stärken",           question: "Was schätzen deine Kunden an dir am meisten?", rows: 2 },
+  { field: "brandingStatement",      label: "Branding Statement",      question: "Wie lautet dein Branding Statement? (Ich helfe [Zielgruppe], von [Ausgangspunkt], damit [Ergebnis].)", rows: 2 },
+  { field: "humanDifferentiation",   label: "Dein AND-Faktor",         question: "Was macht dich als Mensch einzigartig — dein AND-Faktor? (z.B. 'Ich bin Stratege UND Vater von 3 Kindern')", rows: 2 },
+];
+
 export default function ClientInformationPage() {
+  return (
+    <Suspense>
+      <ClientInformationContent />
+    </Suspense>
+  );
+}
+
+function ClientInformationContent() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [client, setClient] = useState<Config | null>(null);
+  const [igProfile, setIgProfile] = useState<InstagramProfile | null>(null);
+  const [igLoading, setIgLoading] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
+
+  // Follow-up dialog
+  const [followupOpen, setFollowupOpen] = useState(false);
+  const [followupIndex, setFollowupIndex] = useState(0);
+  const [followupAnswer, setFollowupAnswer] = useState("");
+  const [followupSaving, setFollowupSaving] = useState(false);
+  const [missingFields, setMissingFields] = useState<typeof FOLLOWUP_QUESTIONS>([]);
   const [addInfoOpen, setAddInfoOpen] = useState(false);
   const [addInfoText, setAddInfoText] = useState("");
   const [addInfoLoading, setAddInfoLoading] = useState(false);
@@ -172,9 +226,37 @@ export default function ClientInformationPage() {
   const loadClient = () =>
     fetch(`/api/configs/${id}`).then((r) => r.json() as Promise<Config>);
 
-  useEffect(() => { loadClient().then(setClient); }, [id]);
+  useEffect(() => {
+    const isSetup = searchParams.get("setup") === "1";
+    loadClient().then((c) => {
+      setClient(c);
+      if (c.instagram) loadIgProfile();
+      if (isSetup && (c.instagram || c.website || c.linkedin || c.tiktok)) {
+        // Auto-run enrich then show follow-up
+        runEnrich(c).then((enriched) => {
+          const missing = FOLLOWUP_QUESTIONS.filter((q) => !enriched[q.field]);
+          if (missing.length > 0) {
+            setMissingFields(missing);
+            setFollowupIndex(0);
+            setFollowupOpen(true);
+          }
+          // Remove ?setup=1 from URL
+          router.replace(`/clients/${id}/information`);
+        });
+      }
+    });
+  }, [id]);
 
-  const handleAutoFill = async () => {
+  const loadIgProfile = () => {
+    setIgLoading(true);
+    fetch(`/api/configs/${id}/instagram-profile`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setIgProfile(data))
+      .catch(() => {})
+      .finally(() => setIgLoading(false));
+  };
+
+  const runEnrich = async (currentClient?: Config): Promise<Config> => {
     setEnriching(true);
     setEnrichError(null);
     try {
@@ -183,13 +265,19 @@ export default function ClientInformationPage() {
         const err = await res.json();
         throw new Error(err.error || "Auto-fill failed");
       }
-      await loadClient().then(setClient);
+      const data = await res.json();
+      const updated = data.config as Config;
+      setClient(updated);
+      return updated;
     } catch (e) {
       setEnrichError(e instanceof Error ? e.message : "Auto-fill failed");
+      return currentClient ?? client!;
     } finally {
       setEnriching(false);
     }
   };
+
+  const handleAutoFill = () => runEnrich();
 
   const handleAddInfo = async () => {
     if (!addInfoText.trim()) return;
@@ -384,6 +472,82 @@ export default function ClientInformationPage() {
         </div>
       )}
 
+      {/* Instagram Profile Card */}
+      {client.instagram && (
+        <div className="glass rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <Instagram className="h-4 w-4 text-purple-400" /> Instagram Profil
+            </h2>
+            <button
+              onClick={loadIgProfile}
+              disabled={igLoading}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {igLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              {igLoading ? "Lädt…" : "Aktualisieren"}
+            </button>
+          </div>
+
+          {igLoading && !igProfile && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Profil wird geladen…
+            </div>
+          )}
+
+          {igProfile && (
+            <div className="flex items-start gap-4">
+              <a href={`https://www.instagram.com/${igProfile.username}/`} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
+                <div className="relative h-14 w-14 rounded-full overflow-hidden bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-white/[0.1]">
+                  {igProfile.profilePicUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={`/api/proxy-image?url=${encodeURIComponent(igProfile.profilePicUrl)}`}
+                      alt={`@${igProfile.username}`} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-muted-foreground/50">
+                      {igProfile.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </a>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-sm font-semibold">@{igProfile.username}</p>
+                  {igProfile.verified && <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
+                </div>
+                {igProfile.fullName && <p className="text-xs text-muted-foreground mb-1">{igProfile.fullName}</p>}
+                {igProfile.category && (
+                  <span className="inline-block text-[10px] rounded-md bg-white/[0.05] border border-white/[0.06] px-2 py-0.5 text-muted-foreground mb-2">
+                    {igProfile.category}
+                  </span>
+                )}
+                {igProfile.bio && (
+                  <p className="text-xs text-muted-foreground/80 leading-relaxed line-clamp-3 mb-3">{igProfile.bio}</p>
+                )}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-xl bg-black/20 border border-white/[0.04] p-2.5 text-center">
+                    <UserCheck className="mx-auto h-3.5 w-3.5 text-blue-400 mb-1" />
+                    <p className="text-sm font-bold">{formatNumber(igProfile.followers)}</p>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Follower</p>
+                  </div>
+                  <div className="rounded-xl bg-black/20 border border-white/[0.04] p-2.5 text-center">
+                    <Users className="mx-auto h-3.5 w-3.5 text-purple-400 mb-1" />
+                    <p className="text-sm font-bold">{formatNumber(igProfile.following)}</p>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Following</p>
+                  </div>
+                  <div className="rounded-xl bg-black/20 border border-white/[0.04] p-2.5 text-center">
+                    <Film className="mx-auto h-3.5 w-3.5 text-emerald-400 mb-1" />
+                    <p className="text-sm font-bold">{igProfile.postsCount}</p>
+                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Posts</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Basic Info */}
       <SectionCard icon={Briefcase} iconColor="text-purple-400" title="Basic Information" onEdit={openBasic} empty={basicEmpty}>
         <div className="space-y-5">
@@ -466,6 +630,73 @@ export default function ClientInformationPage() {
           <InfoRow label="Human differentiation (your AND factor)" value={client.humanDifferentiation} />
         </div>
       </SectionCard>
+
+      {/* ── FOLLOW-UP DIALOG ── */}
+      {followupOpen && missingFields.length > 0 && (() => {
+        const current = missingFields[followupIndex];
+        const isLast = followupIndex >= missingFields.length - 1;
+        const progress = followupIndex + 1;
+        const total = missingFields.length;
+
+        const saveAndNext = async () => {
+          if (followupAnswer.trim()) {
+            setFollowupSaving(true);
+            await fetch(`/api/configs/${id}/add-info`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: `${current.label}: ${followupAnswer.trim()}` }),
+            });
+            await loadClient().then(setClient);
+            setFollowupSaving(false);
+          }
+          setFollowupAnswer("");
+          if (isLast) {
+            setFollowupOpen(false);
+          } else {
+            setFollowupIndex((i) => i + 1);
+          }
+        };
+
+        return (
+          <Dialog open={followupOpen} onOpenChange={(v) => { if (!v) setFollowupOpen(false); }}>
+            <DialogContent className="sm:max-w-md glass-strong border-white/[0.08]">
+              <div className="flex items-center justify-between mb-1">
+                <DialogTitle className="text-base font-semibold">Profil vervollständigen</DialogTitle>
+                <span className="text-[11px] text-muted-foreground">{progress} / {total}</span>
+              </div>
+              <div className="w-full h-1 bg-white/[0.06] rounded-full mb-4">
+                <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${(progress / total) * 100}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">{current.label}</p>
+              <p className="text-sm font-medium mb-3">{current.question}</p>
+              <Textarea
+                autoFocus
+                value={followupAnswer}
+                onChange={(e) => setFollowupAnswer(e.target.value)}
+                rows={current.rows ?? 2}
+                placeholder="Deine Antwort…"
+                className="rounded-xl glass border-white/[0.08] text-sm mb-4"
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => { setFollowupAnswer(""); if (isLast) setFollowupOpen(false); else setFollowupIndex((i) => i + 1); }}
+                  className="flex-1 rounded-xl h-10 text-sm text-muted-foreground"
+                >
+                  Überspringen
+                </Button>
+                <Button
+                  onClick={saveAndNext}
+                  disabled={followupSaving}
+                  className="flex-1 rounded-xl h-10 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 text-sm"
+                >
+                  {followupSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? "Fertig" : "Weiter"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Add Info Dialog */}
       <Dialog open={addInfoOpen} onOpenChange={(v) => { if (!v) setAddInfoOpen(false); }}>
