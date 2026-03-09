@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { readConfigs, writeConfigs } from "@/lib/csv";
 import { enrichFromLinks } from "@/lib/enrich";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

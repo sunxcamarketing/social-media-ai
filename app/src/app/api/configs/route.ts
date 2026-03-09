@@ -42,6 +42,8 @@ export async function POST(request: Request) {
     providerRole: body.providerRole || "",
     providerBeliefs: body.providerBeliefs || "",
     providerStrengths: body.providerStrengths || "",
+    igFullName: "", igBio: "", igFollowers: "", igFollowing: "",
+    igPostsCount: "", igProfilePicUrl: "", igCategory: "", igVerified: "", igLastUpdated: "",
     authenticityZone: body.authenticityZone || "",
   };
   configs.push(newConfig);

@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs } from "@/lib/csv";
 
 export const maxDuration = 120;
+export const dynamic = "force-dynamic";
 
 export interface CreatorSuggestion {
   username: string;
@@ -12,62 +13,52 @@ export interface CreatorSuggestion {
   contentStyle: string;
   estimatedFollowers: string;
   tier: "mega" | "macro" | "mid" | "micro";
+  confidence: number;
+  verified?: boolean;
+  realFollowers?: number;
+  profilePicUrl?: string;
 }
 
-function estimateTier(avgViews: number): "mega" | "macro" | "mid" | "micro" {
-  if (avgViews >= 300_000) return "mega";
-  if (avgViews >= 30_000) return "macro";
-  if (avgViews >= 3_000) return "mid";
-  return "micro";
-}
+type AiCreator = Omit<CreatorSuggestion, "verified" | "realFollowers" | "profilePicUrl">;
 
-function formatViews(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return `${Math.round(n)}`;
-}
+async function verifyBatch(usernames: string[], token: string): Promise<Map<string, { followers: number; profilePicUrl: string }>> {
+  const results = await Promise.allSettled(
+    usernames.map(async (username) => {
+      const res = await fetch(
+        `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            directUrls: [`https://www.instagram.com/${username}/`],
+            resultsType: "details",
+            resultsLimit: 1,
+          }),
+          signal: AbortSignal.timeout(35_000),
+        }
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      const p = data[0];
+      if (!p || !p.username) return null;
+      return { username: (p.username as string).toLowerCase(), followers: (p.followersCount as number) || 0, profilePicUrl: (p.profilePicUrl as string) || "" };
+    })
+  );
 
-function estimateFollowers(avgViews: number): string {
-  // rough: followers ≈ 8–12× avg views
-  const est = avgViews * 10;
-  if (est >= 1_000_000) return `~${(est / 1_000_000).toFixed(1)}M`;
-  if (est >= 1_000) return `~${Math.round(est / 1_000)}K`;
-  return `~${est}`;
-}
-
-interface ApifyPost {
-  ownerUsername?: string;
-  videoPlayCount?: number;
-  likesCount?: number;
-  commentsCount?: number;
-}
-
-async function scrapeHashtag(hashtag: string, limit: number): Promise<ApifyPost[]> {
-  const token = process.env.APIFY_API_TOKEN;
-  if (!token) return [];
-  try {
-    const res = await fetch(
-      `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          directUrls: [`https://www.instagram.com/explore/tags/${encodeURIComponent(hashtag)}/`],
-          resultsType: "posts",
-          resultsLimit: limit,
-          addParentData: false,
-        }),
-      }
-    );
-    if (!res.ok) {
-      console.error("research-creators: Apify hashtag scrape failed", res.status, await res.text().catch(() => ""));
-      return [];
+  const map = new Map<string, { followers: number; profilePicUrl: string }>();
+  for (const r of results) {
+    if (r.status === "fulfilled" && r.value) {
+      map.set(r.value.username, { followers: r.value.followers, profilePicUrl: r.value.profilePicUrl });
     }
-    return (await res.json()) as ApifyPost[];
-  } catch (e) {
-    console.error("research-creators: Apify fetch error", e);
-    return [];
   }
+  return map;
+}
+
+function tierFromFollowers(n: number): "mega" | "macro" | "mid" | "micro" {
+  if (n >= 1_000_000) return "mega";
+  if (n >= 100_000)   return "macro";
+  if (n >= 10_000)    return "mid";
+  return "micro";
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -79,117 +70,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
 
+  const apifyToken = process.env.APIFY_API_TOKEN;
+
   const body = await request.json().catch(() => ({}));
   const focusHint: string = body.focus || "";
 
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-
   const context = [
-    config.creatorsCategory  && `Niche: ${config.creatorsCategory}`,
-    config.businessContext   && `Business context: ${config.businessContext}`,
-    config.brandProblem      && `Core problem: ${config.brandProblem}`,
-    dreamCustomer.description && `Dream customer: ${dreamCustomer.description}`,
-    focusHint                && `Focus hint: ${focusHint}`,
+    config.creatorsCategory && `Nische: ${config.creatorsCategory}`,
+    config.businessContext  && `Business-Kontext: ${config.businessContext}`,
+    config.brandProblem     && `Kernproblem: ${config.brandProblem}`,
+    config.dreamCustomer    && `Zielgruppe: ${config.dreamCustomer}`,
+    focusHint               && `Fokus: ${focusHint}`,
   ].filter(Boolean).join("\n");
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: 110_000 });
 
-  // ── Step 1: Claude generates relevant hashtags (reliable — no usernames) ──
-  const hashtagMsg = await client.messages.create({
+  const msg = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 512,
-    tools: [
-      {
-        name: "submit_hashtags",
-        description: "Submit relevant Instagram hashtags for this niche",
-        input_schema: {
-          type: "object" as const,
-          properties: {
-            hashtags: {
-              type: "array",
-              items: { type: "string", description: "Hashtag without # symbol" },
-              minItems: 3,
-              maxItems: 5,
-            },
-          },
-          required: ["hashtags"],
-        },
-      },
-    ],
-    tool_choice: { type: "tool", name: "submit_hashtags" },
-    messages: [
-      {
-        role: "user",
-        content: `For this Instagram niche, suggest 3-5 relevant hashtags that active creators frequently use. Choose popular hashtags where top creators in this space would post content.
-
-CONTEXT:
-${context}
-
-Return hashtags without the # symbol. Use the language/terms common in this niche (could be English, German, or niche-specific).`,
-      },
-    ],
-  });
-
-  const hashtagTool = hashtagMsg.content.find((b) => b.type === "tool_use");
-  if (!hashtagTool || hashtagTool.type !== "tool_use") {
-    return NextResponse.json({ error: "Hashtag-Generierung fehlgeschlagen. Bitte erneut versuchen." }, { status: 500 });
-  }
-
-  const { hashtags } = hashtagTool.input as { hashtags: string[] };
-
-  // ── Step 2: Scrape hashtag with Apify to find REAL accounts ──
-  const primaryHashtag = hashtags[0];
-  const posts = await scrapeHashtag(primaryHashtag, 60);
-
-  // ── Step 3: Aggregate real creators from posts ──
-  if (posts.length > 0) {
-    const creatorMap = new Map<string, { views: number; likes: number; posts: number }>();
-    for (const post of posts) {
-      const username = post.ownerUsername;
-      if (!username) continue;
-      const existing = creatorMap.get(username) || { views: 0, likes: 0, posts: 0 };
-      creatorMap.set(username, {
-        views: existing.views + (post.videoPlayCount || 0),
-        likes: existing.likes + (post.likesCount || 0),
-        posts: existing.posts + 1,
-      });
-    }
-
-    const topCreators = [...creatorMap.entries()]
-      .sort((a, b) => b[1].views - a[1].views)
-      .slice(0, 12);
-
-    const suggestions: CreatorSuggestion[] = topCreators.map(([username, stats]) => {
-      const avgViews = stats.posts > 0 ? stats.views / stats.posts : 0;
-      const tier = estimateTier(avgViews);
-      return {
-        username,
-        name: username,
-        why: `Aktiv in #${primaryHashtag} — ${stats.posts} Post${stats.posts > 1 ? "s" : ""} mit Ø ${formatViews(avgViews)} Views`,
-        strength:
-          tier === "mega" ? "Massenreichweite" :
-          tier === "macro" ? "Starke Nischen-Präsenz" :
-          tier === "mid" ? "Aufsteigender Creator" :
-          "Hidden Gem / Nischen-Insider",
-        contentStyle: "Instagram Reels / Posts",
-        estimatedFollowers: estimateFollowers(avgViews),
-        tier,
-      };
-    });
-
-    return NextResponse.json({ suggestions, source: "instagram", hashtag: primaryHashtag });
-  }
-
-  // ── Fallback: Apify not configured / no results → Claude with strict instructions ──
-  console.warn("research-creators: Apify returned 0 posts, falling back to Claude knowledge");
-
-  const fallbackMsg = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
+    max_tokens: 2048,
     tools: [
       {
         name: "submit_creators",
-        description: "Submit Instagram creator suggestions",
+        description: "Submit Instagram creator candidates for competitor analysis",
         input_schema: {
           type: "object" as const,
           properties: {
@@ -198,18 +100,18 @@ Return hashtags without the # symbol. Use the language/terms common in this nich
               items: {
                 type: "object",
                 properties: {
-                  username:           { type: "string" },
-                  name:               { type: "string" },
-                  why:                { type: "string" },
-                  strength:           { type: "string" },
-                  contentStyle:       { type: "string" },
-                  estimatedFollowers: { type: "string" },
+                  username:           { type: "string", description: "Exact Instagram username — no @, no URL, no spaces" },
+                  estimatedFollowers: { type: "string", description: "Estimated follower count, e.g. '2.3M' or '450K'" },
                   tier:               { type: "string", enum: ["mega", "macro", "mid", "micro"] },
+                  why:                { type: "string", description: "Why this creator is relevant (1–2 sentences)" },
+                  strength:           { type: "string", description: "Their main strength, e.g. 'Viraler Storyteller', 'Massenreichweite'" },
+                  contentStyle:       { type: "string", description: "Their content style or format" },
+                  confidence:         { type: "number", description: "0–10: certainty that this exact username is correct on Instagram" },
                 },
-                required: ["username", "name", "why", "strength", "contentStyle", "estimatedFollowers", "tier"],
+                required: ["username", "estimatedFollowers", "tier", "why", "strength", "contentStyle", "confidence"],
               },
-              minItems: 5,
-              maxItems: 12,
+              minItems: 8,
+              maxItems: 10,
             },
           },
           required: ["creators"],
@@ -220,25 +122,86 @@ Return hashtags without the # symbol. Use the language/terms common in this nich
     messages: [
       {
         role: "user",
-        content: `Suggest well-known Instagram creators for this niche. Only suggest accounts you are highly confident actually exist on Instagram — if unsure about a username, skip it.
+        content: `Find the BIGGEST and most influential Instagram creators in this niche for competitor analysis.
 
 CONTEXT:
 ${context}
 
-Use the submit_creators tool to return your findings.`,
+Include two types:
+1. REACH creators — massive follower counts (500K+, 1M+, 5M+)
+2. VIRAL creators — known for getting disproportionately high views vs followers (breakout hits, viral reels)
+
+RULES:
+- Suggest exactly 10 creators, prioritizing mega and macro influencers
+- Only suggest accounts you have strong knowledge of from training data
+- Rate confidence 0–10 per username. Be honest — if you're not sure of the exact handle, give it a 5 or lower
+- Do NOT invent names. Skip any creator where you're unsure of the exact username
+- Think of actual famous people, brands, and personalities in this space — not small accounts
+
+Return the exact Instagram handle only (no @, no URL).`,
       },
     ],
   });
 
-  const fallbackTool = fallbackMsg.content.find((b) => b.type === "tool_use");
-  if (!fallbackTool || fallbackTool.type !== "tool_use") {
-    return NextResponse.json({ error: "KI hat keine Vorschläge generiert. Bitte erneut versuchen." }, { status: 500 });
+  const tool = msg.content.find((b) => b.type === "tool_use");
+  if (!tool || tool.type !== "tool_use") {
+    return NextResponse.json({ error: "KI konnte keine Creator generieren." }, { status: 500 });
   }
 
-  const { creators } = fallbackTool.input as { creators: CreatorSuggestion[] };
-  if (!Array.isArray(creators) || creators.length === 0) {
-    return NextResponse.json({ error: "KI hat eine leere Liste zurückgegeben. Bitte erneut versuchen." }, { status: 500 });
+  const { creators } = tool.input as { creators: AiCreator[] };
+
+  const cleaned: AiCreator[] = creators
+    .map((c) => ({
+      ...c,
+      username: c.username
+        .replace(/^@/, "")
+        .replace(/.*instagram\.com\//, "")
+        .replace(/\/$/, "")
+        .split("?")[0]
+        .trim()
+        .toLowerCase(),
+    }))
+    .filter((c) => c.username.length > 0 && !c.username.includes(" "))
+    .sort((a, b) => b.confidence - a.confidence);
+
+  if (cleaned.length === 0) {
+    return NextResponse.json({ error: "Keine Creator gefunden. Versuche einen anderen Fokus." }, { status: 422 });
   }
 
-  return NextResponse.json({ suggestions: creators, source: "ai" });
+  // Verify in batches of 5 via Apify (skip if no token)
+  let verifiedMap = new Map<string, { followers: number; profilePicUrl: string }>();
+  if (apifyToken) {
+    const batch1 = cleaned.slice(0, 5).map((c) => c.username);
+    const batch2 = cleaned.slice(5, 10).map((c) => c.username);
+    const [map1, map2] = await Promise.all([
+      verifyBatch(batch1, apifyToken),
+      verifyBatch(batch2, apifyToken),
+    ]);
+    verifiedMap = new Map([...map1, ...map2]);
+  }
+
+  const suggestions: CreatorSuggestion[] = cleaned
+    .map((c) => {
+      const verified = verifiedMap.get(c.username);
+      if (apifyToken && !verified) return null; // not found on Instagram
+      return {
+        ...c,
+        verified: !!verified,
+        realFollowers: verified?.followers,
+        profilePicUrl: verified?.profilePicUrl,
+        tier: verified ? tierFromFollowers(verified.followers) : c.tier,
+        estimatedFollowers: verified
+          ? verified.followers >= 1_000_000
+            ? `${(verified.followers / 1_000_000).toFixed(1)}M`
+            : `${Math.round(verified.followers / 1_000)}K`
+          : c.estimatedFollowers,
+      };
+    })
+    .filter(Boolean) as CreatorSuggestion[];
+
+  if (suggestions.length === 0) {
+    return NextResponse.json({ error: "Keine verifizierten Creator gefunden. Versuche einen anderen Fokus." }, { status: 422 });
+  }
+
+  return NextResponse.json({ suggestions, source: apifyToken ? "verified" : "ai" });
 }

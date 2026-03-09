@@ -34,6 +34,16 @@ export interface Config {
   youtube: string;
   linkedin: string;
   twitter: string;
+  // Cached Instagram profile
+  igFullName: string;
+  igBio: string;
+  igFollowers: string;
+  igFollowing: string;
+  igPostsCount: string;
+  igProfilePicUrl: string;
+  igCategory: string;
+  igVerified: string;
+  igLastUpdated: string;
 }
 
 export interface Creator {
@@ -85,6 +95,17 @@ export interface Script {
   body: string;
   cta: string;
   status: string;
+  createdAt: string;
+}
+
+export interface TrainingScript {
+  id: string;
+  format: string;       // matches BUILT_IN_FORMATS names
+  textHook: string;     // on-screen text hook
+  visualHook: string;   // visual/action hook
+  audioHook: string;    // spoken/audio hook
+  script: string;       // main body script
+  cta: string;          // call to action
   createdAt: string;
 }
 

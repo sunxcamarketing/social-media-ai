@@ -21,6 +21,7 @@ import {
 import Link from "next/link";
 import type { Creator, Config } from "@/lib/types";
 import type { CreatorSuggestion } from "@/app/api/configs/[id]/research-creators/route";
+import { useGeneration } from "@/context/generation-context";
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -50,17 +51,28 @@ function SuggestionCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <a href={`https://www.instagram.com/${s.username}/`} target="_blank" rel="noopener noreferrer"
-              className="text-sm font-semibold hover:text-purple-400 transition-colors">
+              className="inline-flex items-center gap-1 text-sm font-semibold text-purple-400 hover:text-purple-300 underline underline-offset-2 transition-colors">
               @{s.username}
+              <ExternalLink className="h-3 w-3 shrink-0" />
             </a>
-            {s.name && s.name !== s.username && (
-              <span className="text-xs text-muted-foreground">— {s.name}</span>
-            )}
             <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${tier.color}`}>
               {tier.label}
             </span>
             {s.estimatedFollowers && (
               <span className="text-[11px] text-muted-foreground">{s.estimatedFollowers}</span>
+            )}
+            {s.verified ? (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
+                ✓ verifiziert
+              </span>
+            ) : s.confidence !== undefined && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md border ${
+                s.confidence >= 9 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                s.confidence >= 7 ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+                "bg-red-500/10 border-red-500/20 text-red-400"
+              }`}>
+                {s.confidence >= 9 ? "✓ sicher" : s.confidence >= 7 ? "~ wahrscheinlich" : "? unsicher"}
+              </span>
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{s.why}</p>
@@ -86,7 +98,7 @@ function SuggestionCard({
             <Button size="sm" onClick={onAdd} disabled={adding}
               className="h-8 rounded-xl gap-1.5 text-xs bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
               {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
-              {adding ? "Wird hinzugefügt…" : "Hinzufügen"}
+              {adding ? "Verifiziere…" : "Hinzufügen"}
             </Button>
           )}
         </div>
@@ -109,13 +121,22 @@ export default function ClientCreatorsPage() {
   // Research state
   const [researchOpen, setResearchOpen] = useState(false);
   const [focusHint, setFocusHint] = useState("");
-  const [researching, setResearching] = useState(false);
-  const [suggestions, setSuggestions] = useState<CreatorSuggestion[]>([]);
-  const [researchSource, setResearchSource] = useState<"instagram" | "ai" | null>(null);
-  const [researchHashtag, setResearchHashtag] = useState<string | null>(null);
-  const [researchError, setResearchError] = useState<string | null>(null);
   const [addingUsername, setAddingUsername] = useState<string | null>(null);
   const [addedUsernames, setAddedUsernames] = useState<Set<string>>(new Set());
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const { creatorResearchGen, startCreatorResearch, clearCreatorResearch } = useGeneration();
+  const researchState = creatorResearchGen.get(id);
+  const researching = researchState?.status === "running";
+  const suggestions = (researchState?.suggestions as CreatorSuggestion[] | undefined) ?? [];
+  const researchError = researchState?.status === "error" ? (researchState.error ?? "Recherche fehlgeschlagen") : null;
+
+  // Auto-open research panel when suggestions arrive from background
+  useEffect(() => {
+    if (researchState?.status === "done" && suggestions.length > 0) {
+      setResearchOpen(true);
+    }
+  }, [researchState?.status]);
 
   const loadCreators = () => {
     fetch("/api/creators").then((r) => r.json()).then(setCreators);
@@ -238,42 +259,38 @@ export default function ClientCreatorsPage() {
     }
   };
 
-  const runResearch = async () => {
-    setResearching(true);
-    setResearchError(null);
-    setSuggestions([]);
-    setResearchSource(null);
-    setResearchHashtag(null);
-    try {
-      const res = await fetch(`/api/configs/${id}/research-creators`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ focus: focusHint }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Recherche fehlgeschlagen");
-      setSuggestions(data.suggestions || []);
-      setResearchSource(data.source || null);
-      setResearchHashtag(data.hashtag || null);
-    } catch (e) {
-      setResearchError(e instanceof Error ? e.message : "Fehler");
-    } finally {
-      setResearching(false);
-    }
+  const runResearch = () => {
+    clearCreatorResearch(id);
+    startCreatorResearch(id, focusHint);
   };
 
   const addSuggestion = async (s: CreatorSuggestion) => {
     if (addingUsername) return;
+    setAddError(null);
     setAddingUsername(s.username);
     try {
+      // Verify profile exists on Instagram before adding
+      const verifyRes = await fetch("/api/verify-creator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: s.username }),
+      });
+      const verifyData = await verifyRes.json().catch(() => ({})) as { error?: string; username?: string };
+      if (!verifyRes.ok) {
+        setAddError(verifyData.error || `@${s.username} nicht auf Instagram gefunden`);
+        return;
+      }
+
+      // Use the verified username (Apify returns the canonical username)
+      const canonicalUsername = verifyData.username || s.username;
       await fetch("/api/creators", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: s.username, category: client?.creatorsCategory || "" }),
+        body: JSON.stringify({ username: canonicalUsername, category: client?.creatorsCategory || "" }),
       });
-      setAddedUsernames(prev => new Set([...prev, s.username.toLowerCase()]));
+      setAddedUsernames(prev => new Set([...prev, canonicalUsername.toLowerCase()]));
       loadCreators();
-      // Trigger stats scrape in background
+      // Scrape full stats in background
       fetch("/api/creators/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -383,38 +400,29 @@ export default function ClientCreatorsPage() {
             </Button>
           </div>
 
-          {researchError && (
-            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{researchError}</p>
+          {(researchError || addError) && (
+            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{researchError || addError}</p>
           )}
 
           {researching && (
             <div className="space-y-2 px-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
-                KI generiert Hashtags → sucht echte Creator auf Instagram…
+                KI sucht die größten Creator in der Nische…
               </div>
-              <p className="text-xs text-muted-foreground/60 pl-6">Echte Accounts direkt aus Instagram-Hashtags der Nische. Kann bis zu 60 Sekunden dauern.</p>
+              <p className="text-xs text-muted-foreground/60 pl-6">Fokus auf Mega- und Macro-Creator mit hoher Reichweite oder virale Accounts.</p>
             </div>
           )}
 
           {suggestions.length > 0 && (
             <div className="space-y-4">
               {/* Source banner */}
-              {researchSource === "instagram" ? (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-                  <p className="text-xs text-emerald-400">
-                    Echte Instagram-Accounts aus <strong>#{researchHashtag}</strong> — verifiziert, kein KI-Raten
-                  </p>
-                </div>
-              ) : researchSource === "ai" ? (
-                <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2">
-                  <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
-                  <p className="text-xs text-amber-400">
-                    KI-Vorschläge (Apify nicht verfügbar) — Usernames vor dem Hinzufügen auf Instagram prüfen
-                  </p>
-                </div>
-              ) : null}
+              <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2">
+                <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+                <p className="text-xs text-amber-400">
+                  KI-Vorschläge — klick auf <strong>@username</strong> um das Profil auf Instagram zu prüfen, bevor du hinzufügst. Follower-Daten werden nach dem Hinzufügen live abgerufen.
+                </p>
+              </div>
 
               {/* Tier summary */}
               <div className="flex items-center gap-3 flex-wrap">
@@ -461,9 +469,7 @@ export default function ClientCreatorsPage() {
               <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-4 py-3">
                 <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
                   <Star className="h-3 w-3 text-amber-400/60 shrink-0" />
-                  {researchSource === "instagram"
-                    ? "Accounts stammen direkt aus echten Instagram-Posts — Follower-Zahlen werden nach dem Hinzufügen per Apify live abgerufen."
-                    : "KI-Vorschläge aus Trainingswissen — bitte auf Instagram verifizieren, bevor du hinzufügst."}
+                  Klick auf @username öffnet das Instagram-Profil zur Prüfung. Nach dem Hinzufügen werden Follower-Zahlen automatisch per Apify abgerufen.
                 </p>
               </div>
             </div>

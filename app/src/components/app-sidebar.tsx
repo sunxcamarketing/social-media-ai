@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Film, Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram } from "lucide-react";
+import { Film, Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Config } from "@/lib/types";
+import { useGeneration } from "@/context/generation-context";
+import { usePipeline } from "@/context/pipeline-context";
 
 const clientTabs = [
   { title: "Context",   href: "information", icon: BookOpen  },
@@ -46,9 +48,13 @@ export function AppSidebar() {
     instagram: "",
     website: "",
     tiktok: "",
+    youtube: "",
     linkedin: "",
+    twitter: "",
   });
 
+  const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen } = useGeneration();
+  const { running: pipelineRunning, progress: pipelineProgress } = usePipeline();
   const clientMatch = pathname.match(/^\/clients\/([^/]+)/);
   const activeClientId = clientMatch?.[1] ?? null;
   const activeTab = pathname.split("/")[3] ?? "information";
@@ -58,7 +64,7 @@ export function AppSidebar() {
   }, []);
 
   function resetForm() {
-    setForm({ name: "", instagram: "", website: "", tiktok: "", linkedin: "" });
+    setForm({ name: "", instagram: "", website: "", tiktok: "", youtube: "", linkedin: "", twitter: "" });
   }
 
   async function createClient() {
@@ -74,7 +80,9 @@ export function AppSidebar() {
           instagram: form.instagram.trim(),
           website: form.website.trim(),
           tiktok: form.tiktok.trim(),
+          youtube: form.youtube.trim(),
           linkedin: form.linkedin.trim(),
+          twitter: form.twitter.trim(),
         }),
       });
       const created: Config = await res.json();
@@ -88,7 +96,7 @@ export function AppSidebar() {
     }
   }
 
-  const hasLinks = form.instagram || form.website || form.tiktok || form.linkedin;
+  const hasLinks = form.instagram || form.website || form.tiktok || form.youtube || form.linkedin || form.twitter;
 
   return (
     <>
@@ -147,6 +155,35 @@ export function AppSidebar() {
             </div>
           </div>
 
+          {/* ── Tools ── */}
+          <div className="px-3 pb-3 shrink-0">
+            <span className="block px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Tools</span>
+            <div className="space-y-0.5">
+              <Link
+                href="/training"
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                  pathname.startsWith("/training")
+                    ? "bg-white/[0.07] text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                }`}
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                <span>Training</span>
+              </Link>
+              <Link
+                href="/transcribe"
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                  pathname.startsWith("/transcribe")
+                    ? "bg-white/[0.07] text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                }`}
+              >
+                <Mic className="h-3.5 w-3.5 shrink-0" />
+                <span>Transcribe</span>
+              </Link>
+            </div>
+          </div>
+
           {/* ── Divider ── */}
           <div className="mx-4 border-t border-white/[0.06] shrink-0" />
 
@@ -171,7 +208,34 @@ export function AppSidebar() {
                         }`}
                       >
                         <tab.icon className="h-3.5 w-3.5 shrink-0" />
-                        {tab.title}
+                        <span className="flex-1">{tab.title}</span>
+                        {tab.href === "scripts" && activeClientId && generations.get(activeClientId)?.status === "generating" && (
+                          <Loader2 className="h-3 w-3 animate-spin text-amber-400 shrink-0" />
+                        )}
+                        {tab.href === "scripts" && activeClientId && generations.get(activeClientId)?.status === "done" && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                        )}
+                        {tab.href === "videos" && pipelineRunning && (
+                          <Loader2 className="h-3 w-3 animate-spin text-purple-400 shrink-0" />
+                        )}
+                        {tab.href === "videos" && !pipelineRunning && pipelineProgress?.status === "completed" && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                        )}
+                        {tab.href === "strategy" && activeClientId && (strategyGen.get(activeClientId)?.status === "running" || analysisGen.get(activeClientId)?.status === "running") && (
+                          <Loader2 className="h-3 w-3 animate-spin text-indigo-400 shrink-0" />
+                        )}
+                        {tab.href === "strategy" && activeClientId && strategyGen.get(activeClientId)?.status === "done" && analysisGen.get(activeClientId)?.status !== "running" && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                        )}
+                        {tab.href === "information" && activeClientId && enrichGen.get(activeClientId)?.status === "running" && (
+                          <Loader2 className="h-3 w-3 animate-spin text-blue-400 shrink-0" />
+                        )}
+                        {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "running" && (
+                          <Loader2 className="h-3 w-3 animate-spin text-purple-400 shrink-0" />
+                        )}
+                        {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "done" && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                        )}
                       </Link>
                     );
                   })}
@@ -249,6 +313,18 @@ export function AppSidebar() {
                 </div>
               </div>
               <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">YouTube</Label>
+                <div className="relative">
+                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                  <Input
+                    placeholder="@channel oder youtube.com/..."
+                    value={form.youtube}
+                    onChange={(e) => setForm({ ...form, youtube: e.target.value })}
+                    className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">LinkedIn</Label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
@@ -256,6 +332,18 @@ export function AppSidebar() {
                     placeholder="linkedin.com/in/..."
                     value={form.linkedin}
                     onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
+                    className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">X / Twitter</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-muted-foreground/50">𝕏</span>
+                  <Input
+                    placeholder="@handle"
+                    value={form.twitter}
+                    onChange={(e) => setForm({ ...form, twitter: e.target.value })}
                     className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
                   />
                 </div>

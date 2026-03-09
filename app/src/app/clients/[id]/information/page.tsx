@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import {
   Film,
 } from "lucide-react";
 import type { Config } from "@/lib/types";
+import { useGeneration } from "@/context/generation-context";
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -143,6 +144,7 @@ interface InstagramProfile {
   profilePicUrl: string;
   category: string;
   verified: boolean;
+  lastUpdated: string;
 }
 
 function formatNumber(n: number): string {
@@ -179,8 +181,12 @@ function ClientInformationContent() {
   const [client, setClient] = useState<Config | null>(null);
   const [igProfile, setIgProfile] = useState<InstagramProfile | null>(null);
   const [igLoading, setIgLoading] = useState(false);
-  const [enriching, setEnriching] = useState(false);
-  const [enrichError, setEnrichError] = useState<string | null>(null);
+  const setupMode = useRef(false);
+
+  const { enrichGen, startEnrich, clearEnrichGen } = useGeneration();
+  const enrichState = enrichGen.get(id);
+  const enriching = enrichState?.status === "running";
+  const enrichError = enrichState?.status === "error" ? (enrichState.error ?? "Auto-fill failed") : null;
 
   // Follow-up dialog
   const [followupOpen, setFollowupOpen] = useState(false);
@@ -232,52 +238,42 @@ function ClientInformationContent() {
       setClient(c);
       if (c.instagram) loadIgProfile();
       if (isSetup && (c.instagram || c.website || c.linkedin || c.tiktok)) {
-        // Auto-run enrich then show follow-up
-        runEnrich(c).then((enriched) => {
+        setupMode.current = true;
+        startEnrich(id);
+        router.replace(`/clients/${id}/information`);
+      }
+    });
+  }, [id]);
+
+  // Reload and handle follow-up when background enrich completes
+  useEffect(() => {
+    if (enrichState?.status === "done") {
+      loadClient().then((enriched) => {
+        setClient(enriched);
+        if (setupMode.current) {
+          setupMode.current = false;
           const missing = FOLLOWUP_QUESTIONS.filter((q) => !enriched[q.field]);
           if (missing.length > 0) {
             setMissingFields(missing);
             setFollowupIndex(0);
             setFollowupOpen(true);
           }
-          // Remove ?setup=1 from URL
-          router.replace(`/clients/${id}/information`);
-        });
-      }
-    });
-  }, [id]);
+        }
+        clearEnrichGen(id);
+      });
+    }
+  }, [enrichState?.status]);
 
-  const loadIgProfile = () => {
+  const loadIgProfile = (refresh = false) => {
     setIgLoading(true);
-    fetch(`/api/configs/${id}/instagram-profile`)
+    fetch(`/api/configs/${id}/instagram-profile`, { method: refresh ? "POST" : "GET" })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => setIgProfile(data))
       .catch(() => {})
       .finally(() => setIgLoading(false));
   };
 
-  const runEnrich = async (currentClient?: Config): Promise<Config> => {
-    setEnriching(true);
-    setEnrichError(null);
-    try {
-      const res = await fetch(`/api/configs/${id}/enrich`, { method: "POST" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Auto-fill failed");
-      }
-      const data = await res.json();
-      const updated = data.config as Config;
-      setClient(updated);
-      return updated;
-    } catch (e) {
-      setEnrichError(e instanceof Error ? e.message : "Auto-fill failed");
-      return currentClient ?? client!;
-    } finally {
-      setEnriching(false);
-    }
-  };
-
-  const handleAutoFill = () => runEnrich();
+  const handleAutoFill = () => startEnrich(id);
 
   const handleAddInfo = async () => {
     if (!addInfoText.trim()) return;
@@ -479,14 +475,21 @@ function ClientInformationContent() {
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <Instagram className="h-4 w-4 text-purple-400" /> Instagram Profil
             </h2>
-            <button
-              onClick={loadIgProfile}
-              disabled={igLoading}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {igLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              {igLoading ? "Lädt…" : "Aktualisieren"}
-            </button>
+            <div className="flex items-center gap-3">
+              {igProfile?.lastUpdated && (
+                <span className="text-[10px] text-muted-foreground/50">
+                  {new Date(igProfile.lastUpdated).toLocaleDateString("de-DE")}
+                </span>
+              )}
+              <button
+                onClick={() => loadIgProfile(true)}
+                disabled={igLoading}
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {igLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                {igLoading ? "Lädt…" : "Aktualisieren"}
+              </button>
+            </div>
           </div>
 
           {igLoading && !igProfile && (

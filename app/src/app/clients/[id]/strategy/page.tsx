@@ -34,6 +34,7 @@ import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/p
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
 import { FormatPicker } from "@/components/format-picker";
+import { useGeneration } from "@/context/generation-context";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -290,10 +291,6 @@ export default function ClientStrategyPage() {
   const { id } = useParams<{ id: string }>();
   const [client, setClient] = useState<Config | null>(null);
   const [strategyOpen, setStrategyOpen] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
   const [meta, setMeta] = useState<StrategyMeta>({
     contentTypeCount: BUILT_IN_CONTENT_TYPES.length,
     formatCount: BUILT_IN_FORMATS.length,
@@ -302,10 +299,33 @@ export default function ClientStrategyPage() {
     allFormats: BUILT_IN_FORMATS,
   });
 
+  const { strategyGen, startStrategyGeneration, clearStrategyGen, analysisGen, startAnalysis, clearAnalysisGen } = useGeneration();
+  const strategyState = strategyGen.get(id);
+  const analysisState = analysisGen.get(id);
+  const generating = strategyState?.status === "running";
+  const analyzing = analysisState?.status === "running";
+  const generateError = strategyState?.status === "error" ? (strategyState.error ?? "Generation failed") : null;
+  const analyzeError = analysisState?.status === "error" ? (analysisState.error ?? "Analysis failed") : null;
+
   const loadClient = () =>
     fetch(`/api/configs/${id}`).then((r) => r.json() as Promise<Config>);
 
   useEffect(() => { loadClient().then(setClient); }, [id]);
+
+  // Reload client data when background tasks complete
+  useEffect(() => {
+    if (strategyState?.status === "done") {
+      loadClient().then(setClient);
+      clearStrategyGen(id);
+    }
+  }, [strategyState?.status]);
+
+  useEffect(() => {
+    if (analysisState?.status === "done") {
+      loadClient().then(setClient);
+      clearAnalysisGen(id);
+    }
+  }, [analysisState?.status]);
 
   useEffect(() => {
     fetch("/api/strategy").then(r => r.json()).then((data: {
@@ -325,39 +345,8 @@ export default function ClientStrategyPage() {
     });
   }, []);
 
-  const runAnalysis = async () => {
-    setAnalyzing(true);
-    setAnalyzeError(null);
-    try {
-      const res = await fetch(`/api/configs/${id}/performance`, { method: "POST" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Analysis failed");
-      }
-      await loadClient().then(setClient);
-    } catch (e) {
-      setAnalyzeError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  const generateStrategy = async () => {
-    setGenerating(true);
-    setGenerateError(null);
-    try {
-      const res = await fetch(`/api/configs/${id}/generate-strategy`, { method: "POST" });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Generation failed");
-      }
-      await loadClient().then(setClient);
-    } catch (e) {
-      setGenerateError(e instanceof Error ? e.message : "Generation failed");
-    } finally {
-      setGenerating(false);
-    }
-  };
+  const runAnalysis = () => { startAnalysis(id); };
+  const generateStrategy = () => { startStrategyGeneration(id); };
 
   const saveStrategy = async (form: StrategyForm) => {
     if (!client) return;
@@ -415,7 +404,26 @@ export default function ClientStrategyPage() {
           <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1.5">
               <CalendarDays className="h-3 w-3 text-amber-400" />
-              <span><strong className="text-amber-300">{postsPerWeek}×</strong> pro Woche</span>
+              <span>
+                <select
+                  value={postsPerWeek}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    await fetch("/api/configs", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ ...client, postsPerWeek: val }),
+                    });
+                    setClient((c) => c ? { ...c, postsPerWeek: val } : c);
+                  }}
+                  className="bg-transparent border-none text-amber-300 font-bold text-[11px] cursor-pointer focus:outline-none hover:text-amber-200 transition-colors"
+                >
+                  {[1,2,3,4,5,6,7].map((n) => (
+                    <option key={n} value={n} className="bg-background text-foreground">{n}×</option>
+                  ))}
+                </select>
+                {" "}pro Woche
+              </span>
             </span>
             <span className="text-white/[0.15]">·</span>
             <span className="flex items-center gap-1.5">

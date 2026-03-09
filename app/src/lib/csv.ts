@@ -2,7 +2,7 @@ import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
-import type { Config, Creator, Video, Script } from "./types";
+import type { Config, Creator, Video, Script, TrainingScript } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "..", "data");
 
@@ -28,7 +28,7 @@ function writeCsv(filename: string, data: Record<string, unknown>[], columns: st
 }
 
 // Configs
-const CONFIG_COLUMNS = ["id", "configName", "creatorsCategory", "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements", "website", "instagram", "tiktok", "youtube", "linkedin", "twitter", "strategyGoal", "strategyPillars", "strategyWeekly", "performanceInsights", "postsPerWeek", "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation", "dreamCustomer", "customerProblems", "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone"];
+const CONFIG_COLUMNS = ["id", "configName", "creatorsCategory", "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements", "website", "instagram", "tiktok", "youtube", "linkedin", "twitter", "strategyGoal", "strategyPillars", "strategyWeekly", "performanceInsights", "postsPerWeek", "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation", "dreamCustomer", "customerProblems", "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone", "igFullName", "igBio", "igFollowers", "igFollowing", "igPostsCount", "igProfilePicUrl", "igCategory", "igVerified", "igLastUpdated"];
 
 export function readConfigs(): Config[] {
   return readCsv<Config>("configs.csv");
@@ -125,4 +125,25 @@ export function readIdeas(): Record<string, string>[] {
 
 export function writeIdeas(ideas: Record<string, string>[]) {
   writeCsv("ideas.csv", ideas, IDEA_COLUMNS);
+}
+
+// Training Scripts
+const TRAINING_SCRIPT_COLUMNS = ["id", "format", "textHook", "visualHook", "audioHook", "script", "cta", "createdAt"];
+
+export function readTrainingScripts(): TrainingScript[] {
+  const raw = readCsv<Record<string, string>>("training-scripts.csv");
+  return raw.map((r) => ({
+    id: r.id || "",
+    format: r.format || "",
+    textHook: r.textHook || "",
+    visualHook: r.visualHook || "",
+    audioHook: r.audioHook || "",
+    script: r.script || "",
+    cta: r.cta || "",
+    createdAt: r.createdAt || "",
+  }));
+}
+
+export function writeTrainingScripts(scripts: TrainingScript[]) {
+  writeCsv("training-scripts.csv", scripts as unknown as Record<string, unknown>[], TRAINING_SCRIPT_COLUMNS);
 }

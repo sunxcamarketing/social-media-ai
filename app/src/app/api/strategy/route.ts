@@ -65,6 +65,24 @@ export async function POST(request: Request) {
   return NextResponse.json(data);
 }
 
+export async function PUT(request: Request) {
+  const body = await request.json();
+  const data = read();
+
+  if (body.kind === "contentType") {
+    data.customContentTypes = data.customContentTypes.map((t) =>
+      t.id === body.id ? { ...t, name: body.name, goal: body.goal, bestFor: body.bestFor } : t
+    );
+  } else if (body.kind === "format") {
+    data.customFormats = data.customFormats.map((f) =>
+      f.id === body.id ? { ...f, name: body.name, description: body.description, bestContentType: body.bestContentType, platform: body.platform } : f
+    );
+  }
+
+  write(data);
+  return NextResponse.json(data);
+}
+
 export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");

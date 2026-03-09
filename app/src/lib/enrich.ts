@@ -124,7 +124,7 @@ export async function enrichFromLinks(links: {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: 110_000 });
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",

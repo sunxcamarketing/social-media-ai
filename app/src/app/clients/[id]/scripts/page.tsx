@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useGeneration } from "@/context/generation-context";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -339,6 +340,8 @@ const emptyForm = {
 
 export default function ClientScriptsPage() {
   const { id } = useParams<{ id: string }>();
+  const { generations, startChatGeneration, clearGeneration } = useGeneration();
+  const genState = id ? generations.get(id) : undefined;
   const [scripts, setScripts] = useState<Script[]>([]);
   const [client, setClient] = useState<Config | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -368,6 +371,12 @@ export default function ClientScriptsPage() {
   const [chatScriptResult, setChatScriptResult] = useState<WeekScript | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-reload when background generation completes
+  useEffect(() => {
+    if (genState?.status === "done") loadScripts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genState?.status]);
 
   const loadScripts = useCallback(() =>
     fetch(`/api/scripts?clientId=${id}`).then(r => r.json()).then(setScripts),
@@ -696,6 +705,35 @@ export default function ClientScriptsPage() {
         </div>
       </div>
 
+      {/* ── Background generation banner ────────────────────────────────────── */}
+      {genState?.status === "generating" && (
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/5 px-5 py-3.5">
+          <Loader2 className="h-4 w-4 animate-spin text-amber-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-300">Skripte werden generiert…</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">Du kannst den Tab wechseln — die Generierung läuft im Hintergrund weiter.</p>
+          </div>
+        </div>
+      )}
+      {genState?.status === "done" && (
+        <div className="flex items-center gap-3 rounded-2xl border border-green-500/25 bg-green-500/5 px-5 py-3.5">
+          <div className="h-4 w-4 rounded-full bg-green-400 flex items-center justify-center shrink-0">
+            <svg className="h-2.5 w-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-300">{genState.count} Skripte aus dem Gespräch erstellt</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">Automatisch gespeichert — sieh sie unten in der Liste.</p>
+          </div>
+          <button onClick={() => clearGeneration(id)} className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0">✕</button>
+        </div>
+      )}
+      {genState?.status === "error" && (
+        <div className="flex items-center gap-3 rounded-2xl border border-red-500/25 bg-red-500/5 px-5 py-3.5">
+          <p className="text-sm text-red-400 flex-1">Fehler: {genState.error}</p>
+          <button onClick={() => clearGeneration(id)} className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors shrink-0">✕</button>
+        </div>
+      )}
+
       {/* ── Week Generation Panel ───────────────────────────────────────────── */}
       <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-indigo-500/5 p-5 space-y-5">
         {/* Panel header */}
@@ -828,20 +866,22 @@ export default function ClientScriptsPage() {
               <div ref={chatBottomRef} />
             </div>
 
-            {/* Script suggestion banner */}
-            {(aiSuggestsScript || hasEnoughContext) && !chatScriptResult && (
+            {/* Finish chat banner */}
+            {(aiSuggestsScript || hasEnoughContext) && (
               <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl bg-purple-500/10 border border-purple-500/20 px-4 py-3">
                 <Lightbulb className="h-4 w-4 text-purple-400 shrink-0" />
-                <p className="text-xs text-purple-300/80 flex-1">Genug Input für ein starkes Skript.</p>
+                <p className="text-xs text-purple-300/80 flex-1">Genug Input — ich erstelle automatisch 2–3 Skripte aus dem Gespräch.</p>
                 <Button
-                  onClick={generateScriptFromChat}
-                  disabled={chatScriptLoading}
+                  onClick={() => {
+                    startChatGeneration(id, chatMessages);
+                    setChatOpen(false);
+                    setChatMessages([]);
+                    setChatInitialized(false);
+                  }}
                   size="sm"
-                  className="h-7 px-3 text-xs rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 gap-1.5"
+                  className="h-7 px-3 text-xs rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 gap-1.5 shrink-0"
                 >
-                  {chatScriptLoading
-                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Generiert…</>
-                    : <><Sparkles className="h-3 w-3" /> Skript erstellen</>}
+                  <Sparkles className="h-3 w-3" /> Gespräch abschließen
                 </Button>
               </div>
             )}

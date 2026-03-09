@@ -1,0 +1,22 @@
+{
+  "customContentTypes": [],
+  "customFormats": [
+    {
+      "id": "8899215d-bc5d-4ff2-bdb2-570897f9260c",
+      "name": "Split-Screen L/R",
+      "description": "Zwei Videos nebeneinander - Problem und Lösung",
+      "bestContentType": "Education, Entertainment",
+      "platform": "Reels, Tiktoks",
+      "custom": true
+    },
+    {
+      "id": "fcb09a26-c389-4ff8-a499-08b58e5e6382",
+      "name": "x Dinge, die.. ",
+      "description": "Eine Anzahl von Dingen, die man wissen muss ",
+      "bestContentType": "Education, Entertainment",
+      "platform": "",
+      "custom": true
+    }
+  ],
+  "trainingExamples": []
+}

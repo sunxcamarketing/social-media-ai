@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TopBar } from "@/components/top-bar";
 import { PipelineProvider } from "@/context/pipeline-context";
+import { GenerationProvider } from "@/context/generation-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <TooltipProvider>
           <PipelineProvider>
+            <GenerationProvider>
             <SidebarProvider>
               <AppSidebar />
               <main className="flex-1 overflow-auto min-h-screen">
@@ -39,6 +41,7 @@ export default function RootLayout({
                 <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
               </main>
             </SidebarProvider>
+            </GenerationProvider>
           </PipelineProvider>
         </TooltipProvider>
       </body>

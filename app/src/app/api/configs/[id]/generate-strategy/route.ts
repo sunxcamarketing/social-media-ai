@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync, existsSync } from "fs";
-import path from "path";
-import { readConfigs, writeConfigs } from "@/lib/csv";
+import { readConfigs, writeConfigs, readTrainingScripts } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
-import type { TrainingExample } from "@/app/api/strategy/route";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,20 +51,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const activeDays = ALL_DAYS.slice(0, postsPerWeek);
 
-  // Load training examples
-  const strategyFile = path.join(process.cwd(), "..", "data", "strategy.json");
-  let trainingExamples: TrainingExample[] = [];
-  if (existsSync(strategyFile)) {
-    try {
-      const parsed = JSON.parse(readFileSync(strategyFile, "utf-8"));
-      trainingExamples = parsed.trainingExamples || [];
-    } catch { /* ignore */ }
-  }
-  const trainingContext = trainingExamples.length > 0
-    ? `\n\nTRAINING EXAMPLES (real content links classified by the user — use these to understand what good content of each type looks like and align the strategy accordingly):\n${trainingExamples.map(e => `- ${e.contentType} / ${e.format}: ${e.url}${e.note ? ` (note: ${e.note})` : ""}`).join("\n")}`
+  // Load training scripts as few-shot examples
+  const trainingScripts = readTrainingScripts();
+  const trainingContext = trainingScripts.length > 0
+    ? `\n\nTRAINING SCRIPT EXAMPLES (real successful scripts — use these to understand tone, style, and format combinations that work well):\n${trainingScripts.map(s => [
+        `[Format: ${s.format || "–"}]`,
+        s.textHook   && `Text Hook: ${s.textHook}`,
+        s.visualHook && `Visual Hook: ${s.visualHook}`,
+        s.audioHook  && `Audio Hook: ${s.audioHook}`,
+        s.script     && `Script: ${s.script.slice(0, 300)}${s.script.length > 300 ? "…" : ""}`,
+        s.cta        && `CTA: ${s.cta}`,
+      ].filter(Boolean).join("\n")).join("\n\n---\n\n")}`
     : "";
 
-  const client = new Anthropic({ apiKey });
+  // Use a standalone client — not tied to the request signal so navigation doesn't abort it
+  const client = new Anthropic({ apiKey, timeout: 110_000 });
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
