@@ -9,7 +9,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
-import type { TrainingScript } from "@/lib/types";
+import type { Config } from "@/lib/types";
+
+interface SaveForm {
+  clientId: string;
+  title: string;
+  script: string;
+  contentType: string;
+  format: string;
+  niche: string;
+  notes: string;
+}
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -29,7 +39,7 @@ function detectPlatform(url: string): "youtube" | "instagram" | "tiktok" | null 
 function PlatformBadge({ platform }: { platform: "youtube" | "instagram" | "tiktok" | null }) {
   if (!platform) return null;
   const map = {
-    youtube:   { label: "YouTube",   color: "text-red-400",  Icon: Youtube },
+    youtube:   { label: "YouTube",   color: "text-red-500",  Icon: Youtube },
     instagram: { label: "Instagram", color: "text-pink-400", Icon: Instagram },
     tiktok:    { label: "TikTok",    color: "text-cyan-400", Icon: TikTokIcon },
   };
@@ -48,13 +58,14 @@ export default function TranscribePage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [saveForm, setSaveForm] = useState<Omit<TrainingScript, "id" | "createdAt">>({
-    title: "", script: "", contentType: "", format: "", niche: "", notes: "",
+  const [saveForm, setSaveForm] = useState<SaveForm>({
+    clientId: "", title: "", script: "", contentType: "", format: "", niche: "", notes: "",
   });
 
   const [saving, setSaving] = useState(false);
   const [allTypes, setAllTypes] = useState<ContentType[]>(BUILT_IN_CONTENT_TYPES);
   const [allFormats, setAllFormats] = useState<ContentFormat[]>(BUILT_IN_FORMATS);
+  const [clients, setClients] = useState<Config[]>([]);
 
   const platform = detectPlatform(url);
 
@@ -63,6 +74,7 @@ export default function TranscribePage() {
       setAllTypes([...BUILT_IN_CONTENT_TYPES, ...(d.customContentTypes || [])]);
       setAllFormats([...BUILT_IN_FORMATS, ...(d.customFormats || [])]);
     });
+    fetch("/api/configs").then(r => r.json()).then(d => setClients(d));
   }, []);
 
   async function handleTranscribe() {
@@ -93,7 +105,7 @@ export default function TranscribePage() {
   }
 
   function openSave() {
-    setSaveForm({ title: "", script: transcript, contentType: "", format: "", niche: "", notes: "" });
+    setSaveForm({ clientId: "", title: "", script: transcript, contentType: "", format: "", niche: "", notes: "" });
     setSaveOpen(true);
   }
 
@@ -113,12 +125,12 @@ export default function TranscribePage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ocean">
           <Mic className="h-4 w-4 text-white" />
         </div>
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Transcribe</h1>
-          <p className="text-[12px] text-muted-foreground mt-0.5">
+          <p className="text-[12px] text-ocean/60 mt-0.5">
             Reels, TikToks und YouTube Shorts transkribieren
           </p>
         </div>
@@ -126,8 +138,8 @@ export default function TranscribePage() {
 
       <div className="max-w-2xl space-y-6">
         {/* Supported platforms */}
-        <div className="flex items-center gap-5 text-[12px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5 text-red-400"><Youtube className="h-3.5 w-3.5" /> YouTube</span>
+        <div className="flex items-center gap-5 text-[12px] text-ocean/60">
+          <span className="inline-flex items-center gap-1.5 text-red-500"><Youtube className="h-3.5 w-3.5" /> YouTube</span>
           <span className="inline-flex items-center gap-1.5 text-pink-400"><Instagram className="h-3.5 w-3.5" /> Instagram Reels</span>
           <span className="inline-flex items-center gap-1.5 text-cyan-400"><TikTokIcon className="h-3.5 w-3.5" /> TikTok</span>
         </div>
@@ -141,7 +153,7 @@ export default function TranscribePage() {
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !loading) handleTranscribe(); }}
-                className="h-11 rounded-xl bg-white/[0.04] border-white/[0.08] pr-28"
+                className="h-11 rounded-xl bg-ocean/[0.02] border-ocean/[0.06] pr-28"
               />
               {platform && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -152,7 +164,7 @@ export default function TranscribePage() {
             <Button
               onClick={handleTranscribe}
               disabled={!url.trim() || loading}
-              className="h-11 px-5 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-2 shrink-0"
+              className="h-11 px-5 rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-2 shrink-0"
             >
               {loading
                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Transkribiert…</>
@@ -161,20 +173,20 @@ export default function TranscribePage() {
           </div>
 
           {loading && (
-            <div className="rounded-xl bg-purple-500/5 border border-purple-500/20 px-4 py-3 space-y-1">
-              <p className="text-[13px] text-muted-foreground">
+            <div className="rounded-xl bg-blush/20 border border-blush/40 px-4 py-3 space-y-1">
+              <p className="text-[13px] text-ocean/60">
                 {platform === "instagram"
                   ? "Reel wird über Apify geladen und bei Gemini hochgeladen…"
                   : platform === "youtube"
                   ? "YouTube-Video wird mit Gemini verarbeitet…"
                   : "Video wird verarbeitet…"}
               </p>
-              <p className="text-[11px] text-muted-foreground/50">Das kann 30–60 Sekunden dauern.</p>
+              <p className="text-[11px] text-ocean/50">Das kann 30–60 Sekunden dauern.</p>
             </div>
           )}
 
           {error && (
-            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-[13px] text-red-400">
+            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-[13px] text-red-500">
               {error}
             </div>
           )}
@@ -184,22 +196,22 @@ export default function TranscribePage() {
         {transcript && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Transkript</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/50">Transkript</span>
               <div className="flex items-center gap-2">
                 <button onClick={handleCopy}
-                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors">
+                  className="flex items-center gap-1.5 text-[12px] text-ocean/60 hover:text-ocean transition-colors">
                   {copied
-                    ? <><Check className="h-3.5 w-3.5 text-green-400" /> Kopiert</>
+                    ? <><Check className="h-3.5 w-3.5 text-green-600" /> Kopiert</>
                     : <><Copy className="h-3.5 w-3.5" /> Kopieren</>}
                 </button>
                 <Button onClick={openSave} size="sm"
-                  className="h-7 rounded-lg px-3 text-[12px] bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 gap-1.5">
+                  className="h-7 rounded-lg px-3 text-[12px] bg-ocean hover:bg-ocean-light border-0 gap-1.5">
                   <Plus className="h-3 w-3" /> Als Training-Skript speichern
                 </Button>
               </div>
             </div>
-            <div className="glass rounded-2xl border border-white/[0.06] p-5">
-              <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{transcript}</p>
+            <div className="glass rounded-2xl border border-ocean/[0.06] p-5">
+              <p className="text-[13px] text-ocean/80 leading-relaxed whitespace-pre-wrap">{transcript}</p>
             </div>
           </div>
         )}
@@ -207,61 +219,73 @@ export default function TranscribePage() {
 
       {/* Save dialog */}
       <Dialog open={saveOpen} onOpenChange={v => { if (!v) setSaveOpen(false); }}>
-        <DialogContent className="sm:max-w-xl glass border-white/[0.08] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-xl glass border-ocean/[0.06] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Als Training-Skript speichern</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Titel</Label>
+              <Label className="text-xs text-ocean/60">Kunde</Label>
+              <div className="relative">
+                <select value={saveForm.clientId} onChange={e => setSaveForm({ ...saveForm, clientId: e.target.value })}
+                  className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
+                  <option value="">Kein Kunde (allgemein)</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name || c.configName}</option>)}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
+              </div>
+              <p className="text-[11px] text-ocean/60">Transkripte werden dem Kunden zugeordnet und trainieren seinen Sprachstil</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-ocean/60">Titel</Label>
               <Input autoFocus placeholder="z.B. Starker Authority-Hook" value={saveForm.title}
                 onChange={e => setSaveForm({ ...saveForm, title: e.target.value })}
-                className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08]" />
+                className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Content-Typ</Label>
+                <Label className="text-xs text-ocean/60">Content-Typ</Label>
                 <div className="relative">
                   <select value={saveForm.contentType} onChange={e => setSaveForm({ ...saveForm, contentType: e.target.value })}
-                    className="w-full h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 pr-8 text-[13px] text-foreground appearance-none cursor-pointer focus:outline-none">
+                    className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
                     <option value="">Auswählen…</option>
                     {allTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                   </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Format</Label>
+                <Label className="text-xs text-ocean/60">Format</Label>
                 <div className="relative">
                   <select value={saveForm.format} onChange={e => setSaveForm({ ...saveForm, format: e.target.value })}
-                    className="w-full h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 pr-8 text-[13px] text-foreground appearance-none cursor-pointer focus:outline-none">
+                    className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
                     <option value="">Auswählen…</option>
                     {allFormats.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
                   </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
                 </div>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Nische</Label>
+              <Label className="text-xs text-ocean/60">Nische</Label>
               <Input placeholder="z.B. Business Coaching, Fitness…" value={saveForm.niche}
                 onChange={e => setSaveForm({ ...saveForm, niche: e.target.value })}
-                className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08]" />
+                className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Skript</Label>
+              <Label className="text-xs text-ocean/60">Skript</Label>
               <Textarea rows={8} value={saveForm.script}
                 onChange={e => setSaveForm({ ...saveForm, script: e.target.value })}
-                className="rounded-xl bg-white/[0.04] border-white/[0.08] resize-y" />
+                className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-y" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Notizen (optional)</Label>
+              <Label className="text-xs text-ocean/60">Notizen (optional)</Label>
               <Textarea rows={2} placeholder="Warum funktioniert das Skript?" value={saveForm.notes}
                 onChange={e => setSaveForm({ ...saveForm, notes: e.target.value })}
-                className="rounded-xl bg-white/[0.04] border-white/[0.08] resize-none" />
+                className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-none" />
             </div>
             <Button onClick={handleSave} disabled={saving || !saveForm.title.trim()}
-              className="w-full rounded-xl h-10 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
+              className="w-full rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0">
               {saving ? "Speichert…" : "Speichern"}
             </Button>
           </div>

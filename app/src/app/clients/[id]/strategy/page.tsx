@@ -40,23 +40,23 @@ const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const GOAL_LABELS: Record<string, { label: string; description: string; color: string }> = {
   reach:   { label: "Reach",   description: "Education + Polarisation", color: "from-blue-500/20 to-cyan-500/20 border-blue-500/20 text-blue-400" },
-  trust:   { label: "Trust",   description: "Story + Social Proof",     color: "from-green-500/20 to-emerald-500/20 border-green-500/20 text-green-400" },
+  trust:   { label: "Trust",   description: "Story + Social Proof",     color: "from-green-500/20 to-emerald-500/20 border-green-500/20 text-green-600" },
   revenue: { label: "Revenue", description: "Authority + Social Proof", color: "from-amber-500/20 to-orange-500/20 border-amber-500/20 text-amber-400" },
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  "Authority":                 "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  "Authority":                 "bg-blush/20 text-blush-dark border-blush/40",
   "Story / Personality":       "bg-pink-500/10 text-pink-400 border-pink-500/20",
-  "Social Proof":              "bg-green-500/10 text-green-400 border-green-500/20",
+  "Social Proof":              "bg-green-50 text-green-600 border-green-200",
   "Education":                 "bg-blue-500/10 text-blue-400 border-blue-500/20",
   "Education / Value":         "bg-blue-500/10 text-blue-400 border-blue-500/20",
   "Polarisation":              "bg-orange-500/10 text-orange-400 border-orange-500/20",
   "Opinion / Polarisation":    "bg-orange-500/10 text-orange-400 border-orange-500/20",
   "Behind the Scenes":         "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  "Inspiration / Motivation":  "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  "Inspiration / Motivation":  "bg-blush/20 text-blush-dark border-blush/40",
   "Entertainment":             "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   "Community / Interaction":   "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  "Promotion / Offer":         "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  "Promotion / Offer":         "bg-blush/20 text-blush-dark border-blush/40",
 };
 
 interface Pillar { name: string; subTopics: string; }
@@ -82,14 +82,14 @@ function fmt(n: number) {
 function VideoInsightCard({ video }: { video: VideoInsight }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="glass rounded-2xl overflow-hidden border border-white/[0.06]">
+    <div className="glass rounded-2xl overflow-hidden border border-ocean/[0.06]">
       <div className="flex gap-4 p-4">
         <div className="shrink-0 relative">
           {video.thumbnail ? (
             <img src={video.thumbnail} alt="" className="h-20 w-14 rounded-xl object-cover" />
           ) : (
-            <div className="h-20 w-14 rounded-xl bg-white/[0.05] flex items-center justify-center">
-              <Eye className="h-4 w-4 text-muted-foreground/30" />
+            <div className="h-20 w-14 rounded-xl bg-ocean/[0.02] flex items-center justify-center">
+              <Eye className="h-4 w-4 text-ocean/30" />
             </div>
           )}
         </div>
@@ -97,11 +97,11 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-medium leading-snug line-clamp-2">{video.topic || "—"}</p>
             <a href={video.url} target="_blank" rel="noopener noreferrer"
-              className="shrink-0 text-muted-foreground/40 hover:text-muted-foreground transition-colors mt-0.5">
+              className="shrink-0 text-ocean/40 hover:text-ocean transition-colors mt-0.5">
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
-          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-ocean">
             <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(video.views)}</span>
             <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{fmt(video.likes)}</span>
             <span>{video.datePosted}</span>
@@ -109,41 +109,41 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
           <div className="mt-2.5 space-y-1.5">
             {video.audioHook && video.audioHook !== "none" && (
               <div className="flex items-start gap-1.5">
-                <span className="text-[10px] font-medium text-purple-400 uppercase tracking-wider shrink-0 mt-0.5">Audio</span>
-                <p className="text-xs text-muted-foreground italic leading-relaxed">&ldquo;{video.audioHook}&rdquo;</p>
+                <span className="text-[10px] font-medium text-blush-dark uppercase tracking-wider shrink-0 mt-0.5">Audio</span>
+                <p className="text-xs text-ocean italic leading-relaxed">&ldquo;{video.audioHook}&rdquo;</p>
               </div>
             )}
             {video.textHook && video.textHook !== "none" && (
               <div className="flex items-start gap-1.5">
-                <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider shrink-0 mt-0.5">Text</span>
-                <p className="text-xs text-muted-foreground italic leading-relaxed">&ldquo;{video.textHook}&rdquo;</p>
+                <span className="text-[10px] font-medium text-red-500 uppercase tracking-wider shrink-0 mt-0.5">Text</span>
+                <p className="text-xs text-ocean italic leading-relaxed">&ldquo;{video.textHook}&rdquo;</p>
               </div>
             )}
           </div>
         </div>
       </div>
       <button onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 pb-1 text-left text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+        className="w-full px-4 pb-1 text-left text-[11px] text-ocean/60 hover:text-ocean transition-colors">
         {expanded ? "Hide analysis ↑" : "Show analysis ↓"}
       </button>
       {expanded && (
-        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-white/[0.06]">
+        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-ocean/[0.06]">
           {video.scriptSummary && (
             <div>
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Script</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{video.scriptSummary}</p>
+              <p className="text-[10px] font-medium text-ocean uppercase tracking-wider mb-1">Script</p>
+              <p className="text-xs text-ocean leading-relaxed">{video.scriptSummary}</p>
             </div>
           )}
           {video.whyItWorked && (
             <div>
-              <p className="text-[10px] font-medium text-green-400 uppercase tracking-wider mb-1">Why it worked</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{video.whyItWorked}</p>
+              <p className="text-[10px] font-medium text-green-600 uppercase tracking-wider mb-1">Why it worked</p>
+              <p className="text-xs text-ocean leading-relaxed">{video.whyItWorked}</p>
             </div>
           )}
           {video.howToReplicate && (
             <div>
               <p className="text-[10px] font-medium text-blue-400 uppercase tracking-wider mb-1">How to replicate</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{video.howToReplicate}</p>
+              <p className="text-xs text-ocean leading-relaxed">{video.howToReplicate}</p>
             </div>
           )}
         </div>
@@ -186,19 +186,19 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-white/[0.08]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/[0.06]">
         <DialogHeader><DialogTitle>Strategie bearbeiten</DialogTitle></DialogHeader>
         <div className="space-y-6 pt-2">
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Primäres Ziel</p>
+            <p className="text-xs font-medium text-ocean uppercase tracking-wider">Primäres Ziel</p>
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(GOAL_LABELS).map(([key, { label, description }]) => (
                 <button key={key} type="button"
                   onClick={() => setForm({ ...form, strategyGoal: form.strategyGoal === key ? "" : key })}
                   className={`rounded-xl border p-3 text-left transition-all ${
                     form.strategyGoal === key
-                      ? "bg-purple-500/20 border-purple-500/40 text-foreground"
-                      : "glass border-white/[0.08] text-muted-foreground hover:border-white/[0.15]"
+                      ? "bg-blush/30 border-blush/40 text-ocean"
+                      : "glass border-ocean/[0.06] text-ocean hover:border-ocean/[0.15]"
                   }`}>
                   <p className="text-sm font-medium">{label}</p>
                   <p className="text-[11px] mt-0.5 opacity-70">{description}</p>
@@ -207,12 +207,12 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
             </div>
           </div>
 
-          <div className="space-y-3 border-t border-white/[0.06] pt-5">
+          <div className="space-y-3 border-t border-ocean/[0.06] pt-5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Content Pillars</p>
+              <p className="text-xs font-medium text-ocean uppercase tracking-wider">Content Pillars</p>
               {form.pillars.length < 5 && (
                 <Button variant="ghost" size="sm" onClick={addPillar}
-                  className="h-7 gap-1 text-xs rounded-lg px-2 text-muted-foreground hover:text-foreground">
+                  className="h-7 gap-1 text-xs rounded-lg px-2 text-ocean hover:text-ocean">
                   <Plus className="h-3 w-3" /> Pillar hinzufügen
                 </Button>
               )}
@@ -222,26 +222,26 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
                 <div key={i} className="flex gap-2 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <Input value={pillar.name} onChange={(e) => setPillar(i, "name", e.target.value)}
-                      placeholder="Pillar-Name" className="rounded-xl glass border-white/[0.08] h-10 text-sm" />
+                      placeholder="Pillar-Name" className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
                     <Input value={pillar.subTopics} onChange={(e) => setPillar(i, "subTopics", e.target.value)}
-                      placeholder="Unter-Themen" className="rounded-xl glass border-white/[0.08] h-10 text-sm" />
+                      placeholder="Unter-Themen" className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => removePillar(i)}
-                    className="h-10 w-10 p-0 rounded-xl text-muted-foreground hover:text-red-400 shrink-0">
+                    className="h-10 w-10 p-0 rounded-xl text-ocean hover:text-red-500 shrink-0">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               ))}
               {form.pillars.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">Noch keine Pillars — bis zu 5 möglich.</p>
+                <p className="text-xs text-ocean italic">Noch keine Pillars — bis zu 5 möglich.</p>
               )}
             </div>
           </div>
 
-          <div className="space-y-3 border-t border-white/[0.06] pt-5">
+          <div className="space-y-3 border-t border-ocean/[0.06] pt-5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Wöchentliche Struktur</p>
-              <span className="flex items-center gap-1 text-[11px] text-amber-400/80">
+              <p className="text-xs font-medium text-ocean uppercase tracking-wider">Wöchentliche Struktur</p>
+              <span className="flex items-center gap-1 text-[11px] text-ivory/80">
                 <CalendarDays className="h-3 w-3" />
                 {postsPerWeek} Posts / Woche
               </span>
@@ -249,14 +249,14 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
             <div className="space-y-3">
               {ALL_DAYS.slice(0, postsPerWeek).map((day) => (
                 <div key={day} className="space-y-1.5">
-                  <span className="text-xs font-semibold text-muted-foreground">{day}</span>
+                  <span className="text-xs font-semibold text-ocean">{day}</span>
                   <div className="grid grid-cols-[180px_1fr] gap-2">
                     <select value={form.weekly[day]?.type || ""} onChange={(e) => setDay(day, "type", e.target.value)}
-                      className="h-10 rounded-xl glass border border-white/[0.08] bg-transparent px-3 text-sm text-foreground focus:outline-none focus:border-white/20">
+                      className="h-10 rounded-xl glass border border-ocean/[0.06] bg-transparent px-3 text-sm text-ocean focus:outline-none focus:border-ocean/20">
                       <option value="">— Content Type —</option>
                       {contentTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    <div className="glass border border-white/[0.08] rounded-xl px-3 py-2 min-h-[40px]">
+                    <div className="glass border border-ocean/[0.06] rounded-xl px-3 py-2 min-h-[40px]">
                       <FormatPicker
                         value={form.weekly[day]?.format || ""}
                         options={formats}
@@ -270,7 +270,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
           </div>
 
           <Button onClick={handleSave} disabled={saving}
-            className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
+            className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0">
             {saving ? "Wird gespeichert…" : "Strategie speichern"}
           </Button>
         </div>
@@ -364,7 +364,7 @@ export default function ClientStrategyPage() {
   };
 
   if (!client) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">Lädt…</div>;
+    return <div className="flex items-center justify-center h-64 text-ocean text-sm">Lädt…</div>;
   }
 
   const pillars = parsePillars(client.strategyPillars);
@@ -391,19 +391,19 @@ export default function ClientStrategyPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Strategie</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Content-Strategie und Performance-Insights</p>
+        <p className="mt-1 text-sm text-ocean">Content-Strategie und Performance-Insights</p>
       </div>
 
       {/* Framework Connection Strip */}
-      <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-500/5 to-indigo-500/5 px-5 py-4">
+      <div className="rounded-2xl border border-blush/40 bg-gradient-to-r from-blush/10 to-ocean/[0.02] px-5 py-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-purple-400 shrink-0" />
-            <p className="text-xs font-medium text-purple-300">Strategie-Framework aktiv</p>
+            <Brain className="h-4 w-4 text-blush-dark shrink-0" />
+            <p className="text-xs font-medium text-blush-dark">Strategie-Framework aktiv</p>
           </div>
-          <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
+          <div className="flex items-center gap-4 text-[11px] text-ocean flex-wrap">
             <span className="flex items-center gap-1.5">
-              <CalendarDays className="h-3 w-3 text-amber-400" />
+              <CalendarDays className="h-3 w-3 text-ivory" />
               <span>
                 <select
                   value={postsPerWeek}
@@ -416,55 +416,55 @@ export default function ClientStrategyPage() {
                     });
                     setClient((c) => c ? { ...c, postsPerWeek: val } : c);
                   }}
-                  className="bg-transparent border-none text-amber-300 font-bold text-[11px] cursor-pointer focus:outline-none hover:text-amber-200 transition-colors"
+                  className="bg-transparent border-none text-ivory font-bold text-[11px] cursor-pointer focus:outline-none hover:text-ivory/80 transition-colors"
                 >
                   {[1,2,3,4,5,6,7].map((n) => (
-                    <option key={n} value={n} className="bg-background text-foreground">{n}×</option>
+                    <option key={n} value={n} className="bg-white/80 text-ocean">{n}×</option>
                   ))}
                 </select>
                 {" "}pro Woche
               </span>
             </span>
-            <span className="text-white/[0.15]">·</span>
+            <span className="text-ocean/[0.15]">·</span>
             <span className="flex items-center gap-1.5">
               <Target className="h-3 w-3 text-blue-400" />
-              <span><strong className="text-foreground">{meta.contentTypeCount}</strong> Content Types</span>
+              <span><strong className="text-ocean">{meta.contentTypeCount}</strong> Content Types</span>
             </span>
-            <span className="text-white/[0.15]">·</span>
+            <span className="text-ocean/[0.15]">·</span>
             <span className="flex items-center gap-1.5">
-              <FileText className="h-3 w-3 text-green-400" />
-              <span><strong className="text-foreground">{meta.formatCount}</strong> Formate</span>
+              <FileText className="h-3 w-3 text-green-600" />
+              <span><strong className="text-ocean">{meta.formatCount}</strong> Formate</span>
             </span>
-            <span className="text-white/[0.15]">·</span>
+            <span className="text-ocean/[0.15]">·</span>
             <span className="flex items-center gap-1.5">
-              <Brain className="h-3 w-3 text-purple-400" />
+              <Brain className="h-3 w-3 text-blush-dark" />
               <span>
-                <strong className={meta.trainingCount > 0 ? "text-purple-300" : "text-foreground"}>
+                <strong className={meta.trainingCount > 0 ? "text-blush-dark" : "text-ocean"}>
                   {meta.trainingCount}
                 </strong>{" "}
                 Training-Beispiele
               </span>
             </span>
-            <a href="/strategy" className="flex items-center gap-1 text-purple-400/70 hover:text-purple-300 transition-colors ml-1">
+            <a href="/strategy" className="flex items-center gap-1 text-blush-dark/70 hover:text-blush-dark transition-colors ml-1">
               Framework ansehen <ArrowRight className="h-3 w-3" />
             </a>
           </div>
         </div>
         {/* Formula mini */}
         <div className="mt-3 flex items-center gap-2 text-[11px]">
-          <span className="flex items-center gap-1 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2 py-0.5">
-            <Layers className="h-2.5 w-2.5 text-purple-400" /><span className="text-purple-300 font-medium">PILLAR</span>
+          <span className="flex items-center gap-1 rounded-lg bg-blush/20 border border-blush/40 px-2 py-0.5">
+            <Layers className="h-2.5 w-2.5 text-blush-dark" /><span className="text-blush-dark font-medium">PILLAR</span>
           </span>
-          <span className="text-muted-foreground/40">+</span>
+          <span className="text-ocean/40">+</span>
           <span className="flex items-center gap-1 rounded-lg bg-blue-500/10 border border-blue-500/20 px-2 py-0.5">
             <Target className="h-2.5 w-2.5 text-blue-400" /><span className="text-blue-300 font-medium">TYPE</span>
           </span>
-          <span className="text-muted-foreground/40">+</span>
-          <span className="flex items-center gap-1 rounded-lg bg-green-500/10 border border-green-500/20 px-2 py-0.5">
-            <FileText className="h-2.5 w-2.5 text-green-400" /><span className="text-green-300 font-medium">FORMAT</span>
+          <span className="text-ocean/40">+</span>
+          <span className="flex items-center gap-1 rounded-lg bg-green-50 border border-green-200 px-2 py-0.5">
+            <FileText className="h-2.5 w-2.5 text-green-600" /><span className="text-green-600 font-medium">FORMAT</span>
           </span>
-          <span className="text-muted-foreground/40">=</span>
-          <span className="text-muted-foreground font-medium">CONTENT</span>
+          <span className="text-ocean/40">=</span>
+          <span className="text-ocean font-medium">CONTENT</span>
         </div>
       </div>
 
@@ -473,29 +473,29 @@ export default function ClientStrategyPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-400" /> Performance-Analyse
+              <TrendingUp className="h-4 w-4 text-green-600" /> Performance-Analyse
             </h2>
             {insights && (
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-ocean mt-0.5">
                 Zuletzt analysiert: {insights.scrapedAt} · letzte {insights.scrapeWindowDays ?? 365} Tage
               </p>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={runAnalysis} disabled={analyzing}
-            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-muted-foreground hover:text-foreground">
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean hover:text-ocean">
             <RefreshCw className={`h-3 w-3 ${analyzing ? "animate-spin" : ""}`} />
             {analyzing ? "Analysiert…" : insights ? "Neu analysieren" : "Analysieren"}
           </Button>
         </div>
 
         {analyzeError && (
-          <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">
             {analyzeError}
           </div>
         )}
 
         {analyzing && (
-          <div className="space-y-2 text-sm text-muted-foreground">
+          <div className="space-y-2 text-sm text-ocean">
             <p>Instagram-Profil wird gescrapt…</p>
             <p>Top-Videos werden heruntergeladen &amp; bei Gemini hochgeladen…</p>
             <p>Hooks, Scripts und Performance werden analysiert…</p>
@@ -505,9 +505,9 @@ export default function ClientStrategyPage() {
 
         {!analyzing && !insights && !analyzeError && (
           <div className="text-center py-8">
-            <TrendingUp className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
-            <p className="text-sm text-muted-foreground">Noch keine Analyse vorhanden.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">
+            <TrendingUp className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
+            <p className="text-sm text-ocean">Noch keine Analyse vorhanden.</p>
+            <p className="text-xs text-ocean/60 mt-1">
               Analysieren klicken, um das Instagram-Profil zu scrapen und herauszufinden, was funktioniert.
             </p>
           </div>
@@ -517,7 +517,7 @@ export default function ClientStrategyPage() {
           <div className="space-y-6">
             {insights.top30Days.length > 0 && (
               <div>
-                <p className="text-[11px] font-medium text-green-400 uppercase tracking-wider mb-3">Top — Letzte 30 Tage</p>
+                <p className="text-[11px] font-medium text-green-600 uppercase tracking-wider mb-3">Top — Letzte 30 Tage</p>
                 <div className="space-y-3">
                   {insights.top30Days.map((v, i) => <VideoInsightCard key={i} video={v} />)}
                 </div>
@@ -525,7 +525,7 @@ export default function ClientStrategyPage() {
             )}
             {insights.topAllTime.length > 0 && (
               <div>
-                <p className="text-[11px] font-medium text-purple-400 uppercase tracking-wider mb-3">
+                <p className="text-[11px] font-medium text-blush-dark uppercase tracking-wider mb-3">
                   Top — Letzte {insights.scrapeWindowDays ? `${insights.scrapeWindowDays} Tage` : "12 Monate"} (ohne letzte 30)
                 </p>
                 <div className="space-y-3">
@@ -541,11 +541,11 @@ export default function ClientStrategyPage() {
       <div className="glass rounded-2xl p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-400" /> Content-Strategie
+            <Sparkles className="h-4 w-4 text-ivory" /> Content-Strategie
           </h2>
           <div className="flex gap-1.5">
             <Button variant="ghost" size="sm" onClick={generateStrategy} disabled={generating}
-              className="h-8 gap-1.5 rounded-lg px-3 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 disabled:opacity-40">
+              className="h-8 gap-1.5 rounded-lg px-3 text-xs text-blush-dark hover:text-blush-dark hover:bg-blush/20 disabled:opacity-40">
               {generating
                 ? <><Loader2 className="h-3 w-3 animate-spin" /> Generiert…</>
                 : <><Wand2 className="h-3 w-3" /> {hasStrategy ? "Neu generieren" : "Mit KI generieren"}</>
@@ -553,7 +553,7 @@ export default function ClientStrategyPage() {
             </Button>
             {hasStrategy && (
               <Button variant="ghost" size="sm" onClick={() => setStrategyOpen(true)}
-                className="h-8 gap-1.5 rounded-lg px-3 text-xs text-muted-foreground hover:text-foreground">
+                className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean hover:text-ocean">
                 <Pencil className="h-3 w-3" /> Bearbeiten
               </Button>
             )}
@@ -561,15 +561,15 @@ export default function ClientStrategyPage() {
         </div>
 
         {generateError && (
-          <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">
             {generateError}
           </div>
         )}
         {generating && (
-          <div className="rounded-xl bg-purple-500/5 border border-purple-500/20 px-4 py-3 space-y-1">
-            <p className="text-sm text-muted-foreground">KI analysiert das Kundenprofil und erstellt eine Strategie…</p>
+          <div className="rounded-xl bg-blush/10 border border-blush/40 px-4 py-3 space-y-1">
+            <p className="text-sm text-ocean">KI analysiert das Kundenprofil und erstellt eine Strategie…</p>
             {meta.trainingCount > 0 && (
-              <p className="text-[11px] text-purple-400/70">
+              <p className="text-[11px] text-blush-dark/70">
                 {meta.trainingCount} Training-Beispiele aus der Strategie-Bibliothek werden berücksichtigt.
               </p>
             )}
@@ -578,19 +578,19 @@ export default function ClientStrategyPage() {
 
         {!generating && !hasStrategy ? (
           <div className="text-center py-8">
-            <Wand2 className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
-            <p className="text-sm text-muted-foreground">Noch keine Strategie vorhanden.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1 mb-4">
+            <Wand2 className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
+            <p className="text-sm text-ocean">Noch keine Strategie vorhanden.</p>
+            <p className="text-xs text-ocean/60 mt-1 mb-4">
               KI erstellt einen Vorschlag basierend auf dem Kundenprofil
               {meta.trainingCount > 0 && ` und ${meta.trainingCount} gespeicherten Training-Beispielen`}.
             </p>
             <div className="flex items-center justify-center gap-2">
               <Button size="sm" onClick={generateStrategy} disabled={generating}
-                className="rounded-xl h-9 gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 text-xs">
+                className="rounded-xl h-9 gap-1.5 bg-ocean hover:bg-ocean-light border-0 text-xs">
                 <Wand2 className="h-3 w-3" /> Mit KI generieren
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setStrategyOpen(true)}
-                className="rounded-xl h-9 gap-1 text-xs text-muted-foreground hover:text-foreground">
+                className="rounded-xl h-9 gap-1 text-xs text-ocean hover:text-ocean">
                 <Plus className="h-3 w-3" /> Manuell hinzufügen
               </Button>
             </div>
@@ -601,7 +601,7 @@ export default function ClientStrategyPage() {
             {/* Goal */}
             {goal && (
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Primäres Ziel</p>
+                <p className="text-[11px] text-ocean uppercase tracking-wider mb-2">Primäres Ziel</p>
                 <div className={`inline-flex items-center gap-2 rounded-xl border bg-gradient-to-br px-4 py-2 ${goal.color}`}>
                   <span className="text-sm font-semibold">{goal.label}</span>
                   <span className="text-xs opacity-70">→ {goal.description}</span>
@@ -612,16 +612,16 @@ export default function ClientStrategyPage() {
             {/* Content Pillars */}
             {pillars.filter(p => p.name).length > 0 && (
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3">Content Pillars</p>
+                <p className="text-[11px] text-ocean uppercase tracking-wider mb-3">Content Pillars</p>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {pillars.filter(p => p.name).map((pillar, i) => (
-                    <div key={i} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+                    <div key={i} className="rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] p-3">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-purple-500/20 text-[10px] font-bold text-purple-400">{i + 1}</span>
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blush/30 text-[10px] font-bold text-blush-dark">{i + 1}</span>
                         <p className="text-sm font-medium">{pillar.name}</p>
                       </div>
                       {pillar.subTopics && (
-                        <p className="text-xs text-muted-foreground mt-2 leading-relaxed pl-7">{pillar.subTopics}</p>
+                        <p className="text-xs text-ocean mt-2 leading-relaxed pl-7">{pillar.subTopics}</p>
                       )}
                     </div>
                   ))}
@@ -633,8 +633,8 @@ export default function ClientStrategyPage() {
             {activeDays.some(d => weekly[d]?.type) && (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Wöchentlicher Kalender</p>
-                  <span className="flex items-center gap-1 text-[11px] text-amber-400/80">
+                  <p className="text-[11px] text-ocean uppercase tracking-wider">Wöchentlicher Kalender</p>
+                  <span className="flex items-center gap-1 text-[11px] text-ivory/80">
                     <CalendarDays className="h-3 w-3" />
                     {postsPerWeek} Posts / Woche
                   </span>
@@ -643,7 +643,7 @@ export default function ClientStrategyPage() {
                   {activeDays.map((day) => {
                     const slot = weekly[day];
                     const colorClass = slot?.type
-                      ? TYPE_COLORS[slot.type] || "bg-white/[0.05] text-muted-foreground border-white/[0.06]"
+                      ? TYPE_COLORS[slot.type] || "bg-ocean/[0.02] text-ocean border-ocean/[0.06]"
                       : "";
                     const typeObj = slot?.type
                       ? meta.allContentTypes.find(t => t.name === slot.type)
@@ -654,7 +654,7 @@ export default function ClientStrategyPage() {
 
                     return (
                       <div key={day} className="space-y-1.5">
-                        <p className="text-[11px] font-medium text-muted-foreground text-center">{day}</p>
+                        <p className="text-[11px] font-medium text-ocean text-center">{day}</p>
                         {slot?.type ? (
                           <div className={`rounded-xl border px-2.5 py-3 space-y-2 ${colorClass}`}>
                             {/* Type */}
@@ -677,8 +677,8 @@ export default function ClientStrategyPage() {
                             )}
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed border-white/[0.06] px-2 py-3 text-center">
-                            <p className="text-[10px] text-muted-foreground/30">—</p>
+                          <div className="rounded-xl border border-dashed border-ocean/[0.06] px-2 py-3 text-center">
+                            <p className="text-[10px] text-ocean/30">—</p>
                           </div>
                         )}
                       </div>
@@ -690,21 +690,21 @@ export default function ClientStrategyPage() {
 
             {/* Used Content Types — from the framework */}
             {usedTypeObjects.length > 0 && (
-              <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4 space-y-3">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-4 space-y-3">
+                <p className="text-[10px] font-medium text-ocean uppercase tracking-wider">
                   Diese Woche verwendete Content Types — aus dem Framework
                 </p>
                 <div className="space-y-2">
                   {usedTypeObjects.map((t) => {
-                    const color = TYPE_COLORS[t.name] || "bg-white/[0.05] text-muted-foreground border-white/[0.08]";
+                    const color = TYPE_COLORS[t.name] || "bg-ocean/[0.02] text-ocean border-ocean/[0.06]";
                     return (
                       <div key={t.id} className="flex items-start gap-3">
                         <span className={`inline-flex shrink-0 items-center rounded-lg border px-2 py-0.5 text-[10px] font-medium mt-0.5 ${color}`}>
                           {t.name}
                         </span>
                         <div className="min-w-0">
-                          <p className="text-[11px] text-muted-foreground leading-snug">{t.goal}</p>
-                          <p className="text-[10px] text-muted-foreground/50 leading-snug">{t.bestFor}</p>
+                          <p className="text-[11px] text-ocean leading-snug">{t.goal}</p>
+                          <p className="text-[10px] text-ocean/50 leading-snug">{t.bestFor}</p>
                         </div>
                       </div>
                     );

@@ -128,12 +128,13 @@ export function writeIdeas(ideas: Record<string, string>[]) {
 }
 
 // Training Scripts
-const TRAINING_SCRIPT_COLUMNS = ["id", "format", "textHook", "visualHook", "audioHook", "script", "cta", "createdAt"];
+const TRAINING_SCRIPT_COLUMNS = ["id", "clientId", "format", "textHook", "visualHook", "audioHook", "script", "cta", "createdAt"];
 
 export function readTrainingScripts(): TrainingScript[] {
   const raw = readCsv<Record<string, string>>("training-scripts.csv");
   return raw.map((r) => ({
     id: r.id || "",
+    clientId: r.clientId || "",
     format: r.format || "",
     textHook: r.textHook || "",
     visualHook: r.visualHook || "",

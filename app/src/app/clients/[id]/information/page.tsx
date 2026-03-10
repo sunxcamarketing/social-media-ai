@@ -51,7 +51,7 @@ function SocialLink({ href, icon: Icon, label }: { href: string; icon: React.Ele
   const url = href.startsWith("http") ? href : `https://${href}`;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-white/[0.08] text-sm text-muted-foreground hover:text-foreground hover:border-white/[0.15] transition-all">
+      className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-ocean/5 text-sm text-ocean/50 hover:text-ocean hover:border-ocean/[0.06] transition-all">
       <Icon className="h-4 w-4 shrink-0" />
       <span className="truncate">{label}</span>
     </a>
@@ -62,7 +62,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
     <div>
-      <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-1">{label}</p>
       <p className="text-sm leading-relaxed whitespace-pre-wrap">{value}</p>
     </div>
   );
@@ -90,15 +90,15 @@ function SectionCard({
           <Icon className={`h-4 w-4 ${iconColor}`} /> {title}
         </h2>
         <Button variant="ghost" size="sm" onClick={onEdit}
-          className="h-7 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground">
+          className="h-7 gap-1 rounded-lg px-2 text-xs text-ocean/50 hover:text-ocean">
           <Pencil className="h-3 w-3" /> Edit
         </Button>
       </div>
       {empty ? (
         <div className="text-center py-4">
-          <p className="text-sm text-muted-foreground">No information added yet.</p>
+          <p className="text-sm text-ocean/50">No information added yet.</p>
           <Button variant="ghost" size="sm" onClick={onEdit}
-            className="mt-2 rounded-xl text-xs text-muted-foreground hover:text-foreground gap-1">
+            className="mt-2 rounded-xl text-xs text-ocean/50 hover:text-ocean gap-1">
             <Pencil className="h-3 w-3" /> Add information
           </Button>
         </div>
@@ -357,7 +357,7 @@ function ClientInformationContent() {
   };
 
   if (!client) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">Loading…</div>;
+    return <div className="flex items-center justify-center h-64 text-ocean/50 text-sm">Loading…</div>;
   }
 
   const hasSocials = client.instagram || client.tiktok || client.youtube || client.linkedin || client.twitter || client.website;
@@ -392,26 +392,26 @@ function ClientInformationContent() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20">
-            <User className="h-6 w-6 text-purple-400" />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blush/20 border border-blush/40">
+            <User className="h-6 w-6 text-blush-dark" />
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{client.name || client.configName}</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              {client.role && <span className="text-sm text-muted-foreground">{client.role}</span>}
-              {client.role && client.company && <span className="text-muted-foreground/40">·</span>}
-              {client.company && <span className="text-sm text-muted-foreground">{client.company}</span>}
+              {client.role && <span className="text-sm text-ocean/50">{client.role}</span>}
+              {client.role && client.company && <span className="text-ocean/40">·</span>}
+              {client.company && <span className="text-sm text-ocean/50">{client.company}</span>}
               {client.location && (
                 <>
-                  <span className="text-muted-foreground/40">·</span>
-                  <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                  <span className="text-ocean/40">·</span>
+                  <span className="inline-flex items-center gap-1 text-sm text-ocean/50">
                     <MapPin className="h-3 w-3" />{client.location}
                   </span>
                 </>
               )}
             </div>
             <div className="mt-2">
-              <Badge variant="secondary" className="rounded-md text-[10px] bg-white/[0.05] border border-white/[0.06]">
+              <Badge variant="secondary" className="rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
                 {client.creatorsCategory}
               </Badge>
             </div>
@@ -422,7 +422,7 @@ function ClientInformationContent() {
             variant="ghost"
             size="sm"
             onClick={() => { setAddInfoOpen(true); setAddInfoResult(null); }}
-            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-muted-foreground hover:text-foreground"
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean/50 hover:text-ocean"
           >
             <Plus className="h-3 w-3" /> Add info
           </Button>
@@ -431,7 +431,7 @@ function ClientInformationContent() {
             size="sm"
             onClick={handleAutoFill}
             disabled={enriching || (!client.instagram && !client.website && !client.linkedin && !client.tiktok && !client.youtube)}
-            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 disabled:opacity-40"
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-blush-dark hover:text-blush-dark hover:bg-blush/20 disabled:opacity-40"
           >
             {enriching ? (
               <><Loader2 className="h-3 w-3 animate-spin" /> Filling…</>
@@ -443,12 +443,12 @@ function ClientInformationContent() {
       </div>
 
       {enrichError && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">
           {enrichError}
         </div>
       )}
       {enriching && (
-        <div className="rounded-xl glass border border-purple-500/20 px-4 py-3 text-sm text-muted-foreground">
+        <div className="rounded-xl glass border border-blush/40 px-4 py-3 text-sm text-ocean/50">
           Scraping profiles and extracting information with AI… this takes 15–30 seconds.
         </div>
       )}
@@ -456,7 +456,7 @@ function ClientInformationContent() {
       {/* Social Links */}
       {hasSocials && (
         <div className="space-y-3">
-          <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Links</h2>
+          <h2 className="text-xs font-medium text-ocean/50 uppercase tracking-wider">Links</h2>
           <div className="flex flex-wrap gap-2">
             <SocialLink href={client.website} icon={Globe} label={client.website} />
             <SocialLink href={client.instagram} icon={Instagram} label={`@${client.instagram.replace(/^@/, "")}`} />
@@ -473,18 +473,18 @@ function ClientInformationContent() {
         <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold flex items-center gap-2">
-              <Instagram className="h-4 w-4 text-purple-400" /> Instagram Profil
+              <Instagram className="h-4 w-4 text-blush-dark" /> Instagram Profil
             </h2>
             <div className="flex items-center gap-3">
               {igProfile?.lastUpdated && (
-                <span className="text-[10px] text-muted-foreground/50">
+                <span className="text-[10px] text-ocean/50">
                   {new Date(igProfile.lastUpdated).toLocaleDateString("de-DE")}
                 </span>
               )}
               <button
                 onClick={() => loadIgProfile(true)}
                 disabled={igLoading}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1 text-[11px] text-ocean/50 hover:text-ocean transition-colors"
               >
                 {igLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                 {igLoading ? "Lädt…" : "Aktualisieren"}
@@ -493,7 +493,7 @@ function ClientInformationContent() {
           </div>
 
           {igLoading && !igProfile && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+            <div className="flex items-center gap-2 text-sm text-ocean/50 py-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Profil wird geladen…
             </div>
           )}
@@ -502,13 +502,13 @@ function ClientInformationContent() {
             <div className="flex items-start gap-4">
               <a href={`https://www.instagram.com/${igProfile.username}/`} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0">
-                <div className="relative h-14 w-14 rounded-full overflow-hidden bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-white/[0.1]">
+                <div className="relative h-14 w-14 rounded-full overflow-hidden bg-blush/20 border border-ocean/5">
                   {igProfile.profilePicUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={`/api/proxy-image?url=${encodeURIComponent(igProfile.profilePicUrl)}`}
                       alt={`@${igProfile.username}`} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-muted-foreground/50">
+                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-ocean/50">
                       {igProfile.username.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -517,32 +517,32 @@ function ClientInformationContent() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <p className="text-sm font-semibold">@{igProfile.username}</p>
-                  {igProfile.verified && <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
+                  {igProfile.verified && <CheckCircle2 className="h-3.5 w-3.5 text-ocean/60 shrink-0" />}
                 </div>
-                {igProfile.fullName && <p className="text-xs text-muted-foreground mb-1">{igProfile.fullName}</p>}
+                {igProfile.fullName && <p className="text-xs text-ocean/50 mb-1">{igProfile.fullName}</p>}
                 {igProfile.category && (
-                  <span className="inline-block text-[10px] rounded-md bg-white/[0.05] border border-white/[0.06] px-2 py-0.5 text-muted-foreground mb-2">
+                  <span className="inline-block text-[10px] rounded-md bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5 text-ocean/50 mb-2">
                     {igProfile.category}
                   </span>
                 )}
                 {igProfile.bio && (
-                  <p className="text-xs text-muted-foreground/80 leading-relaxed line-clamp-3 mb-3">{igProfile.bio}</p>
+                  <p className="text-xs text-ocean/40 leading-relaxed line-clamp-3 mb-3">{igProfile.bio}</p>
                 )}
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-xl bg-black/20 border border-white/[0.04] p-2.5 text-center">
-                    <UserCheck className="mx-auto h-3.5 w-3.5 text-blue-400 mb-1" />
+                  <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
+                    <UserCheck className="mx-auto h-3.5 w-3.5 text-ocean/60 mb-1" />
                     <p className="text-sm font-bold">{formatNumber(igProfile.followers)}</p>
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Follower</p>
+                    <p className="text-[9px] text-ocean/50 uppercase tracking-wider">Follower</p>
                   </div>
-                  <div className="rounded-xl bg-black/20 border border-white/[0.04] p-2.5 text-center">
-                    <Users className="mx-auto h-3.5 w-3.5 text-purple-400 mb-1" />
+                  <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
+                    <Users className="mx-auto h-3.5 w-3.5 text-blush-dark mb-1" />
                     <p className="text-sm font-bold">{formatNumber(igProfile.following)}</p>
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Following</p>
+                    <p className="text-[9px] text-ocean/50 uppercase tracking-wider">Following</p>
                   </div>
-                  <div className="rounded-xl bg-black/20 border border-white/[0.04] p-2.5 text-center">
+                  <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
                     <Film className="mx-auto h-3.5 w-3.5 text-emerald-400 mb-1" />
                     <p className="text-sm font-bold">{igProfile.postsCount}</p>
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Posts</p>
+                    <p className="text-[9px] text-ocean/50 uppercase tracking-wider">Posts</p>
                   </div>
                 </div>
               </div>
@@ -552,7 +552,7 @@ function ClientInformationContent() {
       )}
 
       {/* Basic Info */}
-      <SectionCard icon={Briefcase} iconColor="text-purple-400" title="Basic Information" onEdit={openBasic} empty={basicEmpty}>
+      <SectionCard icon={Briefcase} iconColor="text-blush-dark" title="Basic Information" onEdit={openBasic} empty={basicEmpty}>
         <div className="space-y-5">
           {(client.name || client.company || client.role || client.location) && (
             <div className="grid gap-5 md:grid-cols-2">
@@ -563,7 +563,7 @@ function ClientInformationContent() {
             </div>
           )}
           {(client.businessContext || client.professionalBackground || client.keyAchievements) && (
-            <div className="border-t border-white/[0.06] pt-5 space-y-5">
+            <div className="border-t border-ocean/[0.06] pt-5 space-y-5">
               <InfoRow label="Business Context" value={client.businessContext} />
               <InfoRow label="Professional Background" value={client.professionalBackground} />
               <InfoRow label="Key Achievements" value={client.keyAchievements} />
@@ -573,13 +573,13 @@ function ClientInformationContent() {
       </SectionCard>
 
       {/* Brand Identity */}
-      <SectionCard icon={Heart} iconColor="text-purple-400" title="Brand Identity" onEdit={openBrand} empty={brandEmpty}>
+      <SectionCard icon={Heart} iconColor="text-blush-dark" title="Brand Identity" onEdit={openBrand} empty={brandEmpty}>
         <div className="space-y-5">
           <InfoRow label="Feeling you sell" value={client.brandFeeling} />
           <InfoRow label="Core problem you solve" value={client.brandProblem} />
           {dcRows.length > 0 && (
-            <div className="border-t border-white/[0.06] pt-5">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3">Dream Customer Profile</p>
+            <div className="border-t border-ocean/[0.06] pt-5">
+              <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-3">Dream Customer Profile</p>
               <div className="grid gap-3 md:grid-cols-2">
                 {dcRows.map((r) => (
                   <InfoRow key={r.label} label={r.label} value={r.value} />
@@ -596,11 +596,11 @@ function ClientInformationContent() {
       </SectionCard>
 
       {/* Customer & Problem */}
-      <SectionCard icon={Users} iconColor="text-sky-400" title="Customer & Problem" onEdit={openCustomer} empty={customerEmpty}>
+      <SectionCard icon={Users} iconColor="text-ocean/60" title="Customer & Problem" onEdit={openCustomer} empty={customerEmpty}>
         <div className="space-y-5">
           {cpRows.length > 0 && (
             <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3">Customer Problems</p>
+              <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-3">Customer Problems</p>
               <div className="grid gap-3 md:grid-cols-2">
                 {cpRows.map((r) => (
                   <InfoRow key={r.label} label={r.label} value={r.value} />
@@ -609,7 +609,7 @@ function ClientInformationContent() {
             </div>
           )}
           {(client.providerRole || client.providerBeliefs || client.providerStrengths || client.authenticityZone) && (
-            <div className="border-t border-white/[0.06] pt-5 space-y-5">
+            <div className="border-t border-ocean/[0.06] pt-5 space-y-5">
               <InfoRow label="Your role as provider" value={client.providerRole} />
               <InfoRow label="Your beliefs" value={client.providerBeliefs} />
               <InfoRow label="Your strengths" value={client.providerStrengths} />
@@ -620,11 +620,11 @@ function ClientInformationContent() {
       </SectionCard>
 
       {/* Brand Message */}
-      <SectionCard icon={MessageSquare} iconColor="text-amber-400" title="Brand Message" onEdit={openMessage} empty={messageEmpty}>
+      <SectionCard icon={MessageSquare} iconColor="text-ivory" title="Brand Message" onEdit={openMessage} empty={messageEmpty}>
         <div className="space-y-5">
           {client.brandingStatement && (
             <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Branding Statement</p>
+              <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-2">Branding Statement</p>
               <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 px-4 py-3">
                 <p className="text-sm leading-relaxed italic">{client.brandingStatement}</p>
               </div>
@@ -662,15 +662,15 @@ function ClientInformationContent() {
 
         return (
           <Dialog open={followupOpen} onOpenChange={(v) => { if (!v) setFollowupOpen(false); }}>
-            <DialogContent className="sm:max-w-md glass-strong border-white/[0.08]">
+            <DialogContent className="sm:max-w-md glass-strong border-ocean/5">
               <div className="flex items-center justify-between mb-1">
                 <DialogTitle className="text-base font-semibold">Profil vervollständigen</DialogTitle>
-                <span className="text-[11px] text-muted-foreground">{progress} / {total}</span>
+                <span className="text-[11px] text-ocean/50">{progress} / {total}</span>
               </div>
-              <div className="w-full h-1 bg-white/[0.06] rounded-full mb-4">
-                <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${(progress / total) * 100}%` }} />
+              <div className="w-full h-1 bg-ocean/[0.06] rounded-full mb-4">
+                <div className="h-full bg-ocean rounded-full transition-all" style={{ width: `${(progress / total) * 100}%` }} />
               </div>
-              <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">{current.label}</p>
+              <p className="text-xs text-ocean/50 mb-1 uppercase tracking-wider">{current.label}</p>
               <p className="text-sm font-medium mb-3">{current.question}</p>
               <Textarea
                 autoFocus
@@ -678,20 +678,20 @@ function ClientInformationContent() {
                 onChange={(e) => setFollowupAnswer(e.target.value)}
                 rows={current.rows ?? 2}
                 placeholder="Deine Antwort…"
-                className="rounded-xl glass border-white/[0.08] text-sm mb-4"
+                className="rounded-xl glass border-ocean/5 text-sm mb-4"
               />
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   onClick={() => { setFollowupAnswer(""); if (isLast) setFollowupOpen(false); else setFollowupIndex((i) => i + 1); }}
-                  className="flex-1 rounded-xl h-10 text-sm text-muted-foreground"
+                  className="flex-1 rounded-xl h-10 text-sm text-ocean/50"
                 >
                   Überspringen
                 </Button>
                 <Button
                   onClick={saveAndNext}
                   disabled={followupSaving}
-                  className="flex-1 rounded-xl h-10 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 text-sm"
+                  className="flex-1 rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0 text-sm text-white"
                 >
                   {followupSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? "Fertig" : "Weiter"}
                 </Button>
@@ -703,10 +703,10 @@ function ClientInformationContent() {
 
       {/* Add Info Dialog */}
       <Dialog open={addInfoOpen} onOpenChange={(v) => { if (!v) setAddInfoOpen(false); }}>
-        <DialogContent className="max-w-lg glass-strong rounded-2xl border-white/[0.08]">
+        <DialogContent className="max-w-lg glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>Add Information</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ocean/50">
               Paste any text about this client — interview notes, bio, facts, achievements. AI will place it into the right fields and skip anything already captured.
             </p>
             <Textarea
@@ -714,10 +714,10 @@ function ClientInformationContent() {
               onChange={(e) => setAddInfoText(e.target.value)}
               rows={6}
               placeholder="e.g. She won the Forbes 30 Under 30 award in 2023. Her target clients are female entrepreneurs aged 30–45 in Germany who struggle with visibility..."
-              className="rounded-xl glass border-white/[0.08] text-sm"
+              className="rounded-xl glass border-ocean/5 text-sm"
             />
             {addInfoResult && (
-              <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm ${addInfoResult.includes("already") ? "bg-white/[0.04] text-muted-foreground" : "bg-green-500/10 border border-green-500/20 text-green-400"}`}>
+              <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm ${addInfoResult.includes("already") ? "bg-ocean/[0.02] text-ocean/50" : "bg-green-50 border border-green-200 text-green-600"}`}>
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>{addInfoResult}</span>
               </div>
@@ -725,7 +725,7 @@ function ClientInformationContent() {
             <Button
               onClick={handleAddInfo}
               disabled={addInfoLoading || !addInfoText.trim()}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0"
+              className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white"
             >
               {addInfoLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</> : "Add to Profile"}
             </Button>
@@ -737,33 +737,33 @@ function ClientInformationContent() {
 
       {/* Basic Info Dialog */}
       <Dialog open={basicOpen} onOpenChange={(v) => { if (!v) setBasicOpen(false); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-white/[0.08]">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>Edit Basic Information</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div className="grid grid-cols-2 gap-3">
               {(["name", "company", "role", "location"] as const).map((key) => (
                 <div key={key}>
-                  <Label className="text-xs text-muted-foreground capitalize">{key === "name" ? "Full Name" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
-                  <Input value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} className="mt-1.5 rounded-xl glass border-white/[0.08] h-11" />
+                  <Label className="text-xs text-ocean/50 capitalize">{key === "name" ? "Full Name" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
+                  <Input value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                 </div>
               ))}
             </div>
             {(["businessContext", "professionalBackground", "keyAchievements"] as const).map((key) => (
               <div key={key}>
-                <Label className="text-xs text-muted-foreground">{key === "businessContext" ? "Business Context" : key === "professionalBackground" ? "Professional Background" : "Key Achievements"}</Label>
-                <Textarea value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+                <Label className="text-xs text-ocean/50">{key === "businessContext" ? "Business Context" : key === "professionalBackground" ? "Professional Background" : "Key Achievements"}</Label>
+                <Textarea value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             ))}
-            <div className="border-t border-white/[0.06] pt-4 grid grid-cols-2 gap-3">
+            <div className="border-t border-ocean/[0.06] pt-4 grid grid-cols-2 gap-3">
               {(["website", "instagram", "tiktok", "youtube", "linkedin", "twitter"] as const).map((key) => (
                 <div key={key}>
-                  <Label className="text-xs text-muted-foreground capitalize">{key === "twitter" ? "X / Twitter" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
-                  <Input value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} className="mt-1.5 rounded-xl glass border-white/[0.08] h-11" />
+                  <Label className="text-xs text-ocean/50 capitalize">{key === "twitter" ? "X / Twitter" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
+                  <Input value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                 </div>
               ))}
             </div>
             <Button onClick={async () => { await savePartial(basicForm); setBasicOpen(false); }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
+              className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>
@@ -772,30 +772,30 @@ function ClientInformationContent() {
 
       {/* Brand Identity Dialog */}
       <Dialog open={brandOpen} onOpenChange={(v) => { if (!v) setBrandOpen(false); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-white/[0.08]">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>Brand Identity</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <Label className="text-xs text-muted-foreground">Feeling you sell (e.g. security, clarity, confidence)</Label>
-              <Textarea value={brandForm.brandFeeling} onChange={(e) => setBrandForm({ ...brandForm, brandFeeling: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+              <Label className="text-xs text-ocean/50">Feeling you sell (e.g. security, clarity, confidence)</Label>
+              <Textarea value={brandForm.brandFeeling} onChange={(e) => setBrandForm({ ...brandForm, brandFeeling: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Core problem you solve</Label>
-              <Textarea value={brandForm.brandProblem} onChange={(e) => setBrandForm({ ...brandForm, brandProblem: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+              <Label className="text-xs text-ocean/50">Core problem you solve</Label>
+              <Textarea value={brandForm.brandProblem} onChange={(e) => setBrandForm({ ...brandForm, brandProblem: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
-            <div className="border-t border-white/[0.06] pt-4">
-              <p className="text-xs font-medium text-muted-foreground mb-3">Dream Customer Profile</p>
+            <div className="border-t border-ocean/[0.06] pt-4">
+              <p className="text-xs font-medium text-ocean/50 mb-3">Dream Customer Profile</p>
               <div className="grid grid-cols-2 gap-3">
                 {(["tonality", "age", "gender", "income", "country", "profession", "values"] as const).map((key) => (
                   <div key={key}>
-                    <Label className="text-xs text-muted-foreground capitalize">{key}</Label>
-                    <Input value={brandForm.dreamCustomer[key]} onChange={(e) => setBrandForm({ ...brandForm, dreamCustomer: { ...brandForm.dreamCustomer, [key]: e.target.value } })} className="mt-1.5 rounded-xl glass border-white/[0.08] h-11" />
+                    <Label className="text-xs text-ocean/50 capitalize">{key}</Label>
+                    <Input value={brandForm.dreamCustomer[key]} onChange={(e) => setBrandForm({ ...brandForm, dreamCustomer: { ...brandForm.dreamCustomer, [key]: e.target.value } })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                   </div>
                 ))}
               </div>
               <div className="mt-3">
-                <Label className="text-xs text-muted-foreground">Concrete person description</Label>
-                <Textarea value={brandForm.dreamCustomer.description} onChange={(e) => setBrandForm({ ...brandForm, dreamCustomer: { ...brandForm.dreamCustomer, description: e.target.value } })} rows={3} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+                <Label className="text-xs text-ocean/50">Concrete person description</Label>
+                <Textarea value={brandForm.dreamCustomer.description} onChange={(e) => setBrandForm({ ...brandForm, dreamCustomer: { ...brandForm.dreamCustomer, description: e.target.value } })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             </div>
             <Button onClick={async () => {
@@ -806,7 +806,7 @@ function ClientInformationContent() {
               });
               setBrandOpen(false);
             }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
+              className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>
@@ -815,36 +815,36 @@ function ClientInformationContent() {
 
       {/* Customer & Problem Dialog */}
       <Dialog open={customerOpen} onOpenChange={(v) => { if (!v) setCustomerOpen(false); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-white/[0.08]">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>Customer & Problem</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-3">Customer Problems</p>
+              <p className="text-xs font-medium text-ocean/50 mb-3">Customer Problems</p>
               <div className="space-y-3">
                 {(["mental", "physical", "financial", "social", "aesthetic"] as const).map((key) => (
                   <div key={key}>
-                    <Label className="text-xs text-muted-foreground capitalize">{key} problems</Label>
-                    <Textarea value={customerForm.customerProblems[key]} onChange={(e) => setCustomerForm({ ...customerForm, customerProblems: { ...customerForm.customerProblems, [key]: e.target.value } })} rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+                    <Label className="text-xs text-ocean/50 capitalize">{key} problems</Label>
+                    <Textarea value={customerForm.customerProblems[key]} onChange={(e) => setCustomerForm({ ...customerForm, customerProblems: { ...customerForm.customerProblems, [key]: e.target.value } })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
                   </div>
                 ))}
               </div>
             </div>
-            <div className="border-t border-white/[0.06] pt-4 space-y-4">
+            <div className="border-t border-ocean/[0.06] pt-4 space-y-4">
               <div>
-                <Label className="text-xs text-muted-foreground">Your role as provider (Mentor? Strategist? Sparring partner?)</Label>
-                <Textarea value={customerForm.providerRole} onChange={(e) => setCustomerForm({ ...customerForm, providerRole: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+                <Label className="text-xs text-ocean/50">Your role as provider (Mentor? Strategist? Sparring partner?)</Label>
+                <Textarea value={customerForm.providerRole} onChange={(e) => setCustomerForm({ ...customerForm, providerRole: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Your beliefs (what you&apos;d do differently in your industry)</Label>
-                <Textarea value={customerForm.providerBeliefs} onChange={(e) => setCustomerForm({ ...customerForm, providerBeliefs: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+                <Label className="text-xs text-ocean/50">Your beliefs (what you&apos;d do differently in your industry)</Label>
+                <Textarea value={customerForm.providerBeliefs} onChange={(e) => setCustomerForm({ ...customerForm, providerBeliefs: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Your strengths & skills (what clients appreciate most)</Label>
-                <Textarea value={customerForm.providerStrengths} onChange={(e) => setCustomerForm({ ...customerForm, providerStrengths: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+                <Label className="text-xs text-ocean/50">Your strengths & skills (what clients appreciate most)</Label>
+                <Textarea value={customerForm.providerStrengths} onChange={(e) => setCustomerForm({ ...customerForm, providerStrengths: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Authenticity zone (overlap of customer problem + your strength)</Label>
-                <Textarea value={customerForm.authenticityZone} onChange={(e) => setCustomerForm({ ...customerForm, authenticityZone: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+                <Label className="text-xs text-ocean/50">Authenticity zone (overlap of customer problem + your strength)</Label>
+                <Textarea value={customerForm.authenticityZone} onChange={(e) => setCustomerForm({ ...customerForm, authenticityZone: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             </div>
             <Button onClick={async () => {
@@ -857,7 +857,7 @@ function ClientInformationContent() {
               });
               setCustomerOpen(false);
             }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
+              className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>
@@ -866,21 +866,21 @@ function ClientInformationContent() {
 
       {/* Brand Message Dialog */}
       <Dialog open={messageOpen} onOpenChange={(v) => { if (!v) setMessageOpen(false); }}>
-        <DialogContent className="max-w-2xl glass-strong rounded-2xl border-white/[0.08]">
+        <DialogContent className="max-w-2xl glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>Brand Message</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <Label className="text-xs text-muted-foreground">Branding Statement</Label>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1.5">Formula: I help [target group], from [transformation], so that [result].</p>
-              <Textarea value={messageForm.brandingStatement} onChange={(e) => setMessageForm({ ...messageForm, brandingStatement: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" placeholder="I help freelancers bring structure to their visibility and attract the right dream clients." />
+              <Label className="text-xs text-ocean/50">Branding Statement</Label>
+              <p className="text-[11px] text-ocean/35 mt-0.5 mb-1.5">Formula: I help [target group], from [transformation], so that [result].</p>
+              <Textarea value={messageForm.brandingStatement} onChange={(e) => setMessageForm({ ...messageForm, brandingStatement: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" placeholder="I help freelancers bring structure to their visibility and attract the right dream clients." />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Human differentiation — your AND factor</Label>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5 mb-1.5">You are a [provider] AND...? How do you stand out as a human being?</p>
-              <Textarea value={messageForm.humanDifferentiation} onChange={(e) => setMessageForm({ ...messageForm, humanDifferentiation: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-white/[0.08] text-sm" />
+              <Label className="text-xs text-ocean/50">Human differentiation — your AND factor</Label>
+              <p className="text-[11px] text-ocean/35 mt-0.5 mb-1.5">You are a [provider] AND...? How do you stand out as a human being?</p>
+              <Textarea value={messageForm.humanDifferentiation} onChange={(e) => setMessageForm({ ...messageForm, humanDifferentiation: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
             <Button onClick={async () => { await savePartial(messageForm); setMessageOpen(false); }} disabled={saving}
-              className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
+              className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
               {saving ? "Saving…" : "Save Changes"}
             </Button>
           </div>

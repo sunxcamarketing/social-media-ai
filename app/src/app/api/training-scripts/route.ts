@@ -3,8 +3,13 @@ import { v4 as uuid } from "uuid";
 import { readTrainingScripts, writeTrainingScripts } from "@/lib/csv";
 import type { TrainingScript } from "@/lib/types";
 
-export async function GET() {
-  const scripts = readTrainingScripts();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const clientId = searchParams.get("clientId");
+  let scripts = readTrainingScripts();
+  if (clientId) {
+    scripts = scripts.filter((s) => s.clientId === clientId);
+  }
   return NextResponse.json(scripts);
 }
 
@@ -13,6 +18,7 @@ export async function POST(request: Request) {
   const scripts = readTrainingScripts();
   const newScript: TrainingScript = {
     ...body,
+    clientId: body.clientId || "",
     id: uuid(),
     createdAt: new Date().toISOString(),
   };

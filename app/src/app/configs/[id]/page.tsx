@@ -44,14 +44,14 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 const GOAL_LABELS: Record<string, { label: string; description: string; color: string }> = {
   reach:   { label: "Reach",   description: "Education + Polarisation", color: "from-blue-500/20 to-cyan-500/20 border-blue-500/20 text-blue-400" },
-  trust:   { label: "Trust",   description: "Story + Social Proof",     color: "from-green-500/20 to-emerald-500/20 border-green-500/20 text-green-400" },
-  revenue: { label: "Revenue", description: "Authority + Social Proof", color: "from-amber-500/20 to-orange-500/20 border-amber-500/20 text-amber-400" },
+  trust:   { label: "Trust",   description: "Story + Social Proof",     color: "from-green-500/20 to-emerald-500/20 border-green-500/20 text-green-600" },
+  revenue: { label: "Revenue", description: "Authority + Social Proof", color: "from-amber-500/20 to-orange-500/20 border-amber-500/20 text-ivory" },
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  "Authority":         "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  "Authority":         "bg-blush/20 text-blush-dark border-blush/40",
   "Story / Personality": "bg-pink-500/10 text-pink-400 border-pink-500/20",
-  "Social Proof":      "bg-green-500/10 text-green-400 border-green-500/20",
+  "Social Proof":      "bg-green-50 text-green-600 border-green-200",
   "Education":         "bg-blue-500/10 text-blue-400 border-blue-500/20",
   "Polarisation":      "bg-orange-500/10 text-orange-400 border-orange-500/20",
 };
@@ -79,7 +79,7 @@ function SocialLink({ href, icon: Icon, label }: { href: string; icon: React.Ele
   const url = href.startsWith("http") ? href : `https://${href}`;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-white/[0.08] text-sm text-muted-foreground hover:text-foreground hover:border-white/[0.15] transition-all">
+      className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-ocean/5 text-sm text-ocean/60 hover:text-ocean hover:border-ocean/[0.06] transition-all">
       <Icon className="h-4 w-4 shrink-0" />
       <span className="truncate">{label}</span>
     </a>
@@ -98,7 +98,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
     <div>
-      <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-[11px] text-ocean/60 uppercase tracking-wider mb-1">{label}</p>
       <p className="text-sm leading-relaxed">{value}</p>
     </div>
   );
@@ -115,15 +115,15 @@ function fmt(n: number) {
 function VideoInsightCard({ video }: { video: VideoInsight }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="glass rounded-2xl overflow-hidden border border-white/[0.06]">
+    <div className="glass rounded-2xl overflow-hidden border border-ocean/[0.06]">
       <div className="flex gap-4 p-4">
         {/* Thumbnail */}
         <div className="shrink-0 relative">
           {video.thumbnail ? (
             <img src={video.thumbnail} alt="" className="h-20 w-14 rounded-xl object-cover" />
           ) : (
-            <div className="h-20 w-14 rounded-xl bg-white/[0.05] flex items-center justify-center">
-              <Eye className="h-4 w-4 text-muted-foreground/30" />
+            <div className="h-20 w-14 rounded-xl bg-ocean/[0.02] flex items-center justify-center">
+              <Eye className="h-4 w-4 text-ocean/30" />
             </div>
           )}
         </div>
@@ -132,11 +132,11 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-medium leading-snug line-clamp-2">{video.topic || "—"}</p>
             <a href={video.url} target="_blank" rel="noopener noreferrer"
-              className="shrink-0 text-muted-foreground/40 hover:text-muted-foreground transition-colors mt-0.5">
+              className="shrink-0 text-ocean/40 hover:text-ocean/60 transition-colors mt-0.5">
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
-          <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-ocean/60">
             <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(video.views)}</span>
             <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{fmt(video.likes)}</span>
             <span>{video.datePosted}</span>
@@ -145,14 +145,14 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
           <div className="mt-2.5 space-y-1.5">
             {video.audioHook && video.audioHook !== "none" && (
               <div className="flex items-start gap-1.5">
-                <span className="text-[10px] font-medium text-purple-400 uppercase tracking-wider shrink-0 mt-0.5">Audio</span>
-                <p className="text-xs text-muted-foreground italic leading-relaxed">"{video.audioHook}"</p>
+                <span className="text-[10px] font-medium text-blush-dark uppercase tracking-wider shrink-0 mt-0.5">Audio</span>
+                <p className="text-xs text-ocean/60 italic leading-relaxed">"{video.audioHook}"</p>
               </div>
             )}
             {video.textHook && video.textHook !== "none" && (
               <div className="flex items-start gap-1.5">
-                <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-wider shrink-0 mt-0.5">Text</span>
-                <p className="text-xs text-muted-foreground italic leading-relaxed">"{video.textHook}"</p>
+                <span className="text-[10px] font-medium text-ocean/60 uppercase tracking-wider shrink-0 mt-0.5">Text</span>
+                <p className="text-xs text-ocean/60 italic leading-relaxed">"{video.textHook}"</p>
               </div>
             )}
           </div>
@@ -160,27 +160,27 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
       </div>
       {/* Expandable analysis */}
       <button onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 pb-1 text-left text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+        className="w-full px-4 pb-1 text-left text-[11px] text-ocean/60 hover:text-ocean/60 transition-colors">
         {expanded ? "Hide analysis ↑" : "Show analysis ↓"}
       </button>
       {expanded && (
-        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-white/[0.06]">
+        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-ocean/[0.06]">
           {video.scriptSummary && (
             <div>
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Script</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{video.scriptSummary}</p>
+              <p className="text-[10px] font-medium text-ocean/60 uppercase tracking-wider mb-1">Script</p>
+              <p className="text-xs text-ocean/60 leading-relaxed">{video.scriptSummary}</p>
             </div>
           )}
           {video.whyItWorked && (
             <div>
-              <p className="text-[10px] font-medium text-green-400 uppercase tracking-wider mb-1">Why it worked</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{video.whyItWorked}</p>
+              <p className="text-[10px] font-medium text-green-600 uppercase tracking-wider mb-1">Why it worked</p>
+              <p className="text-xs text-ocean/60 leading-relaxed">{video.whyItWorked}</p>
             </div>
           )}
           {video.howToReplicate && (
             <div>
               <p className="text-[10px] font-medium text-blue-400 uppercase tracking-wider mb-1">How to replicate</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{video.howToReplicate}</p>
+              <p className="text-xs text-ocean/60 leading-relaxed">{video.howToReplicate}</p>
             </div>
           )}
         </div>
@@ -223,21 +223,21 @@ function StrategyEditDialog({ open, onClose, initial, onSave }: {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-white/[0.08]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/[0.06]">
         <DialogHeader><DialogTitle>Edit Strategy</DialogTitle></DialogHeader>
         <div className="space-y-6 pt-2">
 
           {/* Primary Goal */}
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Primary Goal</p>
+            <p className="text-xs font-medium text-ocean/60 uppercase tracking-wider">Primary Goal</p>
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(GOAL_LABELS).map(([key, { label, description }]) => (
                 <button key={key} type="button"
                   onClick={() => setForm({ ...form, strategyGoal: form.strategyGoal === key ? "" : key })}
                   className={`rounded-xl border p-3 text-left transition-all ${
                     form.strategyGoal === key
-                      ? "bg-purple-500/20 border-purple-500/40 text-foreground"
-                      : "glass border-white/[0.08] text-muted-foreground hover:border-white/[0.15]"
+                      ? "bg-blush/30 border-blush/40 text-ocean"
+                      : "glass border-ocean/5 text-ocean/60 hover:border-ocean/[0.06]"
                   }`}>
                   <p className="text-sm font-medium">{label}</p>
                   <p className="text-[11px] mt-0.5 opacity-70">{description}</p>
@@ -247,12 +247,12 @@ function StrategyEditDialog({ open, onClose, initial, onSave }: {
           </div>
 
           {/* Content Pillars */}
-          <div className="space-y-3 border-t border-white/[0.06] pt-5">
+          <div className="space-y-3 border-t border-ocean/[0.06] pt-5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Content Pillars</p>
+              <p className="text-xs font-medium text-ocean/60 uppercase tracking-wider">Content Pillars</p>
               {form.pillars.length < 5 && (
                 <Button variant="ghost" size="sm" onClick={addPillar}
-                  className="h-7 gap-1 text-xs rounded-lg px-2 text-muted-foreground hover:text-foreground">
+                  className="h-7 gap-1 text-xs rounded-lg px-2 text-ocean/60 hover:text-ocean">
                   <Plus className="h-3 w-3" /> Add pillar
                 </Button>
               )}
@@ -262,36 +262,36 @@ function StrategyEditDialog({ open, onClose, initial, onSave }: {
                 <div key={i} className="flex gap-2 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <Input value={pillar.name} onChange={(e) => setPillar(i, "name", e.target.value)}
-                      placeholder="Pillar name" className="rounded-xl glass border-white/[0.08] h-10 text-sm" />
+                      placeholder="Pillar name" className="rounded-xl glass border-ocean/5 h-10 text-sm" />
                     <Input value={pillar.subTopics} onChange={(e) => setPillar(i, "subTopics", e.target.value)}
-                      placeholder="Sub-topics" className="rounded-xl glass border-white/[0.08] h-10 text-sm" />
+                      placeholder="Sub-topics" className="rounded-xl glass border-ocean/5 h-10 text-sm" />
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => removePillar(i)}
-                    className="h-10 w-10 p-0 rounded-xl text-muted-foreground hover:text-red-400 shrink-0">
+                    className="h-10 w-10 p-0 rounded-xl text-ocean/60 hover:text-red-500 shrink-0">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               ))}
               {form.pillars.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">No pillars yet — add up to 5.</p>
+                <p className="text-xs text-ocean/60 italic">No pillars yet — add up to 5.</p>
               )}
             </div>
           </div>
 
           {/* Weekly Structure */}
-          <div className="space-y-3 border-t border-white/[0.06] pt-5">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Weekly Posting Structure</p>
+          <div className="space-y-3 border-t border-ocean/[0.06] pt-5">
+            <p className="text-xs font-medium text-ocean/60 uppercase tracking-wider">Weekly Posting Structure</p>
             <div className="space-y-2">
               {DAYS.map((day) => (
                 <div key={day} className="grid grid-cols-[48px_1fr_1fr] gap-2 items-center">
-                  <span className="text-xs font-medium text-muted-foreground">{day}</span>
+                  <span className="text-xs font-medium text-ocean/60">{day}</span>
                   <select value={form.weekly[day]?.type || ""} onChange={(e) => setDay(day, "type", e.target.value)}
-                    className="h-10 rounded-xl glass border border-white/[0.08] bg-transparent px-3 text-sm text-foreground focus:outline-none focus:border-white/20">
+                    className="h-10 rounded-xl glass border border-ocean/5 bg-transparent px-3 text-sm text-ocean focus:outline-none focus:border-ocean/[0.06]">
                     <option value="">— Content type —</option>
                     {CONTENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                   <select value={form.weekly[day]?.format || ""} onChange={(e) => setDay(day, "format", e.target.value)}
-                    className="h-10 rounded-xl glass border border-white/[0.08] bg-transparent px-3 text-sm text-foreground focus:outline-none focus:border-white/20">
+                    className="h-10 rounded-xl glass border border-ocean/5 bg-transparent px-3 text-sm text-ocean focus:outline-none focus:border-ocean/[0.06]">
                     <option value="">— Format —</option>
                     {FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
                   </select>
@@ -301,7 +301,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave }: {
           </div>
 
           <Button onClick={handleSave} disabled={saving}
-            className="w-full rounded-xl h-11 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0">
+            className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0">
             {saving ? "Saving…" : "Save Strategy"}
           </Button>
         </div>
@@ -360,7 +360,7 @@ export default function ClientDetailPage() {
   };
 
   if (!client) {
-    return <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">Loading…</div>;
+    return <div className="flex items-center justify-center h-64 text-ocean/60 text-sm">Loading…</div>;
   }
 
   const hasSocials = client.instagram || client.tiktok || client.youtube || client.linkedin || client.twitter || client.website;
@@ -381,33 +381,33 @@ export default function ClientDetailPage() {
       {/* Back */}
       <div>
         <Button variant="ghost" size="sm" onClick={() => router.push("/configs")}
-          className="h-9 gap-1.5 rounded-xl text-muted-foreground hover:text-foreground px-3">
+          className="h-9 gap-1.5 rounded-xl text-ocean/60 hover:text-ocean px-3">
           <ArrowLeft className="h-4 w-4" /> Clients
         </Button>
       </div>
 
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20">
-          <User className="h-6 w-6 text-purple-400" />
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blush/20 to-blush/30 border border-blush/40">
+          <User className="h-6 w-6 text-blush-dark" />
         </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{client.name || client.configName}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            {client.role && <span className="text-sm text-muted-foreground">{client.role}</span>}
-            {client.role && client.company && <span className="text-muted-foreground/40">·</span>}
-            {client.company && <span className="text-sm text-muted-foreground">{client.company}</span>}
+            {client.role && <span className="text-sm text-ocean/60">{client.role}</span>}
+            {client.role && client.company && <span className="text-ocean/40">·</span>}
+            {client.company && <span className="text-sm text-ocean/60">{client.company}</span>}
             {client.location && (
               <>
-                <span className="text-muted-foreground/40">·</span>
-                <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                <span className="text-ocean/40">·</span>
+                <span className="inline-flex items-center gap-1 text-sm text-ocean/60">
                   <MapPin className="h-3 w-3" />{client.location}
                 </span>
               </>
             )}
           </div>
           <div className="mt-2">
-            <Badge variant="secondary" className="rounded-md text-[10px] bg-white/[0.05] border border-white/[0.06]">
+            <Badge variant="secondary" className="rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
               {client.creatorsCategory}
             </Badge>
           </div>
@@ -417,7 +417,7 @@ export default function ClientDetailPage() {
       {/* Social Links */}
       {hasSocials && (
         <div className="space-y-3">
-          <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Links</h2>
+          <h2 className="text-xs font-medium text-ocean/60 uppercase tracking-wider">Links</h2>
           <div className="flex flex-wrap gap-2">
             <SocialLink href={client.website} icon={Globe} label={client.website} />
             <SocialLink href={client.instagram} icon={Instagram} label={`@${client.instagram.replace(/^@/, "")}`} />
@@ -433,7 +433,7 @@ export default function ClientDetailPage() {
       {(client.company || client.role || client.location || client.businessContext || client.professionalBackground || client.keyAchievements) && (
         <div className="glass rounded-2xl p-6 space-y-5">
           <h2 className="text-sm font-semibold flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-purple-400" /> Basic Information
+            <Briefcase className="h-4 w-4 text-blush-dark" /> Basic Information
           </h2>
           <div className="grid gap-5 md:grid-cols-2">
             <InfoRow label="Name" value={client.name} />
@@ -442,7 +442,7 @@ export default function ClientDetailPage() {
             <InfoRow label="Location" value={client.location} />
           </div>
           {(client.businessContext || client.professionalBackground || client.keyAchievements) && (
-            <div className="border-t border-white/[0.06] pt-5 space-y-5">
+            <div className="border-t border-ocean/[0.06] pt-5 space-y-5">
               <InfoRow label="Business Context" value={client.businessContext} />
               <InfoRow label="Professional Background" value={client.professionalBackground} />
               <InfoRow label="Key Achievements" value={client.keyAchievements} />
@@ -456,29 +456,29 @@ export default function ClientDetailPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-400" /> Performance Analysis
+              <TrendingUp className="h-4 w-4 text-green-600" /> Performance Analysis
             </h2>
             {insights && (
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <p className="text-[11px] text-ocean/60 mt-0.5">
                 Last analysed: {insights.scrapedAt} · scraped last {insights.scrapeWindowDays ?? 365} days
               </p>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={runAnalysis} disabled={analyzing}
-            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-muted-foreground hover:text-foreground">
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean/60 hover:text-ocean">
             <RefreshCw className={`h-3 w-3 ${analyzing ? "animate-spin" : ""}`} />
             {analyzing ? "Analysing…" : insights ? "Re-analyse" : "Analyse"}
           </Button>
         </div>
 
         {analyzeError && (
-          <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">
             {analyzeError}
           </div>
         )}
 
         {analyzing && (
-          <div className="space-y-2 text-sm text-muted-foreground">
+          <div className="space-y-2 text-sm text-ocean/60">
             <p>Scraping Instagram profile…</p>
             <p>Downloading & uploading top videos to Gemini…</p>
             <p>Analysing hooks, scripts, and performance…</p>
@@ -488,9 +488,9 @@ export default function ClientDetailPage() {
 
         {!analyzing && !insights && !analyzeError && (
           <div className="text-center py-8">
-            <TrendingUp className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
-            <p className="text-sm text-muted-foreground">No analysis yet.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">
+            <TrendingUp className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
+            <p className="text-sm text-ocean/60">No analysis yet.</p>
+            <p className="text-xs text-ocean/60 mt-1">
               Click Analyse to scrape the client&apos;s Instagram and identify what&apos;s working.
             </p>
           </div>
@@ -500,7 +500,7 @@ export default function ClientDetailPage() {
           <div className="space-y-6">
             {insights.top30Days.length > 0 && (
               <div>
-                <p className="text-[11px] font-medium text-green-400 uppercase tracking-wider mb-3">Top — Last 30 Days</p>
+                <p className="text-[11px] font-medium text-green-600 uppercase tracking-wider mb-3">Top — Last 30 Days</p>
                 <div className="space-y-3">
                   {insights.top30Days.map((v, i) => <VideoInsightCard key={i} video={v} />)}
                 </div>
@@ -508,7 +508,7 @@ export default function ClientDetailPage() {
             )}
             {insights.topAllTime.length > 0 && (
               <div>
-                <p className="text-[11px] font-medium text-purple-400 uppercase tracking-wider mb-3">
+                <p className="text-[11px] font-medium text-blush-dark uppercase tracking-wider mb-3">
                   Top — Last {insights.scrapeWindowDays ? `${insights.scrapeWindowDays} Days` : "12 Months"} (excluding last 30)
                 </p>
                 <div className="space-y-3">
@@ -524,20 +524,20 @@ export default function ClientDetailPage() {
       <div className="glass rounded-2xl p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-400" /> Content Strategy
+            <Sparkles className="h-4 w-4 text-ivory" /> Content Strategy
           </h2>
           <Button variant="ghost" size="sm" onClick={() => setStrategyOpen(true)}
-            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-muted-foreground hover:text-foreground">
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean/60 hover:text-ocean">
             <Pencil className="h-3 w-3" /> Edit
           </Button>
         </div>
 
         {!hasStrategy ? (
           <div className="text-center py-8">
-            <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
-            <p className="text-sm text-muted-foreground">No strategy defined yet.</p>
+            <Sparkles className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
+            <p className="text-sm text-ocean/60">No strategy defined yet.</p>
             <Button variant="ghost" size="sm" onClick={() => setStrategyOpen(true)}
-              className="mt-3 rounded-xl text-xs text-muted-foreground hover:text-foreground gap-1">
+              className="mt-3 rounded-xl text-xs text-ocean/60 hover:text-ocean gap-1">
               <Plus className="h-3 w-3" /> Add strategy
             </Button>
           </div>
@@ -545,7 +545,7 @@ export default function ClientDetailPage() {
           <div className="space-y-6">
             {goal && (
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-2">Primary Goal</p>
+                <p className="text-[11px] text-ocean/60 uppercase tracking-wider mb-2">Primary Goal</p>
                 <div className={`inline-flex items-center gap-2 rounded-xl border bg-gradient-to-br px-4 py-2 ${goal.color}`}>
                   <span className="text-sm font-semibold">{goal.label}</span>
                   <span className="text-xs opacity-70">→ {goal.description}</span>
@@ -555,13 +555,13 @@ export default function ClientDetailPage() {
 
             {pillars.filter(p => p.name).length > 0 && (
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3">Content Pillars</p>
+                <p className="text-[11px] text-ocean/60 uppercase tracking-wider mb-3">Content Pillars</p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {pillars.filter(p => p.name).map((pillar, i) => (
-                    <div key={i} className="rounded-xl glass border border-white/[0.06] p-3">
+                    <div key={i} className="rounded-xl glass border border-ocean/[0.06] p-3">
                       <p className="text-sm font-medium">{pillar.name}</p>
                       {pillar.subTopics && (
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{pillar.subTopics}</p>
+                        <p className="text-xs text-ocean/60 mt-1 leading-relaxed">{pillar.subTopics}</p>
                       )}
                     </div>
                   ))}
@@ -571,22 +571,22 @@ export default function ClientDetailPage() {
 
             {DAYS.some(d => weekly[d]?.type) && (
               <div>
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-3">Weekly Posting Structure</p>
+                <p className="text-[11px] text-ocean/60 uppercase tracking-wider mb-3">Weekly Posting Structure</p>
                 <div className="grid grid-cols-5 gap-2">
                   {DAYS.map((day) => {
                     const slot = weekly[day];
-                    const colorClass = slot?.type ? TYPE_COLORS[slot.type] || "bg-white/[0.05] text-muted-foreground border-white/[0.06]" : "";
+                    const colorClass = slot?.type ? TYPE_COLORS[slot.type] || "bg-ocean/[0.02] text-ocean/60 border-ocean/[0.06]" : "";
                     return (
                       <div key={day} className="space-y-1.5">
-                        <p className="text-[11px] font-medium text-muted-foreground text-center">{day}</p>
+                        <p className="text-[11px] font-medium text-ocean/60 text-center">{day}</p>
                         {slot?.type ? (
                           <div className={`rounded-xl border px-2 py-2 text-center ${colorClass}`}>
                             <p className="text-[11px] font-medium leading-tight">{slot.type}</p>
                             {slot.format && <p className="text-[10px] opacity-60 mt-1 leading-tight">{slot.format}</p>}
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed border-white/[0.08] px-2 py-2 text-center">
-                            <p className="text-[10px] text-muted-foreground/40">—</p>
+                          <div className="rounded-xl border border-dashed border-ocean/5 px-2 py-2 text-center">
+                            <p className="text-[10px] text-ocean/40">—</p>
                           </div>
                         )}
                       </div>

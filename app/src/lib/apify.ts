@@ -105,8 +105,8 @@ export async function scrapeCreatorStats(username: string): Promise<CreatorStats
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         directUrls: [`https://www.instagram.com/${username}/`],
-        resultsType: "stories",
-        resultsLimit: 100,
+        resultsType: "posts",
+        resultsLimit: 50,
         onlyPostsNewerThan: sinceDate,
         addParentData: false,
       }),

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Film, Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -89,7 +89,6 @@ export function AppSidebar() {
       setClients((prev) => [...prev, created]);
       setNewOpen(false);
       resetForm();
-      // Navigate with ?setup=1 so the information page auto-runs enrich + follow-up
       router.push(`/clients/${created.id}/information?setup=1`);
     } finally {
       setCreating(false);
@@ -100,29 +99,23 @@ export function AppSidebar() {
 
   return (
     <>
-      <Sidebar className="border-r border-white/[0.06]">
+      <Sidebar className="border-r border-ocean/[0.06]">
         {/* Logo */}
         <SidebarHeader className="px-5 py-5 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 glow-sm">
-              <Film className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <h1 className="text-sm font-semibold tracking-tight">Virality AI</h1>
-              <p className="text-[11px] text-muted-foreground">Instagram Reels AI</p>
-            </div>
-          </div>
+          <h1 className="text-xl font-light tracking-[0.3em] uppercase text-ocean">
+            SUN<span className="text-ivory">X</span>CA
+          </h1>
         </SidebarHeader>
 
         <SidebarContent className="flex flex-col overflow-hidden">
 
-          {/* ── Client List (top) ── */}
+          {/* Client List */}
           <div className="flex flex-col px-3 pt-1 pb-3">
             <div className="flex items-center justify-between px-2 mb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Clients</span>
+              <span className="text-[10px] font-medium uppercase tracking-widest text-ocean/30">Clients</span>
               <button
                 onClick={() => setNewOpen(true)}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-ocean/40 hover:text-ocean hover:bg-blush-light/50 transition-colors"
               >
                 <Plus className="h-3 w-3" /> Neu
               </button>
@@ -137,34 +130,34 @@ export function AppSidebar() {
                     href={`/clients/${client.id}/information`}
                     className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                       isActive
-                        ? "bg-white/[0.07] text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                        ? "bg-blush-light/60 text-ocean font-medium"
+                        : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
                     }`}
                   >
-                    <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-purple-400" : "bg-white/20"}`} />
+                    <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
                     <span className="truncate">{client.configName || client.name || "Unnamed"}</span>
                   </Link>
                 );
               })}
 
               {clients.length === 0 && (
-                <p className="px-3 py-4 text-center text-[12px] text-muted-foreground/50">
+                <p className="px-3 py-4 text-center text-[12px] text-ocean/30">
                   Noch keine Clients
                 </p>
               )}
             </div>
           </div>
 
-          {/* ── Tools ── */}
+          {/* Tools */}
           <div className="px-3 pb-3 shrink-0">
-            <span className="block px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Tools</span>
+            <span className="block px-2 mb-2 text-[10px] font-medium uppercase tracking-widest text-ocean/30">Tools</span>
             <div className="space-y-0.5">
               <Link
                 href="/training"
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                   pathname.startsWith("/training")
-                    ? "bg-white/[0.07] text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                    ? "bg-blush-light/60 text-ocean font-medium"
+                    : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
                 }`}
               >
                 <BookOpen className="h-3.5 w-3.5 shrink-0" />
@@ -174,8 +167,8 @@ export function AppSidebar() {
                 href="/transcribe"
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                   pathname.startsWith("/transcribe")
-                    ? "bg-white/[0.07] text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                    ? "bg-blush-light/60 text-ocean font-medium"
+                    : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
                 }`}
               >
                 <Mic className="h-3.5 w-3.5 shrink-0" />
@@ -184,14 +177,14 @@ export function AppSidebar() {
             </div>
           </div>
 
-          {/* ── Divider ── */}
-          <div className="mx-4 border-t border-white/[0.06] shrink-0" />
+          {/* Divider */}
+          <div className="mx-4 border-t border-ocean/[0.06] shrink-0" />
 
-          {/* ── Tabs for active client (bottom) ── */}
+          {/* Tabs for active client */}
           <div className="px-3 py-4 shrink-0">
             {activeClientId ? (
               <>
-                <span className="block px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                <span className="block px-2 mb-2 text-[10px] font-medium uppercase tracking-widest text-ocean/30">
                   {clients.find((c) => c.id === activeClientId)?.configName ?? "Client"}
                 </span>
                 <div className="space-y-0.5">
@@ -203,38 +196,38 @@ export function AppSidebar() {
                         href={`/clients/${activeClientId}/${tab.href}`}
                         className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                           isActive
-                            ? "bg-white/[0.07] text-foreground font-medium"
-                            : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                            ? "bg-blush-light/60 text-ocean font-medium"
+                            : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
                         }`}
                       >
                         <tab.icon className="h-3.5 w-3.5 shrink-0" />
                         <span className="flex-1">{tab.title}</span>
                         {tab.href === "scripts" && activeClientId && generations.get(activeClientId)?.status === "generating" && (
-                          <Loader2 className="h-3 w-3 animate-spin text-amber-400 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ivory shrink-0" />
                         )}
                         {tab.href === "scripts" && activeClientId && generations.get(activeClientId)?.status === "done" && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "videos" && pipelineRunning && (
-                          <Loader2 className="h-3 w-3 animate-spin text-purple-400 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
                         )}
                         {tab.href === "videos" && !pipelineRunning && pipelineProgress?.status === "completed" && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "strategy" && activeClientId && (strategyGen.get(activeClientId)?.status === "running" || analysisGen.get(activeClientId)?.status === "running") && (
-                          <Loader2 className="h-3 w-3 animate-spin text-indigo-400 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
                         )}
                         {tab.href === "strategy" && activeClientId && strategyGen.get(activeClientId)?.status === "done" && analysisGen.get(activeClientId)?.status !== "running" && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "information" && activeClientId && enrichGen.get(activeClientId)?.status === "running" && (
-                          <Loader2 className="h-3 w-3 animate-spin text-blue-400 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
                         )}
                         {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "running" && (
-                          <Loader2 className="h-3 w-3 animate-spin text-purple-400 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
                         )}
                         {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "done" && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                       </Link>
                     );
@@ -242,7 +235,7 @@ export function AppSidebar() {
                 </div>
               </>
             ) : (
-              <p className="px-2 text-[12px] text-muted-foreground/50">
+              <p className="px-2 text-[12px] text-ocean/30">
                 Wähle einen Client aus
               </p>
             )}
@@ -253,115 +246,113 @@ export function AppSidebar() {
 
       {/* New Client Dialog */}
       <Dialog open={newOpen} onOpenChange={(v) => { if (!v) { setNewOpen(false); resetForm(); } else setNewOpen(true); }}>
-        <DialogContent className="sm:max-w-md glass border-white/[0.08]">
-          <DialogTitle className="text-base font-semibold">Neuer Client</DialogTitle>
-          <p className="text-xs text-muted-foreground -mt-1">
+        <DialogContent className="sm:max-w-md bg-white border border-ocean/8 shadow-xl">
+          <DialogTitle className="text-base font-medium text-ocean">Neuer Client</DialogTitle>
+          <p className="text-xs text-ocean/50 -mt-1">
             Gib die Links an — die KI füllt das Profil automatisch aus.
           </p>
 
           <div className="space-y-3 pt-1">
-            {/* Name */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Name *</Label>
+              <Label className="text-xs text-ocean/50">Name *</Label>
               <Input
                 autoFocus
                 placeholder="Max Mustermann"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08]"
+                className="h-10 rounded-xl bg-warm-white border-ocean/10 text-ocean placeholder:text-ocean/25 focus:border-blush"
               />
             </div>
 
-            {/* Links */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Instagram</Label>
+              <Label className="text-xs text-ocean/50">Instagram</Label>
               <div className="relative">
-                <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
                 <Input
                   placeholder="@handle oder instagram.com/..."
                   value={form.instagram}
                   onChange={(e) => setForm({ ...form, instagram: e.target.value })}
-                  className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                  className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Website</Label>
+              <Label className="text-xs text-ocean/50">Website</Label>
               <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
                 <Input
                   placeholder="www.example.com"
                   value={form.website}
                   onChange={(e) => setForm({ ...form, website: e.target.value })}
-                  className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                  className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">TikTok</Label>
+                <Label className="text-xs text-ocean/50">TikTok</Label>
                 <div className="relative">
-                  <TikTokIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                  <TikTokIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
                   <Input
                     placeholder="@handle"
                     value={form.tiktok}
                     onChange={(e) => setForm({ ...form, tiktok: e.target.value })}
-                    className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">YouTube</Label>
+                <Label className="text-xs text-ocean/50">YouTube</Label>
                 <div className="relative">
-                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
                   <Input
                     placeholder="@channel oder youtube.com/..."
                     value={form.youtube}
                     onChange={(e) => setForm({ ...form, youtube: e.target.value })}
-                    className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">LinkedIn</Label>
+                <Label className="text-xs text-ocean/50">LinkedIn</Label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
                   <Input
                     placeholder="linkedin.com/in/..."
                     value={form.linkedin}
                     onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
-                    className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
                   />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">X / Twitter</Label>
+                <Label className="text-xs text-ocean/50">X / Twitter</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-muted-foreground/50">𝕏</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-ocean/30">&#x1D54F;</span>
                   <Input
                     placeholder="@handle"
                     value={form.twitter}
                     onChange={(e) => setForm({ ...form, twitter: e.target.value })}
-                    className="h-10 rounded-xl bg-white/[0.04] border-white/[0.08] pl-9"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
                   />
                 </div>
               </div>
             </div>
 
             {!hasLinks && form.name && (
-              <p className="text-[11px] text-muted-foreground/60">
-                💡 Mindestens einen Link angeben damit die KI das Profil automatisch ausfüllen kann.
+              <p className="text-[11px] text-ocean/40">
+                Mindestens einen Link angeben damit die KI das Profil automatisch ausfüllen kann.
               </p>
             )}
 
             <Button
               onClick={createClient}
               disabled={!form.name.trim() || creating}
-              className="w-full rounded-xl h-10 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 mt-1"
+              className="w-full rounded-full h-10 bg-ocean hover:bg-ocean-light text-white font-medium tracking-wide border-0 mt-1 transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20"
             >
-              {creating ? "Erstelle…" : hasLinks ? "Anlegen & KI-Analyse starten" : "Client anlegen"}
+              {creating ? "Erstelle..." : hasLinks ? "Anlegen & KI-Analyse starten" : "Client anlegen"}
             </Button>
           </div>
         </DialogContent>

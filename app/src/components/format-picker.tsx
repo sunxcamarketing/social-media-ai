@@ -27,8 +27,8 @@ export function FormatPicker({ value, options, onChange }: FormatPickerProps) {
             onClick={() => toggle(fmt)}
             className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all ${
               active
-                ? "bg-green-500/20 border-green-500/40 text-green-300"
-                : "bg-white/[0.03] border-white/[0.08] text-muted-foreground hover:border-white/[0.15] hover:text-foreground"
+                ? "bg-green-50 border-green-200 text-green-600"
+                : "bg-ocean/[0.02] border-ocean/[0.06] text-ocean/60 hover:border-ocean/[0.15] hover:text-ocean"
             }`}
           >
             {fmt}
@@ -36,7 +36,7 @@ export function FormatPicker({ value, options, onChange }: FormatPickerProps) {
         );
       })}
       {selected.length > 1 && (
-        <span className="self-center text-[10px] text-muted-foreground/50 italic ml-1">
+        <span className="self-center text-[10px] text-ocean/40 italic ml-1">
           {selected.join(" + ")}
         </span>
       )}

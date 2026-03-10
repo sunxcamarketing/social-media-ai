@@ -92,7 +92,7 @@ function VideosContent() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Videos</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-ocean/60">
           Browse analyzed competitor reels with AI insights
         </p>
       </div>
@@ -100,7 +100,7 @@ function VideosContent() {
       {/* Filters & Sort */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={filterConfig} onValueChange={setFilterConfig}>
-          <SelectTrigger className="w-[220px] rounded-xl glass border-white/[0.08] h-10">
+          <SelectTrigger className="w-[220px] rounded-xl glass border-ocean/[0.06] h-10">
             <SelectValue placeholder="Filter by config" />
           </SelectTrigger>
           <SelectContent>
@@ -112,7 +112,7 @@ function VideosContent() {
         </Select>
 
         <Select value={filterCreator} onValueChange={setFilterCreator}>
-          <SelectTrigger className="w-[200px] rounded-xl glass border-white/[0.08] h-10">
+          <SelectTrigger className="w-[200px] rounded-xl glass border-ocean/[0.06] h-10">
             <SelectValue placeholder="Filter by creator" />
           </SelectTrigger>
           <SelectContent>
@@ -124,8 +124,8 @@ function VideosContent() {
         </Select>
 
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-          <SelectTrigger className="w-[180px] rounded-xl glass border-white/[0.08] h-10">
-            <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+          <SelectTrigger className="w-[180px] rounded-xl glass border-ocean/[0.06] h-10">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 text-ocean/60" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -136,7 +136,7 @@ function VideosContent() {
           </SelectContent>
         </Select>
 
-        <Badge variant="secondary" className="rounded-lg px-3 py-1.5 text-xs bg-white/[0.05] border border-white/[0.08]">
+        <Badge variant="secondary" className="rounded-lg px-3 py-1.5 text-xs bg-ocean/[0.02] border border-ocean/[0.06]">
           {filtered.length} videos
         </Badge>
       </div>
@@ -148,13 +148,13 @@ function VideosContent() {
 
           return (
             <div key={id} className="group">
-              <div className="glass rounded-2xl overflow-hidden transition-all duration-300 hover:border-white/[0.12]">
+              <div className="glass rounded-2xl overflow-hidden transition-all duration-300 hover:border-ocean/[0.12]">
                 {/* Thumbnail — clickable, 9:16 ratio */}
                 <a
                   href={video.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="relative block aspect-[9/16] w-full bg-white/[0.02] overflow-hidden"
+                  className="relative block aspect-[9/16] w-full bg-ocean/[0.02] overflow-hidden"
                 >
                   {video.thumbnail ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -165,7 +165,7 @@ function VideosContent() {
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center">
-                      <Film className="h-10 w-10 text-muted-foreground/20" />
+                      <Film className="h-10 w-10 text-ocean/20" />
                     </div>
                   )}
                   {/* Views overlay — Instagram style */}
@@ -188,12 +188,12 @@ function VideosContent() {
                       className="shrink-0 ml-1.5 transition-colors"
                     >
                       <Star
-                        className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40 hover:text-yellow-400/60"}`}
+                        className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-ocean/40 hover:text-yellow-400/60"}`}
                       />
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-3 text-[11px] text-ocean/60">
                     <span className="inline-flex items-center gap-1">
                       <Heart className="h-3 w-3" />
                       {formatViews(video.likes)}
@@ -205,7 +205,7 @@ function VideosContent() {
                     <span className="ml-auto text-[10px]">{video.datePosted}</span>
                   </div>
 
-                  <Badge variant="secondary" className="rounded-md text-[10px] bg-white/[0.05] border border-white/[0.06] text-muted-foreground">
+                  <Badge variant="secondary" className="rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06] text-ocean/60">
                     {video.configName}
                   </Badge>
 
@@ -215,7 +215,7 @@ function VideosContent() {
                       variant="ghost"
                       size="sm"
                       onClick={() => openModal(video, "analysis")}
-                      className="flex-1 rounded-xl text-[11px] h-7 gap-1 transition-all duration-200 glass border-white/[0.06] text-muted-foreground hover:text-foreground"
+                      className="flex-1 rounded-xl text-[11px] h-7 gap-1 transition-all duration-200 glass border-ocean/[0.06] text-ocean/60 hover:text-ocean"
                     >
                       <Search className="h-3 w-3" />
                       Analysis
@@ -224,7 +224,7 @@ function VideosContent() {
                       variant="ghost"
                       size="sm"
                       onClick={() => openModal(video, "concepts")}
-                      className="flex-1 rounded-xl text-[11px] h-7 gap-1 transition-all duration-200 glass border-white/[0.06] text-muted-foreground hover:text-foreground"
+                      className="flex-1 rounded-xl text-[11px] h-7 gap-1 transition-all duration-200 glass border-ocean/[0.06] text-ocean/60 hover:text-ocean"
                     >
                       <Sparkles className="h-3 w-3" />
                       Concepts
@@ -239,9 +239,9 @@ function VideosContent() {
 
       {filtered.length === 0 && (
         <div className="glass rounded-2xl p-12 text-center">
-          <Film className="mx-auto h-10 w-10 text-muted-foreground/30" />
+          <Film className="mx-auto h-10 w-10 text-ocean/30" />
           <h3 className="mt-4 font-semibold">No videos found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-ocean/60">
             Run a pipeline analysis to generate results, or adjust your filters.
           </p>
         </div>
@@ -249,16 +249,16 @@ function VideosContent() {
 
       {/* Analysis / Concepts Modal */}
       <Dialog open={!!modalVideo} onOpenChange={(open) => { if (!open) setModalVideo(null); }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden glass-strong rounded-2xl border-white/[0.08] p-0 gap-0">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden glass-strong rounded-2xl border-ocean/[0.06] p-0 gap-0">
           <DialogTitle className="sr-only">
             {modalSection === "analysis" ? "Video Analysis" : "New Concepts"}
           </DialogTitle>
           {modalVideo && (
             <>
               {/* Modal header */}
-              <div className="flex items-center gap-4 p-5 border-b border-white/[0.06]">
+              <div className="flex items-center gap-4 p-5 border-b border-ocean/[0.06]">
                 {/* Mini thumbnail */}
-                <div className="relative h-16 w-12 shrink-0 rounded-lg overflow-hidden bg-white/[0.02]">
+                <div className="relative h-16 w-12 shrink-0 rounded-lg overflow-hidden bg-ocean/[0.02]">
                   {modalVideo.thumbnail ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -268,7 +268,7 @@ function VideosContent() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <Film className="h-4 w-4 text-muted-foreground/30" />
+                      <Film className="h-4 w-4 text-ocean/30" />
                     </div>
                   )}
                 </div>
@@ -279,12 +279,12 @@ function VideosContent() {
                       href={modalVideo.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-purple-400 transition-colors"
+                      className="text-ocean/60 hover:text-blush-dark transition-colors"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   </div>
-                  <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="mt-1 flex items-center gap-3 text-xs text-ocean/60">
                     <span className="inline-flex items-center gap-1">
                       <Play className="h-3 w-3 fill-current" />
                       {formatViews(modalVideo.views)}
@@ -307,8 +307,8 @@ function VideosContent() {
                     onClick={() => setModalSection("analysis")}
                     className={`rounded-xl text-xs h-8 gap-1.5 transition-all duration-200 ${
                       modalSection === "analysis"
-                        ? "bg-purple-500/15 text-purple-300 border border-purple-500/20"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-blush/20 text-blush-dark border border-blush/40"
+                        : "text-ocean/60 hover:text-ocean"
                     }`}
                   >
                     <Search className="h-3 w-3" />
@@ -320,8 +320,8 @@ function VideosContent() {
                     onClick={() => setModalSection("concepts")}
                     className={`rounded-xl text-xs h-8 gap-1.5 transition-all duration-200 ${
                       modalSection === "concepts"
-                        ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/20"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-blush/20 text-blush-dark border border-blush/40"
+                        : "text-ocean/60 hover:text-ocean"
                     }`}
                   >
                     <Sparkles className="h-3 w-3" />

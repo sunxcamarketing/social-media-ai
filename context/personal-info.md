@@ -2,7 +2,7 @@
 
 ## Your Role
 
-Oleg — founder and operator. Builds the systems, serves clients, and directs the AI-assisted workflow. Responsible for system design, client delivery, and content strategy.
+Aysun — founder and operator. Builds the systems, serves clients, and directs the AI-assisted workflow. Responsible for system design, client delivery, and content strategy.
 
 ## Key Responsibilities
 

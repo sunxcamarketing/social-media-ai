@@ -100,6 +100,7 @@ export interface Script {
 
 export interface TrainingScript {
   id: string;
+  clientId: string;     // associated client (empty = global)
   format: string;       // matches BUILT_IN_FORMATS names
   textHook: string;     // on-screen text hook
   visualHook: string;   // visual/action hook
@@ -107,6 +108,15 @@ export interface TrainingScript {
   script: string;       // main body script
   cta: string;          // call to action
   createdAt: string;
+}
+
+export interface TopicPlanItem {
+  day: string;          // "Mon", "Tue", etc.
+  pillar: string;
+  contentType: string;
+  format: string;
+  title: string;        // short working title
+  description: string;  // 1-sentence description
 }
 
 export interface PipelineParams {

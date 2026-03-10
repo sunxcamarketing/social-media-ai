@@ -2,7 +2,7 @@
 
 ## Organization Overview
 
-Oleg runs a social media / content creation business helping brands and creators produce viral Instagram Reels. The core offering is a systematic, AI-powered approach to viral content creation — analyzing what already works for competitors and adapting proven concepts for clients.
+Aysun runs a social media / content creation business helping brands and creators produce viral Instagram Reels. The core offering is a systematic, AI-powered approach to viral content creation — analyzing what already works for competitors and adapting proven concepts for clients.
 
 ## Products / Services
 
