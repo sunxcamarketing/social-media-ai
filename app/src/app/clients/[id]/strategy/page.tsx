@@ -35,6 +35,7 @@ import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
 import { FormatPicker } from "@/components/format-picker";
 import { useGeneration } from "@/context/generation-context";
+import { useI18n } from "@/lib/i18n";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -89,7 +90,7 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
             <img src={video.thumbnail} alt="" className="h-20 w-14 rounded-xl object-cover" />
           ) : (
             <div className="h-20 w-14 rounded-xl bg-ocean/[0.02] flex items-center justify-center">
-              <Eye className="h-4 w-4 text-ocean/30" />
+              <Eye className="h-4 w-4 text-ocean/60" />
             </div>
           )}
         </div>
@@ -97,7 +98,7 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-medium leading-snug line-clamp-2">{video.topic || "—"}</p>
             <a href={video.url} target="_blank" rel="noopener noreferrer"
-              className="shrink-0 text-ocean/40 hover:text-ocean transition-colors mt-0.5">
+              className="shrink-0 text-ocean/65 hover:text-ocean transition-colors mt-0.5">
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
@@ -164,6 +165,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
   contentTypes: string[]; formats: string[];
   postsPerWeek: number;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<StrategyForm>(initial);
   const [saving, setSaving] = useState(false);
 
@@ -187,10 +189,10 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/[0.06]">
-        <DialogHeader><DialogTitle>Strategie bearbeiten</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("strategyEdit.title")}</DialogTitle></DialogHeader>
         <div className="space-y-6 pt-2">
           <div className="space-y-3">
-            <p className="text-xs font-medium text-ocean uppercase tracking-wider">Primäres Ziel</p>
+            <p className="text-xs font-medium text-ocean uppercase tracking-wider">{t("strategyEdit.primaryGoal")}</p>
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(GOAL_LABELS).map(([key, { label, description }]) => (
                 <button key={key} type="button"
@@ -213,7 +215,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
               {form.pillars.length < 5 && (
                 <Button variant="ghost" size="sm" onClick={addPillar}
                   className="h-7 gap-1 text-xs rounded-lg px-2 text-ocean hover:text-ocean">
-                  <Plus className="h-3 w-3" /> Pillar hinzufügen
+                  <Plus className="h-3 w-3" /> {t("strategyEdit.addPillar")}
                 </Button>
               )}
             </div>
@@ -224,7 +226,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
                     <Input value={pillar.name} onChange={(e) => setPillar(i, "name", e.target.value)}
                       placeholder="Pillar-Name" className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
                     <Input value={pillar.subTopics} onChange={(e) => setPillar(i, "subTopics", e.target.value)}
-                      placeholder="Unter-Themen" className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
+                      placeholder={t("strategyEdit.subTopics")} className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => removePillar(i)}
                     className="h-10 w-10 p-0 rounded-xl text-ocean hover:text-red-500 shrink-0">
@@ -233,17 +235,17 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
                 </div>
               ))}
               {form.pillars.length === 0 && (
-                <p className="text-xs text-ocean italic">Noch keine Pillars — bis zu 5 möglich.</p>
+                <p className="text-xs text-ocean italic">{t("strategyEdit.noPillars")}</p>
               )}
             </div>
           </div>
 
           <div className="space-y-3 border-t border-ocean/[0.06] pt-5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-ocean uppercase tracking-wider">Wöchentliche Struktur</p>
+              <p className="text-xs font-medium text-ocean uppercase tracking-wider">{t("strategyEdit.weeklyStructure")}</p>
               <span className="flex items-center gap-1 text-[11px] text-ivory/80">
                 <CalendarDays className="h-3 w-3" />
-                {postsPerWeek} Posts / Woche
+                {postsPerWeek} {t("strategy.postsPerWeek")}
               </span>
             </div>
             <div className="space-y-3">
@@ -271,7 +273,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
 
           <Button onClick={handleSave} disabled={saving}
             className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0">
-            {saving ? "Wird gespeichert…" : "Strategie speichern"}
+            {saving ? t("info.saving") : t("strategyEdit.save")}
           </Button>
         </div>
       </DialogContent>
@@ -288,6 +290,7 @@ interface StrategyMeta {
 }
 
 export default function ClientStrategyPage() {
+  const { t, lang } = useI18n();
   const { id } = useParams<{ id: string }>();
   const [client, setClient] = useState<Config | null>(null);
   const [strategyOpen, setStrategyOpen] = useState(false);
@@ -364,7 +367,7 @@ export default function ClientStrategyPage() {
   };
 
   if (!client) {
-    return <div className="flex items-center justify-center h-64 text-ocean text-sm">Lädt…</div>;
+    return <div className="flex items-center justify-center h-64 text-ocean text-sm">{t("common.loading")}</div>;
   }
 
   const pillars = parsePillars(client.strategyPillars);
@@ -390,8 +393,8 @@ export default function ClientStrategyPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Strategie</h1>
-        <p className="mt-1 text-sm text-ocean">Content-Strategie und Performance-Insights</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("strategy.title")}</h1>
+        <p className="mt-1 text-sm text-ocean">{t("strategy.subtitle")}</p>
       </div>
 
       {/* Framework Connection Strip */}
@@ -399,7 +402,7 @@ export default function ClientStrategyPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-blush-dark shrink-0" />
-            <p className="text-xs font-medium text-blush-dark">Strategie-Framework aktiv</p>
+            <p className="text-xs font-medium text-blush-dark">{t("strategy.frameworkActive")}</p>
           </div>
           <div className="flex items-center gap-4 text-[11px] text-ocean flex-wrap">
             <span className="flex items-center gap-1.5">
@@ -422,7 +425,7 @@ export default function ClientStrategyPage() {
                     <option key={n} value={n} className="bg-white/80 text-ocean">{n}×</option>
                   ))}
                 </select>
-                {" "}pro Woche
+                {" "}{t("strategy.perWeek")}
               </span>
             </span>
             <span className="text-ocean/[0.15]">·</span>
@@ -433,7 +436,7 @@ export default function ClientStrategyPage() {
             <span className="text-ocean/[0.15]">·</span>
             <span className="flex items-center gap-1.5">
               <FileText className="h-3 w-3 text-green-600" />
-              <span><strong className="text-ocean">{meta.formatCount}</strong> Formate</span>
+              <span><strong className="text-ocean">{meta.formatCount}</strong> {t("strategy.formats")}</span>
             </span>
             <span className="text-ocean/[0.15]">·</span>
             <span className="flex items-center gap-1.5">
@@ -442,11 +445,11 @@ export default function ClientStrategyPage() {
                 <strong className={meta.trainingCount > 0 ? "text-blush-dark" : "text-ocean"}>
                   {meta.trainingCount}
                 </strong>{" "}
-                Training-Beispiele
+                {t("strategy.trainingExamples")}
               </span>
             </span>
             <a href="/strategy" className="flex items-center gap-1 text-blush-dark/70 hover:text-blush-dark transition-colors ml-1">
-              Framework ansehen <ArrowRight className="h-3 w-3" />
+              {t("strategy.viewFramework")} <ArrowRight className="h-3 w-3" />
             </a>
           </div>
         </div>
@@ -455,15 +458,15 @@ export default function ClientStrategyPage() {
           <span className="flex items-center gap-1 rounded-lg bg-blush/20 border border-blush/40 px-2 py-0.5">
             <Layers className="h-2.5 w-2.5 text-blush-dark" /><span className="text-blush-dark font-medium">PILLAR</span>
           </span>
-          <span className="text-ocean/40">+</span>
+          <span className="text-ocean/65">+</span>
           <span className="flex items-center gap-1 rounded-lg bg-blue-500/10 border border-blue-500/20 px-2 py-0.5">
             <Target className="h-2.5 w-2.5 text-blue-400" /><span className="text-blue-300 font-medium">TYPE</span>
           </span>
-          <span className="text-ocean/40">+</span>
+          <span className="text-ocean/65">+</span>
           <span className="flex items-center gap-1 rounded-lg bg-green-50 border border-green-200 px-2 py-0.5">
             <FileText className="h-2.5 w-2.5 text-green-600" /><span className="text-green-600 font-medium">FORMAT</span>
           </span>
-          <span className="text-ocean/40">=</span>
+          <span className="text-ocean/65">=</span>
           <span className="text-ocean font-medium">CONTENT</span>
         </div>
       </div>
@@ -473,18 +476,18 @@ export default function ClientStrategyPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" /> Performance-Analyse
+              <TrendingUp className="h-4 w-4 text-green-600" /> {t("strategy.performance")}
             </h2>
             {insights && (
               <p className="text-[11px] text-ocean mt-0.5">
-                Zuletzt analysiert: {insights.scrapedAt} · letzte {insights.scrapeWindowDays ?? 365} Tage
+                {t("strategy.lastAnalyzed")} {insights.scrapedAt} · {t("strategy.last")} {insights.scrapeWindowDays ?? 365} {t("strategy.days")}
               </p>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={runAnalysis} disabled={analyzing}
             className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean hover:text-ocean">
             <RefreshCw className={`h-3 w-3 ${analyzing ? "animate-spin" : ""}`} />
-            {analyzing ? "Analysiert…" : insights ? "Neu analysieren" : "Analysieren"}
+            {analyzing ? t("strategy.analyzing") : insights ? t("strategy.reanalyze") : t("strategy.analyze")}
           </Button>
         </div>
 
@@ -496,19 +499,19 @@ export default function ClientStrategyPage() {
 
         {analyzing && (
           <div className="space-y-2 text-sm text-ocean">
-            <p>Instagram-Profil wird gescrapt…</p>
-            <p>Top-Videos werden heruntergeladen &amp; bei Gemini hochgeladen…</p>
-            <p>Hooks, Scripts und Performance werden analysiert…</p>
-            <p className="text-[11px] opacity-60">Das dauert 1–3 Minuten.</p>
+            <p>{t("strategy.scrapingProfile")}</p>
+            <p>{t("strategy.downloadingVideos")}</p>
+            <p>{t("strategy.analyzingHooks")}</p>
+            <p className="text-[11px] opacity-60">{t("strategy.analysisDuration")}</p>
           </div>
         )}
 
         {!analyzing && !insights && !analyzeError && (
           <div className="text-center py-8">
             <TrendingUp className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
-            <p className="text-sm text-ocean">Noch keine Analyse vorhanden.</p>
+            <p className="text-sm text-ocean">{t("strategy.noAnalysis")}</p>
             <p className="text-xs text-ocean/60 mt-1">
-              Analysieren klicken, um das Instagram-Profil zu scrapen und herauszufinden, was funktioniert.
+              {t("strategy.analyzeHint")}
             </p>
           </div>
         )}
@@ -517,7 +520,7 @@ export default function ClientStrategyPage() {
           <div className="space-y-6">
             {insights.top30Days.length > 0 && (
               <div>
-                <p className="text-[11px] font-medium text-green-600 uppercase tracking-wider mb-3">Top — Letzte 30 Tage</p>
+                <p className="text-[11px] font-medium text-green-600 uppercase tracking-wider mb-3">{t("strategy.topLast30")}</p>
                 <div className="space-y-3">
                   {insights.top30Days.map((v, i) => <VideoInsightCard key={i} video={v} />)}
                 </div>
@@ -526,7 +529,7 @@ export default function ClientStrategyPage() {
             {insights.topAllTime.length > 0 && (
               <div>
                 <p className="text-[11px] font-medium text-blush-dark uppercase tracking-wider mb-3">
-                  Top — Letzte {insights.scrapeWindowDays ? `${insights.scrapeWindowDays} Tage` : "12 Monate"} (ohne letzte 30)
+                  {t("strategy.topLast")} {insights.scrapeWindowDays ? `${insights.scrapeWindowDays} ${t("strategy.days")}` : "12 Monate"} {t("strategy.excludingLast30")}
                 </p>
                 <div className="space-y-3">
                   {insights.topAllTime.map((v, i) => <VideoInsightCard key={i} video={v} />)}
@@ -541,20 +544,20 @@ export default function ClientStrategyPage() {
       <div className="glass rounded-2xl p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-ivory" /> Content-Strategie
+            <Sparkles className="h-4 w-4 text-ivory" /> {t("strategy.contentStrategy")}
           </h2>
           <div className="flex gap-1.5">
             <Button variant="ghost" size="sm" onClick={generateStrategy} disabled={generating}
               className="h-8 gap-1.5 rounded-lg px-3 text-xs text-blush-dark hover:text-blush-dark hover:bg-blush/20 disabled:opacity-40">
               {generating
-                ? <><Loader2 className="h-3 w-3 animate-spin" /> Generiert…</>
-                : <><Wand2 className="h-3 w-3" /> {hasStrategy ? "Neu generieren" : "Mit KI generieren"}</>
+                ? <><Loader2 className="h-3 w-3 animate-spin" /> {t("strategy.generating")}</>
+                : <><Wand2 className="h-3 w-3" /> {hasStrategy ? "Neu generieren" : t("strategy.generateWithAI")}</>
               }
             </Button>
             {hasStrategy && (
               <Button variant="ghost" size="sm" onClick={() => setStrategyOpen(true)}
                 className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean hover:text-ocean">
-                <Pencil className="h-3 w-3" /> Bearbeiten
+                <Pencil className="h-3 w-3" /> {t("common.edit")}
               </Button>
             )}
           </div>
@@ -567,10 +570,10 @@ export default function ClientStrategyPage() {
         )}
         {generating && (
           <div className="rounded-xl bg-blush/10 border border-blush/40 px-4 py-3 space-y-1">
-            <p className="text-sm text-ocean">KI analysiert das Kundenprofil und erstellt eine Strategie…</p>
+            <p className="text-sm text-ocean">{t("strategy.aiGenerating")}</p>
             {meta.trainingCount > 0 && (
               <p className="text-[11px] text-blush-dark/70">
-                {meta.trainingCount} Training-Beispiele aus der Strategie-Bibliothek werden berücksichtigt.
+                {meta.trainingCount} {t("strategy.trainingConsidered")}
               </p>
             )}
           </div>
@@ -579,19 +582,19 @@ export default function ClientStrategyPage() {
         {!generating && !hasStrategy ? (
           <div className="text-center py-8">
             <Wand2 className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
-            <p className="text-sm text-ocean">Noch keine Strategie vorhanden.</p>
+            <p className="text-sm text-ocean">{t("strategy.noStrategy")}</p>
             <p className="text-xs text-ocean/60 mt-1 mb-4">
-              KI erstellt einen Vorschlag basierend auf dem Kundenprofil
-              {meta.trainingCount > 0 && ` und ${meta.trainingCount} gespeicherten Training-Beispielen`}.
+              {t("strategy.aiSuggestion")}
+              {meta.trainingCount > 0 && ` und ${meta.trainingCount} ${t("strategy.savedTraining")}`}.
             </p>
             <div className="flex items-center justify-center gap-2">
               <Button size="sm" onClick={generateStrategy} disabled={generating}
                 className="rounded-xl h-9 gap-1.5 bg-ocean hover:bg-ocean-light border-0 text-xs">
-                <Wand2 className="h-3 w-3" /> Mit KI generieren
+                <Wand2 className="h-3 w-3" /> {t("strategy.generateWithAI")}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setStrategyOpen(true)}
                 className="rounded-xl h-9 gap-1 text-xs text-ocean hover:text-ocean">
-                <Plus className="h-3 w-3" /> Manuell hinzufügen
+                <Plus className="h-3 w-3" /> {t("strategy.addManually")}
               </Button>
             </div>
           </div>
@@ -601,7 +604,7 @@ export default function ClientStrategyPage() {
             {/* Goal */}
             {goal && (
               <div>
-                <p className="text-[11px] text-ocean uppercase tracking-wider mb-2">Primäres Ziel</p>
+                <p className="text-[11px] text-ocean uppercase tracking-wider mb-2">{t("strategy.primaryGoal")}</p>
                 <div className={`inline-flex items-center gap-2 rounded-xl border bg-gradient-to-br px-4 py-2 ${goal.color}`}>
                   <span className="text-sm font-semibold">{goal.label}</span>
                   <span className="text-xs opacity-70">→ {goal.description}</span>
@@ -612,7 +615,7 @@ export default function ClientStrategyPage() {
             {/* Content Pillars */}
             {pillars.filter(p => p.name).length > 0 && (
               <div>
-                <p className="text-[11px] text-ocean uppercase tracking-wider mb-3">Content Pillars</p>
+                <p className="text-[11px] text-ocean uppercase tracking-wider mb-3">{t("strategy.contentPillars")}</p>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {pillars.filter(p => p.name).map((pillar, i) => (
                     <div key={i} className="rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] p-3">
@@ -633,10 +636,10 @@ export default function ClientStrategyPage() {
             {activeDays.some(d => weekly[d]?.type) && (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[11px] text-ocean uppercase tracking-wider">Wöchentlicher Kalender</p>
+                  <p className="text-[11px] text-ocean uppercase tracking-wider">{t("strategy.weeklyCalendar")}</p>
                   <span className="flex items-center gap-1 text-[11px] text-ivory/80">
                     <CalendarDays className="h-3 w-3" />
-                    {postsPerWeek} Posts / Woche
+                    {postsPerWeek} {t("strategy.postsPerWeek")}
                   </span>
                 </div>
                 <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${postsPerWeek}, minmax(0, 1fr))` }}>
@@ -678,7 +681,7 @@ export default function ClientStrategyPage() {
                           </div>
                         ) : (
                           <div className="rounded-xl border border-dashed border-ocean/[0.06] px-2 py-3 text-center">
-                            <p className="text-[10px] text-ocean/30">—</p>
+                            <p className="text-[10px] text-ocean/60">—</p>
                           </div>
                         )}
                       </div>
@@ -692,7 +695,7 @@ export default function ClientStrategyPage() {
             {usedTypeObjects.length > 0 && (
               <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-4 space-y-3">
                 <p className="text-[10px] font-medium text-ocean uppercase tracking-wider">
-                  Diese Woche verwendete Content Types — aus dem Framework
+                  {t("strategy.contentTypesUsed")}
                 </p>
                 <div className="space-y-2">
                   {usedTypeObjects.map((t) => {
@@ -704,7 +707,7 @@ export default function ClientStrategyPage() {
                         </span>
                         <div className="min-w-0">
                           <p className="text-[11px] text-ocean leading-snug">{t.goal}</p>
-                          <p className="text-[10px] text-ocean/50 leading-snug">{t.bestFor}</p>
+                          <p className="text-[10px] text-ocean/70 leading-snug">{t.bestFor}</p>
                         </div>
                       </div>
                     );

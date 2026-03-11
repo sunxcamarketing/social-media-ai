@@ -410,7 +410,7 @@ export default function ClientCreatorsPage() {
                 <Loader2 className="h-4 w-4 animate-spin text-blush-dark" />
                 KI sucht die größten Creator in der Nische…
               </div>
-              <p className="text-xs text-ocean/40 pl-6">Fokus auf Mega- und Macro-Creator mit hoher Reichweite oder virale Accounts.</p>
+              <p className="text-xs text-ocean/65 pl-6">Fokus auf Mega- und Macro-Creator mit hoher Reichweite oder virale Accounts.</p>
             </div>
           )}
 
@@ -467,7 +467,7 @@ export default function ClientCreatorsPage() {
               })}
 
               <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-4 py-3">
-                <p className="text-[11px] text-ocean/50 flex items-center gap-1.5">
+                <p className="text-[11px] text-ocean/70 flex items-center gap-1.5">
                   <Star className="h-3 w-3 text-ivory/60 shrink-0" />
                   Klick auf @username öffnet das Instagram-Profil zur Prüfung. Nach dem Hinzufügen werden Follower-Zahlen automatisch per Apify abgerufen.
                 </p>
@@ -493,7 +493,7 @@ export default function ClientCreatorsPage() {
                       <img src={`/api/proxy-image?url=${encodeURIComponent(creator.profilePicUrl)}`}
                         alt={`@${creator.username}`} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-lg font-bold text-ocean/50">
+                      <div className="flex h-full w-full items-center justify-center text-lg font-bold text-ocean/70">
                         {creator.username.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -549,7 +549,7 @@ export default function ClientCreatorsPage() {
 
               <div className="mt-3 flex items-center justify-between">
                 {creator.lastScrapedAt ? (
-                  <p className="text-[10px] text-ocean/40">
+                  <p className="text-[10px] text-ocean/65">
                     Gescrapt {new Date(creator.lastScrapedAt).toLocaleDateString("de-DE")}
                   </p>
                 ) : <span />}
@@ -564,7 +564,7 @@ export default function ClientCreatorsPage() {
 
         {clientCreators.length === 0 && !researchOpen && (
           <div className="col-span-full glass rounded-2xl p-12 text-center">
-            <Users className="mx-auto h-10 w-10 text-ocean/30" />
+            <Users className="mx-auto h-10 w-10 text-ocean/60" />
             <h3 className="mt-4 font-semibold">Noch keine Creators</h3>
             <p className="mt-1 text-sm text-ocean/60 mb-5">Lass die KI die besten Creators in der Nische finden oder füge manuell hinzu.</p>
             <Button onClick={() => setResearchOpen(true)}

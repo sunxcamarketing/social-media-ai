@@ -233,14 +233,14 @@ export default function ClientIdeasPage() {
             </div>
 
             {idea.createdAt && (
-              <p className="text-[10px] text-ocean/50">{idea.createdAt}</p>
+              <p className="text-[10px] text-ocean/70">{idea.createdAt}</p>
             )}
           </div>
         ))}
 
         {filtered.length === 0 && (
           <div className="col-span-full glass rounded-2xl p-12 text-center">
-            <Lightbulb className="mx-auto h-10 w-10 text-ocean/30" />
+            <Lightbulb className="mx-auto h-10 w-10 text-ocean/60" />
             <h3 className="mt-4 font-semibold">No ideas yet</h3>
             <p className="mt-1 text-sm text-ocean/60">Add your first video concept to get started.</p>
           </div>

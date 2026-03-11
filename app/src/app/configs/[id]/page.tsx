@@ -123,7 +123,7 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
             <img src={video.thumbnail} alt="" className="h-20 w-14 rounded-xl object-cover" />
           ) : (
             <div className="h-20 w-14 rounded-xl bg-ocean/[0.02] flex items-center justify-center">
-              <Eye className="h-4 w-4 text-ocean/30" />
+              <Eye className="h-4 w-4 text-ocean/60" />
             </div>
           )}
         </div>
@@ -132,7 +132,7 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-medium leading-snug line-clamp-2">{video.topic || "—"}</p>
             <a href={video.url} target="_blank" rel="noopener noreferrer"
-              className="shrink-0 text-ocean/40 hover:text-ocean/60 transition-colors mt-0.5">
+              className="shrink-0 text-ocean/65 hover:text-ocean/60 transition-colors mt-0.5">
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
@@ -395,11 +395,11 @@ export default function ClientDetailPage() {
           <h1 className="text-3xl font-bold tracking-tight">{client.name || client.configName}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             {client.role && <span className="text-sm text-ocean/60">{client.role}</span>}
-            {client.role && client.company && <span className="text-ocean/40">·</span>}
+            {client.role && client.company && <span className="text-ocean/65">·</span>}
             {client.company && <span className="text-sm text-ocean/60">{client.company}</span>}
             {client.location && (
               <>
-                <span className="text-ocean/40">·</span>
+                <span className="text-ocean/65">·</span>
                 <span className="inline-flex items-center gap-1 text-sm text-ocean/60">
                   <MapPin className="h-3 w-3" />{client.location}
                 </span>
@@ -586,7 +586,7 @@ export default function ClientDetailPage() {
                           </div>
                         ) : (
                           <div className="rounded-xl border border-dashed border-ocean/5 px-2 py-2 text-center">
-                            <p className="text-[10px] text-ocean/40">—</p>
+                            <p className="text-[10px] text-ocean/65">—</p>
                           </div>
                         )}
                       </div>

@@ -230,7 +230,7 @@ export default function StrategyPage() {
         <div className="glass rounded-2xl border border-ocean/[0.06] p-5 space-y-4">
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ocean/40" />
+              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ocean/65" />
               <Input
                 value={trainUrl}
                 onChange={(e) => setTrainUrl(e.target.value)}
@@ -310,16 +310,16 @@ export default function StrategyPage() {
                         className="text-xs text-ocean/60 hover:text-ocean truncate block underline underline-offset-2 decoration-ocean/20">
                         {ex.url}
                       </a>
-                      {ex.note && <p className="text-[11px] text-ocean/50 mt-0.5 truncate">{ex.note}</p>}
+                      {ex.note && <p className="text-[11px] text-ocean/70 mt-0.5 truncate">{ex.note}</p>}
                     </div>
                     <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-[11px] font-medium ${colorClass}`}>{ex.contentType}</span>
                     <span className="text-xs text-ocean/60">{ex.format}</span>
                     <button onClick={() => setEditExample({ ...ex })}
-                      className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean/60 hover:bg-warm-white transition-colors">
+                      className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/65 hover:text-ocean/60 hover:bg-warm-white transition-colors">
                       <Pencil className="h-3 w-3" />
                     </button>
                     <button onClick={() => deleteExample(ex.id)}
-                      className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors">
+                      className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/65 hover:text-red-500 hover:bg-red-50 transition-colors">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -371,7 +371,7 @@ export default function StrategyPage() {
                       {type.name}
                     </span>
                     {type.custom && (
-                      <span className="ml-2 text-[10px] text-ocean/40 font-medium uppercase tracking-wider">custom</span>
+                      <span className="ml-2 text-[10px] text-ocean/65 font-medium uppercase tracking-wider">custom</span>
                     )}
                   </div>
                   <p className="text-sm text-ocean/60 leading-relaxed">{type.goal}</p>
@@ -380,7 +380,7 @@ export default function StrategyPage() {
                     {type.custom && (
                       <button
                         onClick={() => deleteType(type.id)}
-                        className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/65 hover:text-red-500 hover:bg-red-50 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -431,7 +431,7 @@ export default function StrategyPage() {
                 <div>
                   <p className="text-sm font-medium">{format.name}</p>
                   {format.custom && (
-                    <span className="text-[10px] text-ocean/40 font-medium uppercase tracking-wider">custom</span>
+                    <span className="text-[10px] text-ocean/65 font-medium uppercase tracking-wider">custom</span>
                   )}
                 </div>
                 <p className="text-sm text-ocean/60 leading-relaxed">{format.description}</p>
@@ -441,7 +441,7 @@ export default function StrategyPage() {
                   {format.custom && (
                     <button
                       onClick={() => deleteFormat(format.id)}
-                      className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/65 hover:text-red-500 hover:bg-red-50 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

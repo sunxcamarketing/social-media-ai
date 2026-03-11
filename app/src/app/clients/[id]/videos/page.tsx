@@ -245,7 +245,7 @@ function ClientVideosContent() {
                       <Loader2 className="h-3 w-3 text-blush-dark animate-spin shrink-0" />
                       <span className="text-xs font-medium">@{task.creator}</span>
                       <span className="text-[11px] text-ocean/60">{task.step}</span>
-                      {task.views && <span className="ml-auto text-[11px] text-ocean/40">{formatViews(task.views)} views</span>}
+                      {task.views && <span className="ml-auto text-[11px] text-ocean/65">{formatViews(task.views)} views</span>}
                     </div>
                   ))}
                 </div>
@@ -353,7 +353,7 @@ function ClientVideosContent() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold truncate">@{video.creator}</p>
                     <button onClick={() => toggleStar(vid, video.starred)} className="shrink-0 ml-1.5 transition-colors">
-                      <Star className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-ocean/40 hover:text-yellow-400/60"}`} />
+                      <Star className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-ocean/65 hover:text-yellow-400/60"}`} />
                     </button>
                   </div>
 
@@ -382,7 +382,7 @@ function ClientVideosContent() {
 
       {filtered.length === 0 && !running && (
         <div className="glass rounded-2xl p-12 text-center">
-          <Film className="mx-auto h-10 w-10 text-ocean/30" />
+          <Film className="mx-auto h-10 w-10 text-ocean/60" />
           <h3 className="mt-4 font-semibold">No videos yet</h3>
           <p className="mt-1 text-sm text-ocean/60">Run the pipeline to analyze competitor reels.</p>
           <Button onClick={() => setPipelineOpen(true)} className="mt-4 rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-1.5">
@@ -406,7 +406,7 @@ function ClientVideosContent() {
                     <img src={`/api/proxy-image?url=${encodeURIComponent(modalVideo.thumbnail)}`} alt={`@${modalVideo.creator}`} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <Film className="h-4 w-4 text-ocean/30" />
+                      <Film className="h-4 w-4 text-ocean/60" />
                     </div>
                   )}
                 </div>

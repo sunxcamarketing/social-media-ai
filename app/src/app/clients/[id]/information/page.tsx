@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import type { Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
+import { useI18n } from "@/lib/i18n";
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -51,7 +52,7 @@ function SocialLink({ href, icon: Icon, label }: { href: string; icon: React.Ele
   const url = href.startsWith("http") ? href : `https://${href}`;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-ocean/5 text-sm text-ocean/50 hover:text-ocean hover:border-ocean/[0.06] transition-all">
+      className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-ocean/5 text-sm text-ocean/70 hover:text-ocean hover:border-ocean/[0.06] transition-all">
       <Icon className="h-4 w-4 shrink-0" />
       <span className="truncate">{label}</span>
     </a>
@@ -62,7 +63,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
     <div>
-      <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-[11px] text-ocean/70 uppercase tracking-wider mb-1">{label}</p>
       <p className="text-sm leading-relaxed whitespace-pre-wrap">{value}</p>
     </div>
   );
@@ -75,6 +76,9 @@ function SectionCard({
   onEdit,
   children,
   empty,
+  editLabel,
+  noInfoLabel,
+  addInfoLabel,
 }: {
   icon: React.ElementType;
   iconColor: string;
@@ -82,6 +86,9 @@ function SectionCard({
   onEdit: () => void;
   children: React.ReactNode;
   empty: boolean;
+  editLabel: string;
+  noInfoLabel: string;
+  addInfoLabel: string;
 }) {
   return (
     <div className="glass rounded-2xl p-6 space-y-5">
@@ -90,16 +97,16 @@ function SectionCard({
           <Icon className={`h-4 w-4 ${iconColor}`} /> {title}
         </h2>
         <Button variant="ghost" size="sm" onClick={onEdit}
-          className="h-7 gap-1 rounded-lg px-2 text-xs text-ocean/50 hover:text-ocean">
-          <Pencil className="h-3 w-3" /> Edit
+          className="h-7 gap-1 rounded-lg px-2 text-xs text-ocean/70 hover:text-ocean">
+          <Pencil className="h-3 w-3" /> {editLabel}
         </Button>
       </div>
       {empty ? (
         <div className="text-center py-4">
-          <p className="text-sm text-ocean/50">No information added yet.</p>
+          <p className="text-sm text-ocean/70">{noInfoLabel}</p>
           <Button variant="ghost" size="sm" onClick={onEdit}
-            className="mt-2 rounded-xl text-xs text-ocean/50 hover:text-ocean gap-1">
-            <Pencil className="h-3 w-3" /> Add information
+            className="mt-2 rounded-xl text-xs text-ocean/70 hover:text-ocean gap-1">
+            <Pencil className="h-3 w-3" /> {addInfoLabel}
           </Button>
         </div>
       ) : children}
@@ -153,18 +160,20 @@ function formatNumber(n: number): string {
   return n.toString();
 }
 
-const FOLLOWUP_QUESTIONS: { field: keyof Config; label: string; question: string; rows?: number }[] = [
-  { field: "businessContext",        label: "Business Context",       question: "Was machst du genau, und wen hilfst du damit?", rows: 3 },
-  { field: "professionalBackground", label: "Beruflicher Hintergrund", question: "Was ist dein beruflicher Hintergrund und deine Expertise?", rows: 2 },
-  { field: "keyAchievements",        label: "Erfolge & Meilensteine",  question: "Was sind deine größten Erfolge, Zahlen oder Auszeichnungen?", rows: 2 },
-  { field: "brandFeeling",           label: "Gefühl das du verkaufst", question: "Welches Gefühl vermittelst du deinen Kunden? (z.B. Sicherheit, Klarheit, Freiheit)", rows: 2 },
-  { field: "brandProblem",           label: "Kernproblem",             question: "Was ist das eine Problem das du für deine Kunden löst?", rows: 2 },
-  { field: "providerRole",           label: "Deine Rolle",             question: "Wie würdest du deine Rolle beschreiben? (Mentor, Coach, Stratege, Sparringspartner...)", rows: 2 },
-  { field: "providerBeliefs",        label: "Deine Überzeugungen",     question: "Was glaubst du, was in deiner Branche falsch gemacht wird?", rows: 2 },
-  { field: "providerStrengths",      label: "Deine Stärken",           question: "Was schätzen deine Kunden an dir am meisten?", rows: 2 },
-  { field: "brandingStatement",      label: "Branding Statement",      question: "Wie lautet dein Branding Statement? (Ich helfe [Zielgruppe], von [Ausgangspunkt], damit [Ergebnis].)", rows: 2 },
-  { field: "humanDifferentiation",   label: "Dein AND-Faktor",         question: "Was macht dich als Mensch einzigartig — dein AND-Faktor? (z.B. 'Ich bin Stratege UND Vater von 3 Kindern')", rows: 2 },
-];
+function getFollowupQuestions(t: (key: string) => string): { field: keyof Config; label: string; question: string; rows?: number }[] {
+  return [
+    { field: "businessContext",        label: t("fq.businessContext.label"),       question: t("fq.businessContext.question"), rows: 3 },
+    { field: "professionalBackground", label: t("fq.professionalBackground.label"), question: t("fq.professionalBackground.question"), rows: 2 },
+    { field: "keyAchievements",        label: t("fq.keyAchievements.label"),  question: t("fq.keyAchievements.question"), rows: 2 },
+    { field: "brandFeeling",           label: t("fq.brandFeeling.label"), question: t("fq.brandFeeling.question"), rows: 2 },
+    { field: "brandProblem",           label: t("fq.brandProblem.label"),             question: t("fq.brandProblem.question"), rows: 2 },
+    { field: "providerRole",           label: t("fq.providerRole.label"),             question: t("fq.providerRole.question"), rows: 2 },
+    { field: "providerBeliefs",        label: t("fq.providerBeliefs.label"),     question: t("fq.providerBeliefs.question"), rows: 2 },
+    { field: "providerStrengths",      label: t("fq.providerStrengths.label"),           question: t("fq.providerStrengths.question"), rows: 2 },
+    { field: "brandingStatement",      label: t("fq.brandingStatement.label"),      question: t("fq.brandingStatement.question"), rows: 2 },
+    { field: "humanDifferentiation",   label: t("fq.humanDifferentiation.label"),         question: t("fq.humanDifferentiation.question"), rows: 2 },
+  ];
+}
 
 export default function ClientInformationPage() {
   return (
@@ -182,6 +191,9 @@ function ClientInformationContent() {
   const [igProfile, setIgProfile] = useState<InstagramProfile | null>(null);
   const [igLoading, setIgLoading] = useState(false);
   const setupMode = useRef(false);
+  const { t, lang } = useI18n();
+
+  const FOLLOWUP_QUESTIONS = getFollowupQuestions(t);
 
   const { enrichGen, startEnrich, clearEnrichGen } = useGeneration();
   const enrichState = enrichGen.get(id);
@@ -252,7 +264,8 @@ function ClientInformationContent() {
         setClient(enriched);
         if (setupMode.current) {
           setupMode.current = false;
-          const missing = FOLLOWUP_QUESTIONS.filter((q) => !enriched[q.field]);
+          const fqs = getFollowupQuestions(t);
+          const missing = fqs.filter((q) => !enriched[q.field]);
           if (missing.length > 0) {
             setMissingFields(missing);
             setFollowupIndex(0);
@@ -357,7 +370,7 @@ function ClientInformationContent() {
   };
 
   if (!client) {
-    return <div className="flex items-center justify-center h-64 text-ocean/50 text-sm">Loading…</div>;
+    return <div className="flex items-center justify-center h-64 text-ocean/70 text-sm">{t("info.loading")}</div>;
   }
 
   const hasSocials = client.instagram || client.tiktok || client.youtube || client.linkedin || client.twitter || client.website;
@@ -387,6 +400,8 @@ function ClientInformationContent() {
   const customerEmpty = !client.customerProblems && !client.providerRole && !client.providerBeliefs && !client.providerStrengths && !client.authenticityZone;
   const messageEmpty = !client.brandingStatement && !client.humanDifferentiation;
 
+  const dateLocale = lang === "de" ? "de-DE" : "en-US";
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -398,13 +413,13 @@ function ClientInformationContent() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{client.name || client.configName}</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              {client.role && <span className="text-sm text-ocean/50">{client.role}</span>}
-              {client.role && client.company && <span className="text-ocean/40">·</span>}
-              {client.company && <span className="text-sm text-ocean/50">{client.company}</span>}
+              {client.role && <span className="text-sm text-ocean/70">{client.role}</span>}
+              {client.role && client.company && <span className="text-ocean/65">·</span>}
+              {client.company && <span className="text-sm text-ocean/70">{client.company}</span>}
               {client.location && (
                 <>
-                  <span className="text-ocean/40">·</span>
-                  <span className="inline-flex items-center gap-1 text-sm text-ocean/50">
+                  <span className="text-ocean/65">·</span>
+                  <span className="inline-flex items-center gap-1 text-sm text-ocean/70">
                     <MapPin className="h-3 w-3" />{client.location}
                   </span>
                 </>
@@ -422,9 +437,9 @@ function ClientInformationContent() {
             variant="ghost"
             size="sm"
             onClick={() => { setAddInfoOpen(true); setAddInfoResult(null); }}
-            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean/50 hover:text-ocean"
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean/70 hover:text-ocean"
           >
-            <Plus className="h-3 w-3" /> Add info
+            <Plus className="h-3 w-3" /> {t("info.addInfo")}
           </Button>
           <Button
             variant="ghost"
@@ -434,9 +449,9 @@ function ClientInformationContent() {
             className="h-8 gap-1.5 rounded-lg px-3 text-xs text-blush-dark hover:text-blush-dark hover:bg-blush/20 disabled:opacity-40"
           >
             {enriching ? (
-              <><Loader2 className="h-3 w-3 animate-spin" /> Filling…</>
+              <><Loader2 className="h-3 w-3 animate-spin" /> {t("info.filling")}</>
             ) : (
-              <><Sparkles className="h-3 w-3" /> Auto-fill</>
+              <><Sparkles className="h-3 w-3" /> {t("info.autoFill")}</>
             )}
           </Button>
         </div>
@@ -448,7 +463,7 @@ function ClientInformationContent() {
         </div>
       )}
       {enriching && (
-        <div className="rounded-xl glass border border-blush/40 px-4 py-3 text-sm text-ocean/50">
+        <div className="rounded-xl glass border border-blush/40 px-4 py-3 text-sm text-ocean/70">
           Scraping profiles and extracting information with AI… this takes 15–30 seconds.
         </div>
       )}
@@ -456,7 +471,7 @@ function ClientInformationContent() {
       {/* Social Links */}
       {hasSocials && (
         <div className="space-y-3">
-          <h2 className="text-xs font-medium text-ocean/50 uppercase tracking-wider">Links</h2>
+          <h2 className="text-xs font-medium text-ocean/70 uppercase tracking-wider">{t("info.links")}</h2>
           <div className="flex flex-wrap gap-2">
             <SocialLink href={client.website} icon={Globe} label={client.website} />
             <SocialLink href={client.instagram} icon={Instagram} label={`@${client.instagram.replace(/^@/, "")}`} />
@@ -473,28 +488,28 @@ function ClientInformationContent() {
         <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold flex items-center gap-2">
-              <Instagram className="h-4 w-4 text-blush-dark" /> Instagram Profil
+              <Instagram className="h-4 w-4 text-blush-dark" /> {t("info.igProfile")}
             </h2>
             <div className="flex items-center gap-3">
               {igProfile?.lastUpdated && (
-                <span className="text-[10px] text-ocean/50">
-                  {new Date(igProfile.lastUpdated).toLocaleDateString("de-DE")}
+                <span className="text-[10px] text-ocean/70">
+                  {new Date(igProfile.lastUpdated).toLocaleDateString(dateLocale)}
                 </span>
               )}
               <button
                 onClick={() => loadIgProfile(true)}
                 disabled={igLoading}
-                className="flex items-center gap-1 text-[11px] text-ocean/50 hover:text-ocean transition-colors"
+                className="flex items-center gap-1 text-[11px] text-ocean/70 hover:text-ocean transition-colors"
               >
                 {igLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                {igLoading ? "Lädt…" : "Aktualisieren"}
+                {igLoading ? t("info.refreshing") : t("info.refresh")}
               </button>
             </div>
           </div>
 
           {igLoading && !igProfile && (
-            <div className="flex items-center gap-2 text-sm text-ocean/50 py-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Profil wird geladen…
+            <div className="flex items-center gap-2 text-sm text-ocean/70 py-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("info.profileLoading")}
             </div>
           )}
 
@@ -508,7 +523,7 @@ function ClientInformationContent() {
                     <img src={`/api/proxy-image?url=${encodeURIComponent(igProfile.profilePicUrl)}`}
                       alt={`@${igProfile.username}`} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-ocean/50">
+                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-ocean/70">
                       {igProfile.username.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -519,30 +534,30 @@ function ClientInformationContent() {
                   <p className="text-sm font-semibold">@{igProfile.username}</p>
                   {igProfile.verified && <CheckCircle2 className="h-3.5 w-3.5 text-ocean/60 shrink-0" />}
                 </div>
-                {igProfile.fullName && <p className="text-xs text-ocean/50 mb-1">{igProfile.fullName}</p>}
+                {igProfile.fullName && <p className="text-xs text-ocean/70 mb-1">{igProfile.fullName}</p>}
                 {igProfile.category && (
-                  <span className="inline-block text-[10px] rounded-md bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5 text-ocean/50 mb-2">
+                  <span className="inline-block text-[10px] rounded-md bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5 text-ocean/70 mb-2">
                     {igProfile.category}
                   </span>
                 )}
                 {igProfile.bio && (
-                  <p className="text-xs text-ocean/40 leading-relaxed line-clamp-3 mb-3">{igProfile.bio}</p>
+                  <p className="text-xs text-ocean/65 leading-relaxed line-clamp-3 mb-3">{igProfile.bio}</p>
                 )}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
                     <UserCheck className="mx-auto h-3.5 w-3.5 text-ocean/60 mb-1" />
                     <p className="text-sm font-bold">{formatNumber(igProfile.followers)}</p>
-                    <p className="text-[9px] text-ocean/50 uppercase tracking-wider">Follower</p>
+                    <p className="text-[9px] text-ocean/70 uppercase tracking-wider">{t("info.follower")}</p>
                   </div>
                   <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
                     <Users className="mx-auto h-3.5 w-3.5 text-blush-dark mb-1" />
                     <p className="text-sm font-bold">{formatNumber(igProfile.following)}</p>
-                    <p className="text-[9px] text-ocean/50 uppercase tracking-wider">Following</p>
+                    <p className="text-[9px] text-ocean/70 uppercase tracking-wider">{t("info.following")}</p>
                   </div>
                   <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
                     <Film className="mx-auto h-3.5 w-3.5 text-emerald-400 mb-1" />
                     <p className="text-sm font-bold">{igProfile.postsCount}</p>
-                    <p className="text-[9px] text-ocean/50 uppercase tracking-wider">Posts</p>
+                    <p className="text-[9px] text-ocean/70 uppercase tracking-wider">{t("info.posts")}</p>
                   </div>
                 </div>
               </div>
@@ -552,34 +567,34 @@ function ClientInformationContent() {
       )}
 
       {/* Basic Info */}
-      <SectionCard icon={Briefcase} iconColor="text-blush-dark" title="Basic Information" onEdit={openBasic} empty={basicEmpty}>
+      <SectionCard icon={Briefcase} iconColor="text-blush-dark" title={t("info.basicInfo")} onEdit={openBasic} empty={basicEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
           {(client.name || client.company || client.role || client.location) && (
             <div className="grid gap-5 md:grid-cols-2">
-              <InfoRow label="Name" value={client.name} />
-              <InfoRow label="Company" value={client.company} />
-              <InfoRow label="Role" value={client.role} />
-              <InfoRow label="Location" value={client.location} />
+              <InfoRow label={t("label.name")} value={client.name} />
+              <InfoRow label={t("label.company")} value={client.company} />
+              <InfoRow label={t("label.role")} value={client.role} />
+              <InfoRow label={t("label.location")} value={client.location} />
             </div>
           )}
           {(client.businessContext || client.professionalBackground || client.keyAchievements) && (
             <div className="border-t border-ocean/[0.06] pt-5 space-y-5">
-              <InfoRow label="Business Context" value={client.businessContext} />
-              <InfoRow label="Professional Background" value={client.professionalBackground} />
-              <InfoRow label="Key Achievements" value={client.keyAchievements} />
+              <InfoRow label={t("label.businessContext")} value={client.businessContext} />
+              <InfoRow label={t("label.professionalBackground")} value={client.professionalBackground} />
+              <InfoRow label={t("label.keyAchievements")} value={client.keyAchievements} />
             </div>
           )}
         </div>
       </SectionCard>
 
       {/* Brand Identity */}
-      <SectionCard icon={Heart} iconColor="text-blush-dark" title="Brand Identity" onEdit={openBrand} empty={brandEmpty}>
+      <SectionCard icon={Heart} iconColor="text-blush-dark" title={t("info.brandIdentity")} onEdit={openBrand} empty={brandEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
-          <InfoRow label="Feeling you sell" value={client.brandFeeling} />
-          <InfoRow label="Core problem you solve" value={client.brandProblem} />
+          <InfoRow label={t("label.feelingYouSell")} value={client.brandFeeling} />
+          <InfoRow label={t("label.coreProblem")} value={client.brandProblem} />
           {dcRows.length > 0 && (
             <div className="border-t border-ocean/[0.06] pt-5">
-              <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-3">Dream Customer Profile</p>
+              <p className="text-[11px] text-ocean/70 uppercase tracking-wider mb-3">{t("label.dreamCustomerProfile")}</p>
               <div className="grid gap-3 md:grid-cols-2">
                 {dcRows.map((r) => (
                   <InfoRow key={r.label} label={r.label} value={r.value} />
@@ -587,7 +602,7 @@ function ClientInformationContent() {
               </div>
               {dc.description && (
                 <div className="mt-4">
-                  <InfoRow label="Description" value={dc.description} />
+                  <InfoRow label={t("label.description")} value={dc.description} />
                 </div>
               )}
             </div>
@@ -596,11 +611,11 @@ function ClientInformationContent() {
       </SectionCard>
 
       {/* Customer & Problem */}
-      <SectionCard icon={Users} iconColor="text-ocean/60" title="Customer & Problem" onEdit={openCustomer} empty={customerEmpty}>
+      <SectionCard icon={Users} iconColor="text-ocean/60" title={t("info.customerProblem")} onEdit={openCustomer} empty={customerEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
           {cpRows.length > 0 && (
             <div>
-              <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-3">Customer Problems</p>
+              <p className="text-[11px] text-ocean/70 uppercase tracking-wider mb-3">{t("label.customerProblems")}</p>
               <div className="grid gap-3 md:grid-cols-2">
                 {cpRows.map((r) => (
                   <InfoRow key={r.label} label={r.label} value={r.value} />
@@ -610,31 +625,31 @@ function ClientInformationContent() {
           )}
           {(client.providerRole || client.providerBeliefs || client.providerStrengths || client.authenticityZone) && (
             <div className="border-t border-ocean/[0.06] pt-5 space-y-5">
-              <InfoRow label="Your role as provider" value={client.providerRole} />
-              <InfoRow label="Your beliefs" value={client.providerBeliefs} />
-              <InfoRow label="Your strengths" value={client.providerStrengths} />
-              <InfoRow label="Authenticity zone" value={client.authenticityZone} />
+              <InfoRow label={t("label.providerRole")} value={client.providerRole} />
+              <InfoRow label={t("label.beliefs")} value={client.providerBeliefs} />
+              <InfoRow label={t("label.strengths")} value={client.providerStrengths} />
+              <InfoRow label={t("label.authenticityZone")} value={client.authenticityZone} />
             </div>
           )}
         </div>
       </SectionCard>
 
       {/* Brand Message */}
-      <SectionCard icon={MessageSquare} iconColor="text-ivory" title="Brand Message" onEdit={openMessage} empty={messageEmpty}>
+      <SectionCard icon={MessageSquare} iconColor="text-ivory" title={t("info.brandMessage")} onEdit={openMessage} empty={messageEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
           {client.brandingStatement && (
             <div>
-              <p className="text-[11px] text-ocean/50 uppercase tracking-wider mb-2">Branding Statement</p>
+              <p className="text-[11px] text-ocean/70 uppercase tracking-wider mb-2">{t("label.brandingStatement")}</p>
               <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 px-4 py-3">
                 <p className="text-sm leading-relaxed italic">{client.brandingStatement}</p>
               </div>
             </div>
           )}
-          <InfoRow label="Human differentiation (your AND factor)" value={client.humanDifferentiation} />
+          <InfoRow label={t("label.humanDifferentiation")} value={client.humanDifferentiation} />
         </div>
       </SectionCard>
 
-      {/* ── FOLLOW-UP DIALOG ── */}
+      {/* -- FOLLOW-UP DIALOG -- */}
       {followupOpen && missingFields.length > 0 && (() => {
         const current = missingFields[followupIndex];
         const isLast = followupIndex >= missingFields.length - 1;
@@ -664,36 +679,36 @@ function ClientInformationContent() {
           <Dialog open={followupOpen} onOpenChange={(v) => { if (!v) setFollowupOpen(false); }}>
             <DialogContent className="sm:max-w-md glass-strong border-ocean/5">
               <div className="flex items-center justify-between mb-1">
-                <DialogTitle className="text-base font-semibold">Profil vervollständigen</DialogTitle>
-                <span className="text-[11px] text-ocean/50">{progress} / {total}</span>
+                <DialogTitle className="text-base font-semibold">{t("followup.title")}</DialogTitle>
+                <span className="text-[11px] text-ocean/70">{progress} / {total}</span>
               </div>
               <div className="w-full h-1 bg-ocean/[0.06] rounded-full mb-4">
                 <div className="h-full bg-ocean rounded-full transition-all" style={{ width: `${(progress / total) * 100}%` }} />
               </div>
-              <p className="text-xs text-ocean/50 mb-1 uppercase tracking-wider">{current.label}</p>
+              <p className="text-xs text-ocean/70 mb-1 uppercase tracking-wider">{current.label}</p>
               <p className="text-sm font-medium mb-3">{current.question}</p>
               <Textarea
                 autoFocus
                 value={followupAnswer}
                 onChange={(e) => setFollowupAnswer(e.target.value)}
                 rows={current.rows ?? 2}
-                placeholder="Deine Antwort…"
+                placeholder={t("followup.answer")}
                 className="rounded-xl glass border-ocean/5 text-sm mb-4"
               />
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   onClick={() => { setFollowupAnswer(""); if (isLast) setFollowupOpen(false); else setFollowupIndex((i) => i + 1); }}
-                  className="flex-1 rounded-xl h-10 text-sm text-ocean/50"
+                  className="flex-1 rounded-xl h-10 text-sm text-ocean/70"
                 >
-                  Überspringen
+                  {t("followup.skip")}
                 </Button>
                 <Button
                   onClick={saveAndNext}
                   disabled={followupSaving}
                   className="flex-1 rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0 text-sm text-white"
                 >
-                  {followupSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? "Fertig" : "Weiter"}
+                  {followupSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? t("followup.done") : t("followup.next")}
                 </Button>
               </div>
             </DialogContent>
@@ -704,20 +719,20 @@ function ClientInformationContent() {
       {/* Add Info Dialog */}
       <Dialog open={addInfoOpen} onOpenChange={(v) => { if (!v) setAddInfoOpen(false); }}>
         <DialogContent className="max-w-lg glass-strong rounded-2xl border-ocean/5">
-          <DialogHeader><DialogTitle>Add Information</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("addInfo.title")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            <p className="text-xs text-ocean/50">
-              Paste any text about this client — interview notes, bio, facts, achievements. AI will place it into the right fields and skip anything already captured.
+            <p className="text-xs text-ocean/70">
+              {t("addInfo.description")}
             </p>
             <Textarea
               value={addInfoText}
               onChange={(e) => setAddInfoText(e.target.value)}
               rows={6}
-              placeholder="e.g. She won the Forbes 30 Under 30 award in 2023. Her target clients are female entrepreneurs aged 30–45 in Germany who struggle with visibility..."
+              placeholder={t("addInfo.placeholder")}
               className="rounded-xl glass border-ocean/5 text-sm"
             />
             {addInfoResult && (
-              <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm ${addInfoResult.includes("already") ? "bg-ocean/[0.02] text-ocean/50" : "bg-green-50 border border-green-200 text-green-600"}`}>
+              <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 text-sm ${addInfoResult.includes("already") ? "bg-ocean/[0.02] text-ocean/70" : "bg-green-50 border border-green-200 text-green-600"}`}>
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>{addInfoResult}</span>
               </div>
@@ -727,44 +742,44 @@ function ClientInformationContent() {
               disabled={addInfoLoading || !addInfoText.trim()}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white"
             >
-              {addInfoLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing…</> : "Add to Profile"}
+              {addInfoLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> {t("addInfo.processing")}</> : t("addInfo.submit")}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* ── EDIT DIALOGS ── */}
+      {/* -- EDIT DIALOGS -- */}
 
       {/* Basic Info Dialog */}
       <Dialog open={basicOpen} onOpenChange={(v) => { if (!v) setBasicOpen(false); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
-          <DialogHeader><DialogTitle>Edit Basic Information</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("editBasic.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div className="grid grid-cols-2 gap-3">
               {(["name", "company", "role", "location"] as const).map((key) => (
                 <div key={key}>
-                  <Label className="text-xs text-ocean/50 capitalize">{key === "name" ? "Full Name" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
+                  <Label className="text-xs text-ocean/70 capitalize">{key === "name" ? t("editBasic.fullName") : key === "company" ? t("editBasic.company") : key === "role" ? t("editBasic.role") : t("editBasic.location")}</Label>
                   <Input value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                 </div>
               ))}
             </div>
             {(["businessContext", "professionalBackground", "keyAchievements"] as const).map((key) => (
               <div key={key}>
-                <Label className="text-xs text-ocean/50">{key === "businessContext" ? "Business Context" : key === "professionalBackground" ? "Professional Background" : "Key Achievements"}</Label>
+                <Label className="text-xs text-ocean/70">{key === "businessContext" ? t("editBasic.businessContext") : key === "professionalBackground" ? t("editBasic.professionalBackground") : t("editBasic.keyAchievements")}</Label>
                 <Textarea value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             ))}
             <div className="border-t border-ocean/[0.06] pt-4 grid grid-cols-2 gap-3">
               {(["website", "instagram", "tiktok", "youtube", "linkedin", "twitter"] as const).map((key) => (
                 <div key={key}>
-                  <Label className="text-xs text-ocean/50 capitalize">{key === "twitter" ? "X / Twitter" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
+                  <Label className="text-xs text-ocean/70 capitalize">{key === "twitter" ? "X / Twitter" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
                   <Input value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                 </div>
               ))}
             </div>
             <Button onClick={async () => { await savePartial(basicForm); setBasicOpen(false); }} disabled={saving}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
-              {saving ? "Saving…" : "Save Changes"}
+              {saving ? t("info.saving") : t("info.save")}
             </Button>
           </div>
         </DialogContent>
@@ -773,28 +788,28 @@ function ClientInformationContent() {
       {/* Brand Identity Dialog */}
       <Dialog open={brandOpen} onOpenChange={(v) => { if (!v) setBrandOpen(false); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
-          <DialogHeader><DialogTitle>Brand Identity</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("editBrand.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <Label className="text-xs text-ocean/50">Feeling you sell (e.g. security, clarity, confidence)</Label>
+              <Label className="text-xs text-ocean/70">{t("editBrand.feeling")}</Label>
               <Textarea value={brandForm.brandFeeling} onChange={(e) => setBrandForm({ ...brandForm, brandFeeling: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
             <div>
-              <Label className="text-xs text-ocean/50">Core problem you solve</Label>
+              <Label className="text-xs text-ocean/70">{t("editBrand.problem")}</Label>
               <Textarea value={brandForm.brandProblem} onChange={(e) => setBrandForm({ ...brandForm, brandProblem: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
             <div className="border-t border-ocean/[0.06] pt-4">
-              <p className="text-xs font-medium text-ocean/50 mb-3">Dream Customer Profile</p>
+              <p className="text-xs font-medium text-ocean/70 mb-3">{t("editBrand.dreamCustomer")}</p>
               <div className="grid grid-cols-2 gap-3">
                 {(["tonality", "age", "gender", "income", "country", "profession", "values"] as const).map((key) => (
                   <div key={key}>
-                    <Label className="text-xs text-ocean/50 capitalize">{key}</Label>
+                    <Label className="text-xs text-ocean/70 capitalize">{key}</Label>
                     <Input value={brandForm.dreamCustomer[key]} onChange={(e) => setBrandForm({ ...brandForm, dreamCustomer: { ...brandForm.dreamCustomer, [key]: e.target.value } })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                   </div>
                 ))}
               </div>
               <div className="mt-3">
-                <Label className="text-xs text-ocean/50">Concrete person description</Label>
+                <Label className="text-xs text-ocean/70">{t("editBrand.description")}</Label>
                 <Textarea value={brandForm.dreamCustomer.description} onChange={(e) => setBrandForm({ ...brandForm, dreamCustomer: { ...brandForm.dreamCustomer, description: e.target.value } })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             </div>
@@ -807,7 +822,7 @@ function ClientInformationContent() {
               setBrandOpen(false);
             }} disabled={saving}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
-              {saving ? "Saving…" : "Save Changes"}
+              {saving ? t("info.saving") : t("info.save")}
             </Button>
           </div>
         </DialogContent>
@@ -816,14 +831,14 @@ function ClientInformationContent() {
       {/* Customer & Problem Dialog */}
       <Dialog open={customerOpen} onOpenChange={(v) => { if (!v) setCustomerOpen(false); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
-          <DialogHeader><DialogTitle>Customer & Problem</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("editCustomer.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <p className="text-xs font-medium text-ocean/50 mb-3">Customer Problems</p>
+              <p className="text-xs font-medium text-ocean/70 mb-3">{t("editCustomer.problems")}</p>
               <div className="space-y-3">
                 {(["mental", "physical", "financial", "social", "aesthetic"] as const).map((key) => (
                   <div key={key}>
-                    <Label className="text-xs text-ocean/50 capitalize">{key} problems</Label>
+                    <Label className="text-xs text-ocean/70 capitalize">{key === "mental" ? t("editCustomer.mental") : key === "physical" ? t("editCustomer.physical") : key === "financial" ? t("editCustomer.financial") : key === "social" ? t("editCustomer.social") : t("editCustomer.aesthetic")}</Label>
                     <Textarea value={customerForm.customerProblems[key]} onChange={(e) => setCustomerForm({ ...customerForm, customerProblems: { ...customerForm.customerProblems, [key]: e.target.value } })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
                   </div>
                 ))}
@@ -831,19 +846,19 @@ function ClientInformationContent() {
             </div>
             <div className="border-t border-ocean/[0.06] pt-4 space-y-4">
               <div>
-                <Label className="text-xs text-ocean/50">Your role as provider (Mentor? Strategist? Sparring partner?)</Label>
+                <Label className="text-xs text-ocean/70">{t("editCustomer.providerRole")}</Label>
                 <Textarea value={customerForm.providerRole} onChange={(e) => setCustomerForm({ ...customerForm, providerRole: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-ocean/50">Your beliefs (what you&apos;d do differently in your industry)</Label>
+                <Label className="text-xs text-ocean/70">{t("editCustomer.beliefs")}</Label>
                 <Textarea value={customerForm.providerBeliefs} onChange={(e) => setCustomerForm({ ...customerForm, providerBeliefs: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-ocean/50">Your strengths & skills (what clients appreciate most)</Label>
+                <Label className="text-xs text-ocean/70">{t("editCustomer.strengths")}</Label>
                 <Textarea value={customerForm.providerStrengths} onChange={(e) => setCustomerForm({ ...customerForm, providerStrengths: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-ocean/50">Authenticity zone (overlap of customer problem + your strength)</Label>
+                <Label className="text-xs text-ocean/70">{t("editCustomer.authenticity")}</Label>
                 <Textarea value={customerForm.authenticityZone} onChange={(e) => setCustomerForm({ ...customerForm, authenticityZone: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             </div>
@@ -858,7 +873,7 @@ function ClientInformationContent() {
               setCustomerOpen(false);
             }} disabled={saving}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
-              {saving ? "Saving…" : "Save Changes"}
+              {saving ? t("info.saving") : t("info.save")}
             </Button>
           </div>
         </DialogContent>
@@ -867,21 +882,21 @@ function ClientInformationContent() {
       {/* Brand Message Dialog */}
       <Dialog open={messageOpen} onOpenChange={(v) => { if (!v) setMessageOpen(false); }}>
         <DialogContent className="max-w-2xl glass-strong rounded-2xl border-ocean/5">
-          <DialogHeader><DialogTitle>Brand Message</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("editMessage.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <Label className="text-xs text-ocean/50">Branding Statement</Label>
-              <p className="text-[11px] text-ocean/35 mt-0.5 mb-1.5">Formula: I help [target group], from [transformation], so that [result].</p>
-              <Textarea value={messageForm.brandingStatement} onChange={(e) => setMessageForm({ ...messageForm, brandingStatement: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" placeholder="I help freelancers bring structure to their visibility and attract the right dream clients." />
+              <Label className="text-xs text-ocean/70">{t("editMessage.statement")}</Label>
+              <p className="text-[11px] text-ocean/60 mt-0.5 mb-1.5">{t("editMessage.statementHint")}</p>
+              <Textarea value={messageForm.brandingStatement} onChange={(e) => setMessageForm({ ...messageForm, brandingStatement: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" placeholder={t("editMessage.statementPlaceholder")} />
             </div>
             <div>
-              <Label className="text-xs text-ocean/50">Human differentiation — your AND factor</Label>
-              <p className="text-[11px] text-ocean/35 mt-0.5 mb-1.5">You are a [provider] AND...? How do you stand out as a human being?</p>
+              <Label className="text-xs text-ocean/70">{t("editMessage.human")}</Label>
+              <p className="text-[11px] text-ocean/60 mt-0.5 mb-1.5">{t("editMessage.humanHint")}</p>
               <Textarea value={messageForm.humanDifferentiation} onChange={(e) => setMessageForm({ ...messageForm, humanDifferentiation: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
             <Button onClick={async () => { await savePartial(messageForm); setMessageOpen(false); }} disabled={saving}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
-              {saving ? "Saving…" : "Save Changes"}
+              {saving ? t("info.saving") : t("info.save")}
             </Button>
           </div>
         </DialogContent>

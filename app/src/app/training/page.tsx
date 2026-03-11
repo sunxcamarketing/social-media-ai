@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { useI18n } from "@/lib/i18n";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
 // BUILT_IN_CONTENT_TYPES used in ContentTypesTab only
@@ -32,20 +33,21 @@ const TYPE_COLORS: Record<string, string> = {
   "Promotion / Offer":        "bg-blush/20 text-blush-dark border-blush/40",
 };
 
-function formatDate(iso: string) {
+function formatDate(iso: string, lang: string = "de") {
   if (!iso) return "";
-  try { return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" }); }
+  try { return new Date(iso).toLocaleDateString(lang === "de" ? "de-DE" : "en-US", { day: "2-digit", month: "short", year: "numeric" }); }
   catch { return iso.split("T")[0]; }
 }
 
 // ── Tab bar ─────────────────────────────────────────────────────────────────
 type Tab = "scripts" | "types" | "formats";
 
-function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
+  const { t } = useI18n();
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "scripts", label: "Training Scripts", icon: BookOpen },
     { id: "types",   label: "Content Types",    icon: Target },
-    { id: "formats", label: "Content Formate",  icon: FileText },
+    { id: "formats", label: t("training.contentFormats"),  icon: FileText },
   ];
   return (
     <div className="flex gap-1 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] p-1 w-fit">
@@ -81,6 +83,7 @@ function ScriptCard({ script, onEdit, onDelete, clientLabel }: {
   onDelete: (id: string) => void;
   clientLabel?: string;
 }) {
+  const { t, lang } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const long = script.script.split("\n").length > 5 || script.script.length > 320;
 
@@ -104,7 +107,7 @@ function ScriptCard({ script, onEdit, onDelete, clientLabel }: {
             className="p-1.5 rounded-lg text-ocean/60 hover:text-ocean hover:bg-warm-white transition-colors">
             <Pencil className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => { if (confirm("Skript wirklich löschen?")) onDelete(script.id); }}
+          <button onClick={() => { if (confirm(t("training.confirmDelete"))) onDelete(script.id); }}
             className="p-1.5 rounded-lg text-ocean/60 hover:text-red-500 hover:bg-red-50 transition-colors">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -114,46 +117,46 @@ function ScriptCard({ script, onEdit, onDelete, clientLabel }: {
       <div className="space-y-2">
         {script.textHook && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/40 mb-1">Text Hook</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Text Hook</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.textHook}</p>
           </div>
         )}
         {script.visualHook && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/40 mb-1">Visual Hook</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Visual Hook</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.visualHook}</p>
           </div>
         )}
         {script.audioHook && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/40 mb-1">Audio Hook</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Audio Hook</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.audioHook}</p>
           </div>
         )}
         {script.script && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/40 mb-1">Skript</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Skript</p>
             <p className={`text-[13px] text-ocean/80 leading-relaxed whitespace-pre-wrap ${!expanded ? "line-clamp-5" : ""}`}>
               {script.script}
             </p>
             {long && (
               <button onClick={() => setExpanded(v => !v)}
                 className="flex items-center gap-1 text-[11px] text-ocean/60 hover:text-ocean/80 transition-colors mt-1">
-                {expanded ? <><ChevronUp className="h-3 w-3" /> Weniger</> : <><ChevronDown className="h-3 w-3" /> Mehr</>}
+                {expanded ? <><ChevronUp className="h-3 w-3" /> {t("common.less")}</> : <><ChevronDown className="h-3 w-3" /> Mehr</>}
               </button>
             )}
           </div>
         )}
         {script.cta && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/40 mb-1">CTA</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">CTA</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.cta}</p>
           </div>
         )}
       </div>
 
       <div className="pt-1 border-t border-ocean/5">
-        <span className="text-[11px] text-ocean/50">{formatDate(script.createdAt)}</span>
+        <span className="text-[11px] text-ocean/70">{formatDate(script.createdAt, lang)}</span>
       </div>
     </div>
   );
@@ -248,7 +251,7 @@ function ScriptsTab() {
             Zurücksetzen
           </button>
         )}
-        <span className="text-[12px] text-ocean/50">{filtered.length} {filtered.length === 1 ? "Skript" : "Skripte"}</span>
+        <span className="text-[12px] text-ocean/70">{filtered.length} {filtered.length === 1 ? "Skript" : "Skripte"}</span>
         <Button onClick={openAdd}
           className="ml-auto rounded-xl h-9 px-4 bg-ocean hover:bg-ocean-light border-0 gap-1.5 text-[13px]">
           <Plus className="h-4 w-4" /> Neues Skript
@@ -261,13 +264,13 @@ function ScriptsTab() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-ocean/[0.02] border border-ocean/[0.06]">
-            <BookOpen className="h-6 w-6 text-ocean/40" />
+            <BookOpen className="h-6 w-6 text-ocean/65" />
           </div>
           <div className="text-center">
             <p className="text-[14px] font-medium text-ocean/60">
               {scripts.length === 0 ? "Noch keine Skripte" : "Keine Ergebnisse"}
             </p>
-            <p className="text-[12px] text-ocean/50 mt-1">
+            <p className="text-[12px] text-ocean/70 mt-1">
               {scripts.length === 0 ? "Füge dein erstes erfolgreiches Skript hinzu" : "Passe den Filter an"}
             </p>
           </div>
@@ -414,8 +417,8 @@ function ContentTypesTab() {
         {/* Built-in */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <Lock className="h-3 w-3 text-ocean/50" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/50">Eingebaut</span>
+            <Lock className="h-3 w-3 text-ocean/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eingebaut</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {BUILT_IN_CONTENT_TYPES.map(t => {
@@ -426,7 +429,7 @@ function ContentTypesTab() {
                     <Badge className={`rounded-lg border text-[11px] font-medium px-2 py-0.5 ${color}`}>{t.name}</Badge>
                   </div>
                   <p className="text-[12px] text-ocean/60 leading-snug">{t.goal}</p>
-                  {t.bestFor && <p className="text-[11px] text-ocean/50 mt-1 leading-snug">Ideal für: {t.bestFor}</p>}
+                  {t.bestFor && <p className="text-[11px] text-ocean/70 mt-1 leading-snug">Ideal für: {t.bestFor}</p>}
                 </div>
               );
             })}
@@ -437,7 +440,7 @@ function ContentTypesTab() {
         {custom.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/50">Eigene</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eigene</span>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {custom.map(t => (
@@ -458,7 +461,7 @@ function ContentTypesTab() {
                     </div>
                   </div>
                   <p className="text-[12px] text-ocean/60 leading-snug">{t.goal}</p>
-                  {t.bestFor && <p className="text-[11px] text-ocean/50 mt-1 leading-snug">Ideal für: {t.bestFor}</p>}
+                  {t.bestFor && <p className="text-[11px] text-ocean/70 mt-1 leading-snug">Ideal für: {t.bestFor}</p>}
                 </div>
               ))}
             </div>
@@ -560,8 +563,8 @@ function ContentFormatsTab() {
         {/* Built-in */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <Lock className="h-3 w-3 text-ocean/50" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/50">Eingebaut</span>
+            <Lock className="h-3 w-3 text-ocean/70" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eingebaut</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {BUILT_IN_FORMATS.map(f => (
@@ -589,7 +592,7 @@ function ContentFormatsTab() {
         {custom.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/50">Eigene</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eigene</span>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {custom.map(f => (
@@ -679,6 +682,7 @@ function ContentFormatsTab() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function TrainingPage() {
+  const { t, lang } = useI18n();
   const [tab, setTab] = useState<Tab>("scripts");
 
   return (

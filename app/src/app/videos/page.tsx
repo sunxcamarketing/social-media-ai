@@ -188,7 +188,7 @@ function VideosContent() {
                       className="shrink-0 ml-1.5 transition-colors"
                     >
                       <Star
-                        className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-ocean/40 hover:text-yellow-400/60"}`}
+                        className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-ocean/65 hover:text-yellow-400/60"}`}
                       />
                     </button>
                   </div>
@@ -239,7 +239,7 @@ function VideosContent() {
 
       {filtered.length === 0 && (
         <div className="glass rounded-2xl p-12 text-center">
-          <Film className="mx-auto h-10 w-10 text-ocean/30" />
+          <Film className="mx-auto h-10 w-10 text-ocean/60" />
           <h3 className="mt-4 font-semibold">No videos found</h3>
           <p className="mt-1 text-sm text-ocean/60">
             Run a pipeline analysis to generate results, or adjust your filters.
@@ -268,7 +268,7 @@ function VideosContent() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <Film className="h-4 w-4 text-ocean/30" />
+                      <Film className="h-4 w-4 text-ocean/60" />
                     </div>
                   )}
                 </div>

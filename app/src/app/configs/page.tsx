@@ -291,7 +291,7 @@ export default function ConfigsPage() {
 
         {configs.length === 0 && (
           <div className="glass rounded-2xl p-12 text-center">
-            <User className="mx-auto h-10 w-10 text-ocean/30" />
+            <User className="mx-auto h-10 w-10 text-ocean/60" />
             <h3 className="mt-4 font-semibold">No clients yet</h3>
             <p className="mt-1 text-sm text-ocean/60">Create one to get started.</p>
           </div>

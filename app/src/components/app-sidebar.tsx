@@ -20,14 +20,7 @@ import { Label } from "@/components/ui/label";
 import type { Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
 import { usePipeline } from "@/context/pipeline-context";
-
-const clientTabs = [
-  { title: "Context",   href: "information", icon: BookOpen  },
-  { title: "Strategie", href: "strategy",    icon: BarChart2 },
-  { title: "Posts",     href: "scripts",     icon: FileText  },
-  { title: "Videos",    href: "videos",      icon: Video     },
-  { title: "Creators",  href: "creators",    icon: Users     },
-];
+import { useI18n } from "@/lib/i18n";
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -40,6 +33,7 @@ function TikTokIcon({ className }: { className?: string }) {
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
   const [clients, setClients] = useState<Config[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -52,6 +46,14 @@ export function AppSidebar() {
     linkedin: "",
     twitter: "",
   });
+
+  const clientTabs = [
+    { title: "Context",          href: "information", icon: BookOpen  },
+    { title: t("nav.strategy"),  href: "strategy",    icon: BarChart2 },
+    { title: "Posts",            href: "scripts",     icon: FileText  },
+    { title: "Videos",           href: "videos",      icon: Video     },
+    { title: "Creators",         href: "creators",    icon: Users     },
+  ];
 
   const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen } = useGeneration();
   const { running: pipelineRunning, progress: pipelineProgress } = usePipeline();
@@ -112,12 +114,12 @@ export function AppSidebar() {
           {/* Client List */}
           <div className="flex flex-col px-3 pt-1 pb-3">
             <div className="flex items-center justify-between px-2 mb-2">
-              <span className="text-[10px] font-medium uppercase tracking-widest text-ocean/30">Clients</span>
+              <span className="text-[10px] font-medium uppercase tracking-widest text-ocean/60">Clients</span>
               <button
                 onClick={() => setNewOpen(true)}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-ocean/40 hover:text-ocean hover:bg-blush-light/50 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-ocean/65 hover:text-ocean hover:bg-blush-light/50 transition-colors"
               >
-                <Plus className="h-3 w-3" /> Neu
+                <Plus className="h-3 w-3" /> {t("nav.new")}
               </button>
             </div>
 
@@ -131,7 +133,7 @@ export function AppSidebar() {
                     className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                       isActive
                         ? "bg-blush-light/60 text-ocean font-medium"
-                        : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
+                        : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
                     }`}
                   >
                     <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
@@ -141,8 +143,8 @@ export function AppSidebar() {
               })}
 
               {clients.length === 0 && (
-                <p className="px-3 py-4 text-center text-[12px] text-ocean/30">
-                  Noch keine Clients
+                <p className="px-3 py-4 text-center text-[12px] text-ocean/60">
+                  {t("nav.noClients")}
                 </p>
               )}
             </div>
@@ -150,14 +152,14 @@ export function AppSidebar() {
 
           {/* Tools */}
           <div className="px-3 pb-3 shrink-0">
-            <span className="block px-2 mb-2 text-[10px] font-medium uppercase tracking-widest text-ocean/30">Tools</span>
+            <span className="block px-2 mb-2 text-[10px] font-medium uppercase tracking-widest text-ocean/60">{t("nav.tools")}</span>
             <div className="space-y-0.5">
               <Link
                 href="/training"
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                   pathname.startsWith("/training")
                     ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
+                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
                 }`}
               >
                 <BookOpen className="h-3.5 w-3.5 shrink-0" />
@@ -168,7 +170,7 @@ export function AppSidebar() {
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                   pathname.startsWith("/transcribe")
                     ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
+                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
                 }`}
               >
                 <Mic className="h-3.5 w-3.5 shrink-0" />
@@ -184,7 +186,7 @@ export function AppSidebar() {
           <div className="px-3 py-4 shrink-0">
             {activeClientId ? (
               <>
-                <span className="block px-2 mb-2 text-[10px] font-medium uppercase tracking-widest text-ocean/30">
+                <span className="block px-2 mb-2 text-[10px] font-medium uppercase tracking-widest text-ocean/60">
                   {clients.find((c) => c.id === activeClientId)?.configName ?? "Client"}
                 </span>
                 <div className="space-y-0.5">
@@ -197,7 +199,7 @@ export function AppSidebar() {
                         className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                           isActive
                             ? "bg-blush-light/60 text-ocean font-medium"
-                            : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
+                            : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
                         }`}
                       >
                         <tab.icon className="h-3.5 w-3.5 shrink-0" />
@@ -209,22 +211,22 @@ export function AppSidebar() {
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "videos" && pipelineRunning && (
-                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
                         )}
                         {tab.href === "videos" && !pipelineRunning && pipelineProgress?.status === "completed" && (
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "strategy" && activeClientId && (strategyGen.get(activeClientId)?.status === "running" || analysisGen.get(activeClientId)?.status === "running") && (
-                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
                         )}
                         {tab.href === "strategy" && activeClientId && strategyGen.get(activeClientId)?.status === "done" && analysisGen.get(activeClientId)?.status !== "running" && (
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "information" && activeClientId && enrichGen.get(activeClientId)?.status === "running" && (
-                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
                         )}
                         {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "running" && (
-                          <Loader2 className="h-3 w-3 animate-spin text-ocean/50 shrink-0" />
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
                         )}
                         {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "done" && (
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
@@ -235,8 +237,8 @@ export function AppSidebar() {
                 </div>
               </>
             ) : (
-              <p className="px-2 text-[12px] text-ocean/30">
-                Wähle einen Client aus
+              <p className="px-2 text-[12px] text-ocean/60">
+                {t("nav.selectClient")}
               </p>
             )}
           </div>
@@ -247,17 +249,17 @@ export function AppSidebar() {
       {/* New Client Dialog */}
       <Dialog open={newOpen} onOpenChange={(v) => { if (!v) { setNewOpen(false); resetForm(); } else setNewOpen(true); }}>
         <DialogContent className="sm:max-w-md bg-white border border-ocean/8 shadow-xl">
-          <DialogTitle className="text-base font-medium text-ocean">Neuer Client</DialogTitle>
-          <p className="text-xs text-ocean/50 -mt-1">
-            Gib die Links an — die KI füllt das Profil automatisch aus.
+          <DialogTitle className="text-base font-medium text-ocean">{t("newClient.title")}</DialogTitle>
+          <p className="text-xs text-ocean/70 -mt-1">
+            {t("newClient.subtitle")}
           </p>
 
           <div className="space-y-3 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/50">Name *</Label>
+              <Label className="text-xs text-ocean/70">Name *</Label>
               <Input
                 autoFocus
-                placeholder="Max Mustermann"
+                placeholder={t("newClient.namePlaceholder")}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="h-10 rounded-xl bg-warm-white border-ocean/10 text-ocean placeholder:text-ocean/25 focus:border-blush"
@@ -265,11 +267,11 @@ export function AppSidebar() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/50">Instagram</Label>
+              <Label className="text-xs text-ocean/70">Instagram</Label>
               <div className="relative">
-                <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
+                <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60" />
                 <Input
-                  placeholder="@handle oder instagram.com/..."
+                  placeholder={t("newClient.igPlaceholder")}
                   value={form.instagram}
                   onChange={(e) => setForm({ ...form, instagram: e.target.value })}
                   className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
@@ -278,9 +280,9 @@ export function AppSidebar() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/50">Website</Label>
+              <Label className="text-xs text-ocean/70">Website</Label>
               <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60" />
                 <Input
                   placeholder="www.example.com"
                   value={form.website}
@@ -292,9 +294,9 @@ export function AppSidebar() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-ocean/50">TikTok</Label>
+                <Label className="text-xs text-ocean/70">TikTok</Label>
                 <div className="relative">
-                  <TikTokIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
+                  <TikTokIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60" />
                   <Input
                     placeholder="@handle"
                     value={form.tiktok}
@@ -304,11 +306,11 @@ export function AppSidebar() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-ocean/50">YouTube</Label>
+                <Label className="text-xs text-ocean/70">YouTube</Label>
                 <div className="relative">
-                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
+                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60" />
                   <Input
-                    placeholder="@channel oder youtube.com/..."
+                    placeholder="@channel"
                     value={form.youtube}
                     onChange={(e) => setForm({ ...form, youtube: e.target.value })}
                     className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
@@ -316,9 +318,9 @@ export function AppSidebar() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-ocean/50">LinkedIn</Label>
+                <Label className="text-xs text-ocean/70">LinkedIn</Label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/30" />
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60" />
                   <Input
                     placeholder="linkedin.com/in/..."
                     value={form.linkedin}
@@ -328,9 +330,9 @@ export function AppSidebar() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-ocean/50">X / Twitter</Label>
+                <Label className="text-xs text-ocean/70">X / Twitter</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-ocean/30">&#x1D54F;</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-ocean/60">&#x1D54F;</span>
                   <Input
                     placeholder="@handle"
                     value={form.twitter}
@@ -342,8 +344,8 @@ export function AppSidebar() {
             </div>
 
             {!hasLinks && form.name && (
-              <p className="text-[11px] text-ocean/40">
-                Mindestens einen Link angeben damit die KI das Profil automatisch ausfüllen kann.
+              <p className="text-[11px] text-ocean/65">
+                {t("newClient.linkHint")}
               </p>
             )}
 
@@ -352,7 +354,7 @@ export function AppSidebar() {
               disabled={!form.name.trim() || creating}
               className="w-full rounded-full h-10 bg-ocean hover:bg-ocean-light text-white font-medium tracking-wide border-0 mt-1 transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20"
             >
-              {creating ? "Erstelle..." : hasLinks ? "Anlegen & KI-Analyse starten" : "Client anlegen"}
+              {creating ? t("newClient.creating") : hasLinks ? t("newClient.createAndAnalyze") : t("newClient.create")}
             </Button>
           </div>
         </DialogContent>

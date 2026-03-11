@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { TopBar } from "@/components/top-bar";
 import { PipelineProvider } from "@/context/pipeline-context";
 import { GenerationProvider } from "@/context/generation-context";
+import { I18nProvider } from "@/lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <I18nProvider>
         <TooltipProvider>
           <PipelineProvider>
             <GenerationProvider>
@@ -44,6 +46,7 @@ export default function RootLayout({
             </GenerationProvider>
           </PipelineProvider>
         </TooltipProvider>
+        </I18nProvider>
       </body>
     </html>
   );

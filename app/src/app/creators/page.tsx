@@ -281,7 +281,7 @@ export default function CreatorsPage() {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-lg font-bold text-ocean/50">
+                      <div className="flex h-full w-full items-center justify-center text-lg font-bold text-ocean/70">
                         {creator.username.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -352,7 +352,7 @@ export default function CreatorsPage() {
               {/* Footer: last scraped + view videos */}
               <div className="mt-3 flex items-center justify-between">
                 {creator.lastScrapedAt ? (
-                  <p className="text-[10px] text-ocean/40">
+                  <p className="text-[10px] text-ocean/65">
                     Scraped {new Date(creator.lastScrapedAt).toLocaleDateString()}
                   </p>
                 ) : <span />}
@@ -369,7 +369,7 @@ export default function CreatorsPage() {
 
         {filtered.length === 0 && (
           <div className="col-span-full glass rounded-2xl p-12 text-center">
-            <Users className="mx-auto h-10 w-10 text-ocean/30" />
+            <Users className="mx-auto h-10 w-10 text-ocean/60" />
             <h3 className="mt-4 font-semibold">No creators yet</h3>
             <p className="mt-1 text-sm text-ocean/60">Add one to get started.</p>
           </div>

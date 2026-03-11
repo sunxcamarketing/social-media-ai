@@ -41,10 +41,10 @@ const components: Components = {
     <strong className="font-semibold text-ocean/80">{children}</strong>
   ),
   em: ({ children }) => (
-    <em className="text-ocean/50 italic">{children}</em>
+    <em className="text-ocean/70 italic">{children}</em>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="mb-3 border-l-2 border-blush/30 pl-4 text-ocean/50 italic">
+    <blockquote className="mb-3 border-l-2 border-blush/30 pl-4 text-ocean/70 italic">
       {children}
     </blockquote>
   ),

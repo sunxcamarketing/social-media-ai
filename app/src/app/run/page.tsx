@@ -213,7 +213,7 @@ export default function RunPage() {
                     <span className="text-xs font-medium text-ocean/80">@{task.creator}</span>
                     <span className="text-[11px] text-ocean/60">{task.step}</span>
                     {task.views && (
-                      <span className="ml-auto text-[11px] text-ocean/40">
+                      <span className="ml-auto text-[11px] text-ocean/65">
                         {formatViews(task.views)} views
                       </span>
                     )}

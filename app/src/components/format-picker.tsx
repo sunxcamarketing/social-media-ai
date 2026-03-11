@@ -36,7 +36,7 @@ export function FormatPicker({ value, options, onChange }: FormatPickerProps) {
         );
       })}
       {selected.length > 1 && (
-        <span className="self-center text-[10px] text-ocean/40 italic ml-1">
+        <span className="self-center text-[10px] text-ocean/65 italic ml-1">
           {selected.join(" + ")}
         </span>
       )}

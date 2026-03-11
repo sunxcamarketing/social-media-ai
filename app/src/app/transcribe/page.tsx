@@ -181,7 +181,7 @@ export default function TranscribePage() {
                   ? "YouTube-Video wird mit Gemini verarbeitet…"
                   : "Video wird verarbeitet…"}
               </p>
-              <p className="text-[11px] text-ocean/50">Das kann 30–60 Sekunden dauern.</p>
+              <p className="text-[11px] text-ocean/70">Das kann 30–60 Sekunden dauern.</p>
             </div>
           )}
 
@@ -196,7 +196,7 @@ export default function TranscribePage() {
         {transcript && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/50">Transkript</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Transkript</span>
               <div className="flex items-center gap-2">
                 <button onClick={handleCopy}
                   className="flex items-center gap-1.5 text-[12px] text-ocean/60 hover:text-ocean transition-colors">

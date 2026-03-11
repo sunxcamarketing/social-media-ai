@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useGeneration } from "@/context/generation-context";
 import { useParams } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,16 +78,16 @@ type TopicSlot = {
 };
 
 const STATUS_OPTIONS = [
-  { value: "entwurf",        label: "Entwurf",        color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-  { value: "bereit",         label: "Bereit",          color: "bg-green-50 text-green-600 border-green-200" },
-  { value: "veröffentlicht", label: "Veröffentlicht",  color: "bg-blush/20 text-blush-dark border-blush/40" },
+  { value: "entwurf",        labelKey: "scripts.draft" as const,     color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
+  { value: "bereit",         labelKey: "scripts.ready" as const,      color: "bg-green-50 text-green-600 border-green-200" },
+  { value: "veröffentlicht", labelKey: "scripts.published" as const,  color: "bg-blush/20 text-blush-dark border-blush/40" },
 ];
 
 function statusColor(s: string) {
-  return STATUS_OPTIONS.find(o => o.value === s)?.color || "bg-ocean/[0.02] text-ocean/50 border-ocean/[0.06]";
+  return STATUS_OPTIONS.find(o => o.value === s)?.color || "bg-ocean/[0.02] text-ocean/70 border-ocean/[0.06]";
 }
-function statusLabel(s: string) {
-  return STATUS_OPTIONS.find(o => o.value === s)?.label || s;
+function statusLabelKey(s: string) {
+  return STATUS_OPTIONS.find(o => o.value === s)?.labelKey || null;
 }
 
 function ScriptCard({ script, onEdit, onDelete }: {
@@ -94,6 +95,7 @@ function ScriptCard({ script, onEdit, onDelete }: {
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -118,36 +120,36 @@ function ScriptCard({ script, onEdit, onDelete }: {
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(!expanded); } }}
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-warm-white transition-colors cursor-pointer"
       >
-        <ChevronDown className={`h-3.5 w-3.5 text-ocean/40 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 text-ocean/65 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
 
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium truncate">{script.title || "Unbenanntes Skript"}</span>
+          <span className="text-sm font-medium truncate">{script.title || t("scripts.untitled")}</span>
         </div>
 
         {/* Meta tags */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
           {script.contentType && (
-            <span className="text-[10px] text-ocean/50 rounded-md bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5">{script.contentType}</span>
+            <span className="text-[10px] text-ocean/70 rounded-md bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5">{script.contentType}</span>
           )}
           {dur && (
-            <span className="text-[10px] text-ocean/40 flex items-center gap-1">
+            <span className="text-[10px] text-ocean/65 flex items-center gap-1">
               <Clock className="h-2.5 w-2.5" />{dur}
             </span>
           )}
           <Badge className={`rounded-md text-[10px] border ${statusColor(script.status)}`}>
-            {statusLabel(script.status)}
+            {statusLabelKey(script.status) ? t(statusLabelKey(script.status)!) : script.status}
           </Badge>
         </div>
 
         {/* Actions */}
         <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-          <button onClick={copyScript} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-warm-white transition-colors">
+          <button onClick={copyScript} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/65 hover:text-ocean hover:bg-warm-white transition-colors">
             {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-warm-white transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/65 hover:text-ocean hover:bg-warm-white transition-colors">
             <Pencil className="h-3 w-3" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/65 hover:text-red-500 hover:bg-red-50 transition-colors">
             <Trash2 className="h-3 w-3" />
           </button>
         </div>
@@ -163,10 +165,10 @@ function ScriptCard({ script, onEdit, onDelete }: {
           </div>
           <div className="flex items-center gap-3 pt-1">
             {script.pillar && <span className="text-[10px] text-blush-dark/70 rounded-md bg-blush/20 border border-blush/40 px-2 py-0.5">{script.pillar}</span>}
-            {script.contentType && <span className="text-[10px] text-ocean/50 rounded-md bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5">{script.contentType}</span>}
-            {script.format && <span className="text-[10px] text-ocean/50">{script.format}</span>}
-            <button onClick={copyScript} className="ml-auto flex items-center gap-1.5 text-[11px] text-ocean/50 hover:text-ocean transition-colors">
-              {copied ? <><Check className="h-3 w-3 text-green-600" /> Kopiert</> : <><Copy className="h-3 w-3" /> Skript kopieren</>}
+            {script.contentType && <span className="text-[10px] text-ocean/70 rounded-md bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5">{script.contentType}</span>}
+            {script.format && <span className="text-[10px] text-ocean/70">{script.format}</span>}
+            <button onClick={copyScript} className="ml-auto flex items-center gap-1.5 text-[11px] text-ocean/70 hover:text-ocean transition-colors">
+              {copied ? <><Check className="h-3 w-3 text-green-600" /> {t("scripts.copied")}</> : <><Copy className="h-3 w-3" /> {t("scripts.copyScript")}</>}
             </button>
           </div>
         </div>
@@ -190,6 +192,7 @@ function TopicCard({
   onEditTopic: (title: string, description: string) => void;
   onSave: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editTitle, setEditTitle] = useState(slot.topic.title);
@@ -230,17 +233,17 @@ function TopicCard({
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-warm-white transition-colors cursor-pointer"
       >
         <span className="text-[11px] font-bold text-blush-dark/80 w-6 shrink-0">{dayLabel}</span>
-        <ChevronDown className={`h-3 w-3 text-ocean/30 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3 w-3 text-ocean/60 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
 
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium truncate block">{slot.topic.title}</span>
-          <span className="text-[11px] text-ocean/50 truncate block">{slot.topic.description}</span>
+          <span className="text-[11px] text-ocean/70 truncate block">{slot.topic.description}</span>
         </div>
 
         <div className="hidden md:flex items-center gap-2 shrink-0">
-          {slot.topic.contentType && <span className="text-[10px] text-ocean/40 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{slot.topic.contentType}</span>}
-          {slot.scriptStatus === "done" && <Badge className="rounded-md text-[10px] border bg-green-50 text-green-600 border-green-200">Skript fertig</Badge>}
-          {slot.scriptStatus === "saved" && <Badge className="rounded-md text-[10px] border bg-blush/20 text-blush-dark border-blush/40">Gespeichert</Badge>}
+          {slot.topic.contentType && <span className="text-[10px] text-ocean/65 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{slot.topic.contentType}</span>}
+          {slot.scriptStatus === "done" && <Badge className="rounded-md text-[10px] border bg-green-50 text-green-600 border-green-200">{t("training.scriptDone")}</Badge>}
+          {slot.scriptStatus === "saved" && <Badge className="rounded-md text-[10px] border bg-blush/20 text-blush-dark border-blush/40">{t("training.saved")}</Badge>}
         </div>
       </div>
 
@@ -255,17 +258,17 @@ function TopicCard({
               <Input value={editDesc} onChange={e => setEditDesc(e.target.value)}
                 className="h-9 rounded-lg bg-ocean/[0.02] border-ocean/[0.06] text-sm" placeholder="Beschreibung" />
               <div className="flex gap-2">
-                <Button onClick={commitEdit} size="sm" className="h-7 rounded-lg px-3 text-[11px] bg-blush/30 hover:bg-blush/40 text-blush-dark border border-blush/50">Übernehmen</Button>
-                <button onClick={() => setIsEditing(false)} className="text-[11px] text-ocean/50 hover:text-ocean">Abbrechen</button>
+                <Button onClick={commitEdit} size="sm" className="h-7 rounded-lg px-3 text-[11px] bg-blush/30 hover:bg-blush/40 text-blush-dark border border-blush/50">{t("scripts.apply")}</Button>
+                <button onClick={() => setIsEditing(false)} className="text-[11px] text-ocean/70 hover:text-ocean">{t("scripts.cancel")}</button>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-blush-dark/60 rounded bg-blush/20 border border-blush/40 px-2 py-0.5">{slot.topic.pillar}</span>
-              <span className="text-[10px] text-ocean/40">{slot.topic.format}</span>
+              <span className="text-[10px] text-ocean/65">{slot.topic.format}</span>
               <button onClick={(e) => { e.stopPropagation(); setEditTitle(slot.topic.title); setEditDesc(slot.topic.description); setIsEditing(true); }}
-                className="ml-auto text-[11px] text-ocean/40 hover:text-ocean flex items-center gap-1 transition-colors">
-                <Pencil className="h-3 w-3" /> Thema ändern
+                className="ml-auto text-[11px] text-ocean/65 hover:text-ocean flex items-center gap-1 transition-colors">
+                <Pencil className="h-3 w-3" /> {t("scripts.changeTopic")}
               </button>
             </div>
           )}
@@ -274,14 +277,14 @@ function TopicCard({
           {slot.scriptStatus === "idle" && (
             <Button onClick={(e) => { e.stopPropagation(); onGenerateScript(); }}
               className="h-9 rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-2 text-[12px] text-white">
-              <Sparkles className="h-3.5 w-3.5" /> Skript schreiben
+              <Sparkles className="h-3.5 w-3.5" /> {t("scripts.writeScript")}
             </Button>
           )}
 
           {slot.scriptStatus === "loading" && (
             <div className="flex items-center gap-2 py-3">
               <Loader2 className="h-4 w-4 text-blush-dark animate-spin" />
-              <span className="text-[12px] text-ocean/60">Skript wird geschrieben…</span>
+              <span className="text-[12px] text-ocean/60">{t("scripts.writing")}</span>
             </div>
           )}
 
@@ -298,7 +301,7 @@ function TopicCard({
                       {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Speichern
                     </Button>
                     <Button onClick={(e) => { e.stopPropagation(); onGenerateScript(); }} variant="ghost" size="sm"
-                      className="h-7 rounded-lg px-3 text-[11px] text-ocean/50 hover:text-ocean gap-1.5">
+                      className="h-7 rounded-lg px-3 text-[11px] text-ocean/70 hover:text-ocean gap-1.5">
                       <RefreshCw className="h-3 w-3" /> Neu schreiben
                     </Button>
                   </>
@@ -306,8 +309,8 @@ function TopicCard({
                 {slot.scriptStatus === "saved" && (
                   <span className="text-[11px] text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> Gespeichert</span>
                 )}
-                <button onClick={handleCopy} className="ml-auto flex items-center gap-1.5 text-[11px] text-ocean/50 hover:text-ocean transition-colors">
-                  {copied ? <><Check className="h-3 w-3 text-green-600" /> Kopiert</> : <><Copy className="h-3 w-3" /> Kopieren</>}
+                <button onClick={handleCopy} className="ml-auto flex items-center gap-1.5 text-[11px] text-ocean/70 hover:text-ocean transition-colors">
+                  {copied ? <><Check className="h-3 w-3 text-green-600" /> {t("scripts.copied")}</> : <><Copy className="h-3 w-3" /> Kopieren</>}
                 </button>
               </div>
             </div>
@@ -342,7 +345,7 @@ function WeekScriptCard({
   if (slot.status === "idle" || slot.status === "loading") {
     return (
       <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-ocean/5 bg-ocean/[0.02]">
-        <span className="text-[11px] font-bold text-ocean/30 w-6 shrink-0">{dayLabel}</span>
+        <span className="text-[11px] font-bold text-ocean/60 w-6 shrink-0">{dayLabel}</span>
         {slot.status === "loading"
           ? <Loader2 className="h-3.5 w-3.5 text-blush-dark/60 animate-spin" />
           : <div className="h-3.5 w-24 rounded bg-ocean/[0.02]" />}
@@ -396,15 +399,15 @@ function WeekScriptCard({
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-warm-white transition-colors cursor-pointer"
       >
         <span className="text-[11px] font-bold text-blush-dark/80 w-6 shrink-0">{dayLabel}</span>
-        <ChevronDown className={`h-3 w-3 text-ocean/30 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3 w-3 text-ocean/60 shrink-0 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
 
         <span className="flex-1 text-sm font-medium truncate">{s.title || "Skript"}</span>
 
         <div className="hidden md:flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-          {s.contentType && <span className="text-[10px] text-ocean/40 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{s.contentType}</span>}
+          {s.contentType && <span className="text-[10px] text-ocean/65 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{s.contentType}</span>}
           <button
             onClick={() => onRegenerate(dayIndex)}
-            className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-ocean hover:bg-warm-white transition-colors"
+            className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/60 hover:text-ocean hover:bg-warm-white transition-colors"
             title="Neu generieren"
           >
             <RefreshCw className="h-3 w-3" />
@@ -413,7 +416,7 @@ function WeekScriptCard({
             onClick={handleSave}
             disabled={saving || saved}
             className={`h-6 flex items-center gap-1 px-2 rounded-lg text-[10px] transition-colors ${
-              saved ? "text-green-600 bg-green-50" : "text-ocean/40 hover:text-ocean hover:bg-warm-white"
+              saved ? "text-green-600 bg-green-50" : "text-ocean/65 hover:text-ocean hover:bg-warm-white"
             }`}
           >
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : saved ? <Check className="h-3 w-3" /> : <Save className="h-3 w-3" />}
@@ -432,8 +435,8 @@ function WeekScriptCard({
           </div>
           <div className="flex items-center gap-2 pt-1">
             {s.pillar && <span className="text-[10px] text-blush-dark/60 rounded bg-blush/20 border border-blush/40 px-2 py-0.5">{s.pillar}</span>}
-            {s.contentType && <span className="text-[10px] text-ocean/50 rounded bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5">{s.contentType}</span>}
-            {s.format && <span className="text-[10px] text-ocean/40">{s.format}</span>}
+            {s.contentType && <span className="text-[10px] text-ocean/70 rounded bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5">{s.contentType}</span>}
+            {s.format && <span className="text-[10px] text-ocean/65">{s.format}</span>}
             {/* Mobile save */}
             <button onClick={handleSave} disabled={saving || saved}
               className={`md:hidden ml-auto flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors ${saved ? "text-green-600 bg-green-50" : "text-ocean/60 hover:text-ocean bg-ocean/[0.02] border border-ocean/[0.06]"}`}>
@@ -455,6 +458,7 @@ const emptyForm = {
 };
 
 export default function ClientScriptsPage() {
+  const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   const { generations, startChatGeneration, clearGeneration } = useGeneration();
   const genState = id ? generations.get(id) : undefined;
@@ -791,7 +795,7 @@ export default function ClientScriptsPage() {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Skripte</h1>
-          <p className="mt-1 text-sm text-ocean/50">Video-Skripte für {client?.configName || "diesen Kunden"}</p>
+          <p className="mt-1 text-sm text-ocean/70">Video-Skripte für {client?.configName || "diesen Kunden"}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={openNew}
@@ -820,13 +824,13 @@ export default function ClientScriptsPage() {
             <p className="text-sm font-medium text-green-600">{genState.count} Skripte aus dem Gespräch erstellt</p>
             <p className="text-xs text-ocean/60 mt-0.5">Automatisch gespeichert — sieh sie unten in der Liste.</p>
           </div>
-          <button onClick={() => clearGeneration(id)} className="text-[11px] text-ocean/40 hover:text-ocean transition-colors shrink-0">✕</button>
+          <button onClick={() => clearGeneration(id)} className="text-[11px] text-ocean/65 hover:text-ocean transition-colors shrink-0">✕</button>
         </div>
       )}
       {genState?.status === "error" && (
         <div className="flex items-center gap-3 rounded-2xl border border-red-500/25 bg-red-50 px-5 py-3.5">
           <p className="text-sm text-red-500 flex-1">Fehler: {genState.error}</p>
-          <button onClick={() => clearGeneration(id)} className="text-[11px] text-ocean/40 hover:text-ocean transition-colors shrink-0">✕</button>
+          <button onClick={() => clearGeneration(id)} className="text-[11px] text-ocean/65 hover:text-ocean transition-colors shrink-0">✕</button>
         </div>
       )}
 
@@ -840,7 +844,7 @@ export default function ClientScriptsPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">Wochenplanung</p>
-              <p className="text-xs text-ocean/50 mt-0.5">
+              <p className="text-xs text-ocean/70 mt-0.5">
                 {topicPlan.length === 0
                   ? "Schritt 1: Themenplan generieren — Schritt 2: Skripte für einzelne Themen schreiben"
                   : `${topicPlan.length} Themen geplant — klicke auf ein Thema um das Skript zu schreiben`}
@@ -850,17 +854,17 @@ export default function ClientScriptsPage() {
 
           {/* Data sources */}
           <div className="hidden sm:flex flex-col gap-1 items-end shrink-0">
-            <div className={`flex items-center gap-1.5 text-[11px] ${ownVideoCount > 0 ? "text-green-600" : "text-ocean/40"}`}>
+            <div className={`flex items-center gap-1.5 text-[11px] ${ownVideoCount > 0 ? "text-green-600" : "text-ocean/65"}`}>
               <TrendingUp className="h-3 w-3 shrink-0" />
               {ownVideoCount > 0 ? <span>{ownVideoCount} eigene Videos</span> : <span>Keine eigene Analyse</span>}
             </div>
-            <div className={`flex items-center gap-1.5 text-[11px] ${creatorVideoCount > 0 ? "text-ocean/60" : "text-ocean/40"}`}>
+            <div className={`flex items-center gap-1.5 text-[11px] ${creatorVideoCount > 0 ? "text-ocean/60" : "text-ocean/65"}`}>
               <Users className="h-3 w-3 shrink-0" />
               {creatorVideoCount > 0 ? <span>{creatorVideoCount} Creator-Videos</span> : <span>Keine Creator-Videos</span>}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-blush-dark/80">
               <Brain className="h-3 w-3 shrink-0" />
-              <span>Strategie + Profil</span>
+              <span>{t("scripts.strategyProfile")}</span>
             </div>
           </div>
         </div>
@@ -912,11 +916,11 @@ export default function ClientScriptsPage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">Ideen-Chat</p>
-            <p className="text-xs text-ocean/50 mt-0.5">
+            <p className="text-xs text-ocean/70 mt-0.5">
               Entwickle Ideen im Gespräch — basierend auf echten Erfahrungen
             </p>
           </div>
-          <ChevronDown className={`h-4 w-4 text-ocean/40 shrink-0 transition-transform duration-200 ${chatOpen ? "rotate-180" : ""}`} />
+          <ChevronDown className={`h-4 w-4 text-ocean/65 shrink-0 transition-transform duration-200 ${chatOpen ? "rotate-180" : ""}`} />
         </button>
 
         {/* Chat body */}
@@ -947,7 +951,7 @@ export default function ClientScriptsPage() {
               {chatLoading && chatMessages.at(-1)?.role !== "assistant" && (
                 <div className="flex justify-start">
                   <div className="bg-ocean/[0.02] border border-ocean/[0.06] rounded-2xl rounded-bl-sm px-4 py-2.5">
-                    <Loader2 className="h-4 w-4 text-ocean/40 animate-spin" />
+                    <Loader2 className="h-4 w-4 text-ocean/65 animate-spin" />
                   </div>
                 </div>
               )}
@@ -980,10 +984,10 @@ export default function ClientScriptsPage() {
                 <div className="px-4 py-3 border-b border-blush/30 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-semibold text-blush-dark">{chatScriptResult.title}</p>
-                    <p className="text-[10px] text-ocean/50 mt-0.5">{chatScriptResult.contentType} · {chatScriptResult.pillar}</p>
+                    <p className="text-[10px] text-ocean/70 mt-0.5">{chatScriptResult.contentType} · {chatScriptResult.pillar}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => setChatScriptResult(null)} className="text-[10px] text-ocean/40 hover:text-ocean transition-colors">Verwerfen</button>
+                    <button onClick={() => setChatScriptResult(null)} className="text-[10px] text-ocean/65 hover:text-ocean transition-colors">Verwerfen</button>
                     <Button onClick={saveChatScript} size="sm" className="h-7 px-3 text-xs rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-600 border border-green-500/30 gap-1.5">
                       <Save className="h-3 w-3" /> Speichern
                     </Button>
@@ -998,7 +1002,7 @@ export default function ClientScriptsPage() {
                   )}
                   {chatScriptResult.body && (
                     <div>
-                      <p className="text-[9px] uppercase tracking-wider text-ocean/50 font-medium mb-1">Skript</p>
+                      <p className="text-[9px] uppercase tracking-wider text-ocean/70 font-medium mb-1">Skript</p>
                       <p className="text-xs text-ocean/60 leading-relaxed whitespace-pre-wrap">{chatScriptResult.body}</p>
                     </div>
                   )}
@@ -1021,7 +1025,7 @@ export default function ClientScriptsPage() {
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
                 placeholder="Schreibe hier…"
                 disabled={chatLoading}
-                className="flex-1 h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-4 text-sm placeholder:text-ocean/30 focus:outline-none focus:border-amber-500/30 disabled:opacity-50 transition-colors"
+                className="flex-1 h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-4 text-sm placeholder:text-ocean/60 focus:outline-none focus:border-amber-500/30 disabled:opacity-50 transition-colors"
               />
               <button
                 onClick={sendChatMessage}
@@ -1033,7 +1037,7 @@ export default function ClientScriptsPage() {
               <button
                 onClick={resetChat}
                 title="Neues Gespräch"
-                className="h-10 w-10 flex items-center justify-center rounded-xl text-ocean/30 hover:text-ocean hover:bg-warm-white transition-colors shrink-0"
+                className="h-10 w-10 flex items-center justify-center rounded-xl text-ocean/60 hover:text-ocean hover:bg-warm-white transition-colors shrink-0"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
@@ -1045,17 +1049,17 @@ export default function ClientScriptsPage() {
       {/* ── Saved Scripts List ─────────────────────────────────────────────── */}
       {/* Status filter */}
       <div className="flex items-center gap-2 flex-wrap">
-        {[{ value: "all", label: "Alle" }, ...STATUS_OPTIONS].map((s) => (
+        {[{ value: "all", labelKey: null as string | null }, ...STATUS_OPTIONS].map((s) => (
           <button key={s.value} onClick={() => setFilterStatus(s.value)}
             className={`rounded-xl px-4 py-1.5 text-xs font-medium transition-all ${
               filterStatus === s.value
                 ? "bg-blush/30 text-blush-dark border border-blush/50"
-                : "glass border-ocean/[0.06] text-ocean/50 hover:text-ocean"
+                : "glass border-ocean/[0.06] text-ocean/70 hover:text-ocean"
             }`}>
-            {s.label}
+            {s.labelKey ? t(s.labelKey) : "Alle"}
           </button>
         ))}
-        <span className="ml-1 text-[11px] text-ocean/50">{filtered.length} Skripte</span>
+        <span className="ml-1 text-[11px] text-ocean/70">{filtered.length} Skripte</span>
       </div>
 
       {/* Script list */}
@@ -1066,7 +1070,7 @@ export default function ClientScriptsPage() {
         {filtered.length === 0 && (
           <div className="glass rounded-2xl p-16 text-center">
             <FileText className="mx-auto h-10 w-10 text-ocean/20 mb-4" />
-            <p className="text-sm text-ocean/50 font-medium">Noch keine gespeicherten Skripte.</p>
+            <p className="text-sm text-ocean/70 font-medium">Noch keine gespeicherten Skripte.</p>
             <p className="text-xs text-ocean/60 mt-1">Generiere eine Woche und speichere die Skripte.</p>
           </div>
         )}
@@ -1080,7 +1084,7 @@ export default function ClientScriptsPage() {
           </DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <Label className="text-xs text-ocean/50">Titel / Thema</Label>
+              <Label className="text-xs text-ocean/70">Titel / Thema</Label>
               <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="z.B. Wie ich meinen ersten Deal abgeschlossen habe"
                 className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11 text-sm" />
@@ -1088,33 +1092,33 @@ export default function ClientScriptsPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label className="text-xs text-ocean/50">Pillar</Label>
+                <Label className="text-xs text-ocean/70">Pillar</Label>
                 <Input value={form.pillar} onChange={(e) => setForm({ ...form, pillar: e.target.value })}
                   className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-ocean/50">Content Type</Label>
+                <Label className="text-xs text-ocean/70">Content Type</Label>
                 <Input value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value })}
                   className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
               </div>
               <div>
-                <Label className="text-xs text-ocean/50">Status</Label>
+                <Label className="text-xs text-ocean/70">Status</Label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
                   className="mt-1.5 w-full h-10 rounded-xl glass border border-ocean/[0.06] bg-transparent px-3 text-sm text-ocean focus:outline-none">
-                  {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{t(s.labelKey)}</option>)}
                 </select>
               </div>
             </div>
 
             <div>
-              <Label className="text-xs text-ocean/50">Format</Label>
+              <Label className="text-xs text-ocean/70">Format</Label>
               <Input value={form.format} onChange={(e) => setForm({ ...form, format: e.target.value })}
                 placeholder="z.B. Face to Camera + B-Roll"
                 className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
             </div>
 
             <div>
-              <Label className="text-xs text-ocean/50">Skript</Label>
+              <Label className="text-xs text-ocean/70">Skript</Label>
               <p className="text-[11px] text-ocean/60 mt-0.5 mb-1.5">Der komplette gesprochene Text — vom Hook bis zum CTA.</p>
               <Textarea value={form.fullScript} onChange={(e) => setForm({ ...form, fullScript: e.target.value })}
                 rows={12} placeholder="Das vollständige Skript zum Vorlesen…"
