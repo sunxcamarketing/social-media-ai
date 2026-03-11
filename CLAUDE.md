@@ -67,12 +67,16 @@ npm run dev
 ├── app/                                   # Next.js application
 │   ├── src/
 │   │   ├── app/                           # Pages and API routes
-│   │   │   ├── page.tsx                   # Dashboard
-│   │   │   ├── videos/page.tsx            # Videos browser with thumbnails
-│   │   │   ├── run/page.tsx               # Pipeline runner with live progress
-│   │   │   ├── configs/page.tsx           # Config management
-│   │   │   ├── creators/page.tsx          # Creator management
-│   │   │   └── api/                       # API routes (configs, creators, videos, pipeline)
+│   │   │   ├── (app)/                     # App route group (sidebar, topbar)
+│   │   │   │   ├── page.tsx               # Dashboard
+│   │   │   │   ├── clients/               # Client management pages
+│   │   │   │   ├── videos/page.tsx        # Videos browser with thumbnails
+│   │   │   │   ├── run/page.tsx           # Pipeline runner with live progress
+│   │   │   │   ├── configs/page.tsx       # Config management
+│   │   │   │   └── creators/page.tsx      # Creator management
+│   │   │   ├── (landing)/                 # Landing page route group (no sidebar)
+│   │   │   │   └── audit/page.tsx         # Leadmagnet: Instagram Profil-Audit
+│   │   │   └── api/                       # API routes (configs, creators, videos, pipeline, audit)
 │   │   ├── lib/                           # Core logic
 │   │   │   ├── pipeline.ts               # Pipeline orchestration
 │   │   │   ├── apify.ts                  # Apify scraper client
@@ -85,7 +89,8 @@ npm run dev
 ├── data/                                  # CSV data storage
 │   ├── configs.csv                        # Pipeline configurations
 │   ├── creators.csv                       # Instagram creator accounts
-│   └── videos.csv                         # Analyzed video results
+│   ├── videos.csv                         # Analyzed video results
+│   └── leads.csv                          # Leadmagnet audit submissions
 ├── context/                               # Background context for Claude
 ├── plans/                                 # Implementation plans
 ├── .claude/commands/                      # Slash commands (prime, create-plan, implement)
@@ -98,13 +103,14 @@ npm run dev
 
 ## App Pages
 
-| Page | Path | Description |
-|------|------|-------------|
-| Dashboard | `/` | Summary stats, recent videos |
-| Videos | `/videos` | Browse results with thumbnails, expandable analysis & concepts |
-| Run Pipeline | `/run` | Select config, set params, run with live progress streaming |
-| Configs | `/configs` | CRUD for pipeline configs (prompts, categories) |
-| Creators | `/creators` | CRUD for competitor Instagram accounts |
+| Page | Path | Route Group | Description |
+|------|------|-------------|-------------|
+| Dashboard | `/` | (app) | Summary stats, recent videos |
+| Videos | `/videos` | (app) | Browse results with thumbnails, expandable analysis & concepts |
+| Run Pipeline | `/run` | (app) | Select config, set params, run with live progress streaming |
+| Configs | `/configs` | (app) | CRUD for pipeline configs (prompts, categories) |
+| Creators | `/creators` | (app) | CRUD for competitor Instagram accounts |
+| **Audit** | `/audit` | (landing) | Leadmagnet: Instagram Profil-Audit mit KI-Report |
 
 ---
 
