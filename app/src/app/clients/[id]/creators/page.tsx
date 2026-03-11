@@ -22,6 +22,7 @@ import Link from "next/link";
 import type { Creator, Config } from "@/lib/types";
 import type { CreatorSuggestion } from "@/app/api/configs/[id]/research-creators/route";
 import { useGeneration } from "@/context/generation-context";
+import { useI18n } from "@/lib/i18n";
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -37,12 +38,13 @@ const TIER_STYLES: Record<string, { label: string; color: string }> = {
 };
 
 function SuggestionCard({
-  s, onAdd, adding, added,
+  s, onAdd, adding, added, t,
 }: {
   s: CreatorSuggestion;
   onAdd: () => void;
   adding: boolean;
   added: boolean;
+  t: (key: string) => string;
 }) {
   const tier = TIER_STYLES[s.tier] || TIER_STYLES.mid;
   return (
@@ -63,7 +65,7 @@ function SuggestionCard({
             )}
             {s.verified ? (
               <span className="text-[10px] px-1.5 py-0.5 rounded-md border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
-                ✓ verifiziert
+                {t("creators.verified")}
               </span>
             ) : s.confidence !== undefined && (
               <span className={`text-[10px] px-1.5 py-0.5 rounded-md border ${
@@ -71,7 +73,7 @@ function SuggestionCard({
                 s.confidence >= 7 ? "bg-amber-500/10 border-amber-500/20 text-ivory" :
                 "bg-red-50 border-red-200 text-red-500"
               }`}>
-                {s.confidence >= 9 ? "✓ sicher" : s.confidence >= 7 ? "~ wahrscheinlich" : "? unsicher"}
+                {s.confidence >= 9 ? t("creators.confident") : s.confidence >= 7 ? t("creators.likely") : t("creators.uncertain")}
               </span>
             )}
           </div>
@@ -92,13 +94,13 @@ function SuggestionCard({
         <div className="shrink-0">
           {added ? (
             <span className="inline-flex items-center gap-1 text-[11px] text-green-600">
-              <UserCheck className="h-3.5 w-3.5" /> Hinzugefügt
+              <UserCheck className="h-3.5 w-3.5" /> {t("creators.added")}
             </span>
           ) : (
             <Button size="sm" onClick={onAdd} disabled={adding}
               className="h-8 rounded-xl gap-1.5 text-xs bg-ocean hover:bg-ocean-light border-0">
               {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
-              {adding ? "Verifiziere…" : "Hinzufügen"}
+              {adding ? t("creators.verifying") : t("common.add")}
             </Button>
           )}
         </div>
@@ -109,6 +111,7 @@ function SuggestionCard({
 
 export default function ClientCreatorsPage() {
   const { id } = useParams<{ id: string }>();
+  const { t } = useI18n();
   const [client, setClient] = useState<Config | null>(null);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -129,7 +132,7 @@ export default function ClientCreatorsPage() {
   const researchState = creatorResearchGen.get(id);
   const researching = researchState?.status === "running";
   const suggestions = (researchState?.suggestions as CreatorSuggestion[] | undefined) ?? [];
-  const researchError = researchState?.status === "error" ? (researchState.error ?? "Recherche fehlgeschlagen") : null;
+  const researchError = researchState?.status === "error" ? (researchState.error ?? t("creators.researchFailed")) : null;
 
   // Auto-open research panel when suggestions arrive from background
   useEffect(() => {
@@ -190,7 +193,7 @@ export default function ClientCreatorsPage() {
   };
 
   const handleDelete = async (creatorId: string) => {
-    if (!confirm("Creator löschen?")) return;
+    if (!confirm(t("creators.confirmDelete"))) return;
     await fetch(`/api/creators?id=${creatorId}`, { method: "DELETE" });
     loadCreators();
   };
@@ -277,7 +280,7 @@ export default function ClientCreatorsPage() {
       });
       const verifyData = await verifyRes.json().catch(() => ({})) as { error?: string; username?: string };
       if (!verifyRes.ok) {
-        setAddError(verifyData.error || `@${s.username} nicht auf Instagram gefunden`);
+        setAddError(verifyData.error || `@${s.username} ${t("creators.notFound")}`);
         return;
       }
 
@@ -306,9 +309,9 @@ export default function ClientCreatorsPage() {
       {/* Header */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Creators</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("creators.title")}</h1>
           <p className="mt-1 text-sm text-ocean/60">
-            Verfolgte Competitor-Accounts für {client?.configName || "diesen Kunden"}
+            {t("creators.subtitle")} {client?.configName || t("creators.thisClient")}
             {client?.creatorsCategory && (
               <Badge variant="secondary" className="ml-2 rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
                 {client.creatorsCategory}
@@ -320,50 +323,50 @@ export default function ClientCreatorsPage() {
           <Button variant="ghost" onClick={handleRefreshAll} disabled={refreshing}
             className="rounded-xl glass border-ocean/[0.06] gap-1.5 text-xs">
             {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Refresh All
+            {t("common.refreshAll")}
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={openNew} variant="ghost"
                 className="rounded-xl glass border border-ocean/[0.06] gap-1.5 text-xs">
-                <Plus className="h-4 w-4" /> Manuell hinzufügen
+                <Plus className="h-4 w-4" /> {t("creators.addManual")}
               </Button>
             </DialogTrigger>
             <DialogContent className="glass-strong rounded-2xl border-ocean/[0.06]">
               <DialogHeader>
-                <DialogTitle>{editing ? "Creator bearbeiten" : "Creator hinzufügen"}</DialogTitle>
+                <DialogTitle>{editing ? t("creators.editCreator") : t("creators.addCreator")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-5 pt-2">
                 <div>
-                  <Label className="text-xs text-ocean/60">Instagram Username</Label>
+                  <Label className="text-xs text-ocean/60">{t("creators.igUsername")}</Label>
                   <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })}
-                    placeholder="z.B. garyvee" className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11" />
+                    placeholder={t("creators.placeholder")} className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11" />
                 </div>
                 <div>
-                  <Label className="text-xs text-ocean/60">Kategorie</Label>
+                  <Label className="text-xs text-ocean/60">{t("creators.category")}</Label>
                   <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11" readOnly={!editing} />
                   {!editing && (
                     <p className="mt-1 text-[11px] text-ocean/60">
-                      Automatisch gesetzt: {client?.creatorsCategory}
+                      {t("creators.autoSet")} {client?.creatorsCategory}
                     </p>
                   )}
                 </div>
                 {!editing && (
                   <p className="text-[11px] text-ocean/60">
-                    Profilbild, Follower und Aktivitätsdaten werden automatisch gescrapt.
+                    {t("creators.autoScrape")}
                   </p>
                 )}
                 <Button onClick={handleSave} disabled={saving || !form.username || !form.category}
                   className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0">
-                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{editing ? "Speichert…" : "Füge hinzu…"}</> : editing ? "Speichern" : "Hinzufügen"}
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{editing ? t("creators.savingCreator") : t("creators.addingTo")}</> : editing ? t("common.save") : t("common.add")}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
           <Button onClick={() => setResearchOpen(!researchOpen)}
             className="rounded-xl h-10 gap-1.5 bg-ocean hover:bg-ocean-light border-0 text-xs">
-            <Search className="h-3.5 w-3.5" /> Creators recherchieren
+            <Search className="h-3.5 w-3.5" /> {t("creators.research")}
             {researchOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </Button>
         </div>
@@ -377,9 +380,9 @@ export default function ClientCreatorsPage() {
               <Sparkles className="h-4 w-4 text-blush-dark" />
             </div>
             <div>
-              <p className="text-sm font-semibold">KI-Recherche</p>
+              <p className="text-sm font-semibold">{t("creators.aiResearch")}</p>
               <p className="text-xs text-ocean/60">
-                Findet die besten Creator, größten Persönlichkeiten und interessantesten Charaktere in der Nische <strong className="text-ocean/70">{client?.creatorsCategory}</strong>
+                {t("creators.aiResearchDesc")} <strong className="text-ocean/70">{client?.creatorsCategory}</strong>
               </p>
             </div>
           </div>
@@ -389,14 +392,14 @@ export default function ClientCreatorsPage() {
               value={focusHint}
               onChange={(e) => setFocusHint(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !researching) runResearch(); }}
-              placeholder="Optionaler Fokus, z.B. 'nur Dubai-basierte', 'unter 500K', 'besonders polarisierende Charaktere'…"
+              placeholder={t("creators.focusPlaceholder")}
               className="flex-1 rounded-xl glass border-ocean/[0.06] h-11 text-sm"
             />
             <Button onClick={runResearch} disabled={researching}
               className="h-11 px-5 rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-2 shrink-0">
               {researching
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Recherchiert…</>
-                : <><Search className="h-4 w-4" /> Recherchieren</>}
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("creators.researching")}</>
+                : <><Search className="h-4 w-4" /> {t("creators.researchBtn")}</>}
             </Button>
           </div>
 
@@ -408,9 +411,9 @@ export default function ClientCreatorsPage() {
             <div className="space-y-2 px-1">
               <div className="flex items-center gap-2 text-sm text-ocean/60">
                 <Loader2 className="h-4 w-4 animate-spin text-blush-dark" />
-                KI sucht die größten Creator in der Nische…
+                {t("creators.aiSearching")}
               </div>
-              <p className="text-xs text-ocean/65 pl-6">Fokus auf Mega- und Macro-Creator mit hoher Reichweite oder virale Accounts.</p>
+              <p className="text-xs text-ocean/65 pl-6">{t("creators.focusMega")}</p>
             </div>
           )}
 
@@ -419,14 +422,12 @@ export default function ClientCreatorsPage() {
               {/* Source banner */}
               <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2">
                 <span className="h-2 w-2 rounded-full bg-ivory shrink-0" />
-                <p className="text-xs text-ivory">
-                  KI-Vorschläge — klick auf <strong>@username</strong> um das Profil auf Instagram zu prüfen, bevor du hinzufügst. Follower-Daten werden nach dem Hinzufügen live abgerufen.
-                </p>
+                <p className="text-xs text-ivory" dangerouslySetInnerHTML={{ __html: t("creators.aiBanner") }} />
               </div>
 
               {/* Tier summary */}
               <div className="flex items-center gap-3 flex-wrap">
-                <p className="text-xs text-ocean/60">{suggestions.length} Vorschläge gefunden:</p>
+                <p className="text-xs text-ocean/60">{suggestions.length} {t("creators.suggestionsFound")}</p>
                 {(["mega", "macro", "mid", "micro"] as const).map(tier => {
                   const count = suggestions.filter(s => s.tier === tier).length;
                   if (!count) return null;
@@ -459,6 +460,7 @@ export default function ClientCreatorsPage() {
                           onAdd={() => addSuggestion(s)}
                           adding={addingUsername === s.username}
                           added={alreadyExists || wasAdded}
+                          t={t}
                         />
                       );
                     })}
@@ -469,7 +471,7 @@ export default function ClientCreatorsPage() {
               <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-4 py-3">
                 <p className="text-[11px] text-ocean/70 flex items-center gap-1.5">
                   <Star className="h-3 w-3 text-ivory/60 shrink-0" />
-                  Klick auf @username öffnet das Instagram-Profil zur Prüfung. Nach dem Hinzufügen werden Follower-Zahlen automatisch per Apify abgerufen.
+                  {t("creators.profileHint")}
                 </p>
               </div>
             </div>
@@ -542,7 +544,7 @@ export default function ClientCreatorsPage() {
               ) : (
                 <div className="mt-4 rounded-xl bg-black/20 border border-ocean/[0.06] p-3 text-center">
                   <p className="text-[11px] text-ocean/60">
-                    Noch keine Daten — <RefreshCw className="inline h-3 w-3" /> klicken zum Scrapen
+                    {t("creators.noData")} <RefreshCw className="inline h-3 w-3" /> {t("creators.clickScrape")}
                   </p>
                 </div>
               )}
@@ -550,12 +552,12 @@ export default function ClientCreatorsPage() {
               <div className="mt-3 flex items-center justify-between">
                 {creator.lastScrapedAt ? (
                   <p className="text-[10px] text-ocean/65">
-                    Gescrapt {new Date(creator.lastScrapedAt).toLocaleDateString("de-DE")}
+                    {t("creators.scraped")} {new Date(creator.lastScrapedAt).toLocaleDateString()}
                   </p>
                 ) : <span />}
                 <Link href={`/clients/${id}/videos?creator=${creator.username}`}
                   className="inline-flex items-center gap-1 text-[11px] text-blush-dark hover:text-blush-dark/80 transition-colors">
-                  Videos ansehen <ExternalLink className="h-3 w-3" />
+                  {t("creators.viewVideos")} <ExternalLink className="h-3 w-3" />
                 </Link>
               </div>
             </div>
@@ -565,11 +567,11 @@ export default function ClientCreatorsPage() {
         {clientCreators.length === 0 && !researchOpen && (
           <div className="col-span-full glass rounded-2xl p-12 text-center">
             <Users className="mx-auto h-10 w-10 text-ocean/60" />
-            <h3 className="mt-4 font-semibold">Noch keine Creators</h3>
-            <p className="mt-1 text-sm text-ocean/60 mb-5">Lass die KI die besten Creators in der Nische finden oder füge manuell hinzu.</p>
+            <h3 className="mt-4 font-semibold">{t("creators.noCreators")}</h3>
+            <p className="mt-1 text-sm text-ocean/60 mb-5">{t("creators.noCreatorsHint")}</p>
             <Button onClick={() => setResearchOpen(true)}
               className="rounded-xl h-9 gap-1.5 bg-ocean hover:bg-ocean-light border-0 text-xs">
-              <Search className="h-3.5 w-3.5" /> KI-Recherche starten
+              <Search className="h-3.5 w-3.5" /> {t("creators.startResearch")}
             </Button>
           </div>
         )}

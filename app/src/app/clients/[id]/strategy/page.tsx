@@ -529,7 +529,7 @@ export default function ClientStrategyPage() {
             {insights.topAllTime.length > 0 && (
               <div>
                 <p className="text-[11px] font-medium text-blush-dark uppercase tracking-wider mb-3">
-                  {t("strategy.topLast")} {insights.scrapeWindowDays ? `${insights.scrapeWindowDays} ${t("strategy.days")}` : "12 Monate"} {t("strategy.excludingLast30")}
+                  {t("strategy.topLast")} {insights.scrapeWindowDays ? `${insights.scrapeWindowDays} ${t("strategy.days")}` : t("scripts.12months")} {t("strategy.excludingLast30")}
                 </p>
                 <div className="space-y-3">
                   {insights.topAllTime.map((v, i) => <VideoInsightCard key={i} video={v} />)}

@@ -298,19 +298,19 @@ function TopicCard({
                   <>
                     <Button onClick={handleSave} disabled={saving} size="sm"
                       className="h-7 rounded-lg px-3 text-[11px] bg-green-500/20 hover:bg-green-500/30 text-green-600 border border-green-500/30 gap-1.5">
-                      {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Speichern
+                      {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} {t("scripts.save")}
                     </Button>
                     <Button onClick={(e) => { e.stopPropagation(); onGenerateScript(); }} variant="ghost" size="sm"
                       className="h-7 rounded-lg px-3 text-[11px] text-ocean/70 hover:text-ocean gap-1.5">
-                      <RefreshCw className="h-3 w-3" /> Neu schreiben
+                      <RefreshCw className="h-3 w-3" /> {t("scripts.regenerate")}
                     </Button>
                   </>
                 )}
                 {slot.scriptStatus === "saved" && (
-                  <span className="text-[11px] text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> Gespeichert</span>
+                  <span className="text-[11px] text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> {t("scripts.saved")}</span>
                 )}
                 <button onClick={handleCopy} className="ml-auto flex items-center gap-1.5 text-[11px] text-ocean/70 hover:text-ocean transition-colors">
-                  {copied ? <><Check className="h-3 w-3 text-green-600" /> {t("scripts.copied")}</> : <><Copy className="h-3 w-3" /> Kopieren</>}
+                  {copied ? <><Check className="h-3 w-3 text-green-600" /> {t("scripts.copied")}</> : <><Copy className="h-3 w-3" /> {t("scripts.copyScript")}</>}
                 </button>
               </div>
             </div>
@@ -373,7 +373,7 @@ function WeekScriptCard({
       <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-green-200 bg-green-50">
         <span className="text-[11px] font-bold text-green-600/60 w-6 shrink-0">{dayLabel}</span>
         <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
-        <span className="text-[11px] text-green-600/70">Gespeichert</span>
+        <span className="text-[11px] text-green-600/70">{t("scripts.saved")}</span>
       </div>
     );
   }
@@ -408,7 +408,7 @@ function WeekScriptCard({
           <button
             onClick={() => onRegenerate(dayIndex)}
             className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/60 hover:text-ocean hover:bg-warm-white transition-colors"
-            title="Neu generieren"
+            title={t("scripts.regenerate")}
           >
             <RefreshCw className="h-3 w-3" />
           </button>
@@ -420,7 +420,7 @@ function WeekScriptCard({
             }`}
           >
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : saved ? <Check className="h-3 w-3" /> : <Save className="h-3 w-3" />}
-            {saved ? "Gespeichert" : "Speichern"}
+            {saved ? t("scripts.saved") : t("scripts.save")}
           </button>
         </div>
       </div>
@@ -441,7 +441,7 @@ function WeekScriptCard({
             <button onClick={handleSave} disabled={saving || saved}
               className={`md:hidden ml-auto flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors ${saved ? "text-green-600 bg-green-50" : "text-ocean/60 hover:text-ocean bg-ocean/[0.02] border border-ocean/[0.06]"}`}>
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : saved ? <Check className="h-3 w-3" /> : <Save className="h-3 w-3" />}
-              {saved ? "Gespeichert" : "Speichern"}
+              {saved ? t("scripts.saved") : t("scripts.save")}
             </button>
           </div>
         </div>
@@ -856,11 +856,11 @@ export default function ClientScriptsPage() {
           <div className="hidden sm:flex flex-col gap-1 items-end shrink-0">
             <div className={`flex items-center gap-1.5 text-[11px] ${ownVideoCount > 0 ? "text-green-600" : "text-ocean/65"}`}>
               <TrendingUp className="h-3 w-3 shrink-0" />
-              {ownVideoCount > 0 ? <span>{ownVideoCount} eigene Videos</span> : <span>Keine eigene Analyse</span>}
+              {ownVideoCount > 0 ? <span>{ownVideoCount} {t("scripts.ownVideos")}</span> : <span>{t("scripts.noOwnAnalysis")}</span>}
             </div>
             <div className={`flex items-center gap-1.5 text-[11px] ${creatorVideoCount > 0 ? "text-ocean/60" : "text-ocean/65"}`}>
               <Users className="h-3 w-3 shrink-0" />
-              {creatorVideoCount > 0 ? <span>{creatorVideoCount} Creator-Videos</span> : <span>Keine Creator-Videos</span>}
+              {creatorVideoCount > 0 ? <span>{creatorVideoCount} {t("scripts.creatorVideos")}</span> : <span>{t("scripts.noCreatorVideos")}</span>}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-blush-dark/80">
               <Brain className="h-3 w-3 shrink-0" />
@@ -987,9 +987,9 @@ export default function ClientScriptsPage() {
                     <p className="text-[10px] text-ocean/70 mt-0.5">{chatScriptResult.contentType} · {chatScriptResult.pillar}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => setChatScriptResult(null)} className="text-[10px] text-ocean/65 hover:text-ocean transition-colors">Verwerfen</button>
+                    <button onClick={() => setChatScriptResult(null)} className="text-[10px] text-ocean/65 hover:text-ocean transition-colors">{t("common.cancel")}</button>
                     <Button onClick={saveChatScript} size="sm" className="h-7 px-3 text-xs rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-600 border border-green-500/30 gap-1.5">
-                      <Save className="h-3 w-3" /> Speichern
+                      <Save className="h-3 w-3" /> {t("scripts.save")}
                     </Button>
                   </div>
                 </div>

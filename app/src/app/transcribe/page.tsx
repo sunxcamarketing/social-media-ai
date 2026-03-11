@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
 import type { Config } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 
 interface SaveForm {
   clientId: string;
@@ -52,6 +53,7 @@ function PlatformBadge({ platform }: { platform: "youtube" | "instagram" | "tikt
 }
 
 export default function TranscribePage() {
+  const { t } = useI18n();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -89,10 +91,10 @@ export default function TranscribePage() {
         body: JSON.stringify({ url: url.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Fehler beim Transkribieren");
+      if (!res.ok) throw new Error(data.error || t("transcribe.errorGeneric"));
       setTranscript(data.transcript || "");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unbekannter Fehler");
+      setError(e instanceof Error ? e.message : t("transcribe.errorUnknown"));
     } finally {
       setLoading(false);
     }
@@ -129,9 +131,9 @@ export default function TranscribePage() {
           <Mic className="h-4 w-4 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Transcribe</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t("nav.transcribe")}</h1>
           <p className="text-[12px] text-ocean/60 mt-0.5">
-            Reels, TikToks und YouTube Shorts transkribieren
+            {t("transcribe.subtitle")}
           </p>
         </div>
       </div>
@@ -149,7 +151,7 @@ export default function TranscribePage() {
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Input
-                placeholder="Video-URL einfügen…"
+                placeholder={t("transcribe.placeholder")}
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !loading) handleTranscribe(); }}
@@ -167,8 +169,8 @@ export default function TranscribePage() {
               className="h-11 px-5 rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-2 shrink-0"
             >
               {loading
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Transkribiert…</>
-                : <><Mic className="h-4 w-4" /> Transkribieren</>}
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("transcribe.transcribing")}</>
+                : <><Mic className="h-4 w-4" /> {t("transcribe.transcribe")}</>}
             </Button>
           </div>
 
@@ -176,12 +178,12 @@ export default function TranscribePage() {
             <div className="rounded-xl bg-blush/20 border border-blush/40 px-4 py-3 space-y-1">
               <p className="text-[13px] text-ocean/60">
                 {platform === "instagram"
-                  ? "Reel wird über Apify geladen und bei Gemini hochgeladen…"
+                  ? t("transcribe.igLoading")
                   : platform === "youtube"
-                  ? "YouTube-Video wird mit Gemini verarbeitet…"
-                  : "Video wird verarbeitet…"}
+                  ? t("transcribe.ytLoading")
+                  : t("transcribe.genericLoading")}
               </p>
-              <p className="text-[11px] text-ocean/70">Das kann 30–60 Sekunden dauern.</p>
+              <p className="text-[11px] text-ocean/70">{t("transcribe.duration")}</p>
             </div>
           )}
 
@@ -196,17 +198,17 @@ export default function TranscribePage() {
         {transcript && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Transkript</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">{t("transcribe.transcript")}</span>
               <div className="flex items-center gap-2">
                 <button onClick={handleCopy}
                   className="flex items-center gap-1.5 text-[12px] text-ocean/60 hover:text-ocean transition-colors">
                   {copied
-                    ? <><Check className="h-3.5 w-3.5 text-green-600" /> Kopiert</>
-                    : <><Copy className="h-3.5 w-3.5" /> Kopieren</>}
+                    ? <><Check className="h-3.5 w-3.5 text-green-600" /> {t("transcribe.copied")}</>
+                    : <><Copy className="h-3.5 w-3.5" /> {t("transcribe.copy")}</>}
                 </button>
                 <Button onClick={openSave} size="sm"
                   className="h-7 rounded-lg px-3 text-[12px] bg-ocean hover:bg-ocean-light border-0 gap-1.5">
-                  <Plus className="h-3 w-3" /> Als Training-Skript speichern
+                  <Plus className="h-3 w-3" /> {t("transcribe.saveAsTraining")}
                 </Button>
               </div>
             </div>
@@ -221,45 +223,45 @@ export default function TranscribePage() {
       <Dialog open={saveOpen} onOpenChange={v => { if (!v) setSaveOpen(false); }}>
         <DialogContent className="sm:max-w-xl glass border-ocean/[0.06] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Als Training-Skript speichern</DialogTitle>
+            <DialogTitle className="text-base font-semibold">{t("transcribe.saveTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Kunde</Label>
+              <Label className="text-xs text-ocean/60">{t("transcribe.client")}</Label>
               <div className="relative">
                 <select value={saveForm.clientId} onChange={e => setSaveForm({ ...saveForm, clientId: e.target.value })}
                   className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
-                  <option value="">Kein Kunde (allgemein)</option>
+                  <option value="">{t("transcribe.noClient")}</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name || c.configName}</option>)}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
               </div>
-              <p className="text-[11px] text-ocean/60">Transkripte werden dem Kunden zugeordnet und trainieren seinen Sprachstil</p>
+              <p className="text-[11px] text-ocean/60">{t("transcribe.clientHint")}</p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Titel</Label>
-              <Input autoFocus placeholder="z.B. Starker Authority-Hook" value={saveForm.title}
+              <Label className="text-xs text-ocean/60">{t("transcribe.titleLabel")}</Label>
+              <Input autoFocus placeholder={t("transcribe.titlePlaceholder")} value={saveForm.title}
                 onChange={e => setSaveForm({ ...saveForm, title: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs text-ocean/60">Content-Typ</Label>
+                <Label className="text-xs text-ocean/60">{t("transcribe.contentType")}</Label>
                 <div className="relative">
                   <select value={saveForm.contentType} onChange={e => setSaveForm({ ...saveForm, contentType: e.target.value })}
                     className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
-                    <option value="">Auswählen…</option>
+                    <option value="">{t("transcribe.selectOption")}</option>
                     {allTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                   </select>
                   <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-ocean/60">Format</Label>
+                <Label className="text-xs text-ocean/60">{t("transcribe.format")}</Label>
                 <div className="relative">
                   <select value={saveForm.format} onChange={e => setSaveForm({ ...saveForm, format: e.target.value })}
                     className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
-                    <option value="">Auswählen…</option>
+                    <option value="">{t("transcribe.selectOption")}</option>
                     {allFormats.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
                   </select>
                   <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
@@ -267,26 +269,26 @@ export default function TranscribePage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Nische</Label>
-              <Input placeholder="z.B. Business Coaching, Fitness…" value={saveForm.niche}
+              <Label className="text-xs text-ocean/60">{t("transcribe.niche")}</Label>
+              <Input placeholder={t("transcribe.nichePlaceholder")} value={saveForm.niche}
                 onChange={e => setSaveForm({ ...saveForm, niche: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Skript</Label>
+              <Label className="text-xs text-ocean/60">{t("transcribe.script")}</Label>
               <Textarea rows={8} value={saveForm.script}
                 onChange={e => setSaveForm({ ...saveForm, script: e.target.value })}
                 className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-y" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Notizen (optional)</Label>
-              <Textarea rows={2} placeholder="Warum funktioniert das Skript?" value={saveForm.notes}
+              <Label className="text-xs text-ocean/60">{t("transcribe.notes")}</Label>
+              <Textarea rows={2} placeholder={t("transcribe.notesPlaceholder")} value={saveForm.notes}
                 onChange={e => setSaveForm({ ...saveForm, notes: e.target.value })}
                 className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-none" />
             </div>
             <Button onClick={handleSave} disabled={saving || !saveForm.title.trim()}
               className="w-full rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0">
-              {saving ? "Speichert…" : "Speichern"}
+              {saving ? t("common.saving") : t("common.save")}
             </Button>
           </div>
         </DialogContent>

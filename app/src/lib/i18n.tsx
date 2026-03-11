@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
 export type Lang = "de" | "en";
 
@@ -11,6 +11,13 @@ const translations: Record<string, { de: string; en: string }> = {
   "nav.noClients": { de: "Noch keine Clients", en: "No clients yet" },
   "nav.selectClient": { de: "Wähle einen Client aus", en: "Select a client" },
   "nav.tools": { de: "Tools", en: "Tools" },
+  "nav.clients": { de: "Clients", en: "Clients" },
+  "nav.context": { de: "Kontext", en: "Context" },
+  "nav.posts": { de: "Posts", en: "Posts" },
+  "nav.videos": { de: "Videos", en: "Videos" },
+  "nav.creators": { de: "Creators", en: "Creators" },
+  "nav.training": { de: "Training", en: "Training" },
+  "nav.transcribe": { de: "Transkribieren", en: "Transcribe" },
 
   // New Client Dialog
   "newClient.title": { de: "Neuer Client", en: "New Client" },
@@ -209,6 +216,65 @@ const translations: Record<string, { de: string; en: string }> = {
   "training.less": { de: "Weniger", en: "Less" },
   "training.scriptDone": { de: "Skript fertig", en: "Script Done" },
   "training.saved": { de: "Gespeichert", en: "Saved" },
+  "training.title": { de: "Training & Framework", en: "Training & Framework" },
+  "training.subtitle": { de: "Referenzskripte, Content Types und Formate für die KI", en: "Reference scripts, content types, and formats for AI" },
+  "training.textHook": { de: "Text Hook", en: "Text Hook" },
+  "training.visualHook": { de: "Visual Hook", en: "Visual Hook" },
+  "training.audioHook": { de: "Audio Hook", en: "Audio Hook" },
+  "training.scriptLabel": { de: "Skript", en: "Script" },
+  "training.cta": { de: "CTA", en: "CTA" },
+  "training.allClients": { de: "Alle Kunden", en: "All Clients" },
+  "training.noClientGeneral": { de: "Allgemein (kein Kunde)", en: "General (no client)" },
+  "training.allFormats": { de: "Alle Formate", en: "All Formats" },
+  "training.reset": { de: "Zurücksetzen", en: "Reset" },
+  "training.scriptCount": { de: "Skript", en: "script" },
+  "training.scriptsCount": { de: "Skripte", en: "scripts" },
+  "training.newScript": { de: "Neues Skript", en: "New Script" },
+  "training.loadingScripts": { de: "Lade Skripte…", en: "Loading scripts…" },
+  "training.noScripts": { de: "Noch keine Skripte", en: "No scripts yet" },
+  "training.noResults": { de: "Keine Ergebnisse", en: "No results" },
+  "training.addFirst": { de: "Füge dein erstes erfolgreiches Skript hinzu", en: "Add your first successful script" },
+  "training.adjustFilter": { de: "Passe den Filter an", en: "Adjust the filter" },
+  "training.addFirstBtn": { de: "Erstes Skript hinzufügen", en: "Add First Script" },
+  "training.editScript": { de: "Skript bearbeiten", en: "Edit Script" },
+  "training.newTrainingScript": { de: "Neues Training-Skript", en: "New Training Script" },
+  "training.client": { de: "Kunde", en: "Client" },
+  "training.noClient": { de: "Kein Kunde (allgemein)", en: "No client (general)" },
+  "training.format": { de: "Format", en: "Format" },
+  "training.select": { de: "Auswählen…", en: "Select…" },
+  "training.textHookPlaceholder": { de: "On-Screen Text…", en: "On-screen text…" },
+  "training.visualHookPlaceholder": { de: "Was ist zu sehen in der ersten Sekunde…", en: "What is visible in the first second…" },
+  "training.audioHookPlaceholder": { de: "Was wird gesagt / welcher Sound…", en: "What is said / which sound…" },
+  "training.scriptPlaceholder": { de: "Hauptteil des Skripts…", en: "Main body of the script…" },
+  "training.ctaPlaceholder": { de: "Call to Action…", en: "Call to Action…" },
+  "training.saveChanges": { de: "Änderungen speichern", en: "Save Changes" },
+  "training.addScript": { de: "Skript hinzufügen", en: "Add Script" },
+  "training.deleteType": { de: "Content Type löschen?", en: "Delete content type?" },
+  "training.typesReadonly": { de: "Eingebaute Types sind schreibgeschützt. Eigene können hinzugefügt, bearbeitet und gelöscht werden.", en: "Built-in types are read-only. Custom ones can be added, edited, and deleted." },
+  "training.newType": { de: "Neuer Type", en: "New Type" },
+  "training.builtIn": { de: "Eingebaut", en: "Built-in" },
+  "training.custom": { de: "Eigene", en: "Custom" },
+  "training.idealFor": { de: "Ideal für:", en: "Ideal for:" },
+  "training.editType": { de: "Content Type bearbeiten", en: "Edit Content Type" },
+  "training.newContentType": { de: "Neuer Content Type", en: "New Content Type" },
+  "training.name": { de: "Name", en: "Name" },
+  "training.typeNamePlaceholder": { de: "z.B. Case Study", en: "e.g. Case Study" },
+  "training.typeGoal": { de: "Ziel — was soll dieser Type erreichen?", en: "Goal — what should this type achieve?" },
+  "training.typeGoalPlaceholder": { de: "z.B. Vertrauen aufbauen durch echte Ergebnisse von Kunden", en: "e.g. Build trust through real customer results" },
+  "training.typeBestFor": { de: "Ideal für — wann einsetzen?", en: "Ideal for — when to use?" },
+  "training.typeBestForPlaceholder": { de: "z.B. Wenn Kunden bereits warm sind und kurz vor einer Kaufentscheidung stehen", en: "e.g. When customers are already warm and close to a buying decision" },
+  "training.deleteFormat": { de: "Format löschen?", en: "Delete format?" },
+  "training.formatsReadonly": { de: "Eingebaute Formate sind schreibgeschützt. Eigene können hinzugefügt, bearbeitet und gelöscht werden.", en: "Built-in formats are read-only. Custom ones can be added, edited, and deleted." },
+  "training.newFormat": { de: "Neues Format", en: "New Format" },
+  "training.editFormat": { de: "Format bearbeiten", en: "Edit Format" },
+  "training.newContentFormat": { de: "Neues Content Format", en: "New Content Format" },
+  "training.formatNamePlaceholder": { de: "z.B. Split-Screen", en: "e.g. Split-Screen" },
+  "training.formatDesc": { de: "Beschreibung — was ist dieses Format?", en: "Description — what is this format?" },
+  "training.formatDescPlaceholder": { de: "z.B. Zwei Videos nebeneinander — eins zeigt das Problem, eins die Lösung", en: "e.g. Two videos side by side — one shows the problem, one the solution" },
+  "training.formatTypes": { de: "Passt zu welchen Content Types?", en: "Which content types does it fit?" },
+  "training.formatTypesPlaceholder": { de: "z.B. Education, Opinion, Social Proof", en: "e.g. Education, Opinion, Social Proof" },
+  "training.platform": { de: "Plattform", en: "Platform" },
+  "training.platformPlaceholder": { de: "z.B. Reels, TikTok", en: "e.g. Reels, TikTok" },
 
   // Common
   "common.save": { de: "Speichern", en: "Save" },
@@ -218,6 +284,98 @@ const translations: Record<string, { de: string; en: string }> = {
   "common.loading": { de: "Laden…", en: "Loading…" },
   "common.more": { de: "Mehr", en: "More" },
   "common.less": { de: "Weniger", en: "Less" },
+  "common.saved": { de: "Gespeichert", en: "Saved" },
+  "common.saving": { de: "Speichert…", en: "Saving…" },
+  "common.add": { de: "Hinzufügen", en: "Add" },
+  "common.search": { de: "Suche", en: "Search" },
+  "common.refreshAll": { de: "Alle aktualisieren", en: "Refresh All" },
+
+  // New Client Page (empty state)
+  "newClient.empty": { de: "Noch keine Clients", en: "No clients yet" },
+  "newClient.emptyHint": { de: "Klicke auf \"Neuer Client\" in der Sidebar um zu starten.", en: "Click \"New Client\" in the sidebar to get started." },
+
+  // Creators Page
+  "creators.title": { de: "Creators", en: "Creators" },
+  "creators.subtitle": { de: "Verfolgte Competitor-Accounts für", en: "Tracked competitor accounts for" },
+  "creators.thisClient": { de: "diesen Kunden", en: "this client" },
+  "creators.addManual": { de: "Manuell hinzufügen", en: "Add manually" },
+  "creators.editCreator": { de: "Creator bearbeiten", en: "Edit Creator" },
+  "creators.addCreator": { de: "Creator hinzufügen", en: "Add Creator" },
+  "creators.igUsername": { de: "Instagram Username", en: "Instagram Username" },
+  "creators.placeholder": { de: "z.B. garyvee", en: "e.g. garyvee" },
+  "creators.category": { de: "Kategorie", en: "Category" },
+  "creators.autoSet": { de: "Automatisch gesetzt:", en: "Auto-set:" },
+  "creators.autoScrape": { de: "Profilbild, Follower und Aktivitätsdaten werden automatisch gescrapt.", en: "Profile picture, followers, and activity data will be scraped automatically." },
+  "creators.addingTo": { de: "Füge hinzu…", en: "Adding…" },
+  "creators.savingCreator": { de: "Speichert…", en: "Saving…" },
+  "creators.research": { de: "Creators recherchieren", en: "Research Creators" },
+  "creators.aiResearch": { de: "KI-Recherche", en: "AI Research" },
+  "creators.aiResearchDesc": { de: "Findet die besten Creator, größten Persönlichkeiten und interessantesten Charaktere in der Nische", en: "Finds the best creators, biggest personalities, and most interesting characters in the niche" },
+  "creators.focusPlaceholder": { de: "Optionaler Fokus, z.B. 'nur Dubai-basierte', 'unter 500K', 'besonders polarisierende Charaktere'…", en: "Optional focus, e.g. 'Dubai-based only', 'under 500K', 'especially polarizing characters'…" },
+  "creators.researching": { de: "Recherchiert…", en: "Researching…" },
+  "creators.researchBtn": { de: "Recherchieren", en: "Research" },
+  "creators.aiSearching": { de: "KI sucht die größten Creator in der Nische…", en: "AI is searching for the biggest creators in the niche…" },
+  "creators.focusMega": { de: "Fokus auf Mega- und Macro-Creator mit hoher Reichweite oder virale Accounts.", en: "Focus on Mega and Macro creators with high reach or viral accounts." },
+  "creators.aiBanner": { de: "KI-Vorschläge — klick auf <strong>@username</strong> um das Profil auf Instagram zu prüfen, bevor du hinzufügst. Follower-Daten werden nach dem Hinzufügen live abgerufen.", en: "AI suggestions — click <strong>@username</strong> to check the profile on Instagram before adding. Follower data will be fetched live after adding." },
+  "creators.suggestionsFound": { de: "Vorschläge gefunden:", en: "suggestions found:" },
+  "creators.profileHint": { de: "Klick auf @username öffnet das Instagram-Profil zur Prüfung. Nach dem Hinzufügen werden Follower-Zahlen automatisch per Apify abgerufen.", en: "Click @username to open the Instagram profile for review. After adding, follower counts are fetched automatically via Apify." },
+  "creators.startResearch": { de: "KI-Recherche starten", en: "Start AI Research" },
+  "creators.verified": { de: "✓ verifiziert", en: "✓ verified" },
+  "creators.confident": { de: "✓ sicher", en: "✓ confident" },
+  "creators.likely": { de: "~ wahrscheinlich", en: "~ likely" },
+  "creators.uncertain": { de: "? unsicher", en: "? uncertain" },
+  "creators.added": { de: "Hinzugefügt", en: "Added" },
+  "creators.verifying": { de: "Verifiziere…", en: "Verifying…" },
+  "creators.confirmDelete": { de: "Creator löschen?", en: "Delete creator?" },
+  "creators.notFound": { de: "nicht auf Instagram gefunden", en: "not found on Instagram" },
+  "creators.noData": { de: "Noch keine Daten —", en: "No data yet —" },
+  "creators.clickScrape": { de: "klicken zum Scrapen", en: "click to scrape" },
+  "creators.scraped": { de: "Gescrapt", en: "Scraped" },
+  "creators.viewVideos": { de: "Videos ansehen", en: "View videos" },
+  "creators.noCreators": { de: "Noch keine Creators", en: "No creators yet" },
+  "creators.noCreatorsHint": { de: "Lass die KI die besten Creators in der Nische finden oder füge manuell hinzu.", en: "Let AI find the best creators in the niche or add manually." },
+  "creators.researchFailed": { de: "Recherche fehlgeschlagen", en: "Research failed" },
+
+  // Transcribe Page
+  "transcribe.title": { de: "Transkribieren", en: "Transcribe" },
+  "transcribe.subtitle": { de: "Reels, TikToks und YouTube Shorts transkribieren", en: "Transcribe Reels, TikToks, and YouTube Shorts" },
+  "transcribe.placeholder": { de: "Video-URL einfügen…", en: "Paste video URL…" },
+  "transcribe.transcribing": { de: "Transkribiert…", en: "Transcribing…" },
+  "transcribe.transcribe": { de: "Transkribieren", en: "Transcribe" },
+  "transcribe.igLoading": { de: "Reel wird über Apify geladen und bei Gemini hochgeladen…", en: "Reel is being loaded via Apify and uploaded to Gemini…" },
+  "transcribe.ytLoading": { de: "YouTube-Video wird mit Gemini verarbeitet…", en: "YouTube video is being processed with Gemini…" },
+  "transcribe.genericLoading": { de: "Video wird verarbeitet…", en: "Video is being processed…" },
+  "transcribe.duration": { de: "Das kann 30–60 Sekunden dauern.", en: "This may take 30–60 seconds." },
+  "transcribe.errorGeneric": { de: "Fehler beim Transkribieren", en: "Transcription error" },
+  "transcribe.errorUnknown": { de: "Unbekannter Fehler", en: "Unknown error" },
+  "transcribe.transcript": { de: "Transkript", en: "Transcript" },
+  "transcribe.copied": { de: "Kopiert", en: "Copied" },
+  "transcribe.copy": { de: "Kopieren", en: "Copy" },
+  "transcribe.saveAsTraining": { de: "Als Training-Skript speichern", en: "Save as Training Script" },
+  "transcribe.saveTitle": { de: "Als Training-Skript speichern", en: "Save as Training Script" },
+  "transcribe.client": { de: "Kunde", en: "Client" },
+  "transcribe.noClient": { de: "Kein Kunde (allgemein)", en: "No client (general)" },
+  "transcribe.clientHint": { de: "Transkripte werden dem Kunden zugeordnet und trainieren seinen Sprachstil", en: "Transcripts are assigned to the client and train their voice style" },
+  "transcribe.titleLabel": { de: "Titel", en: "Title" },
+  "transcribe.titlePlaceholder": { de: "z.B. Starker Authority-Hook", en: "e.g. Strong Authority Hook" },
+  "transcribe.contentType": { de: "Content-Typ", en: "Content Type" },
+  "transcribe.format": { de: "Format", en: "Format" },
+  "transcribe.selectOption": { de: "Auswählen…", en: "Select…" },
+  "transcribe.niche": { de: "Nische", en: "Niche" },
+  "transcribe.nichePlaceholder": { de: "z.B. Business Coaching, Fitness…", en: "e.g. Business Coaching, Fitness…" },
+  "transcribe.script": { de: "Skript", en: "Script" },
+  "transcribe.notes": { de: "Notizen (optional)", en: "Notes (optional)" },
+  "transcribe.notesPlaceholder": { de: "Warum funktioniert das Skript?", en: "Why does this script work?" },
+
+  // Scripts Page extras
+  "scripts.regenerate": { de: "Neu generieren", en: "Regenerate" },
+  "scripts.saved": { de: "Gespeichert", en: "Saved" },
+  "scripts.save": { de: "Speichern", en: "Save" },
+  "scripts.ownVideos": { de: "eigene Videos", en: "own videos" },
+  "scripts.noOwnAnalysis": { de: "Keine eigene Analyse", en: "No own analysis" },
+  "scripts.creatorVideos": { de: "Creator-Videos", en: "Creator videos" },
+  "scripts.noCreatorVideos": { de: "Keine Creator-Videos", en: "No creator videos" },
+  "scripts.12months": { de: "12 Monate", en: "12 months" },
 };
 
 interface I18nContextType {
@@ -233,12 +391,13 @@ const I18nContext = createContext<I18nContextType>({
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("sunxca-lang") as Lang) || "de";
-    }
-    return "de";
-  });
+  const [lang, setLang] = useState<Lang>("de");
+
+  // Read from localStorage after mount to avoid hydration mismatch
+  useEffect(() => {
+    const stored = localStorage.getItem("sunxca-lang") as Lang | null;
+    if (stored && stored !== lang) setLang(stored);
+  }, []);
 
   const toggleLang = useCallback(() => {
     setLang((prev) => {

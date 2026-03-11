@@ -117,39 +117,39 @@ function ScriptCard({ script, onEdit, onDelete, clientLabel }: {
       <div className="space-y-2">
         {script.textHook && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Text Hook</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">{t("training.textHook")}</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.textHook}</p>
           </div>
         )}
         {script.visualHook && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Visual Hook</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">{t("training.visualHook")}</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.visualHook}</p>
           </div>
         )}
         {script.audioHook && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Audio Hook</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">{t("training.audioHook")}</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.audioHook}</p>
           </div>
         )}
         {script.script && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Skript</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">{t("training.scriptLabel")}</p>
             <p className={`text-[13px] text-ocean/80 leading-relaxed whitespace-pre-wrap ${!expanded ? "line-clamp-5" : ""}`}>
               {script.script}
             </p>
             {long && (
               <button onClick={() => setExpanded(v => !v)}
                 className="flex items-center gap-1 text-[11px] text-ocean/60 hover:text-ocean/80 transition-colors mt-1">
-                {expanded ? <><ChevronUp className="h-3 w-3" /> {t("common.less")}</> : <><ChevronDown className="h-3 w-3" /> Mehr</>}
+                {expanded ? <><ChevronUp className="h-3 w-3" /> {t("common.less")}</> : <><ChevronDown className="h-3 w-3" /> {t("common.more")}</>}
               </button>
             )}
           </div>
         )}
         {script.cta && (
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">CTA</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">{t("training.cta")}</p>
             <p className="text-[13px] text-ocean/80 leading-relaxed">{script.cta}</p>
           </div>
         )}
@@ -163,6 +163,7 @@ function ScriptCard({ script, onEdit, onDelete, clientLabel }: {
 }
 
 function ScriptsTab() {
+  const { t } = useI18n();
   const [scripts, setScripts] = useState<TrainingScript[]>([]);
   const [allFormats, setAllFormats] = useState<ContentFormat[]>(BUILT_IN_FORMATS);
   const [clients, setClients] = useState<Config[]>([]);
@@ -231,8 +232,8 @@ function ScriptsTab() {
         <div className="relative">
           <select value={filterClient} onChange={e => setFilterClient(e.target.value)}
             className="h-8 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[12px] text-ocean appearance-none cursor-pointer focus:outline-none">
-            <option value="Alle">Alle Kunden</option>
-            <option value="_none">Allgemein (kein Kunde)</option>
+            <option value="Alle">{t("training.allClients")}</option>
+            <option value="_none">{t("training.noClientGeneral")}</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.name || c.configName}</option>)}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
@@ -240,7 +241,7 @@ function ScriptsTab() {
         <div className="relative">
           <select value={filterFormat} onChange={e => setFilterFormat(e.target.value)}
             className="h-8 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[12px] text-ocean appearance-none cursor-pointer focus:outline-none">
-            <option value="Alle">Alle Formate</option>
+            <option value="Alle">{t("training.allFormats")}</option>
             {allFormats.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
@@ -248,19 +249,19 @@ function ScriptsTab() {
         {(filterFormat !== "Alle" || filterClient !== "Alle") && (
           <button onClick={() => { setFilterFormat("Alle"); setFilterClient("Alle"); }}
             className="text-[11px] text-ocean/60 hover:text-ocean underline underline-offset-2">
-            Zurücksetzen
+            {t("training.reset")}
           </button>
         )}
-        <span className="text-[12px] text-ocean/70">{filtered.length} {filtered.length === 1 ? "Skript" : "Skripte"}</span>
+        <span className="text-[12px] text-ocean/70">{filtered.length} {filtered.length === 1 ? t("training.scriptCount") : t("training.scriptsCount")}</span>
         <Button onClick={openAdd}
           className="ml-auto rounded-xl h-9 px-4 bg-ocean hover:bg-ocean-light border-0 gap-1.5 text-[13px]">
-          <Plus className="h-4 w-4" /> Neues Skript
+          <Plus className="h-4 w-4" /> {t("training.newScript")}
         </Button>
       </div>
 
       {/* Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-ocean/60 text-[13px]">Lade Skripte…</div>
+        <div className="flex items-center justify-center py-20 text-ocean/60 text-[13px]">{t("training.loadingScripts")}</div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-ocean/[0.02] border border-ocean/[0.06]">
@@ -268,15 +269,15 @@ function ScriptsTab() {
           </div>
           <div className="text-center">
             <p className="text-[14px] font-medium text-ocean/60">
-              {scripts.length === 0 ? "Noch keine Skripte" : "Keine Ergebnisse"}
+              {scripts.length === 0 ? t("training.noScripts") : t("training.noResults")}
             </p>
             <p className="text-[12px] text-ocean/70 mt-1">
-              {scripts.length === 0 ? "Füge dein erstes erfolgreiches Skript hinzu" : "Passe den Filter an"}
+              {scripts.length === 0 ? t("training.addFirst") : t("training.adjustFilter")}
             </p>
           </div>
           {scripts.length === 0 && (
             <Button onClick={openAdd} variant="outline" className="rounded-xl border-ocean/[0.06] text-[13px] gap-1.5">
-              <Plus className="h-4 w-4" /> Erstes Skript hinzufügen
+              <Plus className="h-4 w-4" /> {t("training.addFirstBtn")}
             </Button>
           )}
         </div>
@@ -294,65 +295,65 @@ function ScriptsTab() {
         <DialogContent className="sm:max-w-xl glass border-ocean/[0.06] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
-              {editing ? "Skript bearbeiten" : "Neues Training-Skript"}
+              {editing ? t("training.editScript") : t("training.newTrainingScript")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Kunde</Label>
+              <Label className="text-xs text-ocean/60">{t("training.client")}</Label>
               <div className="relative">
                 <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })}
                   className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
-                  <option value="">Kein Kunde (allgemein)</option>
+                  <option value="">{t("training.noClient")}</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name || c.configName}</option>)}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Format</Label>
+              <Label className="text-xs text-ocean/60">{t("training.format")}</Label>
               <div className="relative">
                 <select autoFocus value={form.format} onChange={e => setForm({ ...form, format: e.target.value })}
                   className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
-                  <option value="">Auswählen…</option>
+                  <option value="">{t("training.select")}</option>
                   {allFormats.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Text Hook</Label>
-              <Input placeholder="On-Screen Text…" value={form.textHook}
+              <Label className="text-xs text-ocean/60">{t("training.textHook")}</Label>
+              <Input placeholder={t("training.textHookPlaceholder")} value={form.textHook}
                 onChange={e => setForm({ ...form, textHook: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Visual Hook</Label>
-              <Input placeholder="Was ist zu sehen in der ersten Sekunde…" value={form.visualHook}
+              <Label className="text-xs text-ocean/60">{t("training.visualHook")}</Label>
+              <Input placeholder={t("training.visualHookPlaceholder")} value={form.visualHook}
                 onChange={e => setForm({ ...form, visualHook: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Audio Hook</Label>
-              <Input placeholder="Was wird gesagt / welcher Sound…" value={form.audioHook}
+              <Label className="text-xs text-ocean/60">{t("training.audioHook")}</Label>
+              <Input placeholder={t("training.audioHookPlaceholder")} value={form.audioHook}
                 onChange={e => setForm({ ...form, audioHook: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Skript</Label>
-              <Textarea rows={8} placeholder="Hauptteil des Skripts…" value={form.script}
+              <Label className="text-xs text-ocean/60">{t("training.scriptLabel")}</Label>
+              <Textarea rows={8} placeholder={t("training.scriptPlaceholder")} value={form.script}
                 onChange={e => setForm({ ...form, script: e.target.value })}
                 className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-y" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">CTA</Label>
-              <Input placeholder="Call to Action…" value={form.cta}
+              <Label className="text-xs text-ocean/60">{t("training.cta")}</Label>
+              <Input placeholder={t("training.ctaPlaceholder")} value={form.cta}
                 onChange={e => setForm({ ...form, cta: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <Button onClick={handleSave} disabled={saving}
               className="w-full rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0 mt-1">
-              {saving ? "Speichert…" : editing ? "Änderungen speichern" : "Skript hinzufügen"}
+              {saving ? t("common.saving") : editing ? t("training.saveChanges") : t("training.addScript")}
             </Button>
           </div>
         </DialogContent>
@@ -368,6 +369,7 @@ function ScriptsTab() {
 const EMPTY_TYPE = { name: "", goal: "", bestFor: "" };
 
 function ContentTypesTab() {
+  const { t } = useI18n();
   const [custom, setCustom] = useState<ContentType[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ContentType | null>(null);
@@ -379,7 +381,7 @@ function ContentTypesTab() {
   }, []);
 
   function openAdd() { setEditing(null); setForm(EMPTY_TYPE); setDialogOpen(true); }
-  function openEdit(t: ContentType) { setEditing(t); setForm({ name: t.name, goal: t.goal, bestFor: t.bestFor }); setDialogOpen(true); }
+  function openEdit(ct: ContentType) { setEditing(ct); setForm({ name: ct.name, goal: ct.goal, bestFor: ct.bestFor }); setDialogOpen(true); }
 
   async function handleSave() {
     setSaving(true);
@@ -396,7 +398,7 @@ function ContentTypesTab() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Content Type löschen?")) return;
+    if (!confirm(t("training.deleteType"))) return;
     const data = await fetch(`/api/strategy?id=${id}&kind=contentType`, { method: "DELETE" }).then(r => r.json());
     setCustom(data.customContentTypes || []);
   }
@@ -405,11 +407,11 @@ function ContentTypesTab() {
     <>
       <div className="flex items-center justify-between mb-6">
         <p className="text-[13px] text-ocean/60">
-          Eingebaute Types sind schreibgeschützt. Eigene können hinzugefügt, bearbeitet und gelöscht werden.
+          {t("training.typesReadonly")}
         </p>
         <Button onClick={openAdd}
           className="rounded-xl h-9 px-4 bg-ocean hover:bg-ocean-light border-0 gap-1.5 text-[13px]">
-          <Plus className="h-4 w-4" /> Neuer Type
+          <Plus className="h-4 w-4" /> {t("training.newType")}
         </Button>
       </div>
 
@@ -418,18 +420,18 @@ function ContentTypesTab() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Lock className="h-3 w-3 text-ocean/70" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eingebaut</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">{t("training.builtIn")}</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
-            {BUILT_IN_CONTENT_TYPES.map(t => {
-              const color = TYPE_COLORS[t.name] ?? "bg-ocean/[0.02] text-ocean/60 border-ocean/5";
+            {BUILT_IN_CONTENT_TYPES.map(ct => {
+              const color = TYPE_COLORS[ct.name] ?? "bg-ocean/[0.02] text-ocean/60 border-ocean/5";
               return (
-                <div key={t.id} className="glass rounded-xl border border-ocean/[0.06] p-4 opacity-70">
+                <div key={ct.id} className="glass rounded-xl border border-ocean/[0.06] p-4 opacity-70">
                   <div className="flex items-center gap-2 mb-2">
-                    <Badge className={`rounded-lg border text-[11px] font-medium px-2 py-0.5 ${color}`}>{t.name}</Badge>
+                    <Badge className={`rounded-lg border text-[11px] font-medium px-2 py-0.5 ${color}`}>{ct.name}</Badge>
                   </div>
-                  <p className="text-[12px] text-ocean/60 leading-snug">{t.goal}</p>
-                  {t.bestFor && <p className="text-[11px] text-ocean/70 mt-1 leading-snug">Ideal für: {t.bestFor}</p>}
+                  <p className="text-[12px] text-ocean/60 leading-snug">{ct.goal}</p>
+                  {ct.bestFor && <p className="text-[11px] text-ocean/70 mt-1 leading-snug">{t("training.idealFor")} {ct.bestFor}</p>}
                 </div>
               );
             })}
@@ -440,28 +442,28 @@ function ContentTypesTab() {
         {custom.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eigene</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">{t("training.custom")}</span>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              {custom.map(t => (
-                <div key={t.id} className="glass rounded-xl border border-blush/40 p-4">
+              {custom.map(ct => (
+                <div key={ct.id} className="glass rounded-xl border border-blush/40 p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <Badge className="rounded-lg border text-[11px] font-medium px-2 py-0.5 bg-blush/20 text-blush-dark border-blush/40">
-                      {t.name}
+                      {ct.name}
                     </Badge>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => openEdit(t)}
+                      <button onClick={() => openEdit(ct)}
                         className="p-1 rounded-lg text-ocean/60 hover:text-ocean hover:bg-warm-white transition-colors">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => handleDelete(t.id)}
+                      <button onClick={() => handleDelete(ct.id)}
                         className="p-1 rounded-lg text-ocean/60 hover:text-red-500 hover:bg-red-50 transition-colors">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
-                  <p className="text-[12px] text-ocean/60 leading-snug">{t.goal}</p>
-                  {t.bestFor && <p className="text-[11px] text-ocean/70 mt-1 leading-snug">Ideal für: {t.bestFor}</p>}
+                  <p className="text-[12px] text-ocean/60 leading-snug">{ct.goal}</p>
+                  {ct.bestFor && <p className="text-[11px] text-ocean/70 mt-1 leading-snug">{t("training.idealFor")} {ct.bestFor}</p>}
                 </div>
               ))}
             </div>
@@ -474,31 +476,31 @@ function ContentTypesTab() {
         <DialogContent className="sm:max-w-md glass border-ocean/[0.06]">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
-              {editing ? "Content Type bearbeiten" : "Neuer Content Type"}
+              {editing ? t("training.editType") : t("training.newContentType")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Name</Label>
-              <Input autoFocus placeholder="z.B. Case Study" value={form.name}
+              <Label className="text-xs text-ocean/60">{t("training.name")}</Label>
+              <Input autoFocus placeholder={t("training.typeNamePlaceholder")} value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Ziel — was soll dieser Type erreichen?</Label>
-              <Textarea rows={2} placeholder="z.B. Vertrauen aufbauen durch echte Ergebnisse von Kunden" value={form.goal}
+              <Label className="text-xs text-ocean/60">{t("training.typeGoal")}</Label>
+              <Textarea rows={2} placeholder={t("training.typeGoalPlaceholder")} value={form.goal}
                 onChange={e => setForm({ ...form, goal: e.target.value })}
                 className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-none" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Ideal für — wann einsetzen?</Label>
-              <Textarea rows={2} placeholder="z.B. Wenn Kunden bereits warm sind und kurz vor einer Kaufentscheidung stehen" value={form.bestFor}
+              <Label className="text-xs text-ocean/60">{t("training.typeBestFor")}</Label>
+              <Textarea rows={2} placeholder={t("training.typeBestForPlaceholder")} value={form.bestFor}
                 onChange={e => setForm({ ...form, bestFor: e.target.value })}
                 className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-none" />
             </div>
             <Button onClick={handleSave} disabled={saving || !form.name.trim()}
               className="w-full rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0">
-              {saving ? "Speichert…" : editing ? "Speichern" : "Hinzufügen"}
+              {saving ? t("common.saving") : editing ? t("common.save") : t("common.add")}
             </Button>
           </div>
         </DialogContent>
@@ -514,6 +516,7 @@ function ContentTypesTab() {
 const EMPTY_FORMAT = { name: "", description: "", bestContentType: "", platform: "" };
 
 function ContentFormatsTab() {
+  const { t } = useI18n();
   const [custom, setCustom] = useState<ContentFormat[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ContentFormat | null>(null);
@@ -542,7 +545,7 @@ function ContentFormatsTab() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Format löschen?")) return;
+    if (!confirm(t("training.deleteFormat"))) return;
     const data = await fetch(`/api/strategy?id=${id}&kind=format`, { method: "DELETE" }).then(r => r.json());
     setCustom(data.customFormats || []);
   }
@@ -551,11 +554,11 @@ function ContentFormatsTab() {
     <>
       <div className="flex items-center justify-between mb-6">
         <p className="text-[13px] text-ocean/60">
-          Eingebaute Formate sind schreibgeschützt. Eigene können hinzugefügt, bearbeitet und gelöscht werden.
+          {t("training.formatsReadonly")}
         </p>
         <Button onClick={openAdd}
           className="rounded-xl h-9 px-4 bg-ocean hover:bg-ocean-light border-0 gap-1.5 text-[13px]">
-          <Plus className="h-4 w-4" /> Neues Format
+          <Plus className="h-4 w-4" /> {t("training.newFormat")}
         </Button>
       </div>
 
@@ -564,7 +567,7 @@ function ContentFormatsTab() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Lock className="h-3 w-3 text-ocean/70" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eingebaut</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">{t("training.builtIn")}</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {BUILT_IN_FORMATS.map(f => (
@@ -592,7 +595,7 @@ function ContentFormatsTab() {
         {custom.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Eigene</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">{t("training.custom")}</span>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {custom.map(f => (
@@ -635,37 +638,37 @@ function ContentFormatsTab() {
         <DialogContent className="sm:max-w-md glass border-ocean/[0.06]">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
-              {editing ? "Format bearbeiten" : "Neues Content Format"}
+              {editing ? t("training.editFormat") : t("training.newContentFormat")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Name</Label>
-              <Input autoFocus placeholder="z.B. Split-Screen" value={form.name}
+              <Label className="text-xs text-ocean/60">{t("training.name")}</Label>
+              <Input autoFocus placeholder={t("training.formatNamePlaceholder")} value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Beschreibung — was ist dieses Format?</Label>
-              <Textarea rows={2} placeholder="z.B. Zwei Videos nebeneinander — eins zeigt das Problem, eins die Lösung" value={form.description}
+              <Label className="text-xs text-ocean/60">{t("training.formatDesc")}</Label>
+              <Textarea rows={2} placeholder={t("training.formatDescPlaceholder")} value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-none" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Passt zu welchen Content Types?</Label>
-              <Input placeholder="z.B. Education, Opinion, Social Proof" value={form.bestContentType}
+              <Label className="text-xs text-ocean/60">{t("training.formatTypes")}</Label>
+              <Input placeholder={t("training.formatTypesPlaceholder")} value={form.bestContentType}
                 onChange={e => setForm({ ...form, bestContentType: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Plattform</Label>
-              <Input placeholder="z.B. Reels, TikTok" value={form.platform}
+              <Label className="text-xs text-ocean/60">{t("training.platform")}</Label>
+              <Input placeholder={t("training.platformPlaceholder")} value={form.platform}
                 onChange={e => setForm({ ...form, platform: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
             <Button onClick={handleSave} disabled={saving || !form.name.trim()}
               className="w-full rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0">
-              {saving ? "Speichert…" : editing ? "Speichern" : "Hinzufügen"}
+              {saving ? t("common.saving") : editing ? t("common.save") : t("common.add")}
             </Button>
           </div>
         </DialogContent>
@@ -693,9 +696,9 @@ export default function TrainingPage() {
           <BookOpen className="h-4 w-4 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Training & Framework</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t("training.title")}</h1>
           <p className="text-[12px] text-ocean/60 mt-0.5">
-            Referenzskripte, Content Types und Formate für die KI
+            {t("training.subtitle")}
           </p>
         </div>
       </div>

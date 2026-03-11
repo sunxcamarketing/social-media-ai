@@ -48,11 +48,11 @@ export function AppSidebar() {
   });
 
   const clientTabs = [
-    { title: "Context",          href: "information", icon: BookOpen  },
+    { title: t("nav.context"),   href: "information", icon: BookOpen  },
     { title: t("nav.strategy"),  href: "strategy",    icon: BarChart2 },
-    { title: "Posts",            href: "scripts",     icon: FileText  },
-    { title: "Videos",           href: "videos",      icon: Video     },
-    { title: "Creators",         href: "creators",    icon: Users     },
+    { title: t("nav.posts"),     href: "scripts",     icon: FileText  },
+    { title: t("nav.videos"),    href: "videos",      icon: Video     },
+    { title: t("nav.creators"),  href: "creators",    icon: Users     },
   ];
 
   const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen } = useGeneration();
@@ -114,7 +114,7 @@ export function AppSidebar() {
           {/* Client List */}
           <div className="flex flex-col px-3 pt-1 pb-3">
             <div className="flex items-center justify-between px-2 mb-2">
-              <span className="text-[10px] font-medium uppercase tracking-widest text-ocean/60">Clients</span>
+              <span className="text-[10px] font-medium uppercase tracking-widest text-ocean/60">{t("nav.clients")}</span>
               <button
                 onClick={() => setNewOpen(true)}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-ocean/65 hover:text-ocean hover:bg-blush-light/50 transition-colors"
@@ -163,7 +163,7 @@ export function AppSidebar() {
                 }`}
               >
                 <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                <span>Training</span>
+                <span>{t("nav.training")}</span>
               </Link>
               <Link
                 href="/transcribe"
@@ -174,7 +174,7 @@ export function AppSidebar() {
                 }`}
               >
                 <Mic className="h-3.5 w-3.5 shrink-0" />
-                <span>Transcribe</span>
+                <span>{t("nav.transcribe")}</span>
               </Link>
             </div>
           </div>
