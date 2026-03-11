@@ -332,6 +332,7 @@ function WeekScriptCard({
   onRegenerate: (dayIndex: number) => void;
   onSave: (script: WeekScript) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [expanded, setExpanded] = useState(false);
