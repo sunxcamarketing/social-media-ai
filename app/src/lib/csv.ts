@@ -149,34 +149,3 @@ export function writeTrainingScripts(scripts: TrainingScript[]) {
   writeCsv("training-scripts.csv", scripts as unknown as Record<string, unknown>[], TRAINING_SCRIPT_COLUMNS);
 }
 
-// Leads
-const LEAD_COLUMNS = ["id", "firstName", "lastName", "email", "instagramHandle", "createdAt", "reportGenerated"];
-
-export interface Lead {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  instagramHandle: string;
-  createdAt: string;
-  reportGenerated: string;
-}
-
-export function readLeads(): Lead[] {
-  return readCsv<Lead>("leads.csv");
-}
-
-export function appendLead(lead: Lead) {
-  const leads = readLeads();
-  leads.push(lead);
-  writeCsv("leads.csv", leads as unknown as Record<string, unknown>[], LEAD_COLUMNS);
-}
-
-export function updateLeadReport(leadId: string) {
-  const leads = readLeads();
-  const lead = leads.find((l) => l.id === leadId);
-  if (lead) {
-    lead.reportGenerated = "true";
-    writeCsv("leads.csv", leads as unknown as Record<string, unknown>[], LEAD_COLUMNS);
-  }
-}

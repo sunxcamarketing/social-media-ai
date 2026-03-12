@@ -25,8 +25,6 @@ npm run dev
 - `APIFY_API_TOKEN` — Apify Instagram scraper
 - `GEMINI_API_KEY` — Google Gemini video analysis
 - `ANTHROPIC_API_KEY` — Claude concept generation
-- `RESEND_API_KEY` — Resend email service (for audit PDF delivery)
-- `RESEND_FROM_EMAIL` — Sender address (default: `onboarding@resend.dev`, production: `info@sunxca.com`)
 
 ---
 
@@ -76,9 +74,7 @@ npm run dev
 │   │   │   │   ├── run/page.tsx           # Pipeline runner with live progress
 │   │   │   │   ├── configs/page.tsx       # Config management
 │   │   │   │   └── creators/page.tsx      # Creator management
-│   │   │   ├── (landing)/                 # Landing page route group (no sidebar)
-│   │   │   │   └── audit/page.tsx         # Leadmagnet: Instagram Profil-Audit
-│   │   │   └── api/                       # API routes (configs, creators, videos, pipeline, audit)
+│   │   │   └── api/                       # API routes (configs, creators, videos, pipeline)
 │   │   ├── lib/                           # Core logic
 │   │   │   ├── pipeline.ts               # Pipeline orchestration
 │   │   │   ├── apify.ts                  # Apify scraper client
@@ -92,7 +88,6 @@ npm run dev
 │   ├── configs.csv                        # Pipeline configurations
 │   ├── creators.csv                       # Instagram creator accounts
 │   ├── videos.csv                         # Analyzed video results
-│   └── leads.csv                          # Leadmagnet audit submissions
 ├── context/                               # Background context for Claude
 ├── plans/                                 # Implementation plans
 ├── .claude/commands/                      # Slash commands (prime, create-plan, implement)
@@ -112,7 +107,6 @@ npm run dev
 | Run Pipeline | `/run` | (app) | Select config, set params, run with live progress streaming |
 | Configs | `/configs` | (app) | CRUD for pipeline configs (prompts, categories) |
 | Creators | `/creators` | (app) | CRUD for competitor Instagram accounts |
-| **Audit** | `/audit` | (landing) | Leadmagnet: Instagram Profil-Audit mit KI-Report |
 
 ---
 
