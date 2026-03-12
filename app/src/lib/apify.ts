@@ -66,22 +66,47 @@ export async function scrapeReels(
   return data as ApifyReel[];
 }
 
-export async function scrapeCreatorStats(username: string): Promise<CreatorStats> {
-  const token = getToken();
+export interface CreatorStatsWithReels extends CreatorStats {
+  reels: ApifyReel[];
+}
 
-  // 1. Get profile info (details mode)
-  const profileRes = await fetch(
-    `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        directUrls: [`https://www.instagram.com/${username}/`],
-        resultsType: "details",
-        resultsLimit: 1,
-      }),
-    }
-  );
+export async function scrapeCreatorStats(username: string): Promise<CreatorStatsWithReels> {
+  const token = getToken();
+  const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  // Run BOTH Apify calls in parallel — cuts wait time roughly in half
+  const [profileRes, postsRes] = await Promise.all([
+    // 1. Profile info
+    fetch(
+      `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          directUrls: [`https://www.instagram.com/${username}/`],
+          resultsType: "details",
+          resultsLimit: 1,
+        }),
+      }
+    ),
+    // 2. Recent posts
+    fetch(
+      `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          directUrls: [`https://www.instagram.com/${username}/`],
+          resultsType: "posts",
+          resultsLimit: 50,
+          onlyPostsNewerThan: sinceDate,
+          addParentData: false,
+        }),
+      }
+    ),
+  ]);
 
   if (!profileRes.ok) {
     const text = await profileRes.text();
@@ -93,43 +118,19 @@ export async function scrapeCreatorStats(username: string): Promise<CreatorStats
   const profilePicUrl = profile.profilePicUrl || "";
   const followers = profile.followersCount || 0;
 
-  // 2. Get recent posts (last 30 days) to compute activity metrics
-  const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-
-  const postsRes = await fetch(
-    `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        directUrls: [`https://www.instagram.com/${username}/`],
-        resultsType: "posts",
-        resultsLimit: 50,
-        onlyPostsNewerThan: sinceDate,
-        addParentData: false,
-      }),
-    }
-  );
-
-  if (!postsRes.ok) {
-    const text = await postsRes.text();
-    throw new Error(`Apify posts error ${postsRes.status}: ${text}`);
+  let recentReels: ApifyReel[] = [];
+  if (postsRes.ok) {
+    const posts = await postsRes.json() as ApifyReel[];
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    recentReels = posts.filter(
+      (p) => p.videoUrl && p.timestamp && new Date(p.timestamp) >= cutoff
+    );
   }
-
-  const posts = await postsRes.json() as ApifyReel[];
-
-  // Filter to only video posts within 30 days
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const recentReels = posts.filter(
-    (p) => p.videoUrl && p.timestamp && new Date(p.timestamp) >= cutoff
-  );
 
   const reelsCount30d = recentReels.length;
   const avgViews30d = reelsCount30d > 0
     ? Math.round(recentReels.reduce((sum, r) => sum + (r.videoPlayCount || 0), 0) / reelsCount30d)
     : 0;
 
-  return { profilePicUrl, followers, reelsCount30d, avgViews30d };
+  return { profilePicUrl, followers, reelsCount30d, avgViews30d, reels: recentReels };
 }

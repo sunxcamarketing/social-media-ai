@@ -171,3 +171,12 @@ export function appendLead(lead: Lead) {
   leads.push(lead);
   writeCsv("leads.csv", leads as unknown as Record<string, unknown>[], LEAD_COLUMNS);
 }
+
+export function updateLeadReport(leadId: string) {
+  const leads = readLeads();
+  const lead = leads.find((l) => l.id === leadId);
+  if (lead) {
+    lead.reportGenerated = "true";
+    writeCsv("leads.csv", leads as unknown as Record<string, unknown>[], LEAD_COLUMNS);
+  }
+}

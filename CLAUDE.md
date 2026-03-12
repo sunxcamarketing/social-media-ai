@@ -25,6 +25,8 @@ npm run dev
 - `APIFY_API_TOKEN` — Apify Instagram scraper
 - `GEMINI_API_KEY` — Google Gemini video analysis
 - `ANTHROPIC_API_KEY` — Claude concept generation
+- `RESEND_API_KEY` — Resend email service (for audit PDF delivery)
+- `RESEND_FROM_EMAIL` — Sender address (default: `onboarding@resend.dev`, production: `info@sunxca.com`)
 
 ---
 

@@ -1,15 +1,13 @@
 import { NextRequest } from "next/server";
-import { appendLead } from "@/lib/csv";
 import { scrapeCreatorStats } from "@/lib/apify";
 import type { ApifyReel } from "@/lib/apify";
 import Anthropic from "@anthropic-ai/sdk";
-import { triggerBackgroundReport } from "@/lib/send-report-background";
 
 function sendEvent(controller: ReadableStreamDefaultController, data: Record<string, unknown>) {
   controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
 }
 
-function buildSummaryPrompt(profile: {
+function buildFullReportPrompt(profile: {
   username: string;
   followers: number;
   reelsCount30d: number;
@@ -27,7 +25,7 @@ function buildSummaryPrompt(profile: {
 
   const isDE = lang === "de";
 
-  return `${isDE ? "Du bist ein Instagram-Wachstumsexperte." : "You are an Instagram growth expert."}
+  return `${isDE ? "Du bist ein Instagram-Wachstumsexperte und analysierst das folgende Profil." : "You are an Instagram growth expert analyzing the following profile."}
 
 # PROFIL
 - Username: @${profile.username}
@@ -40,44 +38,78 @@ ${reelsSummary || "Keine Reels gefunden."}
 
 # AUFGABE
 ${isDE
-  ? `Erstelle eine kurze Zusammenfassung als JSON. Analysiere die echten Daten und sei konkret — keine generischen Tipps.
+  ? `Erstelle einen professionellen, ausführlichen Instagram-Audit-Report auf Deutsch. Strukturiere ihn exakt so:
 
-Antworte NUR mit validem JSON in diesem Format:
-{
-  "score": <Zahl 1-10>,
-  "scoreLabel": "<z.B. Ausbaufähig, Solide Basis, Stark, Sehr stark>",
-  "summary": "<2-3 Sätze Gesamteinschätzung>",
-  "strengths": ["<konkreter Punkt 1>", "<konkreter Punkt 2>", "<konkreter Punkt 3>"],
-  "improvements": ["<konkreter Punkt 1>", "<konkreter Punkt 2>", "<konkreter Punkt 3>"],
-  "quickWins": ["<konkreter Tipp 1>", "<konkreter Tipp 2>", "<konkreter Tipp 3>"]
-}`
-  : `Create a short summary as JSON. Analyze the real data and be specific — no generic advice.
+## Profil-Überblick
+Zusammenfassung des aktuellen Stands in 3-4 Sätzen. Bewerte die Gesamtperformance.
 
-Respond ONLY with valid JSON in this format:
-{
-  "score": <number 1-10>,
-  "scoreLabel": "<e.g. Needs Work, Solid Foundation, Strong, Very Strong>",
-  "summary": "<2-3 sentence overall assessment>",
-  "strengths": ["<specific point 1>", "<specific point 2>", "<specific point 3>"],
-  "improvements": ["<specific point 1>", "<specific point 2>", "<specific point 3>"],
-  "quickWins": ["<specific tip 1>", "<specific tip 2>", "<specific tip 3>"]
-}`}`;
+## Stärken
+3-4 konkrete Punkte die bereits gut funktionieren. Beziehe dich auf die echten Daten und erkläre warum sie stark sind.
+
+## Verbesserungspotenzial
+4-5 konkrete Schwächen mit detaillierter Erklärung warum sie das Wachstum bremsen. Nutze die Zahlen.
+
+## Content-Analyse
+Detaillierte Analyse der Reel-Performance:
+- Durchschnittliche Engagement-Rate und Einordnung
+- Beste vs. schlechteste Videos (mit konkreten Zahlen)
+- Optimale Videolänge basierend auf den Daten
+- Posting-Frequenz und Konsistenz
+- Muster bei erfolgreichen vs. schwachen Videos
+
+## Sofort-Maßnahmen
+5 konkrete, sofort umsetzbare Tipps. Keine generischen Ratschläge — beziehe dich auf die echten Daten dieses Profils. Erkläre bei jedem Tipp warum er funktionieren wird.
+
+## Content-Strategie Empfehlung
+Empfehle eine konkrete Posting-Strategie:
+- Optimale Posting-Frequenz
+- Beste Videolänge
+- Content-Typen die basierend auf den Daten am besten funktionieren
+- Hook-Strategie basierend auf den Top-Videos
+
+## Wachstumsprognose
+Realistisches Potenzial bei konsequenter Umsetzung der Empfehlungen (3-6 Monate Horizont). Nenne konkrete Zielzahlen.`
+  : `Create a professional, detailed Instagram audit report in English. Structure it exactly like this:
+
+## Profile Overview
+Summary of the current state in 3-4 sentences. Rate overall performance.
+
+## Strengths
+3-4 specific points that are already working well. Reference the real data and explain why they're strong.
+
+## Areas for Improvement
+4-5 specific weaknesses with detailed explanation of why they limit growth. Use the numbers.
+
+## Content Analysis
+Detailed analysis of reel performance:
+- Average engagement rate and benchmark
+- Best vs. worst videos (with specific numbers)
+- Optimal video length based on data
+- Posting frequency and consistency
+- Patterns in successful vs. weak videos
+
+## Immediate Action Items
+5 specific, immediately actionable tips. No generic advice — reference this profile's actual data. Explain why each tip will work.
+
+## Content Strategy Recommendation
+Recommend a specific posting strategy:
+- Optimal posting frequency
+- Best video length
+- Content types that work best based on the data
+- Hook strategy based on top videos
+
+## Growth Forecast
+Realistic potential with consistent implementation (3-6 month horizon). Name specific target numbers.`}
+
+${isDE ? "Schreibe klar, direkt und professionell. Nutze die echten Zahlen aus den Daten. Sei ausführlich und detailliert." : "Write clearly, directly, and professionally. Use actual numbers. Be thorough and detailed."}`;
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { firstName, lastName, email, instagramHandle, lang = "de" } = body;
+  const { instagramHandle, lang = "de" } = body;
 
-  if (!firstName || !lastName || !email || !instagramHandle) {
-    return new Response(JSON.stringify({ error: "All fields are required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return new Response(JSON.stringify({ error: "Invalid email format" }), {
+  if (!instagramHandle) {
+    return new Response(JSON.stringify({ error: "Instagram handle is required" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
@@ -88,19 +120,7 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        // Save lead
-        const leadId = crypto.randomUUID();
-        appendLead({
-          id: leadId,
-          firstName,
-          lastName,
-          email,
-          instagramHandle: username,
-          createdAt: new Date().toISOString(),
-          reportGenerated: "false",
-        });
-
-        // Phase 1: Scrape profile
+        // Phase 1: Scrape profile + reels (parallel)
         sendEvent(controller, { phase: "scraping" });
         let profile;
         try {
@@ -121,12 +141,10 @@ export async function POST(req: NextRequest) {
 
         sendEvent(controller, { phase: "profile_loaded", profile: profileData });
 
-        // Reels already loaded from scrapeCreatorStats — no extra API call needed
         const reels: ApifyReel[] = profile.reels || [];
-        sendEvent(controller, { phase: "reels", message: "Videos werden analysiert…" });
         sendEvent(controller, { phase: "reels_loaded", count: reels.length });
 
-        // Phase 3: Generate summary (fast — structured JSON, fewer tokens)
+        // Phase 2: Full detailed Claude analysis
         sendEvent(controller, { phase: "analyzing" });
 
         const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -137,7 +155,7 @@ export async function POST(req: NextRequest) {
         }
 
         const client = new Anthropic({ apiKey });
-        const prompt = buildSummaryPrompt(
+        const prompt = buildFullReportPrompt(
           { username, followers: profile.followers, reelsCount30d: profile.reelsCount30d, avgViews30d: profile.avgViews30d },
           reels,
           lang,
@@ -145,50 +163,18 @@ export async function POST(req: NextRequest) {
 
         const message = await client.messages.create({
           model: "claude-sonnet-4-5-20250929",
-          max_tokens: 1024,
+          max_tokens: 4096,
           messages: [{ role: "user", content: prompt }],
         });
 
         const block = message.content[0];
-        const rawText = block.type === "text" ? block.text : "";
-
-        // Parse JSON from response (handle potential markdown code blocks)
-        let summary;
-        try {
-          const jsonStr = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-          summary = JSON.parse(jsonStr);
-        } catch {
-          sendEvent(controller, { phase: "error", message: "Analyse konnte nicht verarbeitet werden. Bitte versuche es erneut." });
-          controller.close();
-          return;
-        }
-
-        // Serialize reels data for the background email job
-        const reelsData = reels.map((r) => ({
-          videoPlayCount: r.videoPlayCount,
-          likesCount: r.likesCount,
-          commentsCount: r.commentsCount,
-          videoDuration: r.videoDuration,
-          timestamp: r.timestamp,
-        }));
+        const report = block.type === "text" ? block.text : "";
 
         sendEvent(controller, {
           phase: "done",
-          summary,
+          report,
           profile: profileData,
           reelsCount: reels.length,
-        });
-
-        // Trigger full report + PDF + email in the background on the SERVER
-        // This runs independently of the client — closing the tab won't stop it
-        triggerBackgroundReport({
-          leadId,
-          firstName,
-          email,
-          username,
-          profile: { username, followers: profile.followers, reelsCount30d: profile.reelsCount30d, avgViews30d: profile.avgViews30d },
-          reelsData,
-          lang,
         });
       } catch (err) {
         sendEvent(controller, {
