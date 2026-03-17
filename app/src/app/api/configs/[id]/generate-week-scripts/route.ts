@@ -4,6 +4,7 @@ import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
+import { weekScriptsSystemPrompt } from "@/lib/prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
 export const maxDuration = 120;
@@ -268,21 +269,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   };
 
   // ── Prompts ─────────────────────────────────────────────────────────────
-  const systemPrompt = `Du bist ein Elite-Content-Stratege für Instagram Reels. Du erstellst eine KOMPLETTE strategische Woche — nicht einzelne Skripte im Vakuum.
-
-DEIN ANSATZ:
-1. Analysiere ALLE verfügbaren Daten: Audit-Report, Performance-Daten, Top-Videos, Competitor-Hooks, Brand-Positionierung.
-2. Erstelle ${activeDays.length} Skripte die als WOCHE strategisch zusammenpassen: Abwechslung in Pillars, Hook-Stilen, emotionalen Registern.
-3. Jedes Skript muss ein WARUM haben: Welche konkreten Daten aus dem Audit stützen diese Entscheidung?
-
-QUALITÄTSREGELN:
-- HOOK: Erste 1-2 Sätze. Muss den Zuschauer in 3 Sekunden packen. Provokante These, konkrete Zahl, oder direktes Problem ansprechen. KEINE Floskeln.
-- BODY: Gesprochener Text. Jeder Absatz = ein NEUER Gedanke. Keine Wiederholungen. Konkrete Zahlen, Beispiele, Situationen.
-- CTA: JEDES Skript braucht eine Kommentar-Aufforderung die Interaktion erzwingt. Nicht "Was denkst du?" sondern "A oder B? Schreib's in die Kommentare."
-- SPRACHE: Gesprochenes Deutsch. Kurze Sätze. Direkte Anrede. Wie man redet, nicht schreibt.
-- REASONING: Verweise auf KONKRETE Audit-Erkenntnisse. "Laut Audit performen Videos unter 25s 3x besser" statt "Kurze Videos sind gut".${maxWords > 0 ? `
-- LÄNGE: Max ${maxWords} Wörter pro Skript (ca. ${fmtDuration(avgDuration)} Sprechzeit). Kürzer = besser.` : `
-- LÄNGE: Max 30-60 Sekunden Sprechzeit pro Skript. Prägnant.`}`;
+  const systemPrompt = weekScriptsSystemPrompt({
+    numDays: activeDays.length,
+    maxWords,
+    durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
+  });
 
   const userPrompt = `<client_profile>
 ${clientContext}

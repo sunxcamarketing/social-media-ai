@@ -1,4 +1,8 @@
-import type { Config } from "./types";
+// ── Video Analysis & Concepts Prompts ────────────────────────────────────────
+// Used by the pipeline: Gemini video analysis + Claude concept generation.
+// Moved from lib/prompts.ts — the original location.
+
+import type { Config } from "../types";
 
 export const ANALYSIS_PROMPT = `# CONCEPT
 Overall description of the concept of this video, and what makes it valuable and interesting (1-3 sentences).

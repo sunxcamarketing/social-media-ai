@@ -5,6 +5,7 @@ import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/rout
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
+import { topicPlanSystemPrompt } from "@/lib/prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 import type { TopicPlanItem } from "@/lib/types";
 
@@ -154,15 +155,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const client = new Anthropic({ apiKey });
 
-  const systemPrompt = `Du bist ein Content-Stratege für Instagram Reels. Du erstellst einen Wochenplan mit konkreten Video-Themen.
-
-REGELN:
-1. Jedes Thema muss KONKRET und SPEZIFISCH sein. Nicht "Mindset-Tipps" sondern "Warum du immer um 22 Uhr den Kühlschrank aufmachst".
-2. Der Titel beschreibt exakt worum es geht. Die Beschreibung fasst die Kernaussage in 1 Satz zusammen.
-3. Variiere die Themen über die Woche — keine zwei Videos zum gleichen Unterthema.
-4. Nutze die Performance-Daten UND den Audit-Report: Was hat funktioniert? Mehr davon, aber mit neuem Winkel.
-5. Halte dich an den vorgegebenen Wochenplan (Content-Type und Format pro Tag).
-6. Jedes Thema braucht eine BEGRÜNDUNG: Welche konkreten Daten aus dem Audit oder der Performance stützen diese Wahl?`;
+  const systemPrompt = topicPlanSystemPrompt;
 
   const userPrompt = `<client>
 ${clientContext}

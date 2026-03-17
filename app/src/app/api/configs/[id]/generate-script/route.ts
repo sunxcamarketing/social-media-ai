@@ -5,6 +5,7 @@ import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/rout
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
+import { singleScriptSystemPrompt, topicScriptSystemPrompt } from "@/lib/prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
 export const maxDuration = 90;
@@ -264,22 +265,10 @@ ${creatorVideos.map((v, i) => {
   });
 
   // ── System prompt: role + rules ─────────────────────────────────────────
-  const systemPrompt = `Du bist ein erstklassiger Skriptschreiber für Instagram Reels und Short-Form Video Content.
-
-DEINE AUFGABE: Erstelle EIN Video-Skript das der Kunde 1:1 ablesen und aufnehmen kann.
-
-QUALITÄTSREGELN:
-1. TITEL = Thema des Skripts. Der Titel MUSS beschreiben worum es im Skript geht. Kein Clickbait der nichts mit dem Inhalt zu tun hat.
-2. HOOK = Die ersten 1-2 Sätze. Muss den Zuschauer SOFORT packen. Konkret, nicht vage. Stelle eine provokante These auf, oder sprich ein konkretes Problem an.
-3. BODY = Der Hauptteil. JEDER Absatz bringt einen NEUEN Gedanken. Keine Wiederholungen. Keine Umformulierungen desselben Punkts. Wenn du den gleichen Gedanken zweimal sagst, lösch einen.
-4. CTA = Kurze klare Aufforderung. Max 1-2 Sätze.
-5. SPRACHE = Gesprochenes Deutsch. Kurze Sätze. Direkte Anrede. So wie man wirklich redet, nicht wie man schreibt.
-6. KONKRETION = Nenne Zahlen, Beispiele, Situationen. "Viele Menschen scheitern" ist schwach. "Du stehst morgens auf, schaust in den Spiegel und denkst: Schon wieder" ist stark.
-7. ABWECHSLUNG = Nicht jedes Skript ist ein emotionaler Monolog. Variiere: Tipps, Geschichten, kontroverse Meinungen, Anleitungen, Mythen entlarven.${maxWords > 0 ? `
-
-LÄNGE: Max ${maxWords} Wörter gesamt (Hook+Body+CTA). Das entspricht ca. ${fmtDuration(avgDuration)} Sprechzeit. Kürzer ist besser.` : `
-
-LÄNGE: Instagram Reels sind kurz. Schreibe prägnant, max 30-60 Sekunden Sprechzeit.`}`;
+  const systemPrompt = singleScriptSystemPrompt({
+    maxWords,
+    durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
+  });
 
   // ── User prompt: context + task ─────────────────────────────────────────
   const dayOverrideBlock = dayOverride
@@ -453,19 +442,10 @@ async function handleTopicScript(
     },
   };
 
-  const systemPrompt = `Du bist ein erstklassiger Skriptschreiber für Instagram Reels.
-
-DEINE AUFGABE: Schreibe ein Video-Skript zu einem vorgegebenen Thema. Der Kunde liest es 1:1 auf Kamera vor.
-
-REGELN:
-1. Schreibe NUR den gesprochenen Text — keine Regieanweisungen, keine Labels, keine Überschriften.
-2. Erster Satz = Hook. Muss sofort packen.
-3. Jeder Absatz = ein neuer Gedanke. Keine Wiederholungen.
-4. Letzter Absatz = Call to Action.
-5. Sprache: Gesprochenes Deutsch. Kurze Sätze. Direkte Anrede. Wie man redet, nicht wie man schreibt.
-6. Sei KONKRET: Zahlen, Beispiele, Situationen. Nicht abstrakt philosophieren.${maxWords > 0 ? `
-7. LÄNGE: Max ${maxWords} Wörter (ca. ${fmtDuration(avgDuration)} Sprechzeit). Kürzer ist besser.` : `
-7. LÄNGE: Max 30-60 Sekunden Sprechzeit. Prägnant.`}`;
+  const systemPrompt = topicScriptSystemPrompt({
+    maxWords,
+    durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
+  });
 
   const userPrompt = `<client>
 ${clientContext}
