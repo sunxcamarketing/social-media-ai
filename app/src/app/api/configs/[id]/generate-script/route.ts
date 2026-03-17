@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readTrainingScripts, readScripts } from "@/lib/csv";
+import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses } from "@/lib/csv";
+import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
@@ -204,6 +205,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const maxWords = avgDuration > 0 ? secondsToWords(avgDuration) : 0;
 
+  // ── Audit report ─────────────────────────────────────────────────────────
+  const auditBlock = getAuditBlock(id);
+
   // ── Existing scripts to avoid repetition ──────────────────────────────────
   const existingScripts = readScripts().filter(s => s.clientId === id);
   const recentTitles = existingScripts.slice(-15).map(s => s.title).filter(Boolean);
@@ -297,7 +301,7 @@ ${pillarBlock}
 WOCHENPLAN (${postsPerWeek}×/Woche):
 ${Object.entries(weekly).map(([day, d]) => `${day}: ${d.type} | ${d.format}`).join("\n")}
 </strategy>
-${ownPerformanceBlock}${creatorBlock}${voiceBlock}${recentTopics}
+${ownPerformanceBlock}${creatorBlock}${auditBlock}${voiceBlock}${recentTopics}
 ${hint ? `\nHINWEIS: ${hint}` : ""}
 
 ${dayOverrideBlock}`;
@@ -415,6 +419,9 @@ async function handleTopicScript(
     ? `\n<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt:\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- ${i + 1} ---\n${ts.script?.slice(0, 500) || ""}`).join("\n\n")}\n</voice_examples>`
     : "";
 
+  // Audit report
+  const topicAuditBlock = getAuditBlock(clientId);
+
   // Duration
   const insights = parseInsights(config.performanceInsights || "");
   const ownTopVideos: VideoInsight[] = [...(insights?.top30Days || []), ...(insights?.topAllTime || [])];
@@ -463,6 +470,7 @@ REGELN:
   const userPrompt = `<client>
 ${clientContext}
 </client>
+${topicAuditBlock}
 ${voiceBlock}
 ${hint ? `\nHINWEIS: ${hint}` : ""}
 

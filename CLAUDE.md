@@ -51,6 +51,17 @@ npm run dev
 6. **Generate** — Send analysis + brand context to Claude for adapted video concepts
 7. **Save** — Append results to `data/videos.csv`, viewable in the Videos page with thumbnails
 
+### Script Generation Pipeline (Weekly)
+
+1. **Load All Context** — Client profile, brand positioning, strategy (pillars + weekly schedule), dream customer, provider identity
+2. **Load Audit Report** — Most recent Instagram audit from `data/analyses.csv` (strengths, weaknesses, optimal video length, content patterns, sofort-massnahmen)
+3. **Load Performance Data** — Own top videos (with hooks, topics, whyItWorked) + competitor top videos
+4. **Load Voice Training** — Client-specific transcript examples for tone matching
+5. **Generate Full Week** — Single Claude call produces N scripts (one per active day) with strategic reasoning
+6. **Review & Save** — User reviews generated scripts, saves individually or all at once
+
+Key endpoint: `POST /api/configs/[id]/generate-week-scripts`
+
 ### Two Customizable Prompts Per Config
 
 - **Analysis Instruction** — How Gemini should break down the video

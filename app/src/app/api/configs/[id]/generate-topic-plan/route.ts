@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readScripts, readTrainingScripts } from "@/lib/csv";
+import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses } from "@/lib/csv";
+import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
@@ -107,6 +108,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }),
   ].filter(Boolean);
 
+  // ── Audit report ─────────────────────────────────────────────────────────
+  const auditBlock = getAuditBlock(id);
+
   // ── Existing scripts (avoid repetition) ───────────────────────────────────
   const existingScripts = readScripts().filter(s => s.clientId === id);
   const recentTitles = existingScripts.slice(-20).map(s => s.title).filter(Boolean);
@@ -136,8 +140,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               format:      { type: "string", enum: allFormats.map(f => f.name) },
               title:       { type: "string", description: "Konkreter Arbeitstitel (max 10 Wörter). Beschreibt genau worum es im Video geht." },
               description: { type: "string", description: "1 Satz: Was passiert in diesem Video? Was ist die Kernaussage?" },
+              reasoning:   { type: "string", description: "1-2 Sätze: Warum dieses Thema? Welche Daten aus dem Audit oder der Performance stützen es?" },
             },
-            required: ["day", "pillar", "contentType", "format", "title", "description"],
+            required: ["day", "pillar", "contentType", "format", "title", "description", "reasoning"],
           },
           minItems: activeDays.length,
           maxItems: activeDays.length,
@@ -155,8 +160,9 @@ REGELN:
 1. Jedes Thema muss KONKRET und SPEZIFISCH sein. Nicht "Mindset-Tipps" sondern "Warum du immer um 22 Uhr den Kühlschrank aufmachst".
 2. Der Titel beschreibt exakt worum es geht. Die Beschreibung fasst die Kernaussage in 1 Satz zusammen.
 3. Variiere die Themen über die Woche — keine zwei Videos zum gleichen Unterthema.
-4. Nutze die Performance-Daten: Was hat funktioniert? Mehr davon, aber mit neuem Winkel.
-5. Halte dich an den vorgegebenen Wochenplan (Content-Type und Format pro Tag).`;
+4. Nutze die Performance-Daten UND den Audit-Report: Was hat funktioniert? Mehr davon, aber mit neuem Winkel.
+5. Halte dich an den vorgegebenen Wochenplan (Content-Type und Format pro Tag).
+6. Jedes Thema braucht eine BEGRÜNDUNG: Welche konkreten Daten aus dem Audit oder der Performance stützen diese Wahl?`;
 
   const userPrompt = `<client>
 ${clientContext}
@@ -171,6 +177,8 @@ ${weekSchedule.map(s => `${s.day}: Content-Type "${s.contentType}" | Format "${s
 </weekly_schedule>
 
 ${performanceBlock.length > 0 ? `<performance>\n${performanceBlock.join("\n")}\n</performance>` : ""}
+
+${auditBlock}
 
 ${recentTitles.length > 0 ? `<already_covered>\nDiese Themen wurden bereits behandelt — vermeide sie:\n${recentTitles.map(t => `- ${t}`).join("\n")}\n</already_covered>` : ""}
 

@@ -117,6 +117,20 @@ export interface TopicPlanItem {
   format: string;
   title: string;        // short working title
   description: string;  // 1-sentence description
+  reasoning?: string;   // strategic justification based on audit/performance data
+}
+
+export interface Analysis {
+  id: string;
+  clientId: string;
+  instagramHandle: string;
+  lang: string;
+  report: string;
+  profileFollowers: number;
+  profileReels30d: number;
+  profileAvgViews30d: number;
+  profilePicUrl: string;
+  createdAt: string;
 }
 
 export interface PipelineParams {
