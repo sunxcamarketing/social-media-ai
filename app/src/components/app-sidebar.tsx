@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -50,6 +50,7 @@ export function AppSidebar() {
   const clientTabs = [
     { title: t("nav.context"),   href: "information", icon: BookOpen  },
     { title: t("nav.strategy"),  href: "strategy",    icon: BarChart2 },
+    { title: "Analyse",          href: "analyse",     icon: Search    },
     { title: t("nav.posts"),     href: "scripts",     icon: FileText  },
     { title: t("nav.videos"),    href: "videos",      icon: Video     },
     { title: t("nav.creators"),  href: "creators",    icon: Users     },
@@ -97,6 +98,15 @@ export function AppSidebar() {
     }
   }
 
+  async function deleteClient(clientId: string, clientName: string) {
+    if (!confirm(`"${clientName}" wirklich löschen?`)) return;
+    await fetch(`/api/configs?id=${clientId}`, { method: "DELETE" });
+    setClients((prev) => prev.filter((c) => c.id !== clientId));
+    if (activeClientId === clientId) {
+      router.push("/");
+    }
+  }
+
   const hasLinks = form.instagram || form.website || form.tiktok || form.youtube || form.linkedin || form.twitter;
 
   return (
@@ -126,19 +136,28 @@ export function AppSidebar() {
             <div className="overflow-y-auto flex-1 space-y-0.5">
               {clients.map((client) => {
                 const isActive = activeClientId === client.id;
+                const displayName = client.configName || client.name || "Unnamed";
                 return (
-                  <Link
-                    key={client.id}
-                    href={`/clients/${client.id}/information`}
-                    className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
-                      isActive
-                        ? "bg-blush-light/60 text-ocean font-medium"
-                        : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
-                    }`}
-                  >
-                    <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
-                    <span className="truncate">{client.configName || client.name || "Unnamed"}</span>
-                  </Link>
+                  <div key={client.id} className="group relative">
+                    <Link
+                      href={`/clients/${client.id}/information`}
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                        isActive
+                          ? "bg-blush-light/60 text-ocean font-medium"
+                          : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                      }`}
+                    >
+                      <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
+                      <span className="truncate">{displayName}</span>
+                    </Link>
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteClient(client.id, displayName); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Löschen"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 );
               })}
 
