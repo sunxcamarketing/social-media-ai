@@ -6,13 +6,13 @@ export { ANALYSIS_PROMPT, buildConceptsPrompt } from "./analysis";
 export { HOOK_RULES, HOOK_PATTERNS } from "./hooks";
 export { LANGUAGE_RULES, VOICE_MATCHING_INSTRUCTIONS, LENGTH_RULES } from "./language";
 export { BODY_RULES, CTA_RULES, CONCRETENESS_RULES, VARIETY_RULES, TITLE_RULES, ANTI_PATTERNS } from "./quality";
-export { WEEK_COHERENCE_RULES, REASONING_RULES, AUDIT_USAGE_RULES, TOPIC_SPECIFICITY_RULES } from "./strategy";
+export { WEEK_COHERENCE_RULES, REASONING_RULES, AUDIT_USAGE_RULES, TOPIC_SPECIFICITY_RULES } from "./scripting";
 export type { StrategyPromptContext, StrategyOutput } from "./strategy-generation";
 
 import { LANGUAGE_RULES, LENGTH_RULES } from "./language";
 import { HOOK_RULES, HOOK_PATTERNS } from "./hooks";
 import { BODY_RULES, CTA_RULES, CONCRETENESS_RULES, VARIETY_RULES, TITLE_RULES, ANTI_PATTERNS } from "./quality";
-import { WEEK_COHERENCE_RULES, REASONING_RULES, AUDIT_USAGE_RULES } from "./strategy";
+import { WEEK_COHERENCE_RULES, REASONING_RULES, AUDIT_USAGE_RULES } from "./scripting";
 
 // ── Composed system prompts ─────────────────────────────────────────────────
 

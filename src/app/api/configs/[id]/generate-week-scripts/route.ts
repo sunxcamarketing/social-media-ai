@@ -209,7 +209,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   // ── Voice training ──────────────────────────────────────────────────────
   const clientTrainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === id);
   const voiceBlock = clientTrainingScripts.length > 0
-    ? `<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt — Wortwahl, Satzlänge, Energie, Sprechrhythmus.\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- Beispiel ${i + 1}${ts.format ? ` (${ts.format})` : ""} ---\n${ts.script?.slice(0, 500) || ""}`).join("\n\n")}\n</voice_examples>`
+    ? `<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt — Wortwahl, Satzlänge, Energie, Sprechrhythmus.\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- Beispiel ${i + 1}${ts.format ? ` (${ts.format})` : ""} ---\n${ts.script || ""}`).join("\n\n")}\n</voice_examples>`
     : "";
 
   // ── Existing scripts (avoid repetition) ─────────────────────────────────

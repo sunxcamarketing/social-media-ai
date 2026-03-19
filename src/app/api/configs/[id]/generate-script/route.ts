@@ -217,7 +217,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 Die folgenden Transkripte zeigen, wie ${config.name || "der Kunde"} wirklich spricht. Imitiere diesen Stil exakt — Wortwahl, Satzlänge, Energie, Sprechrhythmus.
 ${clientTrainingScripts.slice(0, 8).map((ts, i) => {
   return `--- Beispiel ${i + 1}${ts.format ? ` (${ts.format})` : ""} ---
-${ts.script?.slice(0, 600) || ""}`;
+${ts.script || ""}`;
 }).join("\n\n")}
 </voice_examples>` : "";
 
@@ -398,7 +398,7 @@ async function handleTopicScript(
   // Voice training
   const clientTrainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
   const voiceBlock = clientTrainingScripts.length > 0
-    ? `\n<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt:\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- ${i + 1} ---\n${ts.script?.slice(0, 500) || ""}`).join("\n\n")}\n</voice_examples>`
+    ? `\n<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt:\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- ${i + 1} ---\n${ts.script || ""}`).join("\n\n")}\n</voice_examples>`
     : "";
 
   // Audit report

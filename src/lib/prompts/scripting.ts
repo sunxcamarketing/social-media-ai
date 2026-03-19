@@ -1,4 +1,4 @@
-// ── Strategy & Reasoning Rules ──────────────────────────────────────────────
+// ── Scripting & Reasoning Rules ─────────────────────────────────────────────
 // Controls: audit-based reasoning, week coherence, data-driven decisions.
 // Used in week-script and topic-plan generation.
 
