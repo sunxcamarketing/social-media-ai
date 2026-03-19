@@ -13,7 +13,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## How to Run
 
 ```bash
-cd app
 npm install
 npm run dev
 # Open http://localhost:3000
@@ -73,32 +72,34 @@ Key endpoint: `POST /api/configs/[id]/generate-week-scripts`
 .
 ├── CLAUDE.md                              # This file
 ├── .env                                   # API keys (not committed)
-├── app/                                   # Next.js application
-│   ├── src/
-│   │   ├── app/                           # Pages and API routes
-│   │   │   ├── (app)/                     # App route group (sidebar, topbar)
-│   │   │   │   ├── page.tsx               # Dashboard
-│   │   │   │   ├── clients/               # Client management pages
-│   │   │   │   ├── videos/page.tsx        # Videos browser with thumbnails
-│   │   │   │   ├── run/page.tsx           # Pipeline runner with live progress
-│   │   │   │   ├── configs/page.tsx       # Config management
-│   │   │   │   └── creators/page.tsx      # Creator management
-│   │   │   └── api/                       # API routes (configs, creators, videos, pipeline)
-│   │   ├── lib/                           # Core logic
-│   │   │   ├── pipeline.ts               # Pipeline orchestration
-│   │   │   ├── apify.ts                  # Apify scraper client
-│   │   │   ├── gemini.ts                 # Gemini video analysis client
-│   │   │   ├── claude.ts                 # Claude concept generation client
-│   │   │   ├── csv.ts                    # CSV read/write utilities
-│   │   │   └── types.ts                  # TypeScript interfaces
-│   │   └── components/                    # UI components (shadcn + custom)
-│   └── package.json
+├── src/
+│   ├── app/                               # Pages and API routes
+│   │   ├── (app)/                         # App route group (sidebar, topbar)
+│   │   │   ├── page.tsx                   # Dashboard
+│   │   │   ├── clients/                   # Client management pages
+│   │   │   ├── configs/                   # Config management
+│   │   │   ├── strategy/                  # Strategy page
+│   │   │   ├── training/                  # Training page
+│   │   │   └── transcribe/               # Transcribe page
+│   │   └── api/                           # API routes (configs, creators, videos, pipeline)
+│   ├── lib/                               # Core logic
+│   │   ├── pipeline.ts                   # Pipeline orchestration
+│   │   ├── apify.ts                      # Apify scraper client
+│   │   ├── gemini.ts                     # Gemini video analysis client
+│   │   ├── claude.ts                     # Claude concept generation client
+│   │   ├── csv.ts                        # CSV read/write utilities
+│   │   ├── prompts/                      # Modular prompt system
+│   │   └── types.ts                      # TypeScript interfaces
+│   └── components/                        # UI components (shadcn + custom)
 ├── data/                                  # CSV data storage
 │   ├── configs.csv                        # Pipeline configurations
 │   ├── creators.csv                       # Instagram creator accounts
 │   ├── videos.csv                         # Analyzed video results
+│   ├── scripts.csv                        # Generated scripts
+│   └── training-scripts.csv              # Training script examples
 ├── context/                               # Background context for Claude
 ├── plans/                                 # Implementation plans
+├── package.json
 └── .claude/commands/                      # Slash commands (prime, create-plan, implement)
 ```
 

@@ -13,7 +13,7 @@ export interface TrainingExample {
   addedAt: string;
 }
 
-const FILE = path.join(process.cwd(), "..", "data", "strategy.json");
+const FILE = path.join(process.cwd(), "data", "strategy.json");
 
 interface StrategyConfig {
   customContentTypes: ContentType[];

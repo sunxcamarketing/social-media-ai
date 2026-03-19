@@ -2,9 +2,9 @@ import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
-import type { Config, Creator, Video, Script, TrainingScript } from "./types";
+import type { Config, Creator, Video, Script, TrainingScript, Analysis } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "..", "data");
+const DATA_DIR = path.join(process.cwd(), "data");
 
 function ensureDataDir() {
   if (!existsSync(DATA_DIR)) {
@@ -147,5 +147,28 @@ export function readTrainingScripts(): TrainingScript[] {
 
 export function writeTrainingScripts(scripts: TrainingScript[]) {
   writeCsv("training-scripts.csv", scripts as unknown as Record<string, unknown>[], TRAINING_SCRIPT_COLUMNS);
+}
+
+// Analyses
+const ANALYSIS_COLUMNS = ["id", "clientId", "instagramHandle", "lang", "report", "profileFollowers", "profileReels30d", "profileAvgViews30d", "profilePicUrl", "createdAt"];
+
+export function readAnalyses(): Analysis[] {
+  const raw = readCsv<Record<string, string>>("analyses.csv");
+  return raw.map((r) => ({
+    id: r.id || "",
+    clientId: r.clientId || "",
+    instagramHandle: r.instagramHandle || "",
+    lang: r.lang || "",
+    report: r.report || "",
+    profileFollowers: parseInt(r.profileFollowers || "0", 10) || 0,
+    profileReels30d: parseInt(r.profileReels30d || "0", 10) || 0,
+    profileAvgViews30d: parseInt(r.profileAvgViews30d || "0", 10) || 0,
+    profilePicUrl: r.profilePicUrl || "",
+    createdAt: r.createdAt || "",
+  }));
+}
+
+export function writeAnalyses(analyses: Analysis[]) {
+  writeCsv("analyses.csv", analyses as unknown as Record<string, unknown>[], ANALYSIS_COLUMNS);
 }
 

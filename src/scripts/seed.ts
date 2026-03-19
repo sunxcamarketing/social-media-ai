@@ -7,7 +7,7 @@ import { stringify } from "csv-stringify/sync";
 import { v4 as uuid } from "uuid";
 import path from "path";
 
-const DATA_DIR = path.join(__dirname, "..", "..", "..", "data");
+const DATA_DIR = path.join(__dirname, "..", "..", "data");
 
 if (!existsSync(DATA_DIR)) {
   mkdirSync(DATA_DIR, { recursive: true });

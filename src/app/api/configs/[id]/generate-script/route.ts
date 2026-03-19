@@ -46,7 +46,7 @@ function videoInsightBlock(v: VideoInsight, index: number): string {
 }
 
 function readStrategyJson() {
-  const file = path.join(process.cwd(), "..", "data", "strategy.json");
+  const file = path.join(process.cwd(), "data", "strategy.json");
   if (!existsSync(file)) return { customContentTypes: [], customFormats: [] };
   try { return JSON.parse(readFileSync(file, "utf-8")); } catch { return { customContentTypes: [], customFormats: [] }; }
 }
