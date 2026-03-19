@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useRef, useCallback } from "react";
+import { createContext, useContext, useState, useCallback } from "react";
 import type { PipelineProgress } from "@/lib/types";
 
 interface PipelineContextValue {
@@ -14,56 +14,115 @@ const PipelineContext = createContext<PipelineContextValue | null>(null);
 export function PipelineProvider({ children }: { children: React.ReactNode }) {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<PipelineProgress | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const runPipeline = useCallback(async (params: { configName: string; maxVideos: number; topK: number; nDays: number }) => {
     if (running) return;
     setRunning(true);
-    setProgress(null);
-
-    abortRef.current = new AbortController();
+    setProgress({
+      status: "running",
+      phase: "scraping",
+      activeTasks: [],
+      creatorsCompleted: 0,
+      creatorsTotal: 0,
+      creatorsScraped: 0,
+      videosAnalyzed: 0,
+      videosTotal: 0,
+      errors: [],
+      log: ["Pipeline started — running in background via Inngest"],
+    });
 
     try {
       const response = await fetch("/api/pipeline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
-        signal: abortRef.current.signal,
       });
 
-      const reader = response.body?.getReader();
-      if (!reader) return;
+      if (!response.ok) {
+        throw new Error(`Failed to start pipeline: ${response.status}`);
+      }
 
-      const decoder = new TextDecoder();
-      let buffer = "";
+      const { eventId } = await response.json();
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      setProgress((prev) => prev && ({
+        ...prev,
+        log: [...prev.log, `Pipeline queued (event: ${eventId}). Processing in background...`],
+      }));
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+      // Poll for completion by checking if new videos appeared
+      const startTime = Date.now();
+      const maxPollTime = 10 * 60 * 1000; // 10 minutes
+      const pollInterval = 10_000; // 10 seconds
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              setProgress(data);
-            } catch {
-              // skip
+      const pollForCompletion = async () => {
+        while (Date.now() - startTime < maxPollTime) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+
+          try {
+            const statusRes = await fetch(`/api/pipeline/status?eventId=${eventId}`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+
+              if (statusData.status === "completed") {
+                setProgress({
+                  status: "completed",
+                  phase: "done",
+                  activeTasks: [],
+                  creatorsCompleted: statusData.creatorsScraped || 0,
+                  creatorsTotal: statusData.creatorsScraped || 0,
+                  creatorsScraped: statusData.creatorsScraped || 0,
+                  videosAnalyzed: statusData.videosAnalyzed || 0,
+                  videosTotal: statusData.videosTotal || 0,
+                  errors: [],
+                  log: [
+                    "Pipeline started — running in background via Inngest",
+                    `Pipeline complete! ${statusData.videosAnalyzed} videos analyzed.`,
+                  ],
+                });
+                setRunning(false);
+                return;
+              }
+
+              if (statusData.status === "failed") {
+                setProgress((prev) => prev && ({
+                  ...prev,
+                  status: "error",
+                  errors: [statusData.error || "Pipeline failed"],
+                  log: [...prev.log, `Pipeline failed: ${statusData.error || "Unknown error"}`],
+                }));
+                setRunning(false);
+                return;
+              }
             }
+          } catch {
+            // ignore poll errors, keep trying
           }
         }
-      }
+
+        // Timeout
+        setProgress((prev) => prev && ({
+          ...prev,
+          status: "completed",
+          phase: "done",
+          log: [...prev.log, "Pipeline may still be running. Check the Videos page for results."],
+        }));
+        setRunning(false);
+      };
+
+      pollForCompletion();
     } catch (err) {
-      if ((err as Error).name === "AbortError") return;
-      setProgress((prev) => ({
-        ...(prev || { phase: "done" as const, activeTasks: [], creatorsCompleted: 0, creatorsTotal: 0, creatorsScraped: 0, videosAnalyzed: 0, videosTotal: 0, log: [] }),
-        status: "error" as const,
+      setProgress({
+        status: "error",
+        phase: "done",
+        activeTasks: [],
+        creatorsCompleted: 0,
+        creatorsTotal: 0,
+        creatorsScraped: 0,
+        videosAnalyzed: 0,
+        videosTotal: 0,
         errors: [err instanceof Error ? err.message : "Unknown error"],
-      }));
-    } finally {
+        log: [`Error: ${err instanceof Error ? err.message : "Unknown error"}`],
+      });
       setRunning(false);
     }
   }, [running]);

@@ -15,6 +15,7 @@
     "csv-parse": "^6.1.0",
     "csv-stringify": "^6.6.0",
     "dotenv": "^17.3.1",
+    "inngest": "^4.0.1",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
     "radix-ui": "^1.4.3",
