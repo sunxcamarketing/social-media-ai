@@ -61,7 +61,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 interface Pillar { name: string; subTopics: string; }
-interface DaySlot { type: string; format: string; }
+interface DaySlot { type: string; format: string; reason?: string; }
 type WeeklyStructure = Record<string, DaySlot>;
 
 function parsePillars(raw: string): Pillar[] {
@@ -371,7 +371,9 @@ export default function ClientStrategyPage() {
   }
 
   const pillars = parsePillars(client.strategyPillars);
-  const weekly = parseWeekly(client.strategyWeekly);
+  const weeklyRaw = parseWeekly(client.strategyWeekly);
+  const strategyReasoning = (weeklyRaw as Record<string, unknown>)._reasoning as string | undefined;
+  const { _reasoning, ...weekly } = weeklyRaw as WeeklyStructure & { _reasoning?: string };
   const goal = GOAL_LABELS[client.strategyGoal];
   const insights = parseInsights(client.performanceInsights);
   const hasStrategy = client.strategyGoal || pillars.length > 0;
@@ -571,11 +573,16 @@ export default function ClientStrategyPage() {
         {generating && (
           <div className="rounded-xl bg-blush/10 border border-blush/40 px-4 py-3 space-y-1">
             <p className="text-sm text-ocean">{t("strategy.aiGenerating")}</p>
-            {meta.trainingCount > 0 && (
-              <p className="text-[11px] text-blush-dark/70">
-                {meta.trainingCount} {t("strategy.trainingConsidered")}
-              </p>
-            )}
+            <div className="flex flex-wrap gap-2 mt-1">
+              {insights && (
+                <span className="text-[10px] bg-green-50 text-green-600 border border-green-200 rounded-full px-2 py-0.5">Performance-Daten</span>
+              )}
+              {meta.trainingCount > 0 && (
+                <span className="text-[10px] bg-blush/20 text-blush-dark border border-blush/40 rounded-full px-2 py-0.5">{meta.trainingCount} Training Examples</span>
+              )}
+              <span className="text-[10px] bg-ocean/5 text-ocean/70 border border-ocean/10 rounded-full px-2 py-0.5">Client-Profil</span>
+              <span className="text-[10px] bg-blue-50 text-blue-500 border border-blue-200 rounded-full px-2 py-0.5">Audit + Competitor</span>
+            </div>
           </div>
         )}
 
@@ -601,7 +608,7 @@ export default function ClientStrategyPage() {
         ) : !generating && (
           <div className="space-y-6">
 
-            {/* Goal */}
+            {/* Goal + Reasoning */}
             {goal && (
               <div>
                 <p className="text-[11px] text-ocean uppercase tracking-wider mb-2">{t("strategy.primaryGoal")}</p>
@@ -609,6 +616,12 @@ export default function ClientStrategyPage() {
                   <span className="text-sm font-semibold">{goal.label}</span>
                   <span className="text-xs opacity-70">→ {goal.description}</span>
                 </div>
+                {strategyReasoning && (
+                  <div className="mt-3 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-4 py-3">
+                    <p className="text-[10px] font-medium text-blush-dark uppercase tracking-wider mb-1">AI Begründung</p>
+                    <p className="text-xs text-ocean leading-relaxed">{String(strategyReasoning)}</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -676,6 +689,12 @@ export default function ClientStrategyPage() {
                                     <span className="text-[10px] opacity-65 leading-tight">{f}</span>
                                   </div>
                                 ))}
+                              </div>
+                            )}
+                            {/* Reason */}
+                            {slot.reason && (
+                              <div className="border-t border-current/10 pt-2">
+                                <p className="text-[9px] opacity-50 leading-snug italic">{slot.reason}</p>
                               </div>
                             )}
                           </div>

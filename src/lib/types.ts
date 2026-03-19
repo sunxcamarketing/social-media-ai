@@ -5,7 +5,7 @@ export interface Config {
   // Strategy
   strategyGoal: string; // "reach" | "trust" | "revenue"
   strategyPillars: string; // JSON: [{name: string, subTopics: string}]
-  strategyWeekly: string; // JSON: {Mon: {type: string, format: string}, ...}
+  strategyWeekly: string; // JSON: {_reasoning?: string, Mon: {type: string, format: string, reason?: string}, ...}
   performanceInsights: string; // JSON: PerformanceInsights
   postsPerWeek: string;
   // Client info
