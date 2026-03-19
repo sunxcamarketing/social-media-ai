@@ -23,29 +23,60 @@ export const runPipelineFunction = inngest.createFunction(
   {
     id: "run-pipeline",
     retries: 0,
-    triggers: [{ event: "pipeline/run" }],
   },
-  async ({ event, step }) => {
+  { event: "pipeline/run" },
+  async ({ event, step, publish }) => {
     const { configName, maxVideos, topK, nDays } = event.data;
+    const channel = `pipeline:${event.id}`;
+
+    const log = async (message: string, extra?: Record<string, unknown>) => {
+      await publish({
+        channel,
+        topic: "progress",
+        data: {
+          timestamp: new Date().toISOString(),
+          message,
+          ...extra,
+        },
+      });
+    };
 
     // Step 1: Load config and creators
-    const { config, creators } = await step.run("load-config", () => {
-      const configs = readConfigs();
+    const { config, creators } = await step.run("load-config", async () => {
+      const configs = await readConfigs();
       const config = configs.find((c) => c.configName === configName);
       if (!config) throw new Error(`Config "${configName}" not found`);
 
-      const allCreators = readCreators();
+      const allCreators = await readCreators();
       const creators = allCreators.filter((c) => c.category === config.creatorsCategory);
       if (creators.length === 0) throw new Error(`No creators found for category "${config.creatorsCategory}"`);
 
       return { config, creators: creators.map((c) => c.username) };
     });
 
-    // Step 2: Scrape each creator (each is its own step for retry/durability)
+    await log(`Loaded config "${configName}" with ${creators.length} creators`, {
+      phase: "scraping",
+      creatorsTotal: creators.length,
+      creatorsScraped: 0,
+      videosAnalyzed: 0,
+      videosTotal: 0,
+      status: "running",
+    });
+
+    // Step 2: Scrape each creator
     const cutoffDate = new Date(Date.now() - nDays * 24 * 60 * 60 * 1000);
     const allTopVideos: ScrapedVideo[] = [];
+    let creatorsScraped = 0;
 
     for (const username of creators) {
+      await log(`Scraping @${username}...`, {
+        phase: "scraping",
+        creatorsTotal: creators.length,
+        creatorsScraped,
+        activeCreator: username,
+        status: "running",
+      });
+
       const videos = await step.run(`scrape-${username}`, async () => {
         const reels = await scrapeReels(username, maxVideos, nDays);
 
@@ -70,12 +101,46 @@ export const runPipelineFunction = inngest.createFunction(
       });
 
       allTopVideos.push(...videos);
+      creatorsScraped++;
+
+      await log(`@${username}: ${videos.length} top videos selected`, {
+        phase: "scraping",
+        creatorsTotal: creators.length,
+        creatorsScraped,
+        status: "running",
+      });
     }
 
-    // Step 3: Analyze each video (each is its own step)
+    await log(`Scraping complete. ${allTopVideos.length} videos to analyze.`, {
+      phase: "analyzing",
+      creatorsTotal: creators.length,
+      creatorsScraped,
+      videosTotal: allTopVideos.length,
+      videosAnalyzed: 0,
+      status: "running",
+    });
+
+    // Step 3: Analyze each video
     const newVideos: Video[] = [];
+    let videosAnalyzed = 0;
 
     for (const video of allTopVideos) {
+      const viewsLabel = video.views >= 1_000_000
+        ? `${(video.views / 1_000_000).toFixed(1)}M`
+        : video.views >= 1_000
+        ? `${(video.views / 1_000).toFixed(0)}K`
+        : String(video.views);
+
+      await log(`Analyzing @${video.username} (${viewsLabel} views): downloading...`, {
+        phase: "analyzing",
+        creatorsTotal: creators.length,
+        creatorsScraped,
+        videosTotal: allTopVideos.length,
+        videosAnalyzed,
+        activeVideo: { creator: video.username, views: video.views, step: "Downloading" },
+        status: "running",
+      });
+
       const result = await step.run(`analyze-${video.username}-${video.views}`, async () => {
         // Download video
         const videoResponse = await fetch(video.videoUrl);
@@ -111,20 +176,39 @@ export const runPipelineFunction = inngest.createFunction(
       });
 
       newVideos.push(result);
+      videosAnalyzed++;
+
+      await log(`@${video.username} (${viewsLabel} views): done`, {
+        phase: "analyzing",
+        creatorsTotal: creators.length,
+        creatorsScraped,
+        videosTotal: allTopVideos.length,
+        videosAnalyzed,
+        status: "running",
+      });
     }
 
     // Step 4: Save all results
-    await step.run("save-results", () => {
+    await step.run("save-results", async () => {
       if (newVideos.length > 0) {
-        const existing = readVideos();
-        writeVideos([...existing, ...newVideos]);
+        const existing = await readVideos();
+        await writeVideos([...existing, ...newVideos]);
       }
     });
 
-    return {
-      videosAnalyzed: newVideos.length,
+    await log(`Pipeline complete! ${videosAnalyzed}/${allTopVideos.length} videos analyzed.`, {
+      phase: "done",
+      creatorsTotal: creators.length,
+      creatorsScraped,
       videosTotal: allTopVideos.length,
-      creatorsScraped: creators.length,
+      videosAnalyzed,
+      status: "completed",
+    });
+
+    return {
+      videosAnalyzed,
+      videosTotal: allTopVideos.length,
+      creatorsScraped,
     };
   }
 );

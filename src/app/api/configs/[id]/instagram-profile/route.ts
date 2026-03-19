@@ -19,7 +19,7 @@ export const maxDuration = 30;
 // GET — return cached profile from CSV (no Apify call)
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!config.instagram) return NextResponse.json({ error: "No Instagram handle" }, { status: 400 });
@@ -42,7 +42,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // POST — fetch fresh data from Apify and save to CSV
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const index = configs.findIndex((c) => c.id === id);
   if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -94,7 +94,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       igVerified: String(p.verified || false),
       igLastUpdated: lastUpdated,
     };
-    writeConfigs(configs);
+    await writeConfigs(configs);
 
     return NextResponse.json({
       username,

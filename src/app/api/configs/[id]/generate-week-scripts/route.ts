@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses } from "@/lib/csv";
-import { readFileSync, existsSync } from "fs";
-import path from "path";
+import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { weekScriptsSystemPrompt } from "@/lib/prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
@@ -39,8 +37,8 @@ export function extractAuditContext(report: string): {
   };
 }
 
-export function getAuditBlock(clientId: string): string {
-  const analyses = readAnalyses()
+export async function getAuditBlock(clientId: string): Promise<string> {
+  const analyses = (await readAnalyses())
     .filter(a => a.clientId === clientId)
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
@@ -93,17 +91,12 @@ function videoInsightBlock(v: VideoInsight, index: number): string {
   ].filter(Boolean).join("\n");
 }
 
-function readStrategyJson() {
-  const file = path.join(process.cwd(), "data", "strategy.json");
-  if (!existsSync(file)) return { customContentTypes: [], customFormats: [] };
-  try { return JSON.parse(readFileSync(file, "utf-8")); } catch { return { customContentTypes: [], customFormats: [] }; }
-}
 
 // ── Main endpoint ───────────────────────────────────────────────────────────
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -148,7 +141,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
   })();
 
-  const strategyJson = readStrategyJson();
+  const strategyJson = await readStrategyConfig();
   const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
   const allFormats = [...BUILT_IN_FORMATS, ...(strategyJson.customFormats || [])];
 
@@ -179,7 +172,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }).join("\n");
 
   // ── Audit report ────────────────────────────────────────────────────────
-  const auditBlock = getAuditBlock(id);
+  const auditBlock = await getAuditBlock(id);
 
   // ── Performance data ────────────────────────────────────────────────────
   const insights = parseInsights(config.performanceInsights || "");
@@ -188,7 +181,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     ...(insights?.topAllTime || []),
   ];
 
-  const allVideos = readVideos();
+  const allVideos = await readVideos();
   const creatorVideos = allVideos
     .filter(v => v.configName === config.configName && v.views > 0)
     .sort((a, b) => b.views - a.views)
@@ -214,13 +207,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     : "";
 
   // ── Voice training ──────────────────────────────────────────────────────
-  const clientTrainingScripts = readTrainingScripts().filter(ts => ts.clientId === id);
+  const clientTrainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === id);
   const voiceBlock = clientTrainingScripts.length > 0
     ? `<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt — Wortwahl, Satzlänge, Energie, Sprechrhythmus.\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- Beispiel ${i + 1}${ts.format ? ` (${ts.format})` : ""} ---\n${ts.script?.slice(0, 500) || ""}`).join("\n\n")}\n</voice_examples>`
     : "";
 
   // ── Existing scripts (avoid repetition) ─────────────────────────────────
-  const existingScripts = readScripts().filter(s => s.clientId === id);
+  const existingScripts = (await readScripts()).filter(s => s.clientId === id);
   const recentTitles = existingScripts.slice(-20).map(s => s.title).filter(Boolean);
   const recentBlock = recentTitles.length > 0
     ? `<already_covered>\nDiese Themen wurden bereits behandelt — vermeide sie:\n${recentTitles.map(t => `- ${t}`).join("\n")}\n</already_covered>`

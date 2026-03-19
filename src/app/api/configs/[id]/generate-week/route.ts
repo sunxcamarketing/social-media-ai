@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos } from "@/lib/csv";
-import { readFileSync, existsSync } from "fs";
-import path from "path";
+import { readConfigs, readVideos, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
@@ -38,11 +36,6 @@ function videoInsightBlock(v: VideoInsight, index: number): string {
   ].filter(Boolean).join("\n");
 }
 
-function readStrategyJson() {
-  const file = path.join(process.cwd(), "data", "strategy.json");
-  if (!existsSync(file)) return { customContentTypes: [], customFormats: [] };
-  try { return JSON.parse(readFileSync(file, "utf-8")); } catch { return { customContentTypes: [], customFormats: [] }; }
-}
 
 const WEEK_SCRIPT_TOOL = {
   name: "submit_script",
@@ -75,7 +68,7 @@ export interface WeekScript {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -109,7 +102,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
   })();
 
-  const strategyJson = readStrategyJson();
+  const strategyJson = await readStrategyConfig();
   const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
   const allFormats = [...BUILT_IN_FORMATS, ...(strategyJson.customFormats || [])];
 
@@ -128,7 +121,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ...(insights?.topAllTime || []),
   ].slice(0, 3);
 
-  const allVideos = readVideos();
+  const allVideos = await readVideos();
   const creatorVideos = allVideos
     .filter(v => v.configName === config.configName && v.views > 0)
     .sort((a, b) => b.views - a.views)

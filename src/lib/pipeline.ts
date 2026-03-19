@@ -78,14 +78,14 @@ export async function runPipeline(
 
   try {
     // Load config
-    const configs = readConfigs();
+    const configs = await readConfigs();
     const config = configs.find((c) => c.configName === params.configName);
     if (!config) throw new Error(`Config "${params.configName}" not found`);
 
     log(`Loaded config: ${config.configName}`);
 
     // Load creators
-    const allCreators = readCreators();
+    const allCreators = await readCreators();
     const creators = allCreators.filter((c) => c.category === config.creatorsCategory);
     if (creators.length === 0) throw new Error(`No creators found for category "${config.creatorsCategory}"`);
 
@@ -224,8 +224,8 @@ export async function runPipeline(
 
     // Write all new videos at once
     if (newVideos.length > 0) {
-      const existing = readVideos();
-      writeVideos([...existing, ...newVideos]);
+      const existing = await readVideos();
+      await writeVideos([...existing, ...newVideos]);
     }
 
     progress.phase = "done";

@@ -9,7 +9,7 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -44,7 +44,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const pillarList = pillars.length > 0 ? pillars.map((p) => p.name).join(", ") : "(keine Pillars definiert)";
 
   // Load training scripts as few-shot examples
-  const trainingScripts = readTrainingScripts();
+  const trainingScripts = await readTrainingScripts();
   const trainingContext = trainingScripts.length > 0
     ? `\n\nBEISPIEL-SKRIPTE (echte erfolgreiche Skripte — lerne daraus für Struktur, Tonalität und Aufbau):\n${trainingScripts.map(s => [
         `[Format: ${s.format || "–"}]`,
@@ -133,7 +133,7 @@ REGELN:
     scripts: { title: string; pillar: string; contentType: string; format: string; hook: string; body: string; cta: string }[];
   };
 
-  const existing = readScripts();
+  const existing = await readScripts();
   const now = new Date().toISOString();
   const newScripts = scripts.map((s) => ({
     id: uuid(),
@@ -149,7 +149,7 @@ REGELN:
     createdAt: now,
   }));
 
-  writeScripts([...existing, ...newScripts]);
+  await writeScripts([...existing, ...newScripts]);
 
   return NextResponse.json({ count: newScripts.length, scriptIds: newScripts.map((s) => s.id) });
 }

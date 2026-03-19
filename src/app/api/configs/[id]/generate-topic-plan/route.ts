@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses } from "@/lib/csv";
+import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
-import { readFileSync, existsSync } from "fs";
-import path from "path";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { topicPlanSystemPrompt } from "@/lib/prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
@@ -21,15 +19,9 @@ function fmt(n: number) {
   return String(n);
 }
 
-function readStrategyJson() {
-  const file = path.join(process.cwd(), "data", "strategy.json");
-  if (!existsSync(file)) return { customContentTypes: [], customFormats: [] };
-  try { return JSON.parse(readFileSync(file, "utf-8")); } catch { return { customContentTypes: [], customFormats: [] }; }
-}
-
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -60,7 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
   })();
 
-  const strategyJson = readStrategyJson();
+  const strategyJson = await readStrategyConfig();
   const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
   const allFormats = [...BUILT_IN_FORMATS, ...(strategyJson.customFormats || [])];
 
@@ -94,7 +86,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ...(insights?.topAllTime || []),
   ].slice(0, 3);
 
-  const allVideos = readVideos();
+  const allVideos = await readVideos();
   const creatorVideos = allVideos
     .filter(v => v.configName === config.configName && v.views > 0)
     .sort((a, b) => b.views - a.views)
@@ -110,10 +102,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   ].filter(Boolean);
 
   // ── Audit report ─────────────────────────────────────────────────────────
-  const auditBlock = getAuditBlock(id);
+  const auditBlock = await getAuditBlock(id);
 
   // ── Existing scripts (avoid repetition) ───────────────────────────────────
-  const existingScripts = readScripts().filter(s => s.clientId === id);
+  const existingScripts = (await readScripts()).filter(s => s.clientId === id);
   const recentTitles = existingScripts.slice(-20).map(s => s.title).filter(Boolean);
 
   // ── Pillar details ────────────────────────────────────────────────────────

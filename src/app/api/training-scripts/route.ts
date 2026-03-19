@@ -6,7 +6,7 @@ import type { TrainingScript } from "@/lib/types";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
-  let scripts = readTrainingScripts();
+  let scripts = await readTrainingScripts();
   if (clientId) {
     scripts = scripts.filter((s) => s.clientId === clientId);
   }
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body: Omit<TrainingScript, "id" | "createdAt"> = await request.json();
-  const scripts = readTrainingScripts();
+  const scripts = await readTrainingScripts();
   const newScript: TrainingScript = {
     ...body,
     clientId: body.clientId || "",
@@ -23,19 +23,19 @@ export async function POST(request: Request) {
     createdAt: new Date().toISOString(),
   };
   scripts.push(newScript);
-  writeTrainingScripts(scripts);
+  await writeTrainingScripts(scripts);
   return NextResponse.json(newScript, { status: 201 });
 }
 
 export async function PUT(request: Request) {
   const body: TrainingScript = await request.json();
-  const scripts = readTrainingScripts();
+  const scripts = await readTrainingScripts();
   const idx = scripts.findIndex((s) => s.id === body.id);
   if (idx === -1) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   scripts[idx] = body;
-  writeTrainingScripts(scripts);
+  await writeTrainingScripts(scripts);
   return NextResponse.json(body);
 }
 
@@ -45,8 +45,8 @@ export async function DELETE(request: Request) {
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
-  const scripts = readTrainingScripts();
+  const scripts = await readTrainingScripts();
   const filtered = scripts.filter((s) => s.id !== id);
-  writeTrainingScripts(filtered);
+  await writeTrainingScripts(filtered);
   return NextResponse.json({ success: true });
 }

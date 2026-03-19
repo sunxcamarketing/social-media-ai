@@ -27,7 +27,7 @@ export default function ClientRunPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
 
-  const { running, progress, runPipeline } = usePipeline();
+  const { running, progress, eta, runPipeline } = usePipeline();
 
   useEffect(() => {
     fetch(`/api/configs/${id}`).then((r) => r.json()).then(setClient);
@@ -165,6 +165,9 @@ export default function ClientRunPage() {
                 )}
                 {(progress.phase === "analyzing" || progress.phase === "done") && (
                   <span>Videos: <span className="text-ocean">{progress.videosAnalyzed}/{progress.videosTotal}</span></span>
+                )}
+                {eta && progress.status === "running" && (
+                  <span className="text-ocean/40">{eta}</span>
                 )}
                 {progress.errors.length > 0 && (
                   <span className="inline-flex items-center gap-1 text-red-500">

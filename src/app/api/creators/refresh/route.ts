@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const ids: string[] = body.ids || [];
 
-  const creators = readCreators();
+  const creators = await readCreators();
   const toRefresh = ids.length > 0
     ? creators.filter((c) => ids.includes(c.id))
     : creators;
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
           );
 
           const stats = await scrapeCreatorStats(creator.username);
-          const current = readCreators();
+          const current = await readCreators();
           const idx = current.findIndex((c) => c.id === creator.id);
           if (idx !== -1) {
             current[idx] = {
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
               avgViews30d: stats.avgViews30d,
               lastScrapedAt: new Date().toISOString(),
             };
-            writeCreators(current);
+            await writeCreators(current);
           }
 
           controller.enqueue(

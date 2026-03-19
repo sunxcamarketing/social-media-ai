@@ -59,7 +59,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -125,7 +125,7 @@ export async function POST(
   // Persist
   const idx = configs.findIndex((c) => c.id === id);
   configs[idx] = { ...configs[idx], performanceInsights: JSON.stringify(insights) };
-  writeConfigs(configs);
+  await writeConfigs(configs);
 
   return NextResponse.json(insights);
 }

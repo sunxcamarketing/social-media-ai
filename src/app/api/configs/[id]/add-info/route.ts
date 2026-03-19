@@ -9,7 +9,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { text } = await request.json();
   if (!text?.trim()) return NextResponse.json({ error: "No text provided" }, { status: 400 });
 
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const index = configs.findIndex((c) => c.id === id);
   if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -100,7 +100,7 @@ ${text}`,
   }
 
   configs[index] = { ...config, ...toSave };
-  writeConfigs(configs);
+  await writeConfigs(configs);
 
   return NextResponse.json({ updated: toSave });
 }

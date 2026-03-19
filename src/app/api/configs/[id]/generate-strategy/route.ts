@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const index = configs.findIndex((c) => c.id === id);
   if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -52,7 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const activeDays = ALL_DAYS.slice(0, postsPerWeek);
 
   // Load training scripts as few-shot examples
-  const trainingScripts = readTrainingScripts();
+  const trainingScripts = await readTrainingScripts();
   const trainingContext = trainingScripts.length > 0
     ? `\n\nTRAINING SCRIPT EXAMPLES (real successful scripts — use these to understand tone, style, and format combinations that work well):\n${trainingScripts.map(s => [
         `[Format: ${s.format || "–"}]`,
@@ -156,7 +156,7 @@ Rules:
     strategyPillars: JSON.stringify(generated.pillars || []),
     strategyWeekly: JSON.stringify(generated.weekly || {}),
   };
-  writeConfigs(configs);
+  await writeConfigs(configs);
 
   return NextResponse.json({ generated });
 }

@@ -1,174 +1,269 @@
-import { parse } from "csv-parse/sync";
-import { stringify } from "csv-stringify/sync";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import path from "path";
+import { supabase } from "./supabase";
 import type { Config, Creator, Video, Script, TrainingScript, Analysis } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// ── Configs ─────────────────────────────────────────────────────────────────
 
-function ensureDataDir() {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-  }
+export async function readConfigs(): Promise<Config[]> {
+  const { data, error } = await supabase.from("configs").select("*");
+  if (error) throw error;
+  return (data || []) as Config[];
 }
 
-function readCsv<T>(filename: string): T[] {
-  const filepath = path.join(DATA_DIR, filename);
-  if (!existsSync(filepath)) return [];
-  const content = readFileSync(filepath, "utf-8");
-  if (!content.trim()) return [];
-  return parse(content, { columns: true, skip_empty_lines: true, relax_column_count: true }) as T[];
+export async function writeConfigs(configs: Config[]) {
+  const { error } = await supabase.from("configs").upsert(configs, { onConflict: "id" });
+  if (error) throw error;
 }
 
-function writeCsv(filename: string, data: Record<string, unknown>[], columns: string[]) {
-  ensureDataDir();
-  const filepath = path.join(DATA_DIR, filename);
-  const output = stringify(data, { header: true, columns });
-  writeFileSync(filepath, output, "utf-8");
-}
+// ── Creators ────────────────────────────────────────────────────────────────
 
-// Configs
-const CONFIG_COLUMNS = ["id", "configName", "creatorsCategory", "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements", "website", "instagram", "tiktok", "youtube", "linkedin", "twitter", "strategyGoal", "strategyPillars", "strategyWeekly", "performanceInsights", "postsPerWeek", "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation", "dreamCustomer", "customerProblems", "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone", "igFullName", "igBio", "igFollowers", "igFollowing", "igPostsCount", "igProfilePicUrl", "igCategory", "igVerified", "igLastUpdated"];
-
-export function readConfigs(): Config[] {
-  return readCsv<Config>("configs.csv");
-}
-
-export function writeConfigs(configs: Config[]) {
-  writeCsv("configs.csv", configs as unknown as Record<string, unknown>[], CONFIG_COLUMNS);
-}
-
-// Creators
-const CREATOR_COLUMNS = ["id", "username", "category", "profilePicUrl", "followers", "reelsCount30d", "avgViews30d", "lastScrapedAt"];
-
-export function readCreators(): Creator[] {
-  const raw = readCsv<Record<string, string>>("creators.csv");
-  return raw.map((r) => ({
-    id: r.id || "",
-    username: r.username || "",
-    category: r.category || "",
-    profilePicUrl: r.profilePicUrl || "",
-    followers: parseInt(r.followers || "0", 10) || 0,
-    reelsCount30d: parseInt(r.reelsCount30d || "0", 10) || 0,
-    avgViews30d: parseInt(r.avgViews30d || "0", 10) || 0,
-    lastScrapedAt: r.lastScrapedAt || "",
+export async function readCreators(): Promise<Creator[]> {
+  const { data, error } = await supabase.from("creators").select("*");
+  if (error) throw error;
+  return (data || []).map((r: Record<string, unknown>) => ({
+    id: (r.id as string) || "",
+    username: (r.username as string) || "",
+    category: (r.category as string) || "",
+    profilePicUrl: (r.profile_pic_url as string) || "",
+    followers: (r.followers as number) || 0,
+    reelsCount30d: (r.reels_count_30d as number) || 0,
+    avgViews30d: (r.avg_views_30d as number) || 0,
+    lastScrapedAt: (r.last_scraped_at as string) || "",
   }));
 }
 
-export function writeCreators(creators: Creator[]) {
-  writeCsv("creators.csv", creators as unknown as Record<string, unknown>[], CREATOR_COLUMNS);
+export async function writeCreators(creators: Creator[]) {
+  const rows = creators.map((c) => ({
+    id: c.id,
+    username: c.username,
+    category: c.category,
+    profile_pic_url: c.profilePicUrl,
+    followers: c.followers,
+    reels_count_30d: c.reelsCount30d,
+    avg_views_30d: c.avgViews30d,
+    last_scraped_at: c.lastScrapedAt || null,
+  }));
+  const { error } = await supabase.from("creators").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
 }
 
-// Videos
-const VIDEO_COLUMNS = ["id", "link", "thumbnail", "creator", "views", "likes", "comments", "durationSeconds", "analysis", "newConcepts", "datePosted", "dateAdded", "configName", "starred"];
+// ── Videos ───────────────────────────────────────────────────────────────────
 
-export function readVideos(): Video[] {
-  const raw = readCsv<Record<string, string>>("videos.csv");
-  return raw.map((r) => ({
-    id: r.id || "",
-    link: r.link || r.Link || "",
-    thumbnail: r.thumbnail || r.Thumbnail || "",
-    creator: r.creator || r.Creator || "",
-    views: parseInt(r.views || r.Views || "0", 10) || 0,
-    likes: parseInt(r.likes || r.Likes || "0", 10) || 0,
-    comments: parseInt(r.comments || r.Comments || "0", 10) || 0,
-    durationSeconds: parseInt(r.durationSeconds || "0", 10) || 0,
-    analysis: r.analysis || r.Analysis || "",
-    newConcepts: r.newConcepts || r["newConcepts"] || r["New Concepts"] || "",
-    datePosted: r.datePosted || r["Date Posted"] || r["datePosted"] || "",
-    dateAdded: r.dateAdded || r["Date Added"] || r["dateAdded"] || "",
-    configName: r.configName || r["Config Name"] || r["configName"] || "",
-    starred: r.starred === "true",
+export async function readVideos(): Promise<Video[]> {
+  const { data, error } = await supabase.from("videos").select("*");
+  if (error) throw error;
+  return (data || []).map((r: Record<string, unknown>) => ({
+    id: (r.id as string) || "",
+    link: (r.link as string) || "",
+    thumbnail: (r.thumbnail as string) || "",
+    creator: (r.creator as string) || "",
+    views: (r.views as number) || 0,
+    likes: (r.likes as number) || 0,
+    comments: (r.comments as number) || 0,
+    durationSeconds: (r.duration_seconds as number) || 0,
+    analysis: (r.analysis as string) || "",
+    newConcepts: (r.new_concepts as string) || "",
+    datePosted: (r.date_posted as string) || "",
+    dateAdded: (r.date_added as string) || "",
+    configName: (r.config_name as string) || "",
+    starred: (r.starred as boolean) || false,
   }));
 }
 
-export function writeVideos(videos: Video[]) {
-  writeCsv("videos.csv", videos as unknown as Record<string, unknown>[], VIDEO_COLUMNS);
+export async function writeVideos(videos: Video[]) {
+  const rows = videos.map((v) => ({
+    id: v.id,
+    link: v.link,
+    thumbnail: v.thumbnail,
+    creator: v.creator,
+    views: v.views,
+    likes: v.likes,
+    comments: v.comments,
+    duration_seconds: v.durationSeconds,
+    analysis: v.analysis,
+    new_concepts: v.newConcepts,
+    date_posted: v.datePosted || null,
+    date_added: v.dateAdded || null,
+    config_name: v.configName,
+    starred: v.starred,
+  }));
+  const { error } = await supabase.from("videos").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
 }
 
-export function appendVideo(video: Video) {
-  const videos = readVideos();
-  videos.push(video);
-  writeVideos(videos);
+export async function appendVideo(video: Video) {
+  const row = {
+    id: video.id,
+    link: video.link,
+    thumbnail: video.thumbnail,
+    creator: video.creator,
+    views: video.views,
+    likes: video.likes,
+    comments: video.comments,
+    duration_seconds: video.durationSeconds,
+    analysis: video.analysis,
+    new_concepts: video.newConcepts,
+    date_posted: video.datePosted || null,
+    date_added: video.dateAdded || null,
+    config_name: video.configName,
+    starred: video.starred,
+  };
+  const { error } = await supabase.from("videos").insert(row);
+  if (error) throw error;
 }
 
-// Scripts
-const SCRIPT_COLUMNS = ["id", "clientId", "title", "pillar", "contentType", "format", "hook", "body", "cta", "status", "createdAt"];
+// ── Scripts ──────────────────────────────────────────────────────────────────
 
-export function readScripts(): Script[] {
-  const raw = readCsv<Record<string, string>>("scripts.csv");
-  return raw.map((r) => ({
-    id: r.id || "",
-    clientId: r.clientId || "",
-    title: r.title || "",
-    pillar: r.pillar || "",
-    contentType: r.contentType || "",
-    format: r.format || "",
-    hook: r.hook || "",
-    body: r.body || "",
-    cta: r.cta || "",
-    status: r.status || "entwurf",
-    createdAt: r.createdAt || "",
+export async function readScripts(): Promise<Script[]> {
+  const { data, error } = await supabase.from("scripts").select("*");
+  if (error) throw error;
+  return (data || []).map((r: Record<string, unknown>) => ({
+    id: (r.id as string) || "",
+    clientId: (r.client_id as string) || "",
+    title: (r.title as string) || "",
+    pillar: (r.pillar as string) || "",
+    contentType: (r.content_type as string) || "",
+    format: (r.format as string) || "",
+    hook: (r.hook as string) || "",
+    body: (r.body as string) || "",
+    cta: (r.cta as string) || "",
+    status: (r.status as string) || "entwurf",
+    createdAt: (r.created_at as string) || "",
   }));
 }
 
-export function writeScripts(scripts: Script[]) {
-  writeCsv("scripts.csv", scripts as unknown as Record<string, unknown>[], SCRIPT_COLUMNS);
+export async function writeScripts(scripts: Script[]) {
+  const rows = scripts.map((s) => ({
+    id: s.id,
+    client_id: s.clientId,
+    title: s.title,
+    pillar: s.pillar,
+    content_type: s.contentType,
+    format: s.format,
+    hook: s.hook,
+    body: s.body,
+    cta: s.cta,
+    status: s.status,
+    created_at: s.createdAt || null,
+  }));
+  const { error } = await supabase.from("scripts").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
 }
 
-// Ideas
-const IDEA_COLUMNS = ["id", "clientId", "title", "description", "contentType", "status", "createdAt"];
+// ── Ideas ────────────────────────────────────────────────────────────────────
 
-export function readIdeas(): Record<string, string>[] {
-  return readCsv<Record<string, string>>("ideas.csv");
-}
-
-export function writeIdeas(ideas: Record<string, string>[]) {
-  writeCsv("ideas.csv", ideas, IDEA_COLUMNS);
-}
-
-// Training Scripts
-const TRAINING_SCRIPT_COLUMNS = ["id", "clientId", "format", "textHook", "visualHook", "audioHook", "script", "cta", "createdAt"];
-
-export function readTrainingScripts(): TrainingScript[] {
-  const raw = readCsv<Record<string, string>>("training-scripts.csv");
-  return raw.map((r) => ({
-    id: r.id || "",
-    clientId: r.clientId || "",
-    format: r.format || "",
-    textHook: r.textHook || "",
-    visualHook: r.visualHook || "",
-    audioHook: r.audioHook || "",
-    script: r.script || "",
-    cta: r.cta || "",
-    createdAt: r.createdAt || "",
+export async function readIdeas(): Promise<Record<string, string>[]> {
+  const { data, error } = await supabase.from("ideas").select("*");
+  if (error) throw error;
+  return (data || []).map((r: Record<string, unknown>) => ({
+    id: (r.id as string) || "",
+    clientId: (r.client_id as string) || "",
+    title: (r.title as string) || "",
+    description: (r.description as string) || "",
+    contentType: (r.content_type as string) || "",
+    status: (r.status as string) || "",
+    createdAt: (r.created_at as string) || "",
   }));
 }
 
-export function writeTrainingScripts(scripts: TrainingScript[]) {
-  writeCsv("training-scripts.csv", scripts as unknown as Record<string, unknown>[], TRAINING_SCRIPT_COLUMNS);
+export async function writeIdeas(ideas: Record<string, string>[]) {
+  const rows = ideas.map((i) => ({
+    id: i.id,
+    client_id: i.clientId,
+    title: i.title,
+    description: i.description,
+    content_type: i.contentType,
+    status: i.status,
+    created_at: i.createdAt || null,
+  }));
+  const { error } = await supabase.from("ideas").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
 }
 
-// Analyses
-const ANALYSIS_COLUMNS = ["id", "clientId", "instagramHandle", "lang", "report", "profileFollowers", "profileReels30d", "profileAvgViews30d", "profilePicUrl", "createdAt"];
+// ── Training Scripts ─────────────────────────────────────────────────────────
 
-export function readAnalyses(): Analysis[] {
-  const raw = readCsv<Record<string, string>>("analyses.csv");
-  return raw.map((r) => ({
-    id: r.id || "",
-    clientId: r.clientId || "",
-    instagramHandle: r.instagramHandle || "",
-    lang: r.lang || "",
-    report: r.report || "",
-    profileFollowers: parseInt(r.profileFollowers || "0", 10) || 0,
-    profileReels30d: parseInt(r.profileReels30d || "0", 10) || 0,
-    profileAvgViews30d: parseInt(r.profileAvgViews30d || "0", 10) || 0,
-    profilePicUrl: r.profilePicUrl || "",
-    createdAt: r.createdAt || "",
+export async function readTrainingScripts(): Promise<TrainingScript[]> {
+  const { data, error } = await supabase.from("training_scripts").select("*");
+  if (error) throw error;
+  return (data || []).map((r: Record<string, unknown>) => ({
+    id: (r.id as string) || "",
+    clientId: (r.client_id as string) || "",
+    format: (r.format as string) || "",
+    textHook: (r.text_hook as string) || "",
+    visualHook: (r.visual_hook as string) || "",
+    audioHook: (r.audio_hook as string) || "",
+    script: (r.script as string) || "",
+    cta: (r.cta as string) || "",
+    createdAt: (r.created_at as string) || "",
   }));
 }
 
-export function writeAnalyses(analyses: Analysis[]) {
-  writeCsv("analyses.csv", analyses as unknown as Record<string, unknown>[], ANALYSIS_COLUMNS);
+export async function writeTrainingScripts(scripts: TrainingScript[]) {
+  const rows = scripts.map((s) => ({
+    id: s.id,
+    client_id: s.clientId,
+    format: s.format,
+    text_hook: s.textHook,
+    visual_hook: s.visualHook,
+    audio_hook: s.audioHook,
+    script: s.script,
+    cta: s.cta,
+    created_at: s.createdAt || null,
+  }));
+  const { error } = await supabase.from("training_scripts").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
 }
 
+// ── Analyses ─────────────────────────────────────────────────────────────────
+
+export async function readAnalyses(): Promise<Analysis[]> {
+  const { data, error } = await supabase.from("analyses").select("*");
+  if (error) throw error;
+  return (data || []).map((r: Record<string, unknown>) => ({
+    id: (r.id as string) || "",
+    clientId: (r.client_id as string) || "",
+    instagramHandle: (r.instagram_handle as string) || "",
+    lang: (r.lang as string) || "",
+    report: (r.report as string) || "",
+    profileFollowers: (r.profile_followers as number) || 0,
+    profileReels30d: (r.profile_reels_30d as number) || 0,
+    profileAvgViews30d: (r.profile_avg_views_30d as number) || 0,
+    profilePicUrl: (r.profile_pic_url as string) || "",
+    createdAt: (r.created_at as string) || "",
+  }));
+}
+
+export async function writeAnalyses(analyses: Analysis[]) {
+  const rows = analyses.map((a) => ({
+    id: a.id,
+    client_id: a.clientId,
+    instagram_handle: a.instagramHandle,
+    lang: a.lang,
+    report: a.report,
+    profile_followers: a.profileFollowers,
+    profile_reels_30d: a.profileReels30d,
+    profile_avg_views_30d: a.profileAvgViews30d,
+    profile_pic_url: a.profilePicUrl,
+    created_at: a.createdAt || null,
+  }));
+  const { error } = await supabase.from("analyses").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
+}
+
+// ── Strategy Config ──────────────────────────────────────────────────────────
+
+export async function readStrategyConfig() {
+  const { data, error } = await supabase
+    .from("strategy_config")
+    .select("*")
+    .eq("id", "global")
+    .single();
+  if (error && error.code !== "PGRST116") throw error; // PGRST116 = not found
+  return data?.config || { customContentTypes: [], customFormats: [], trainingExamples: [] };
+}
+
+export async function writeStrategyConfig(config: unknown) {
+  const { error } = await supabase
+    .from("strategy_config")
+    .upsert({ id: "global", config }, { onConflict: "id" });
+  if (error) throw error;
+}

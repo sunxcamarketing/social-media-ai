@@ -5,13 +5,13 @@ import { readIdeas, writeIdeas } from "@/lib/csv";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
-  const ideas = readIdeas();
+  const ideas = await readIdeas();
   return NextResponse.json(clientId ? ideas.filter((i) => i.clientId === clientId) : ideas);
 }
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const ideas = readIdeas();
+  const ideas = await readIdeas();
   const newIdea = {
     id: uuid(),
     clientId: body.clientId || "",
@@ -22,17 +22,17 @@ export async function POST(request: Request) {
     createdAt: new Date().toISOString().split("T")[0],
   };
   ideas.push(newIdea);
-  writeIdeas(ideas);
+  await writeIdeas(ideas);
   return NextResponse.json(newIdea, { status: 201 });
 }
 
 export async function PUT(request: Request) {
   const body = await request.json();
-  const ideas = readIdeas();
+  const ideas = await readIdeas();
   const index = ideas.findIndex((i) => i.id === body.id);
   if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
   ideas[index] = { ...ideas[index], ...body };
-  writeIdeas(ideas);
+  await writeIdeas(ideas);
   return NextResponse.json(ideas[index]);
 }
 
@@ -40,7 +40,7 @@ export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-  const ideas = readIdeas();
-  writeIdeas(ideas.filter((i) => i.id !== id));
+  const ideas = await readIdeas();
+  await writeIdeas(ideas.filter((i) => i.id !== id));
   return NextResponse.json({ success: true });
 }

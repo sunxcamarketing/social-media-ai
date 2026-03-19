@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses } from "@/lib/csv";
+import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
-import { readFileSync, existsSync } from "fs";
-import path from "path";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { singleScriptSystemPrompt, topicScriptSystemPrompt } from "@/lib/prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
@@ -45,11 +43,6 @@ function videoInsightBlock(v: VideoInsight, index: number): string {
   ].filter(Boolean).join("\n");
 }
 
-function readStrategyJson() {
-  const file = path.join(process.cwd(), "data", "strategy.json");
-  if (!existsSync(file)) return { customContentTypes: [], customFormats: [] };
-  try { return JSON.parse(readFileSync(file, "utf-8")); } catch { return { customContentTypes: [], customFormats: [] }; }
-}
 
 function buildScriptTool(opts: {
   withTypeFields: boolean;
@@ -113,7 +106,7 @@ function buildScriptTool(opts: {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = readConfigs();
+  const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -162,7 +155,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
   })();
 
-  const strategyJson = readStrategyJson();
+  const strategyJson = await readStrategyConfig();
   const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
   const allFormats = [...BUILT_IN_FORMATS, ...(strategyJson.customFormats || [])];
 
@@ -188,7 +181,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ...(insights?.topAllTime || []),
   ];
 
-  const allVideos = readVideos();
+  const allVideos = await readVideos();
   const creatorVideos = allVideos
     .filter(v => v.configName === config.configName && v.views > 0)
     .sort((a, b) => b.views - a.views)
@@ -207,17 +200,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const maxWords = avgDuration > 0 ? secondsToWords(avgDuration) : 0;
 
   // ── Audit report ─────────────────────────────────────────────────────────
-  const auditBlock = getAuditBlock(id);
+  const auditBlock = await getAuditBlock(id);
 
   // ── Existing scripts to avoid repetition ──────────────────────────────────
-  const existingScripts = readScripts().filter(s => s.clientId === id);
+  const existingScripts = (await readScripts()).filter(s => s.clientId === id);
   const recentTitles = existingScripts.slice(-15).map(s => s.title).filter(Boolean);
   const recentTopics = recentTitles.length > 0
     ? `\nBEREITS ERSTELLT (vermeide diese Themen):\n${recentTitles.map(t => `- ${t}`).join("\n")}`
     : "";
 
   // ── Voice training: client-specific transcripts ─────────────────────────
-  const allTrainingScripts = readTrainingScripts();
+  const allTrainingScripts = await readTrainingScripts();
   const clientTrainingScripts = allTrainingScripts.filter(ts => ts.clientId === id);
   const voiceBlock = clientTrainingScripts.length > 0 ? `
 <voice_examples>
@@ -382,7 +375,7 @@ ${dayOverrideBlock}`;
 
 async function handleTopicScript(
   clientId: string,
-  config: ReturnType<typeof readConfigs>[0],
+  config: Awaited<ReturnType<typeof readConfigs>>[0],
   topic: { day: string; pillar: string; contentType: string; format: string; title: string; description: string },
   hint: string,
   apiKey: string,
@@ -403,18 +396,18 @@ async function handleTopicScript(
   ].filter(Boolean).join("\n");
 
   // Voice training
-  const clientTrainingScripts = readTrainingScripts().filter(ts => ts.clientId === clientId);
+  const clientTrainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
   const voiceBlock = clientTrainingScripts.length > 0
     ? `\n<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt:\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- ${i + 1} ---\n${ts.script?.slice(0, 500) || ""}`).join("\n\n")}\n</voice_examples>`
     : "";
 
   // Audit report
-  const topicAuditBlock = getAuditBlock(clientId);
+  const topicAuditBlock = await getAuditBlock(clientId);
 
   // Duration
   const insights = parseInsights(config.performanceInsights || "");
   const ownTopVideos: VideoInsight[] = [...(insights?.top30Days || []), ...(insights?.topAllTime || [])];
-  const creatorVideos = readVideos()
+  const creatorVideos = (await readVideos())
     .filter(v => v.configName === config.configName && v.views > 0)
     .sort((a, b) => b.views - a.views)
     .slice(0, 6);
