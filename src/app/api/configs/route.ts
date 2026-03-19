@@ -65,8 +65,7 @@ export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-  const configs = await readConfigs();
-  const filtered = configs.filter((c) => c.id !== id);
-  await writeConfigs(filtered);
+  const { deleteConfig } = await import("@/lib/csv");
+  await deleteConfig(id);
   return NextResponse.json({ success: true });
 }

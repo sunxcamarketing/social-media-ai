@@ -14,7 +14,8 @@ VERBOTEN (typische AI-Floskeln, sofort löschen):
 "Das Schöne daran ist...", "Am Ende des Tages...", "Lass das mal sacken",
 "Nicht wahr?", "gewissermaßen", "sozusagen", "Anders gesagt...",
 "Das verändert alles", "Du wirst es nicht glauben", "Du schaffst das!",
-"Erstens... Zweitens... Drittens...", "Also zusammengefasst..."
+"Erstens... Zweitens... Drittens...", "Also zusammengefasst...",
+"Nicht weil..., sondern weil..." (diese Kontrastformel ist typisch AI)
 
 KÜRZE:
 Ein Gedanke = ein Satz. Nie denselben Punkt in anderen Worten wiederholen.

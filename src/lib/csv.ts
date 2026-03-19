@@ -14,6 +14,11 @@ export async function writeConfigs(configs: Config[]) {
   if (error) throw error;
 }
 
+export async function deleteConfig(id: string) {
+  const { error } = await supabase.from("configs").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // ── Creators ────────────────────────────────────────────────────────────────
 
 export async function readCreators(): Promise<Creator[]> {
