@@ -326,7 +326,9 @@ export default function ClientScriptsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error("Server-Antwort war kein gültiges JSON — möglicherweise Timeout. Bitte erneut versuchen."); }
       if (!res.ok) throw new Error(data.error || "Generierung fehlgeschlagen");
       setWeekScripts(data.scripts || []);
       setWeekMeta(data._meta || null);
