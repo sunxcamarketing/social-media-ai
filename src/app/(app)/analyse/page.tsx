@@ -4,8 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { AuditReport, type ProfileData } from "@/components/audit-report";
 import {
   Search,
   Loader2,
@@ -17,14 +16,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import type { Config, Analysis } from "@/lib/types";
-
-interface ProfileData {
-  username: string;
-  followers: number;
-  reelsCount30d: number;
-  avgViews30d: number;
-  profilePicUrl?: string;
-}
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -47,21 +38,18 @@ function AnalysePageInner() {
   const [clients, setClients] = useState<Config[]>([]);
   const [lang, setLang] = useState<"de" | "en">("de");
 
-  // Analysis state
   const [phase, setPhase] = useState<string>("");
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [report, setReport] = useState("");
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
 
-  // Past analyses
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null);
   const [saved, setSaved] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // Load clients for the dropdown
   useEffect(() => {
     fetch("/api/configs").then((r) => r.json()).then(setClients).catch(() => {});
     fetch("/api/analyses").then((r) => r.json()).then((data: Analysis[]) => {
@@ -69,7 +57,6 @@ function AnalysePageInner() {
     }).catch(() => {});
   }, []);
 
-  // Auto-fill handle when client is selected
   useEffect(() => {
     if (clientId) {
       const client = clients.find((c) => c.id === clientId);
@@ -163,7 +150,6 @@ function AnalysePageInner() {
     });
     if (res.ok) {
       setSaved(true);
-      // Refresh analyses list
       const data = await fetch("/api/analyses").then((r) => r.json());
       setAnalyses(data.sort((a: Analysis, b: Analysis) => b.createdAt.localeCompare(a.createdAt)));
     }
@@ -190,7 +176,6 @@ function AnalysePageInner() {
     reels: "Videos werden analysiert…",
     analyzing: "Audit wird erstellt…",
     done: "Fertig!",
-    error: "Fehler",
   };
 
   return (
@@ -202,7 +187,7 @@ function AnalysePageInner() {
         </p>
       </div>
 
-      {/* Input Section */}
+      {/* Input */}
       <div className="glass rounded-2xl p-6 space-y-4">
         <div className="grid gap-4 sm:grid-cols-[1fr_200px_100px]">
           <div className="space-y-1.5">
@@ -218,7 +203,6 @@ function AnalysePageInner() {
               />
             </div>
           </div>
-
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-ocean/70">Client (optional)</label>
             <select
@@ -228,13 +212,10 @@ function AnalysePageInner() {
             >
               <option value="">— Kein Client —</option>
               {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.configName || c.name || c.id}
-                </option>
+                <option key={c.id} value={c.id}>{c.configName || c.name || c.id}</option>
               ))}
             </select>
           </div>
-
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-ocean/70">Sprache</label>
             <select
@@ -247,7 +228,6 @@ function AnalysePageInner() {
             </select>
           </div>
         </div>
-
         <Button
           onClick={startAnalysis}
           disabled={running || !handle.trim()}
@@ -263,59 +243,50 @@ function AnalysePageInner() {
 
       {/* Progress */}
       {running && (
-        <div className="glass rounded-2xl p-6 space-y-3">
+        <div className="rounded-2xl bg-gradient-to-r from-ocean to-ocean-light p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-ivory" />
-            <p className="text-sm font-medium text-ocean">{phaseLabels[phase] || phase}</p>
+            <div className="relative">
+              <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">{phaseLabels[phase] || phase}</p>
+              <p className="text-xs text-white/50">Dies kann bis zu 60 Sekunden dauern</p>
+            </div>
           </div>
           {profile && (
-            <div className="flex items-center gap-4 text-xs text-ocean/70">
+            <div className="flex items-center gap-4 rounded-xl bg-white/10 px-4 py-3">
               {profile.profilePicUrl && (
-                <img src={profile.profilePicUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                <img src={profile.profilePicUrl} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
               )}
-              <span className="font-medium text-ocean">@{profile.username}</span>
-              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(profile.followers)}</span>
-              <span className="flex items-center gap-1"><Film className="h-3 w-3" />{profile.reelsCount30d} Reels</span>
-              <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(profile.avgViews30d)} Ø</span>
+              <div className="flex items-center gap-4 text-xs text-white/70">
+                <span className="font-medium text-white">@{profile.username}</span>
+                <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(profile.followers)}</span>
+                <span className="flex items-center gap-1"><Film className="h-3 w-3" />{profile.reelsCount30d} Reels</span>
+                <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(profile.avgViews30d)} Ø</span>
+              </div>
             </div>
           )}
+          <div className="flex items-center gap-2 text-xs text-white/40">
+            <span className={phase === "scraping" || phase === "reels" || phase === "analyzing" ? "text-white" : ""}>Scraping</span>
+            <span>→</span>
+            <span className={phase === "reels" || phase === "analyzing" ? "text-white" : ""}>Videos</span>
+            <span>→</span>
+            <span className={phase === "analyzing" ? "text-white" : ""}>Audit erstellen</span>
+          </div>
         </div>
       )}
 
       {/* Error */}
       {error && !running && (
-        <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-4 text-sm text-red-600">
-          {error}
-        </div>
+        <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-4 text-sm text-red-600">{error}</div>
       )}
 
       {/* Report */}
       {report && !running && (
-        <div className="glass rounded-2xl p-6 space-y-5">
-          {/* Profile header */}
-          {profile && (
-            <div className="flex items-center gap-4 pb-4 border-b border-ocean/[0.06]">
-              {profile.profilePicUrl && (
-                <img src={profile.profilePicUrl} alt="" className="h-14 w-14 rounded-full object-cover border-2 border-blush/40" />
-              )}
-              <div>
-                <p className="text-lg font-medium text-ocean">@{profile.username}</p>
-                <div className="flex items-center gap-4 text-xs text-ocean/70 mt-1">
-                  <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(profile.followers)} Follower</span>
-                  <span className="flex items-center gap-1"><Film className="h-3 w-3" />{profile.reelsCount30d} Reels (30d)</span>
-                  <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(profile.avgViews30d)} Ø Views</span>
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="space-y-4">
+          <AuditReport report={report} profile={profile} />
 
-          {/* Markdown report */}
-          <div className="prose prose-sm max-w-none text-ocean prose-headings:text-ocean prose-headings:font-medium prose-h2:text-base prose-h2:mt-6 prose-h2:mb-2 prose-p:text-ocean/80 prose-li:text-ocean/80 prose-strong:text-ocean">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{report}</ReactMarkdown>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-4 border-t border-ocean/[0.06]">
+          <div className="flex items-center gap-3 pt-2">
             {!saved ? (
               <Button onClick={saveAnalysis} className="rounded-full bg-ocean hover:bg-ocean-light border-0 gap-2">
                 <Save className="h-4 w-4" /> Analyse speichern
@@ -327,13 +298,7 @@ function AnalysePageInner() {
             )}
             <Button
               variant="ghost"
-              onClick={() => {
-                setReport("");
-                setPhase("");
-                setProfile(null);
-                setSelectedAnalysis(null);
-                setSaved(false);
-              }}
+              onClick={() => { setReport(""); setPhase(""); setProfile(null); setSelectedAnalysis(null); setSaved(false); }}
               className="rounded-full gap-2 text-ocean/70 hover:text-ocean"
             >
               <RefreshCw className="h-4 w-4" /> Neue Analyse
@@ -344,14 +309,14 @@ function AnalysePageInner() {
 
       {/* Past Analyses */}
       {analyses.length > 0 && !report && !running && (
-        <div className="glass rounded-2xl p-6 space-y-4">
+        <div className="space-y-4">
           <h2 className="text-sm font-semibold text-ocean">Gespeicherte Analysen</h2>
           <div className="space-y-2">
             {analyses.map((a) => (
               <button
                 key={a.id}
                 onClick={() => loadAnalysis(a)}
-                className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${
+                className={`w-full text-left rounded-xl border px-5 py-4 transition-all ${
                   selectedAnalysis?.id === a.id
                     ? "bg-blush-light/60 border-blush/40"
                     : "glass border-ocean/[0.06] hover:border-ocean/[0.15]"
@@ -359,9 +324,7 @@ function AnalysePageInner() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {a.profilePicUrl && (
-                      <img src={a.profilePicUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
-                    )}
+                    {a.profilePicUrl && <img src={a.profilePicUrl} alt="" className="h-9 w-9 rounded-full object-cover" />}
                     <div>
                       <p className="text-sm font-medium text-ocean">@{a.instagramHandle}</p>
                       <div className="flex items-center gap-3 text-[11px] text-ocean/60 mt-0.5">
@@ -375,7 +338,9 @@ function AnalysePageInner() {
                       </div>
                     </div>
                   </div>
-                  <span className="text-[11px] text-ocean/40">{a.createdAt.slice(0, 10)}</span>
+                  <span className="text-[11px] text-ocean/40">
+                    {new Date(a.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                  </span>
                 </div>
               </button>
             ))}

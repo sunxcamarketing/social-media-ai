@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { AuditReport, type ProfileData } from "@/components/audit-report";
 import {
   Search,
   Loader2,
@@ -17,14 +16,6 @@ import {
 } from "lucide-react";
 import type { Config, Analysis } from "@/lib/types";
 
-interface ProfileData {
-  username: string;
-  followers: number;
-  reelsCount30d: number;
-  avgViews30d: number;
-  profilePicUrl?: string;
-}
-
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
@@ -36,14 +27,12 @@ export default function ClientAnalysePage() {
   const [client, setClient] = useState<Config | null>(null);
   const [lang, setLang] = useState<"de" | "en">("de");
 
-  // Analysis state
   const [phase, setPhase] = useState<string>("");
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [report, setReport] = useState("");
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
 
-  // Past analyses for this client
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
@@ -51,10 +40,7 @@ export default function ClientAnalysePage() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    fetch(`/api/configs/${id}`)
-      .then((r) => r.json())
-      .then(setClient)
-      .catch(() => {});
+    fetch(`/api/configs/${id}`).then((r) => r.json()).then(setClient).catch(() => {});
     loadAnalyses();
   }, [id]);
 
@@ -63,9 +49,7 @@ export default function ClientAnalysePage() {
       .then((r) => r.json())
       .then((data: Analysis[]) => {
         setAnalyses(
-          data
-            .filter((a) => a.clientId === id)
-            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          data.filter((a) => a.clientId === id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         );
       })
       .catch(() => {});
@@ -73,11 +57,7 @@ export default function ClientAnalysePage() {
 
   function getHandle(): string {
     const raw = client?.instagram || "";
-    return raw
-      .replace(/^@/, "")
-      .replace(/.*instagram\.com\/([^/?]+).*/, "$1")
-      .replace(/\/$/, "")
-      .trim();
+    return raw.replace(/^@/, "").replace(/.*instagram\.com\/([^/?]+).*/, "$1").replace(/\/$/, "").trim();
   }
 
   async function startAnalysis() {
@@ -129,7 +109,6 @@ export default function ClientAnalysePage() {
             setReport(data.report);
             setProfile(data.profile);
             setPhase("done");
-            // Auto-save for this client
             await autoSave(data.report, data.profile, handle);
           } else if (data.phase === "error") {
             setError(data.message);
@@ -204,7 +183,6 @@ export default function ClientAnalysePage() {
     reels: "Videos werden analysiert…",
     analyzing: "Audit wird erstellt…",
     done: "Fertig!",
-    error: "Fehler",
   };
 
   if (!client) {
@@ -213,14 +191,13 @@ export default function ClientAnalysePage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Analyse</h1>
           <p className="mt-1 text-sm text-ocean/70">
             Instagram Audit für{" "}
-            <span className="font-medium text-ocean">
-              {handle ? `@${handle}` : client.configName || client.name}
-            </span>
+            <span className="font-medium text-ocean">{handle ? `@${handle}` : client.configName || client.name}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -254,72 +231,60 @@ export default function ClientAnalysePage() {
 
       {/* Progress */}
       {running && (
-        <div className="glass rounded-2xl p-6 space-y-3">
+        <div className="rounded-2xl bg-gradient-to-r from-ocean to-ocean-light p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-ivory" />
-            <p className="text-sm font-medium text-ocean">{phaseLabels[phase] || phase}</p>
+            <div className="relative">
+              <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">{phaseLabels[phase] || phase}</p>
+              <p className="text-xs text-white/50">Dies kann bis zu 60 Sekunden dauern</p>
+            </div>
           </div>
           {profile && (
-            <div className="flex items-center gap-4 text-xs text-ocean/70">
+            <div className="flex items-center gap-4 rounded-xl bg-white/10 px-4 py-3">
               {profile.profilePicUrl && (
-                <img src={profile.profilePicUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                <img src={profile.profilePicUrl} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
               )}
-              <span className="font-medium text-ocean">@{profile.username}</span>
-              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(profile.followers)}</span>
-              <span className="flex items-center gap-1"><Film className="h-3 w-3" />{profile.reelsCount30d} Reels</span>
-              <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(profile.avgViews30d)} Ø</span>
+              <div className="flex items-center gap-4 text-xs text-white/70">
+                <span className="font-medium text-white">@{profile.username}</span>
+                <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(profile.followers)}</span>
+                <span className="flex items-center gap-1"><Film className="h-3 w-3" />{profile.reelsCount30d} Reels</span>
+                <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(profile.avgViews30d)} Ø</span>
+              </div>
             </div>
           )}
+          {/* Progress steps */}
+          <div className="flex items-center gap-2 text-xs text-white/40">
+            <span className={phase === "scraping" || phase === "reels" || phase === "analyzing" ? "text-white" : ""}>Scraping</span>
+            <span>→</span>
+            <span className={phase === "reels" || phase === "analyzing" ? "text-white" : ""}>Videos</span>
+            <span>→</span>
+            <span className={phase === "analyzing" ? "text-white" : ""}>Audit erstellen</span>
+          </div>
         </div>
       )}
 
       {/* Error */}
       {error && !running && (
-        <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-4 text-sm text-red-600">
-          {error}
-        </div>
+        <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-4 text-sm text-red-600">{error}</div>
       )}
 
       {/* Report */}
       {report && !running && (
-        <div className="glass rounded-2xl p-6 space-y-5">
-          {profile && (
-            <div className="flex items-center justify-between pb-4 border-b border-ocean/[0.06]">
-              <div className="flex items-center gap-4">
-                {profile.profilePicUrl && (
-                  <img src={profile.profilePicUrl} alt="" className="h-14 w-14 rounded-full object-cover border-2 border-blush/40" />
-                )}
-                <div>
-                  <p className="text-lg font-medium text-ocean">@{profile.username}</p>
-                  <div className="flex items-center gap-4 text-xs text-ocean/70 mt-1">
-                    <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(profile.followers)} Follower</span>
-                    <span className="flex items-center gap-1"><Film className="h-3 w-3" />{profile.reelsCount30d} Reels (30d)</span>
-                    <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(profile.avgViews30d)} Ø Views</span>
-                  </div>
-                </div>
-              </div>
-              {justSaved && (
-                <span className="flex items-center gap-1.5 text-xs text-green-600">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Gespeichert
-                </span>
-              )}
+        <div className="space-y-4">
+          {justSaved && (
+            <div className="flex items-center gap-2 text-xs text-green-600">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Automatisch gespeichert
             </div>
           )}
 
-          <div className="prose prose-sm max-w-none text-ocean prose-headings:text-ocean prose-headings:font-medium prose-h2:text-base prose-h2:mt-6 prose-h2:mb-2 prose-p:text-ocean/80 prose-li:text-ocean/80 prose-strong:text-ocean">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{report}</ReactMarkdown>
-          </div>
+          <AuditReport report={report} profile={profile} />
 
-          <div className="pt-4 border-t border-ocean/[0.06]">
+          <div className="pt-2">
             <Button
               variant="ghost"
-              onClick={() => {
-                setReport("");
-                setPhase("");
-                setProfile(null);
-                setActiveAnalysisId(null);
-                setJustSaved(false);
-              }}
+              onClick={() => { setReport(""); setPhase(""); setProfile(null); setActiveAnalysisId(null); setJustSaved(false); }}
               className="rounded-full gap-2 text-ocean/70 hover:text-ocean text-xs"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Zurück zur Übersicht
@@ -328,7 +293,7 @@ export default function ClientAnalysePage() {
         </div>
       )}
 
-      {/* Past Analyses List */}
+      {/* Past Analyses */}
       {!report && !running && (
         <div className="space-y-4">
           {analyses.length > 0 ? (
@@ -336,42 +301,26 @@ export default function ClientAnalysePage() {
               <h2 className="text-sm font-semibold text-ocean">Bisherige Analysen</h2>
               <div className="space-y-2">
                 {analyses.map((a) => (
-                  <div
-                    key={a.id}
-                    className="glass rounded-xl border border-ocean/[0.06] hover:border-ocean/[0.15] transition-all"
-                  >
-                    <button
-                      onClick={() => viewAnalysis(a)}
-                      className="w-full text-left px-5 py-4"
-                    >
+                  <div key={a.id} className="glass rounded-xl border border-ocean/[0.06] hover:border-ocean/[0.15] transition-all">
+                    <button onClick={() => viewAnalysis(a)} className="w-full text-left px-5 py-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          {a.profilePicUrl && (
-                            <img src={a.profilePicUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
-                          )}
+                          {a.profilePicUrl && <img src={a.profilePicUrl} alt="" className="h-9 w-9 rounded-full object-cover" />}
                           <div>
                             <p className="text-sm font-medium text-ocean">@{a.instagramHandle}</p>
                             <div className="flex items-center gap-3 text-[11px] text-ocean/50 mt-0.5">
                               <span>{fmt(a.profileFollowers)} Follower</span>
                               <span>{a.profileReels30d} Reels</span>
                               <span>{fmt(a.profileAvgViews30d)} Ø Views</span>
-                              <span className="uppercase">{a.lang}</span>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-[11px] text-ocean/40">
-                            {new Date(a.createdAt).toLocaleDateString("de-DE", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })}
+                            {new Date(a.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
                           </span>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteAnalysis(a.id);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); deleteAnalysis(a.id); }}
                             className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 transition-all"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -387,9 +336,7 @@ export default function ClientAnalysePage() {
             <div className="text-center py-12">
               <Search className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
               <p className="text-sm text-ocean/70">Noch keine Analyse vorhanden.</p>
-              <p className="text-xs text-ocean/50 mt-1">
-                Starte eine Analyse um einen detaillierten Audit-Report zu erhalten.
-              </p>
+              <p className="text-xs text-ocean/50 mt-1">Starte eine Analyse um einen detaillierten Audit-Report zu erhalten.</p>
             </div>
           ) : null}
         </div>
