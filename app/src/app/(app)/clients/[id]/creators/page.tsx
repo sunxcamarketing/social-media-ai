@@ -1,0 +1,581 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  Plus, Pencil, Trash2, Users, Eye, Film, UserCheck,
+  RefreshCw, Loader2, ExternalLink, Search, Sparkles,
+  ChevronDown, ChevronUp, UserPlus, Star,
+} from "lucide-react";
+import Link from "next/link";
+import type { Creator, Config } from "@/lib/types";
+import type { CreatorSuggestion } from "@/app/api/configs/[id]/research-creators/route";
+import { useGeneration } from "@/context/generation-context";
+import { useI18n } from "@/lib/i18n";
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return n.toString();
+}
+
+const TIER_STYLES: Record<string, { label: string; color: string }> = {
+  mega:  { label: "Mega",  color: "bg-amber-500/10 text-ivory border-amber-500/20" },
+  macro: { label: "Macro", color: "bg-blush/20 text-blush-dark border-blush/40" },
+  mid:   { label: "Mid",   color: "bg-wind/20 text-ocean/60 border-ocean/[0.06]" },
+  micro: { label: "Micro", color: "bg-green-50 text-green-600 border-green-200" },
+};
+
+function SuggestionCard({
+  s, onAdd, adding, added, t,
+}: {
+  s: CreatorSuggestion;
+  onAdd: () => void;
+  adding: boolean;
+  added: boolean;
+  t: (key: string) => string;
+}) {
+  const tier = TIER_STYLES[s.tier] || TIER_STYLES.mid;
+  return (
+    <div className={`glass rounded-2xl p-4 border transition-all duration-200 ${added ? "border-green-200 bg-green-50" : "border-ocean/[0.06] hover:border-ocean/5"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <a href={`https://www.instagram.com/${s.username}/`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-blush-dark hover:text-blush-dark/80 underline underline-offset-2 transition-colors">
+              @{s.username}
+              <ExternalLink className="h-3 w-3 shrink-0" />
+            </a>
+            <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${tier.color}`}>
+              {tier.label}
+            </span>
+            {s.estimatedFollowers && (
+              <span className="text-[11px] text-ocean/60">{s.estimatedFollowers}</span>
+            )}
+            {s.verified ? (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
+                {t("creators.verified")}
+              </span>
+            ) : s.confidence !== undefined && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md border ${
+                s.confidence >= 9 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                s.confidence >= 7 ? "bg-amber-500/10 border-amber-500/20 text-ivory" :
+                "bg-red-50 border-red-200 text-red-500"
+              }`}>
+                {s.confidence >= 9 ? t("creators.confident") : s.confidence >= 7 ? t("creators.likely") : t("creators.uncertain")}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-ocean/60 mt-1.5 leading-relaxed">{s.why}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {s.strength && (
+              <span className="text-[10px] rounded-lg bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5 text-ocean/60">
+                ⚡ {s.strength}
+              </span>
+            )}
+            {s.contentStyle && (
+              <span className="text-[10px] rounded-lg bg-ocean/[0.02] border border-ocean/[0.06] px-2 py-0.5 text-ocean/60">
+                🎬 {s.contentStyle}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0">
+          {added ? (
+            <span className="inline-flex items-center gap-1 text-[11px] text-green-600">
+              <UserCheck className="h-3.5 w-3.5" /> {t("creators.added")}
+            </span>
+          ) : (
+            <Button size="sm" onClick={onAdd} disabled={adding}
+              className="h-8 rounded-xl gap-1.5 text-xs bg-ocean hover:bg-ocean-light border-0">
+              {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+              {adding ? t("creators.verifying") : t("common.add")}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ClientCreatorsPage() {
+  const { id } = useParams<{ id: string }>();
+  const { t } = useI18n();
+  const [client, setClient] = useState<Config | null>(null);
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Creator | null>(null);
+  const [form, setForm] = useState({ username: "", category: "" });
+  const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+
+  // Research state
+  const [researchOpen, setResearchOpen] = useState(false);
+  const [focusHint, setFocusHint] = useState("");
+  const [addingUsername, setAddingUsername] = useState<string | null>(null);
+  const [addedUsernames, setAddedUsernames] = useState<Set<string>>(new Set());
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const { creatorResearchGen, startCreatorResearch, clearCreatorResearch } = useGeneration();
+  const researchState = creatorResearchGen.get(id);
+  const researching = researchState?.status === "running";
+  const suggestions = (researchState?.suggestions as CreatorSuggestion[] | undefined) ?? [];
+  const researchError = researchState?.status === "error" ? (researchState.error ?? t("creators.researchFailed")) : null;
+
+  // Auto-open research panel when suggestions arrive from background
+  useEffect(() => {
+    if (researchState?.status === "done" && suggestions.length > 0) {
+      setResearchOpen(true);
+    }
+  }, [researchState?.status]);
+
+  const loadCreators = () => {
+    fetch("/api/creators").then((r) => r.json()).then(setCreators);
+  };
+
+  useEffect(() => {
+    fetch(`/api/configs/${id}`).then((r) => r.json()).then(setClient);
+    loadCreators();
+  }, [id]);
+
+  const clientCreators = client
+    ? creators.filter((c) => c.category === client.creatorsCategory)
+    : [];
+
+  // Mark already-added usernames
+  const existingUsernames = new Set(clientCreators.map(c => c.username.toLowerCase()));
+
+  const openNew = () => {
+    setEditing(null);
+    setForm({ username: "", category: client?.creatorsCategory || "" });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (creator: Creator) => {
+    setEditing(creator);
+    setForm({ username: creator.username, category: creator.category });
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (editing) {
+        await fetch("/api/creators", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing.id, ...form }),
+        });
+      } else {
+        await fetch("/api/creators", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      }
+      setDialogOpen(false);
+      loadCreators();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (creatorId: string) => {
+    if (!confirm(t("creators.confirmDelete"))) return;
+    await fetch(`/api/creators?id=${creatorId}`, { method: "DELETE" });
+    loadCreators();
+  };
+
+  const handleRefreshAll = async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch("/api/creators/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [] }),
+      });
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "progress" && data.status === "scraping") {
+                const c = creators.find((cr) => cr.username === data.username);
+                if (c) setRefreshingId(c.id);
+              } else if (data.type === "progress" && data.status === "done") {
+                loadCreators();
+              } else if (data.type === "complete") {
+                setRefreshingId(null);
+              }
+            } catch { /* skip */ }
+          }
+        }
+      }
+    } finally {
+      setRefreshing(false);
+      setRefreshingId(null);
+      loadCreators();
+    }
+  };
+
+  const handleRefreshOne = async (creatorId: string) => {
+    setRefreshingId(creatorId);
+    try {
+      const response = await fetch("/api/creators/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [creatorId] }),
+      });
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+      }
+      loadCreators();
+    } finally {
+      setRefreshingId(null);
+    }
+  };
+
+  const runResearch = () => {
+    clearCreatorResearch(id);
+    startCreatorResearch(id, focusHint);
+  };
+
+  const addSuggestion = async (s: CreatorSuggestion) => {
+    if (addingUsername) return;
+    setAddError(null);
+    setAddingUsername(s.username);
+    try {
+      // Verify profile exists on Instagram before adding
+      const verifyRes = await fetch("/api/verify-creator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: s.username }),
+      });
+      const verifyData = await verifyRes.json().catch(() => ({})) as { error?: string; username?: string };
+      if (!verifyRes.ok) {
+        setAddError(verifyData.error || `@${s.username} ${t("creators.notFound")}`);
+        return;
+      }
+
+      // Use the verified username (Apify returns the canonical username)
+      const canonicalUsername = verifyData.username || s.username;
+      await fetch("/api/creators", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: canonicalUsername, category: client?.creatorsCategory || "" }),
+      });
+      setAddedUsernames(prev => new Set([...prev, canonicalUsername.toLowerCase()]));
+      loadCreators();
+      // Scrape full stats in background
+      fetch("/api/creators/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [] }),
+      }).then(() => loadCreators()).catch(() => {});
+    } finally {
+      setAddingUsername(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{t("creators.title")}</h1>
+          <p className="mt-1 text-sm text-ocean/60">
+            {t("creators.subtitle")} {client?.configName || t("creators.thisClient")}
+            {client?.creatorsCategory && (
+              <Badge variant="secondary" className="ml-2 rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
+                {client.creatorsCategory}
+              </Badge>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={handleRefreshAll} disabled={refreshing}
+            className="rounded-xl glass border-ocean/[0.06] gap-1.5 text-xs">
+            {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {t("common.refreshAll")}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew} variant="ghost"
+                className="rounded-xl glass border border-ocean/[0.06] gap-1.5 text-xs">
+                <Plus className="h-4 w-4" /> {t("creators.addManual")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="glass-strong rounded-2xl border-ocean/[0.06]">
+              <DialogHeader>
+                <DialogTitle>{editing ? t("creators.editCreator") : t("creators.addCreator")}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-5 pt-2">
+                <div>
+                  <Label className="text-xs text-ocean/60">{t("creators.igUsername")}</Label>
+                  <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })}
+                    placeholder={t("creators.placeholder")} className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11" />
+                </div>
+                <div>
+                  <Label className="text-xs text-ocean/60">{t("creators.category")}</Label>
+                  <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11" readOnly={!editing} />
+                  {!editing && (
+                    <p className="mt-1 text-[11px] text-ocean/60">
+                      {t("creators.autoSet")} {client?.creatorsCategory}
+                    </p>
+                  )}
+                </div>
+                {!editing && (
+                  <p className="text-[11px] text-ocean/60">
+                    {t("creators.autoScrape")}
+                  </p>
+                )}
+                <Button onClick={handleSave} disabled={saving || !form.username || !form.category}
+                  className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0">
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin" />{editing ? t("creators.savingCreator") : t("creators.addingTo")}</> : editing ? t("common.save") : t("common.add")}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button onClick={() => setResearchOpen(!researchOpen)}
+            className="rounded-xl h-10 gap-1.5 bg-ocean hover:bg-ocean-light border-0 text-xs">
+            <Search className="h-3.5 w-3.5" /> {t("creators.research")}
+            {researchOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Research Panel */}
+      {researchOpen && (
+        <div className="rounded-2xl border border-blush/40 bg-gradient-to-br from-blush/10 to-wind/10 p-5 space-y-5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blush/20 border border-blush/40">
+              <Sparkles className="h-4 w-4 text-blush-dark" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{t("creators.aiResearch")}</p>
+              <p className="text-xs text-ocean/60">
+                {t("creators.aiResearchDesc")} <strong className="text-ocean/70">{client?.creatorsCategory}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Input
+              value={focusHint}
+              onChange={(e) => setFocusHint(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !researching) runResearch(); }}
+              placeholder={t("creators.focusPlaceholder")}
+              className="flex-1 rounded-xl glass border-ocean/[0.06] h-11 text-sm"
+            />
+            <Button onClick={runResearch} disabled={researching}
+              className="h-11 px-5 rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-2 shrink-0">
+              {researching
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("creators.researching")}</>
+                : <><Search className="h-4 w-4" /> {t("creators.researchBtn")}</>}
+            </Button>
+          </div>
+
+          {(researchError || addError) && (
+            <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{researchError || addError}</p>
+          )}
+
+          {researching && (
+            <div className="space-y-2 px-1">
+              <div className="flex items-center gap-2 text-sm text-ocean/60">
+                <Loader2 className="h-4 w-4 animate-spin text-blush-dark" />
+                {t("creators.aiSearching")}
+              </div>
+              <p className="text-xs text-ocean/65 pl-6">{t("creators.focusMega")}</p>
+            </div>
+          )}
+
+          {suggestions.length > 0 && (
+            <div className="space-y-4">
+              {/* Source banner */}
+              <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-3 py-2">
+                <span className="h-2 w-2 rounded-full bg-ivory shrink-0" />
+                <p className="text-xs text-ivory" dangerouslySetInnerHTML={{ __html: t("creators.aiBanner") }} />
+              </div>
+
+              {/* Tier summary */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-xs text-ocean/60">{suggestions.length} {t("creators.suggestionsFound")}</p>
+                {(["mega", "macro", "mid", "micro"] as const).map(tier => {
+                  const count = suggestions.filter(s => s.tier === tier).length;
+                  if (!count) return null;
+                  const style = TIER_STYLES[tier];
+                  return (
+                    <span key={tier} className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-medium ${style.color}`}>
+                      {style.label} · {count}
+                    </span>
+                  );
+                })}
+              </div>
+
+              {/* Suggestions grouped by tier */}
+              {(["mega", "macro", "mid", "micro"] as const).map(tier => {
+                const group = suggestions.filter(s => s.tier === tier);
+                if (!group.length) return null;
+                const style = TIER_STYLES[tier];
+                return (
+                  <div key={tier} className="space-y-2">
+                    <p className={`text-[10px] font-medium uppercase tracking-wider ${style.color.split(" ")[1]}`}>
+                      {style.label}
+                    </p>
+                    {group.map(s => {
+                      const alreadyExists = existingUsernames.has(s.username.toLowerCase());
+                      const wasAdded = addedUsernames.has(s.username.toLowerCase());
+                      return (
+                        <SuggestionCard
+                          key={s.username}
+                          s={s}
+                          onAdd={() => addSuggestion(s)}
+                          adding={addingUsername === s.username}
+                          added={alreadyExists || wasAdded}
+                          t={t}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-4 py-3">
+                <p className="text-[11px] text-ocean/70 flex items-center gap-1.5">
+                  <Star className="h-3 w-3 text-ivory/60 shrink-0" />
+                  {t("creators.profileHint")}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Creator Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {clientCreators.map((creator) => {
+          const isRefreshing = refreshingId === creator.id;
+          return (
+            <div key={creator.id}
+              className={`group glass rounded-2xl p-5 transition-all duration-300 hover:bg-warm-white hover:border-ocean/5 ${isRefreshing ? "animate-pulse" : ""}`}>
+              <div className="flex items-start justify-between">
+                <a href={`https://www.instagram.com/${creator.username}/`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                  <div className="relative h-12 w-12 shrink-0 rounded-full overflow-hidden bg-gradient-to-br from-blush/20 to-wind/20 border border-ocean/5">
+                    {creator.profilePicUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={`/api/proxy-image?url=${encodeURIComponent(creator.profilePicUrl)}`}
+                        alt={`@${creator.username}`} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-lg font-bold text-ocean/70">
+                        {creator.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold hover:text-blush-dark transition-colors">@{creator.username}</p>
+                    <Badge variant="secondary" className="mt-0.5 rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
+                      {creator.category}
+                    </Badge>
+                  </div>
+                </a>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button variant="ghost" size="sm" onClick={() => handleRefreshOne(creator.id)} disabled={isRefreshing}
+                    className="h-7 w-7 p-0 rounded-lg text-ocean/60 hover:text-ocean">
+                    {isRefreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(creator)}
+                    className="h-7 w-7 p-0 rounded-lg text-ocean/60 hover:text-ocean">
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(creator.id)}
+                    className="h-7 w-7 p-0 rounded-lg text-ocean/60 hover:text-red-500">
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+
+              {(creator.followers > 0 || creator.lastScrapedAt) ? (
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
+                    <UserCheck className="mx-auto h-3.5 w-3.5 text-ocean/60 mb-1" />
+                    <p className="text-sm font-bold">{formatNumber(creator.followers)}</p>
+                    <p className="text-[9px] text-ocean/60 uppercase tracking-wider">Follower</p>
+                  </div>
+                  <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
+                    <Film className="mx-auto h-3.5 w-3.5 text-blush-dark mb-1" />
+                    <p className="text-sm font-bold">{creator.reelsCount30d}</p>
+                    <p className="text-[9px] text-ocean/60 uppercase tracking-wider">Reels/30d</p>
+                  </div>
+                  <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
+                    <Eye className="mx-auto h-3.5 w-3.5 text-emerald-400 mb-1" />
+                    <p className="text-sm font-bold">{formatNumber(creator.avgViews30d)}</p>
+                    <p className="text-[9px] text-ocean/60 uppercase tracking-wider">Ø Views</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-xl bg-black/20 border border-ocean/[0.06] p-3 text-center">
+                  <p className="text-[11px] text-ocean/60">
+                    {t("creators.noData")} <RefreshCw className="inline h-3 w-3" /> {t("creators.clickScrape")}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-3 flex items-center justify-between">
+                {creator.lastScrapedAt ? (
+                  <p className="text-[10px] text-ocean/65">
+                    {t("creators.scraped")} {new Date(creator.lastScrapedAt).toLocaleDateString()}
+                  </p>
+                ) : <span />}
+                <Link href={`/clients/${id}/videos?creator=${creator.username}`}
+                  className="inline-flex items-center gap-1 text-[11px] text-blush-dark hover:text-blush-dark/80 transition-colors">
+                  {t("creators.viewVideos")} <ExternalLink className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+
+        {clientCreators.length === 0 && !researchOpen && (
+          <div className="col-span-full glass rounded-2xl p-12 text-center">
+            <Users className="mx-auto h-10 w-10 text-ocean/60" />
+            <h3 className="mt-4 font-semibold">{t("creators.noCreators")}</h3>
+            <p className="mt-1 text-sm text-ocean/60 mb-5">{t("creators.noCreatorsHint")}</p>
+            <Button onClick={() => setResearchOpen(true)}
+              className="rounded-xl h-9 gap-1.5 bg-ocean hover:bg-ocean-light border-0 text-xs">
+              <Search className="h-3.5 w-3.5" /> {t("creators.startResearch")}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

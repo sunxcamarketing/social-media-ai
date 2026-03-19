@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { TopBar } from "@/components/top-bar";
-import { PipelineProvider } from "@/context/pipeline-context";
+import { I18nProvider } from "@/lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Virality System",
-  description: "AI-powered Instagram Reels viral content analyzer",
+  title: "SUNXCA",
+  description: "Social Media AI — Content Strategy & Script Generation",
 };
 
 export default function RootLayout({
@@ -28,19 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <TooltipProvider>
-          <PipelineProvider>
-            <SidebarProvider>
-              <AppSidebar />
-              <main className="flex-1 overflow-auto min-h-screen">
-                <TopBar />
-                <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
-              </main>
-            </SidebarProvider>
-          </PipelineProvider>
-        </TooltipProvider>
+        <I18nProvider>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

@@ -2,8 +2,48 @@ export interface Config {
   id: string;
   configName: string;
   creatorsCategory: string;
-  analysisInstruction: string;
-  newConceptsInstruction: string;
+  // Strategy
+  strategyGoal: string; // "reach" | "trust" | "revenue"
+  strategyPillars: string; // JSON: [{name: string, subTopics: string}]
+  strategyWeekly: string; // JSON: {Mon: {type: string, format: string}, ...}
+  performanceInsights: string; // JSON: PerformanceInsights
+  postsPerWeek: string;
+  // Client info
+  name: string;
+  company: string;
+  role: string;
+  location: string;
+  businessContext: string;
+  professionalBackground: string;
+  keyAchievements: string;
+  // Brand & audience
+  brandFeeling: string;
+  brandProblem: string;
+  brandingStatement: string;
+  humanDifferentiation: string;
+  dreamCustomer: string; // JSON
+  customerProblems: string; // JSON array
+  providerRole: string;
+  providerBeliefs: string;
+  providerStrengths: string;
+  authenticityZone: string;
+  // Social & web
+  website: string;
+  instagram: string;
+  tiktok: string;
+  youtube: string;
+  linkedin: string;
+  twitter: string;
+  // Cached Instagram profile
+  igFullName: string;
+  igBio: string;
+  igFollowers: string;
+  igFollowing: string;
+  igPostsCount: string;
+  igProfilePicUrl: string;
+  igCategory: string;
+  igVerified: string;
+  igLastUpdated: string;
 }
 
 export interface Creator {
@@ -25,12 +65,72 @@ export interface Video {
   views: number;
   likes: number;
   comments: number;
+  durationSeconds: number;
   analysis: string;
   newConcepts: string;
   datePosted: string;
   dateAdded: string;
   configName: string;
   starred: boolean;
+}
+
+export interface Idea {
+  id: string;
+  clientId: string;
+  title: string;
+  description: string;
+  contentType: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface Script {
+  id: string;
+  clientId: string;
+  title: string;
+  pillar: string;
+  contentType: string;
+  format: string;
+  hook: string;
+  body: string;
+  cta: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface TrainingScript {
+  id: string;
+  clientId: string;     // associated client (empty = global)
+  format: string;       // matches BUILT_IN_FORMATS names
+  textHook: string;     // on-screen text hook
+  visualHook: string;   // visual/action hook
+  audioHook: string;    // spoken/audio hook
+  script: string;       // main body script
+  cta: string;          // call to action
+  createdAt: string;
+}
+
+export interface TopicPlanItem {
+  day: string;          // "Mon", "Tue", etc.
+  pillar: string;
+  contentType: string;
+  format: string;
+  title: string;        // short working title
+  description: string;  // 1-sentence description
+  reasoning?: string;   // strategic justification based on audit/performance data
+}
+
+export interface Analysis {
+  id: string;
+  clientId: string;
+  instagramHandle: string;
+  lang: string;
+  report: string;
+  profileFollowers: number;
+  profileReels30d: number;
+  profileAvgViews30d: number;
+  profilePicUrl: string;
+  createdAt: string;
 }
 
 export interface PipelineParams {

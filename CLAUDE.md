@@ -49,6 +49,17 @@ npm run dev
 6. **Generate** — Send analysis + brand context to Claude for adapted video concepts
 7. **Save** — Append results to `data/videos.csv`, viewable in the Videos page with thumbnails
 
+### Script Generation Pipeline (Weekly)
+
+1. **Load All Context** — Client profile, brand positioning, strategy (pillars + weekly schedule), dream customer, provider identity
+2. **Load Audit Report** — Most recent Instagram audit from `data/analyses.csv` (strengths, weaknesses, optimal video length, content patterns, sofort-massnahmen)
+3. **Load Performance Data** — Own top videos (with hooks, topics, whyItWorked) + competitor top videos
+4. **Load Voice Training** — Client-specific transcript examples for tone matching
+5. **Generate Full Week** — Single Claude call produces N scripts (one per active day) with strategic reasoning
+6. **Review & Save** — User reviews generated scripts, saves individually or all at once
+
+Key endpoint: `POST /api/configs/[id]/generate-week-scripts`
+
 ### Two Customizable Prompts Per Config
 
 - **Analysis Instruction** — How Gemini should break down the video
@@ -65,11 +76,13 @@ npm run dev
 ├── app/                                   # Next.js application
 │   ├── src/
 │   │   ├── app/                           # Pages and API routes
-│   │   │   ├── page.tsx                   # Dashboard
-│   │   │   ├── videos/page.tsx            # Videos browser with thumbnails
-│   │   │   ├── run/page.tsx               # Pipeline runner with live progress
-│   │   │   ├── configs/page.tsx           # Config management
-│   │   │   ├── creators/page.tsx          # Creator management
+│   │   │   ├── (app)/                     # App route group (sidebar, topbar)
+│   │   │   │   ├── page.tsx               # Dashboard
+│   │   │   │   ├── clients/               # Client management pages
+│   │   │   │   ├── videos/page.tsx        # Videos browser with thumbnails
+│   │   │   │   ├── run/page.tsx           # Pipeline runner with live progress
+│   │   │   │   ├── configs/page.tsx       # Config management
+│   │   │   │   └── creators/page.tsx      # Creator management
 │   │   │   └── api/                       # API routes (configs, creators, videos, pipeline)
 │   │   ├── lib/                           # Core logic
 │   │   │   ├── pipeline.ts               # Pipeline orchestration
@@ -83,7 +96,7 @@ npm run dev
 ├── data/                                  # CSV data storage
 │   ├── configs.csv                        # Pipeline configurations
 │   ├── creators.csv                       # Instagram creator accounts
-│   └── videos.csv                         # Analyzed video results
+│   ├── videos.csv                         # Analyzed video results
 ├── context/                               # Background context for Claude
 ├── plans/                                 # Implementation plans
 └── .claude/commands/                      # Slash commands (prime, create-plan, implement)
@@ -93,13 +106,13 @@ npm run dev
 
 ## App Pages
 
-| Page | Path | Description |
-|------|------|-------------|
-| Dashboard | `/` | Summary stats, recent videos |
-| Videos | `/videos` | Browse results with thumbnails, expandable analysis & concepts |
-| Run Pipeline | `/run` | Select config, set params, run with live progress streaming |
-| Configs | `/configs` | CRUD for pipeline configs (prompts, categories) |
-| Creators | `/creators` | CRUD for competitor Instagram accounts |
+| Page | Path | Route Group | Description |
+|------|------|-------------|-------------|
+| Dashboard | `/` | (app) | Summary stats, recent videos |
+| Videos | `/videos` | (app) | Browse results with thumbnails, expandable analysis & concepts |
+| Run Pipeline | `/run` | (app) | Select config, set params, run with live progress streaming |
+| Configs | `/configs` | (app) | CRUD for pipeline configs (prompts, categories) |
+| Creators | `/creators` | (app) | CRUD for competitor Instagram accounts |
 
 ---
 

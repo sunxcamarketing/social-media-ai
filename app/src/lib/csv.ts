@@ -2,7 +2,7 @@ import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
-import type { Config, Creator, Video } from "./types";
+import type { Config, Creator, Video, Script, TrainingScript } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "..", "data");
 
@@ -28,7 +28,7 @@ function writeCsv(filename: string, data: Record<string, unknown>[], columns: st
 }
 
 // Configs
-const CONFIG_COLUMNS = ["id", "configName", "creatorsCategory", "analysisInstruction", "newConceptsInstruction"];
+const CONFIG_COLUMNS = ["id", "configName", "creatorsCategory", "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements", "website", "instagram", "tiktok", "youtube", "linkedin", "twitter", "strategyGoal", "strategyPillars", "strategyWeekly", "performanceInsights", "postsPerWeek", "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation", "dreamCustomer", "customerProblems", "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone", "igFullName", "igBio", "igFollowers", "igFollowing", "igPostsCount", "igProfilePicUrl", "igCategory", "igVerified", "igLastUpdated"];
 
 export function readConfigs(): Config[] {
   return readCsv<Config>("configs.csv");
@@ -60,7 +60,7 @@ export function writeCreators(creators: Creator[]) {
 }
 
 // Videos
-const VIDEO_COLUMNS = ["id", "link", "thumbnail", "creator", "views", "likes", "comments", "analysis", "newConcepts", "datePosted", "dateAdded", "configName", "starred"];
+const VIDEO_COLUMNS = ["id", "link", "thumbnail", "creator", "views", "likes", "comments", "durationSeconds", "analysis", "newConcepts", "datePosted", "dateAdded", "configName", "starred"];
 
 export function readVideos(): Video[] {
   const raw = readCsv<Record<string, string>>("videos.csv");
@@ -72,6 +72,7 @@ export function readVideos(): Video[] {
     views: parseInt(r.views || r.Views || "0", 10) || 0,
     likes: parseInt(r.likes || r.Likes || "0", 10) || 0,
     comments: parseInt(r.comments || r.Comments || "0", 10) || 0,
+    durationSeconds: parseInt(r.durationSeconds || "0", 10) || 0,
     analysis: r.analysis || r.Analysis || "",
     newConcepts: r.newConcepts || r["newConcepts"] || r["New Concepts"] || "",
     datePosted: r.datePosted || r["Date Posted"] || r["datePosted"] || "",
@@ -90,3 +91,61 @@ export function appendVideo(video: Video) {
   videos.push(video);
   writeVideos(videos);
 }
+
+// Scripts
+const SCRIPT_COLUMNS = ["id", "clientId", "title", "pillar", "contentType", "format", "hook", "body", "cta", "status", "createdAt"];
+
+export function readScripts(): Script[] {
+  const raw = readCsv<Record<string, string>>("scripts.csv");
+  return raw.map((r) => ({
+    id: r.id || "",
+    clientId: r.clientId || "",
+    title: r.title || "",
+    pillar: r.pillar || "",
+    contentType: r.contentType || "",
+    format: r.format || "",
+    hook: r.hook || "",
+    body: r.body || "",
+    cta: r.cta || "",
+    status: r.status || "entwurf",
+    createdAt: r.createdAt || "",
+  }));
+}
+
+export function writeScripts(scripts: Script[]) {
+  writeCsv("scripts.csv", scripts as unknown as Record<string, unknown>[], SCRIPT_COLUMNS);
+}
+
+// Ideas
+const IDEA_COLUMNS = ["id", "clientId", "title", "description", "contentType", "status", "createdAt"];
+
+export function readIdeas(): Record<string, string>[] {
+  return readCsv<Record<string, string>>("ideas.csv");
+}
+
+export function writeIdeas(ideas: Record<string, string>[]) {
+  writeCsv("ideas.csv", ideas, IDEA_COLUMNS);
+}
+
+// Training Scripts
+const TRAINING_SCRIPT_COLUMNS = ["id", "clientId", "format", "textHook", "visualHook", "audioHook", "script", "cta", "createdAt"];
+
+export function readTrainingScripts(): TrainingScript[] {
+  const raw = readCsv<Record<string, string>>("training-scripts.csv");
+  return raw.map((r) => ({
+    id: r.id || "",
+    clientId: r.clientId || "",
+    format: r.format || "",
+    textHook: r.textHook || "",
+    visualHook: r.visualHook || "",
+    audioHook: r.audioHook || "",
+    script: r.script || "",
+    cta: r.cta || "",
+    createdAt: r.createdAt || "",
+  }));
+}
+
+export function writeTrainingScripts(scripts: TrainingScript[]) {
+  writeCsv("training-scripts.csv", scripts as unknown as Record<string, unknown>[], TRAINING_SCRIPT_COLUMNS);
+}
+

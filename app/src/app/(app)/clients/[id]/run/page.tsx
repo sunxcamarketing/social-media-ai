@@ -1,19 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Play, Loader2, CheckCircle2, XCircle, Terminal, Zap, ChevronDown, ArrowRight, Film, AlertTriangle } from "lucide-react";
 import { usePipeline } from "@/context/pipeline-context";
 import type { Config } from "@/lib/types";
@@ -24,9 +18,9 @@ function formatViews(n: number): string {
   return n.toString();
 }
 
-export default function RunPage() {
-  const [configs, setConfigs] = useState<Config[]>([]);
-  const [selectedConfig, setSelectedConfig] = useState("");
+export default function ClientRunPage() {
+  const { id } = useParams<{ id: string }>();
+  const [client, setClient] = useState<Config | null>(null);
   const [maxVideos, setMaxVideos] = useState(20);
   const [topK, setTopK] = useState(3);
   const [nDays, setNDays] = useState(30);
@@ -36,16 +30,16 @@ export default function RunPage() {
   const { running, progress, runPipeline } = usePipeline();
 
   useEffect(() => {
-    fetch("/api/configs").then((r) => r.json()).then(setConfigs);
-  }, []);
+    fetch(`/api/configs/${id}`).then((r) => r.json()).then(setClient);
+  }, [id]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [progress?.log.length]);
 
   const handleRun = () => {
-    if (!selectedConfig) return;
-    runPipeline({ configName: selectedConfig, maxVideos, topK, nDays });
+    if (!client) return;
+    runPipeline({ configName: client.configName, maxVideos, topK, nDays });
   };
 
   const totalProgress = progress
@@ -58,7 +52,7 @@ export default function RunPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Run Pipeline</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-ocean/60">
           Analyze competitor content and generate new video concepts
         </p>
       </div>
@@ -66,28 +60,25 @@ export default function RunPage() {
       {/* Config Form */}
       <div className="glass rounded-2xl p-6 space-y-6">
         <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4 text-purple-400" />
+          <Zap className="h-4 w-4 text-blush-dark" />
           <h2 className="text-sm font-semibold">Pipeline Configuration</h2>
         </div>
 
         <div className="space-y-4">
+          {/* Client info (locked) */}
           <div>
-            <Label className="text-xs text-muted-foreground">Config</Label>
-            <Select value={selectedConfig} onValueChange={setSelectedConfig}>
-              <SelectTrigger className="mt-1.5 rounded-xl glass border-white/[0.08] h-11">
-                <SelectValue placeholder="Select a config..." />
-              </SelectTrigger>
-              <SelectContent>
-                {configs.map((c) => (
-                  <SelectItem key={c.id} value={c.configName}>{c.configName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs text-ocean/60">Client</Label>
+            <div className="mt-1.5 flex items-center gap-2 rounded-xl glass border border-ocean/5 h-11 px-4">
+              <span className="text-sm">{client?.configName || "Loading…"}</span>
+              <Badge variant="secondary" className="ml-auto rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
+                {client?.creatorsCategory}
+              </Badge>
+            </div>
           </div>
 
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 text-xs text-ocean/60 hover:text-ocean transition-colors"
           >
             <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""}`} />
             Advanced settings
@@ -96,36 +87,36 @@ export default function RunPage() {
           {showAdvanced && (
             <div className="grid gap-4 md:grid-cols-3 animate-in fade-in slide-in-from-top-2 duration-200">
               <div>
-                <Label className="text-xs text-muted-foreground">Max Videos per Creator</Label>
+                <Label className="text-xs text-ocean/60">Max Videos per Creator</Label>
                 <Input
                   type="number"
                   value={maxVideos}
                   onChange={(e) => setMaxVideos(Number(e.target.value))}
                   min={1}
                   max={100}
-                  className="mt-1.5 rounded-xl glass border-white/[0.08] h-11"
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-11"
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Top K to Analyze</Label>
+                <Label className="text-xs text-ocean/60">Top K to Analyze</Label>
                 <Input
                   type="number"
                   value={topK}
                   onChange={(e) => setTopK(Number(e.target.value))}
                   min={1}
                   max={10}
-                  className="mt-1.5 rounded-xl glass border-white/[0.08] h-11"
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-11"
                 />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Days Lookback</Label>
+                <Label className="text-xs text-ocean/60">Days Lookback</Label>
                 <Input
                   type="number"
                   value={nDays}
                   onChange={(e) => setNDays(Number(e.target.value))}
                   min={1}
                   max={365}
-                  className="mt-1.5 rounded-xl glass border-white/[0.08] h-11"
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-11"
                 />
               </div>
             </div>
@@ -133,9 +124,9 @@ export default function RunPage() {
 
           <Button
             onClick={handleRun}
-            disabled={running || !selectedConfig}
+            disabled={running || !client}
             size="lg"
-            className="w-full rounded-xl h-12 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 border-0 glow-sm transition-all duration-300 hover:glow text-sm font-semibold"
+            className="w-full rounded-xl h-12 bg-ocean hover:bg-ocean-light border-0 glow-sm transition-all duration-300 hover:glow text-sm font-semibold"
           >
             {running ? (
               <>
@@ -155,13 +146,12 @@ export default function RunPage() {
       {/* Progress */}
       {progress && (
         <div className="space-y-4">
-          {/* Status card */}
           <div className="glass rounded-2xl p-6 space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {progress.status === "running" && <Loader2 className="h-4 w-4 text-purple-400 animate-spin" />}
+                {progress.status === "running" && <Loader2 className="h-4 w-4 text-blush-dark animate-spin" />}
                 {progress.status === "completed" && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
-                {progress.status === "error" && <XCircle className="h-4 w-4 text-red-400" />}
+                {progress.status === "error" && <XCircle className="h-4 w-4 text-red-500" />}
                 <h2 className="text-sm font-semibold">
                   {progress.status === "running" && progress.phase === "scraping" && "Scraping creators..."}
                   {progress.status === "running" && progress.phase === "analyzing" && "Analyzing videos..."}
@@ -169,15 +159,15 @@ export default function RunPage() {
                   {progress.status === "error" && "Pipeline failed"}
                 </h2>
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 text-xs text-ocean/60">
                 {progress.phase === "scraping" && (
-                  <span>Creators: <span className="text-foreground">{progress.creatorsScraped}/{progress.creatorsTotal}</span></span>
+                  <span>Creators: <span className="text-ocean">{progress.creatorsScraped}/{progress.creatorsTotal}</span></span>
                 )}
                 {(progress.phase === "analyzing" || progress.phase === "done") && (
-                  <span>Videos: <span className="text-foreground">{progress.videosAnalyzed}/{progress.videosTotal}</span></span>
+                  <span>Videos: <span className="text-ocean">{progress.videosAnalyzed}/{progress.videosTotal}</span></span>
                 )}
                 {progress.errors.length > 0 && (
-                  <span className="inline-flex items-center gap-1 text-red-400">
+                  <span className="inline-flex items-center gap-1 text-red-500">
                     <AlertTriangle className="h-3 w-3" />
                     {progress.errors.length}
                   </span>
@@ -185,35 +175,33 @@ export default function RunPage() {
               </div>
             </div>
 
-            {/* Progress bar */}
             <div>
-              <div className="h-2 rounded-full bg-white/[0.05] overflow-hidden">
+              <div className="h-2 rounded-full bg-ocean/[0.02] overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     progress.status === "completed"
                       ? "bg-gradient-to-r from-emerald-500 to-teal-500"
                       : progress.status === "error"
                       ? "bg-gradient-to-r from-red-500 to-orange-500"
-                      : "bg-gradient-to-r from-purple-500 to-indigo-500"
+                      : "bg-ocean"
                   }`}
                   style={{ width: `${progress.status === "completed" ? 100 : totalProgress}%` }}
                 />
               </div>
             </div>
 
-            {/* Active tasks */}
             {progress.activeTasks.length > 0 && (
               <div className="space-y-2">
                 {progress.activeTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center gap-3 rounded-xl bg-white/[0.03] border border-white/[0.04] px-3 py-2"
+                    className="flex items-center gap-3 rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2"
                   >
-                    <Loader2 className="h-3 w-3 text-purple-400 animate-spin shrink-0" />
-                    <span className="text-xs font-medium text-foreground/80">@{task.creator}</span>
-                    <span className="text-[11px] text-muted-foreground">{task.step}</span>
+                    <Loader2 className="h-3 w-3 text-blush-dark animate-spin shrink-0" />
+                    <span className="text-xs font-medium text-ocean/80">@{task.creator}</span>
+                    <span className="text-[11px] text-ocean/60">{task.step}</span>
                     {task.views && (
-                      <span className="ml-auto text-[11px] text-muted-foreground/60">
+                      <span className="ml-auto text-[11px] text-ocean/60">
                         {formatViews(task.views)} views
                       </span>
                     )}
@@ -222,10 +210,9 @@ export default function RunPage() {
               </div>
             )}
 
-            {/* Completion CTA */}
             {progress.status === "completed" && progress.videosAnalyzed > 0 && (
               <Button asChild className="w-full rounded-xl h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 border-0 font-semibold gap-2">
-                <Link href="/videos">
+                <Link href={`/clients/${id}/videos`}>
                   <Film className="h-4 w-4" />
                   View {progress.videosAnalyzed} New Videos
                   <ArrowRight className="h-4 w-4" />
@@ -233,27 +220,25 @@ export default function RunPage() {
               </Button>
             )}
 
-            {/* Errors summary */}
             {progress.errors.length > 0 && (
-              <div className="rounded-xl bg-red-500/5 border border-red-500/10 p-3 space-y-1">
-                <p className="text-[11px] font-medium text-red-400">Errors ({progress.errors.length})</p>
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 space-y-1">
+                <p className="text-[11px] font-medium text-red-500">Errors ({progress.errors.length})</p>
                 {progress.errors.map((err, i) => (
-                  <p key={i} className="text-[11px] text-red-400/70 leading-relaxed">{err}</p>
+                  <p key={i} className="text-[11px] text-red-500/70 leading-relaxed">{err}</p>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Log — collapsible */}
           <details className="glass rounded-2xl overflow-hidden">
-            <summary className="p-4 flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <summary className="p-4 flex items-center gap-2 cursor-pointer text-sm text-ocean/60 hover:text-ocean transition-colors">
               <Terminal className="h-4 w-4" />
               <span className="font-medium">Log</span>
-              <Badge variant="secondary" className="ml-auto rounded-md text-[10px] bg-white/[0.05] border border-white/[0.06]">
+              <Badge variant="secondary" className="ml-auto rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
                 {progress.log.length} entries
               </Badge>
             </summary>
-            <div className="border-t border-white/[0.06]">
+            <div className="border-t border-ocean/[0.06]">
               <ScrollArea className="h-[300px] p-4">
                 <div className="space-y-0.5 font-mono text-[11px]">
                   {progress.log.map((line, i) => (
@@ -261,10 +246,10 @@ export default function RunPage() {
                       key={i}
                       className={`leading-5 ${
                         line.includes("Error") || line.includes("error")
-                          ? "text-red-400"
+                          ? "text-red-500"
                           : line.includes("done") || line.includes("complete") || line.includes("Complete")
                           ? "text-emerald-400/80"
-                          : "text-muted-foreground"
+                          : "text-ocean/60"
                       }`}
                     >
                       {line}

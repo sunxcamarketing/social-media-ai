@@ -1,12 +1,16 @@
-# Tool Purpose
+# Personal Info
 
-## What It Does
+## Your Role
 
-Social Media AI helps create viral Instagram Reels by analyzing what already works for competitors and adapting proven concepts for a target brand.
+Aysun — founder and operator. Builds the systems, serves clients, and directs the AI-assisted workflow. Responsible for system design, client delivery, and content strategy.
 
-## Key Capabilities
+## Key Responsibilities
 
-- Configure analysis pipelines per client (different creators, prompts, parameters)
-- Manage competitor/creator lists grouped by category
-- Run automated scrape-analyze-generate pipelines
-- Browse and review results with video thumbnails and AI-generated concepts
+- Building and maintaining the viral content analysis pipeline
+- Configuring analysis prompts and concept generation prompts per client
+- Managing competitor/creator lists and configurations
+- Delivering viral video concepts to clients
+
+## How This Workspace Helps
+
+This workspace is where the code-based version of the Million Dollar Virality System is being built. Claude assists with architecture decisions, implementation, debugging, and iterating on the system.
