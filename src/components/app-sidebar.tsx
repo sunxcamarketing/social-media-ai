@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2 } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ import type { Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
 import { usePipeline } from "@/context/pipeline-context";
 import { useI18n } from "@/lib/i18n";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -271,6 +272,21 @@ export function AppSidebar() {
                 {t("nav.selectClient")}
               </p>
             )}
+          </div>
+
+          {/* Logout */}
+          <div className="mt-auto px-3 pb-4 shrink-0">
+            <button
+              onClick={async () => {
+                await supabaseBrowser.auth.signOut();
+                router.push("/login");
+                router.refresh();
+              }}
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] text-ocean/50 hover:text-ocean hover:bg-warm-white transition-colors w-full"
+            >
+              <LogOut className="h-3.5 w-3.5 shrink-0" />
+              <span>Abmelden</span>
+            </button>
           </div>
 
         </SidebarContent>

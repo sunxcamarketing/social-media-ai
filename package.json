@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@inngest/realtime": "^0.4.6",
+    "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
