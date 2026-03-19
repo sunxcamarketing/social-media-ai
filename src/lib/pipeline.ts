@@ -116,7 +116,7 @@ export async function runPipeline(
             comments: r.commentsCount || 0,
             durationSeconds: r.videoDuration || 0,
             username: r.ownerUsername || creator.username,
-            thumbnail: r.images?.[0] || "",
+            thumbnail: r.images?.[0] || r.displayUrl || r.thumbnailSrc || "",
             datePosted: r.timestamp?.split("T")[0] || "",
             timestamp: new Date(r.timestamp),
           }))

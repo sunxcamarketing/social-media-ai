@@ -87,7 +87,7 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
       <div className="flex gap-4 p-4">
         <div className="shrink-0 relative">
           {video.thumbnail ? (
-            <img src={video.thumbnail} alt="" className="h-20 w-14 rounded-xl object-cover" />
+            <img src={`/api/proxy-image?url=${encodeURIComponent(video.thumbnail)}`} alt="" className="h-20 w-14 rounded-xl object-cover" />
           ) : (
             <div className="h-20 w-14 rounded-xl bg-ocean/[0.02] flex items-center justify-center">
               <Eye className="h-4 w-4 text-ocean/60" />

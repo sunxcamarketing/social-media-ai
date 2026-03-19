@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       username: p.username,
       followers: p.followersCount || 0,
-      profilePicUrl: p.profilePicUrl || "",
+      profilePicUrl: p.profilePicUrl || p.profilePicUrlHD || "",
       verified: true,
     });
   } catch {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,12 @@ import {
   Users,
   Eye,
   Film,
-  RefreshCw,
-  Save,
-  CheckCircle2,
+  ChevronDown,
+  Trash2,
+  CalendarDays,
 } from "lucide-react";
-import type { Config, Analysis } from "@/lib/types";
+import type { Analysis } from "@/lib/types";
+import { useAudit } from "@/context/audit-context";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -23,122 +24,59 @@ function fmt(n: number) {
   return String(n);
 }
 
-export default function AnalysePage() {
+export default function AuditPage() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-64 text-ocean/50 text-sm">Laden…</div>}>
-      <AnalysePageInner />
+      <AuditPageInner />
     </Suspense>
   );
 }
 
-function AnalysePageInner() {
+function AuditPageInner() {
   const searchParams = useSearchParams();
   const [handle, setHandle] = useState(searchParams.get("handle") || "");
-  const [clientId, setClientId] = useState(searchParams.get("clientId") || "");
-  const [clients, setClients] = useState<Config[]>([]);
   const [lang, setLang] = useState<"de" | "en">("de");
 
-  const [phase, setPhase] = useState<string>("");
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [report, setReport] = useState("");
-  const [error, setError] = useState("");
-  const [running, setRunning] = useState(false);
+  const { audit, startAudit, clearAudit } = useAudit("global");
 
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const running = audit?.running ?? false;
+  const phase = audit?.phase ?? "";
+  const profile = audit?.profile ?? null;
+  const report = audit?.report ?? "";
+  const error = audit?.error ?? "";
+  const unsavedReport = !!report && !running && !saved;
 
   useEffect(() => {
-    fetch("/api/configs").then((r) => r.json()).then(setClients).catch(() => {});
-    fetch("/api/analyses").then((r) => r.json()).then((data: Analysis[]) => {
-      setAnalyses(data.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-    }).catch(() => {});
+    loadAnalyses();
   }, []);
 
   useEffect(() => {
-    if (clientId) {
-      const client = clients.find((c) => c.id === clientId);
-      if (client?.instagram) {
-        const ig = client.instagram.replace(/^@/, "").replace(/.*instagram\.com\/([^/?]+).*/, "$1").replace(/\/$/, "");
-        setHandle(ig);
-      }
-    }
-  }, [clientId, clients]);
+    if (report && !running) setSaved(false);
+  }, [report, running]);
 
-  async function startAnalysis() {
-    if (!handle.trim()) return;
-    setRunning(true);
-    setPhase("scraping");
-    setProfile(null);
-    setReport("");
-    setError("");
-    setSaved(false);
-    setSelectedAnalysis(null);
-
-    abortRef.current = new AbortController();
-
-    try {
-      const res = await fetch("/api/analyse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instagramHandle: handle.trim(), lang }),
-        signal: abortRef.current.signal,
-      });
-
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = JSON.parse(line.slice(6));
-
-          if (data.phase === "profile_loaded") {
-            setProfile(data.profile);
-            setPhase("reels");
-          } else if (data.phase === "reels_loaded") {
-            setPhase("analyzing");
-          } else if (data.phase === "done") {
-            setReport(data.report);
-            setProfile(data.profile);
-            setPhase("done");
-          } else if (data.phase === "error") {
-            setError(data.message);
-            setPhase("error");
-          } else if (data.phase) {
-            setPhase(data.phase);
-          }
-        }
-      }
-    } catch (err) {
-      if ((err as Error).name !== "AbortError") {
-        setError((err as Error).message || "Unknown error");
-        setPhase("error");
-      }
-    } finally {
-      setRunning(false);
-    }
+  function loadAnalyses() {
+    fetch("/api/analyses").then((r) => r.json()).then((data: Analysis[]) => {
+      setAnalyses(data.filter((a) => !a.clientId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    }).catch(() => {});
   }
 
-  async function saveAnalysis() {
+  function handleStart() {
+    if (!handle.trim()) return;
+    setSaved(false);
+    setExpandedId(null);
+    startAudit(handle.trim(), lang);
+  }
+
+  async function saveAudit() {
     if (!report || !profile) return;
     const res = await fetch("/api/analyses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        clientId: clientId || undefined,
         instagramHandle: handle,
         lang,
         report,
@@ -150,25 +88,20 @@ function AnalysePageInner() {
     });
     if (res.ok) {
       setSaved(true);
-      const data = await fetch("/api/analyses").then((r) => r.json());
-      setAnalyses(data.sort((a: Analysis, b: Analysis) => b.createdAt.localeCompare(a.createdAt)));
+      clearAudit();
+      loadAnalyses();
     }
   }
 
-  function loadAnalysis(analysis: Analysis) {
-    setSelectedAnalysis(analysis);
-    setReport(analysis.report);
-    setHandle(analysis.instagramHandle);
-    setProfile({
-      username: analysis.instagramHandle,
-      followers: analysis.profileFollowers,
-      reelsCount30d: analysis.profileReels30d,
-      avgViews30d: analysis.profileAvgViews30d,
-      profilePicUrl: analysis.profilePicUrl,
-    });
-    setPhase("done");
-    setError("");
-    setSaved(true);
+  async function deleteAnalysis(analysisId: string) {
+    if (!confirm("Audit wirklich löschen?")) return;
+    await fetch(`/api/analyses?id=${analysisId}`, { method: "DELETE" });
+    if (expandedId === analysisId) setExpandedId(null);
+    loadAnalyses();
+  }
+
+  function toggleAnalysis(analysisId: string) {
+    setExpandedId((prev) => (prev === analysisId ? null : analysisId));
   }
 
   const phaseLabels: Record<string, string> = {
@@ -181,15 +114,15 @@ function AnalysePageInner() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Instagram Analyse</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Instagram Audit</h1>
         <p className="mt-1 text-sm text-ocean/70">
-          Analyse ein Instagram-Profil und erhalte einen detaillierten Audit-Report.
+          Analysiere ein Instagram-Profil und erhalte einen detaillierten Audit-Report.
         </p>
       </div>
 
       {/* Input */}
       <div className="glass rounded-2xl p-6 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-[1fr_200px_100px]">
+        <div className="grid gap-4 sm:grid-cols-[1fr_100px]">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-ocean/70">Instagram Handle</label>
             <div className="relative">
@@ -199,22 +132,9 @@ function AnalysePageInner() {
                 onChange={(e) => setHandle(e.target.value)}
                 placeholder="username"
                 className="pl-8 rounded-xl bg-warm-white border-ocean/10 focus:border-blush"
-                onKeyDown={(e) => e.key === "Enter" && !running && startAnalysis()}
+                onKeyDown={(e) => e.key === "Enter" && !running && handleStart()}
               />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-ocean/70">Client (optional)</label>
-            <select
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="h-10 w-full rounded-xl border border-ocean/10 bg-warm-white px-3 text-sm text-ocean focus:outline-none focus:border-blush"
-            >
-              <option value="">— Kein Client —</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.configName || c.name || c.id}</option>
-              ))}
-            </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-ocean/70">Sprache</label>
@@ -229,14 +149,14 @@ function AnalysePageInner() {
           </div>
         </div>
         <Button
-          onClick={startAnalysis}
+          onClick={handleStart}
           disabled={running || !handle.trim()}
           className="rounded-full bg-ocean hover:bg-ocean-light border-0 gap-2"
         >
           {running ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Analysiert…</>
+            <><Loader2 className="h-4 w-4 animate-spin" /> Audit läuft…</>
           ) : (
-            <><Search className="h-4 w-4" /> Analyse starten</>
+            <><Search className="h-4 w-4" /> Audit starten</>
           )}
         </Button>
       </div>
@@ -245,18 +165,16 @@ function AnalysePageInner() {
       {running && (
         <div className="rounded-2xl bg-gradient-to-r from-ocean to-ocean-light p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-            </div>
+            <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
             <div>
               <p className="text-sm font-medium text-white">{phaseLabels[phase] || phase}</p>
-              <p className="text-xs text-white/50">Dies kann bis zu 60 Sekunden dauern</p>
+              <p className="text-xs text-white/50">Du kannst in der Zwischenzeit andere Tabs nutzen</p>
             </div>
           </div>
           {profile && (
             <div className="flex items-center gap-4 rounded-xl bg-white/10 px-4 py-3">
               {profile.profilePicUrl && (
-                <img src={profile.profilePicUrl} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
+                <img src={`/api/proxy-image?url=${encodeURIComponent(profile.profilePicUrl)}`} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
               )}
               <div className="flex items-center gap-4 text-xs text-white/70">
                 <span className="font-medium text-white">@{profile.username}</span>
@@ -281,70 +199,86 @@ function AnalysePageInner() {
         <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-4 text-sm text-red-600">{error}</div>
       )}
 
-      {/* Report */}
-      {report && !running && (
+      {/* Unsaved new report */}
+      {unsavedReport && (
         <div className="space-y-4">
-          <AuditReport report={report} profile={profile} />
-
-          <div className="flex items-center gap-3 pt-2">
-            {!saved ? (
-              <Button onClick={saveAnalysis} className="rounded-full bg-ocean hover:bg-ocean-light border-0 gap-2">
-                <Save className="h-4 w-4" /> Analyse speichern
-              </Button>
-            ) : (
-              <span className="flex items-center gap-2 text-sm text-green-600">
-                <CheckCircle2 className="h-4 w-4" /> Gespeichert
-              </span>
-            )}
-            <Button
-              variant="ghost"
-              onClick={() => { setReport(""); setPhase(""); setProfile(null); setSelectedAnalysis(null); setSaved(false); }}
-              className="rounded-full gap-2 text-ocean/70 hover:text-ocean"
-            >
-              <RefreshCw className="h-4 w-4" /> Neue Analyse
-            </Button>
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-blush animate-pulse" />
+            <h2 className="text-sm font-semibold text-ocean">Neuer Audit — noch nicht gespeichert</h2>
           </div>
+          <AuditReport report={report} profile={profile} onSave={saveAudit} saved={saved} />
         </div>
       )}
 
-      {/* Past Analyses */}
-      {analyses.length > 0 && !report && !running && (
+      {/* Saved Audits (accordion) */}
+      {!running && (
         <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-ocean">Gespeicherte Analysen</h2>
-          <div className="space-y-2">
-            {analyses.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => loadAnalysis(a)}
-                className={`w-full text-left rounded-xl border px-5 py-4 transition-all ${
-                  selectedAnalysis?.id === a.id
-                    ? "bg-blush-light/60 border-blush/40"
-                    : "glass border-ocean/[0.06] hover:border-ocean/[0.15]"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {a.profilePicUrl && <img src={a.profilePicUrl} alt="" className="h-9 w-9 rounded-full object-cover" />}
-                    <div>
-                      <p className="text-sm font-medium text-ocean">@{a.instagramHandle}</p>
-                      <div className="flex items-center gap-3 text-[11px] text-ocean/60 mt-0.5">
-                        <span>{fmt(a.profileFollowers)} Follower</span>
-                        <span>{a.lang.toUpperCase()}</span>
-                        {a.clientId && (
-                          <span className="text-blush-dark">
-                            {clients.find((c) => c.id === a.clientId)?.configName || "Client"}
-                          </span>
-                        )}
+          {analyses.length > 0 ? (
+            <>
+              <h2 className="text-sm font-semibold text-ocean">Gespeicherte Audits</h2>
+              <div className="space-y-3">
+                {analyses.map((a) => {
+                  const isOpen = expandedId === a.id;
+                  return (
+                    <div key={a.id} className="rounded-2xl border border-ocean/[0.06] overflow-hidden transition-all">
+                      <div
+                        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-ocean/[0.02] transition-colors"
+                        onClick={() => toggleAnalysis(a.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          {a.profilePicUrl && (
+                            <img
+                              src={`/api/proxy-image?url=${encodeURIComponent(a.profilePicUrl)}`}
+                              alt=""
+                              className="h-9 w-9 rounded-full object-cover"
+                            />
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <CalendarDays className="h-3.5 w-3.5 text-ocean/40" />
+                              <span className="text-sm font-semibold text-ocean">
+                                {new Date(a.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-[11px] text-ocean/50 mt-0.5">
+                              <span>@{a.instagramHandle}</span>
+                              <span>{fmt(a.profileFollowers)} Follower</span>
+                              <span>{a.lang.toUpperCase()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteAnalysis(a.id); }}
+                            className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 transition-all"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                          <ChevronDown className={`h-4 w-4 text-ocean/40 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                        </div>
                       </div>
+
+                      {isOpen && (
+                        <div className="border-t border-ocean/[0.06] px-5 py-5">
+                          <AuditReport
+                            report={a.report}
+                            profile={{
+                              username: a.instagramHandle,
+                              followers: a.profileFollowers,
+                              reelsCount30d: a.profileReels30d,
+                              avgViews30d: a.profileAvgViews30d,
+                              profilePicUrl: a.profilePicUrl,
+                            }}
+                            saved
+                          />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <span className="text-[11px] text-ocean/40">
-                    {new Date(a.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
         </div>
       )}
     </div>

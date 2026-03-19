@@ -35,9 +35,9 @@ export async function DELETE(request: Request) {
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  const analyses = await readAnalyses();
-  const filtered = analyses.filter((a) => a.id !== id);
-  await writeAnalyses(filtered);
+  const { supabase } = await import("@/lib/supabase");
+  const { error } = await supabase.from("analyses").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }

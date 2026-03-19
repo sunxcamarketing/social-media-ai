@@ -95,7 +95,7 @@ function buildTrainingBlock(scripts: { format: string; textHook: string; visualH
     s.textHook && `Text Hook: ${s.textHook}`,
     s.visualHook && `Visual Hook: ${s.visualHook}`,
     s.audioHook && `Audio Hook: ${s.audioHook}`,
-    s.script && `Script: ${s.script.slice(0, 300)}${s.script.length > 300 ? "…" : ""}`,
+    s.script && `Script: ${s.script}`,
     s.cta && `CTA: ${s.cta}`,
   ].filter(Boolean).join("\n")).join("\n\n---\n\n");
 
@@ -251,13 +251,19 @@ Antworte NUR mit validem JSON:
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 2048,
+    max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
 
   const text = message.content[0].type === "text" ? message.content[0].text : "{}";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return NextResponse.json({ error: "AI did not return valid JSON" }, { status: 500 });
+
+  // Strip markdown code fences if present
+  const cleaned = text.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    console.error("Strategy generation: no JSON found in response:", text.slice(0, 500));
+    return NextResponse.json({ error: "AI did not return valid JSON" }, { status: 500 });
+  }
 
   let generated: {
     strategyGoal: string;
@@ -267,7 +273,8 @@ Antworte NUR mit validem JSON:
   };
   try {
     generated = JSON.parse(jsonMatch[0]);
-  } catch {
+  } catch (e) {
+    console.error("Strategy generation: JSON parse failed:", (e as Error).message, "\nRaw:", jsonMatch[0].slice(0, 500));
     return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
   }
 

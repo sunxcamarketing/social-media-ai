@@ -7,11 +7,14 @@ export interface ApifyReel {
   videoDuration?: number;
   ownerUsername: string;
   images: string[];
+  displayUrl?: string;
+  thumbnailSrc?: string;
   timestamp: string;
 }
 
 interface ApifyProfileResult {
   profilePicUrl: string;
+  profilePicUrlHD?: string;
   followersCount: number;
 }
 
@@ -52,7 +55,7 @@ export async function scrapeReels(
         isUserTaggedFeedURL: false,
         onlyPostsNewerThan: sinceDate,
         resultsLimit: maxVideos,
-        resultsType: "stories",
+        resultsType: "posts",
       }),
     }
   );
@@ -115,7 +118,7 @@ export async function scrapeCreatorStats(username: string): Promise<CreatorStats
 
   const profileData = await profileRes.json() as ApifyProfileResult[];
   const profile = profileData[0] || {};
-  const profilePicUrl = profile.profilePicUrl || "";
+  const profilePicUrl = profile.profilePicUrl || profile.profilePicUrlHD || "";
   const followers = profile.followersCount || 0;
 
   let recentReels: ApifyReel[] = [];

@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import type { Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
 import { usePipeline } from "@/context/pipeline-context";
+import { useAuditStatus } from "@/context/audit-context";
 import { useI18n } from "@/lib/i18n";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
@@ -51,17 +52,20 @@ export function AppSidebar() {
   const clientTabs = [
     { title: t("nav.context"),   href: "information", icon: BookOpen  },
     { title: t("nav.strategy"),  href: "strategy",    icon: BarChart2 },
-    { title: "Analyse",          href: "analyse",     icon: Search    },
+    { title: "Audit",             href: "analyse",     icon: Search    },
     { title: t("nav.posts"),     href: "scripts",     icon: FileText  },
     { title: t("nav.videos"),    href: "videos",      icon: Video     },
     { title: t("nav.creators"),  href: "creators",    icon: Users     },
   ];
 
-  const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen } = useGeneration();
-  const { running: pipelineRunning, progress: pipelineProgress } = usePipeline();
   const clientMatch = pathname.match(/^\/clients\/([^/]+)/);
   const activeClientId = clientMatch?.[1] ?? null;
   const activeTab = pathname.split("/")[3] ?? "information";
+
+  const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen } = useGeneration();
+  const { running: pipelineRunning, progress: pipelineProgress } = usePipeline();
+  const globalAuditStatus = useAuditStatus("global");
+  const clientAuditStatus = useAuditStatus(activeClientId ? `client-${activeClientId}` : "");
 
   useEffect(() => {
     fetch("/api/configs").then((r) => r.json()).then(setClients).catch(() => {});
@@ -205,7 +209,13 @@ export function AppSidebar() {
                 }`}
               >
                 <Search className="h-3.5 w-3.5 shrink-0" />
-                <span>Analyse</span>
+                <span className="flex-1">Audit</span>
+                {globalAuditStatus.running && (
+                  <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
+                )}
+                {globalAuditStatus.done && !globalAuditStatus.running && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                )}
               </Link>
             </div>
           </div>
@@ -260,6 +270,12 @@ export function AppSidebar() {
                           <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
                         )}
                         {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "done" && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                        )}
+                        {tab.href === "analyse" && clientAuditStatus.running && (
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
+                        )}
+                        {tab.href === "analyse" && clientAuditStatus.done && !clientAuditStatus.running && (
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                       </Link>

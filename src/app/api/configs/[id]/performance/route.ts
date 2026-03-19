@@ -90,7 +90,7 @@ export async function POST(
       url: r.url,
       views: r.videoPlayCount || 0,
       likes: r.likesCount || 0,
-      thumbnail: r.images?.[0] || "",
+      thumbnail: r.images?.[0] || r.displayUrl || r.thumbnailSrc || "",
       datePosted: r.timestamp.split("T")[0],
       isRecent: new Date(r.timestamp).getTime() >= cutoff30,
     }))
@@ -100,20 +100,28 @@ export async function POST(
   const top30Days = allVideos.filter((v) => v.isRecent).slice(0, 2);
   const topAllTime = allVideos.filter((v) => !v.isRecent).slice(0, 2);
 
-  async function analyzeOne(video: (typeof allVideos)[0]): Promise<VideoInsight> {
-    const resp = await fetch(video.videoUrl);
-    if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-    const buf = Buffer.from(await resp.arrayBuffer());
-    const mime = resp.headers.get("content-type") || "video/mp4";
-    const fileData = await uploadVideo(buf, mime);
-    const raw = await analyzeVideo(fileData.uri, fileData.mimeType, PERFORMANCE_PROMPT);
-    return { url: video.url, thumbnail: video.thumbnail, views: video.views, likes: video.likes, datePosted: video.datePosted, durationSeconds: 0, ...parseAnalysis(raw) };
+  async function analyzeOne(video: (typeof allVideos)[0]): Promise<VideoInsight | null> {
+    try {
+      const resp = await fetch(video.videoUrl, { signal: AbortSignal.timeout(30_000) });
+      if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+      const buf = Buffer.from(await resp.arrayBuffer());
+      const mime = resp.headers.get("content-type") || "video/mp4";
+      const fileData = await uploadVideo(buf, mime);
+      const raw = await analyzeVideo(fileData.uri, fileData.mimeType, PERFORMANCE_PROMPT);
+      return { url: video.url, thumbnail: video.thumbnail, views: video.views, likes: video.likes, datePosted: video.datePosted, durationSeconds: 0, ...parseAnalysis(raw) };
+    } catch (err) {
+      console.error(`Failed to analyze video ${video.url}:`, err instanceof Error ? err.message : err);
+      return null;
+    }
   }
 
-  const [top30Results, topAllResults] = await Promise.all([
+  const [top30Raw, topAllRaw] = await Promise.all([
     Promise.all(top30Days.map(analyzeOne)),
     Promise.all(topAllTime.map(analyzeOne)),
   ]);
+
+  const top30Results = top30Raw.filter((v): v is VideoInsight => v !== null);
+  const topAllResults = topAllRaw.filter((v): v is VideoInsight => v !== null);
 
   const insights: PerformanceInsights = {
     scrapedAt: new Date().toISOString().slice(0, 10),

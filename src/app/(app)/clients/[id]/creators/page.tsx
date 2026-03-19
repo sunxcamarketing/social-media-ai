@@ -289,7 +289,12 @@ export default function ClientCreatorsPage() {
       await fetch("/api/creators", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: canonicalUsername, category: client?.creatorsCategory || "" }),
+        body: JSON.stringify({
+          username: canonicalUsername,
+          category: client?.creatorsCategory || "",
+          profilePicUrl: (verifyData as Record<string, unknown>).profilePicUrl || "",
+          followers: (verifyData as Record<string, unknown>).followers || 0,
+        }),
       });
       setAddedUsernames(prev => new Set([...prev, canonicalUsername.toLowerCase()]));
       loadCreators();

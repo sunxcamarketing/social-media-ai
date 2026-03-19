@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AuditReport, type ProfileData } from "@/components/audit-report";
@@ -10,11 +10,12 @@ import {
   Users,
   Eye,
   Film,
-  RefreshCw,
+  ChevronDown,
   Trash2,
-  CheckCircle2,
+  CalendarDays,
 } from "lucide-react";
 import type { Config, Analysis } from "@/lib/types";
+import { useAudit } from "@/context/audit-context";
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -22,27 +23,33 @@ function fmt(n: number) {
   return String(n);
 }
 
-export default function ClientAnalysePage() {
+export default function ClientAuditPage() {
   const { id } = useParams<{ id: string }>();
   const [client, setClient] = useState<Config | null>(null);
   const [lang, setLang] = useState<"de" | "en">("de");
 
-  const [phase, setPhase] = useState<string>("");
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [report, setReport] = useState("");
-  const [error, setError] = useState("");
-  const [running, setRunning] = useState(false);
+  const { audit, startAudit, clearAudit } = useAudit(`client-${id}`);
 
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
-  const [justSaved, setJustSaved] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
-  const abortRef = useRef<AbortController | null>(null);
+  const running = audit?.running ?? false;
+  const phase = audit?.phase ?? "";
+  const profile = audit?.profile ?? null;
+  const report = audit?.report ?? "";
+  const error = audit?.error ?? "";
+  const unsavedReport = !!report && !running && !saved;
 
   useEffect(() => {
     fetch(`/api/configs/${id}`).then((r) => r.json()).then(setClient).catch(() => {});
     loadAnalyses();
   }, [id]);
+
+  // Reset saved state when a new audit completes
+  useEffect(() => {
+    if (report && !running) setSaved(false);
+  }, [report, running]);
 
   function loadAnalyses() {
     fetch("/api/analyses")
@@ -60,75 +67,17 @@ export default function ClientAnalysePage() {
     return raw.replace(/^@/, "").replace(/.*instagram\.com\/([^/?]+).*/, "$1").replace(/\/$/, "").trim();
   }
 
-  async function startAnalysis() {
+  function handleStart() {
     const handle = getHandle();
     if (!handle) return;
-
-    setRunning(true);
-    setPhase("scraping");
-    setProfile(null);
-    setReport("");
-    setError("");
-    setJustSaved(false);
-    setActiveAnalysisId(null);
-
-    abortRef.current = new AbortController();
-
-    try {
-      const res = await fetch("/api/analyse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instagramHandle: handle, lang }),
-        signal: abortRef.current.signal,
-      });
-
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("No response body");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = JSON.parse(line.slice(6));
-
-          if (data.phase === "profile_loaded") {
-            setProfile(data.profile);
-            setPhase("reels");
-          } else if (data.phase === "reels_loaded") {
-            setPhase("analyzing");
-          } else if (data.phase === "done") {
-            setReport(data.report);
-            setProfile(data.profile);
-            setPhase("done");
-            await autoSave(data.report, data.profile, handle);
-          } else if (data.phase === "error") {
-            setError(data.message);
-            setPhase("error");
-          } else if (data.phase) {
-            setPhase(data.phase);
-          }
-        }
-      }
-    } catch (err) {
-      if ((err as Error).name !== "AbortError") {
-        setError((err as Error).message || "Unknown error");
-        setPhase("error");
-      }
-    } finally {
-      setRunning(false);
-    }
+    setSaved(false);
+    setExpandedId(null);
+    startAudit(handle, lang);
   }
 
-  async function autoSave(reportText: string, profileData: ProfileData, handle: string) {
+  async function saveAudit() {
+    if (!report || !profile) return;
+    const handle = getHandle();
     const res = await fetch("/api/analyses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -136,44 +85,29 @@ export default function ClientAnalysePage() {
         clientId: id,
         instagramHandle: handle,
         lang,
-        report: reportText,
-        profileFollowers: profileData.followers,
-        profileReels30d: profileData.reelsCount30d,
-        profileAvgViews30d: profileData.avgViews30d,
-        profilePicUrl: profileData.profilePicUrl || "",
+        report,
+        profileFollowers: profile.followers,
+        profileReels30d: profile.reelsCount30d,
+        profileAvgViews30d: profile.avgViews30d,
+        profilePicUrl: profile.profilePicUrl || "",
       }),
     });
     if (res.ok) {
-      setJustSaved(true);
+      setSaved(true);
+      clearAudit();
       loadAnalyses();
     }
   }
 
   async function deleteAnalysis(analysisId: string) {
-    if (!confirm("Analyse wirklich löschen?")) return;
+    if (!confirm("Audit wirklich löschen?")) return;
     await fetch(`/api/analyses?id=${analysisId}`, { method: "DELETE" });
-    if (activeAnalysisId === analysisId) {
-      setReport("");
-      setProfile(null);
-      setActiveAnalysisId(null);
-      setPhase("");
-    }
+    if (expandedId === analysisId) setExpandedId(null);
     loadAnalyses();
   }
 
-  function viewAnalysis(analysis: Analysis) {
-    setActiveAnalysisId(analysis.id);
-    setReport(analysis.report);
-    setProfile({
-      username: analysis.instagramHandle,
-      followers: analysis.profileFollowers,
-      reelsCount30d: analysis.profileReels30d,
-      avgViews30d: analysis.profileAvgViews30d,
-      profilePicUrl: analysis.profilePicUrl,
-    });
-    setPhase("done");
-    setError("");
-    setJustSaved(true);
+  function toggleAnalysis(analysisId: string) {
+    setExpandedId((prev) => (prev === analysisId ? null : analysisId));
   }
 
   const handle = getHandle();
@@ -194,9 +128,9 @@ export default function ClientAnalysePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analyse</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Instagram Audit</h1>
           <p className="mt-1 text-sm text-ocean/70">
-            Instagram Audit für{" "}
+            Audit für{" "}
             <span className="font-medium text-ocean">{handle ? `@${handle}` : client.configName || client.name}</span>
           </p>
         </div>
@@ -210,14 +144,14 @@ export default function ClientAnalysePage() {
             <option value="en">English</option>
           </select>
           <Button
-            onClick={startAnalysis}
+            onClick={handleStart}
             disabled={running || !handle}
             className="rounded-full bg-ocean hover:bg-ocean-light border-0 gap-2 h-9 text-xs"
           >
             {running ? (
-              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analysiert…</>
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Audit läuft…</>
             ) : (
-              <><Search className="h-3.5 w-3.5" /> {analyses.length > 0 ? "Neue Analyse" : "Analyse starten"}</>
+              <><Search className="h-3.5 w-3.5" /> {analyses.length > 0 ? "Neuer Audit" : "Audit starten"}</>
             )}
           </Button>
         </div>
@@ -238,13 +172,13 @@ export default function ClientAnalysePage() {
             </div>
             <div>
               <p className="text-sm font-medium text-white">{phaseLabels[phase] || phase}</p>
-              <p className="text-xs text-white/50">Dies kann bis zu 60 Sekunden dauern</p>
+              <p className="text-xs text-white/50">Du kannst in der Zwischenzeit andere Tabs nutzen</p>
             </div>
           </div>
           {profile && (
             <div className="flex items-center gap-4 rounded-xl bg-white/10 px-4 py-3">
               {profile.profilePicUrl && (
-                <img src={profile.profilePicUrl} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
+                <img src={`/api/proxy-image?url=${encodeURIComponent(profile.profilePicUrl)}`} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
               )}
               <div className="flex items-center gap-4 text-xs text-white/70">
                 <span className="font-medium text-white">@{profile.username}</span>
@@ -254,7 +188,6 @@ export default function ClientAnalysePage() {
               </div>
             </div>
           )}
-          {/* Progress steps */}
           <div className="flex items-center gap-2 text-xs text-white/40">
             <span className={phase === "scraping" || phase === "reels" || phase === "analyzing" ? "text-white" : ""}>Scraping</span>
             <span>→</span>
@@ -270,73 +203,91 @@ export default function ClientAnalysePage() {
         <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-4 text-sm text-red-600">{error}</div>
       )}
 
-      {/* Report */}
-      {report && !running && (
+      {/* Unsaved new report */}
+      {unsavedReport && (
         <div className="space-y-4">
-          {justSaved && (
-            <div className="flex items-center gap-2 text-xs text-green-600">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Automatisch gespeichert
-            </div>
-          )}
-
-          <AuditReport report={report} profile={profile} />
-
-          <div className="pt-2">
-            <Button
-              variant="ghost"
-              onClick={() => { setReport(""); setPhase(""); setProfile(null); setActiveAnalysisId(null); setJustSaved(false); }}
-              className="rounded-full gap-2 text-ocean/70 hover:text-ocean text-xs"
-            >
-              <RefreshCw className="h-3.5 w-3.5" /> Zurück zur Übersicht
-            </Button>
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-blush animate-pulse" />
+            <h2 className="text-sm font-semibold text-ocean">Neuer Audit — noch nicht gespeichert</h2>
           </div>
+          <AuditReport report={report} profile={profile} onSave={saveAudit} saved={saved} />
         </div>
       )}
 
-      {/* Past Analyses */}
-      {!report && !running && (
+      {/* Saved Audits (accordion) */}
+      {!running && (
         <div className="space-y-4">
           {analyses.length > 0 ? (
             <>
-              <h2 className="text-sm font-semibold text-ocean">Bisherige Analysen</h2>
-              <div className="space-y-2">
-                {analyses.map((a) => (
-                  <div key={a.id} className="glass rounded-xl border border-ocean/[0.06] hover:border-ocean/[0.15] transition-all">
-                    <button onClick={() => viewAnalysis(a)} className="w-full text-left px-5 py-4">
-                      <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ocean">Gespeicherte Audits</h2>
+              <div className="space-y-3">
+                {analyses.map((a) => {
+                  const isOpen = expandedId === a.id;
+                  return (
+                    <div key={a.id} className="rounded-2xl border border-ocean/[0.06] overflow-hidden transition-all">
+                      <div
+                        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-ocean/[0.02] transition-colors"
+                        onClick={() => toggleAnalysis(a.id)}
+                      >
                         <div className="flex items-center gap-3">
-                          {a.profilePicUrl && <img src={a.profilePicUrl} alt="" className="h-9 w-9 rounded-full object-cover" />}
+                          {a.profilePicUrl && (
+                            <img
+                              src={`/api/proxy-image?url=${encodeURIComponent(a.profilePicUrl)}`}
+                              alt=""
+                              className="h-9 w-9 rounded-full object-cover"
+                            />
+                          )}
                           <div>
-                            <p className="text-sm font-medium text-ocean">@{a.instagramHandle}</p>
+                            <div className="flex items-center gap-2">
+                              <CalendarDays className="h-3.5 w-3.5 text-ocean/40" />
+                              <span className="text-sm font-semibold text-ocean">
+                                {new Date(a.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-3 text-[11px] text-ocean/50 mt-0.5">
+                              <span>@{a.instagramHandle}</span>
                               <span>{fmt(a.profileFollowers)} Follower</span>
                               <span>{a.profileReels30d} Reels</span>
                               <span>{fmt(a.profileAvgViews30d)} Ø Views</span>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] text-ocean/40">
-                            {new Date(a.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                          </span>
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); deleteAnalysis(a.id); }}
                             className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 transition-all"
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
+                          <ChevronDown className={`h-4 w-4 text-ocean/40 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                         </div>
                       </div>
-                    </button>
-                  </div>
-                ))}
+
+                      {isOpen && (
+                        <div className="border-t border-ocean/[0.06] px-5 py-5">
+                          <AuditReport
+                            report={a.report}
+                            profile={{
+                              username: a.instagramHandle,
+                              followers: a.profileFollowers,
+                              reelsCount30d: a.profileReels30d,
+                              avgViews30d: a.profileAvgViews30d,
+                              profilePicUrl: a.profilePicUrl,
+                            }}
+                            saved
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
-          ) : handle ? (
+          ) : !unsavedReport && handle ? (
             <div className="text-center py-12">
               <Search className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
-              <p className="text-sm text-ocean/70">Noch keine Analyse vorhanden.</p>
-              <p className="text-xs text-ocean/50 mt-1">Starte eine Analyse um einen detaillierten Audit-Report zu erhalten.</p>
+              <p className="text-sm text-ocean/70">Noch kein Audit vorhanden.</p>
+              <p className="text-xs text-ocean/50 mt-1">Starte einen Audit um einen detaillierten Report zu erhalten.</p>
             </div>
           ) : null}
         </div>

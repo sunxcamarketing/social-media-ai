@@ -19,7 +19,8 @@ function buildFullReportPrompt(profile: {
       const engagement = r.videoPlayCount > 0
         ? (((r.likesCount || 0) + (r.commentsCount || 0)) / r.videoPlayCount * 100).toFixed(2)
         : "0";
-      return `${i + 1}. Views: ${r.videoPlayCount?.toLocaleString() || 0} | Likes: ${r.likesCount?.toLocaleString() || 0} | Comments: ${r.commentsCount || 0} | Duration: ${r.videoDuration || "?"}s | Engagement: ${engagement}% | Date: ${r.timestamp?.slice(0, 10) || "?"}`;
+      const reelUrl = r.url || "";
+      return `Reel ${i + 1}: Views: ${r.videoPlayCount?.toLocaleString() || 0} | Likes: ${r.likesCount?.toLocaleString() || 0} | Comments: ${r.commentsCount || 0} | Duration: ${r.videoDuration || "?"}s | Engagement: ${engagement}% | Date: ${r.timestamp?.slice(0, 10) || "?"}${reelUrl ? ` | URL: ${reelUrl}` : ""}`;
     })
     .join("\n");
 
@@ -68,7 +69,12 @@ Empfehle eine konkrete Posting-Strategie:
 - Hook-Strategie basierend auf den Top-Videos
 
 ## Wachstumsprognose
-Realistisches Potenzial bei konsequenter Umsetzung der Empfehlungen (3-6 Monate Horizont). Nenne konkrete Zielzahlen.`
+Kompakte, realistische Prognose bei konsequenter Umsetzung. Maximal 5 Bullet Points:
+- **Follower-Ziel (6 Monate):** konkreter Zielbereich mit 1 Satz Begründung
+- **View-Ziel:** erwartete Ø Views mit 1 Satz Begründung
+- **Wichtigster Hebel:** der eine Faktor der am meisten Impact haben wird (2-3 Sätze)
+- **Kurzfristig (Monat 1-2):** was zuerst passiert
+- **Mittelfristig (Monat 3-6):** was danach kommt`
   : `Create a professional, detailed Instagram audit report in English. Structure it exactly like this:
 
 ## Profile Overview
@@ -99,9 +105,36 @@ Recommend a specific posting strategy:
 - Hook strategy based on top videos
 
 ## Growth Forecast
-Realistic potential with consistent implementation (3-6 month horizon). Name specific target numbers.`}
+Compact, realistic forecast with consistent implementation. Maximum 5 bullet points:
+- **Follower target (6 months):** specific target range with 1 sentence reasoning
+- **View target:** expected average views with 1 sentence reasoning
+- **Biggest lever:** the one factor with most impact (2-3 sentences)
+- **Short-term (month 1-2):** what happens first
+- **Mid-term (month 3-6):** what comes next`}
 
-${isDE ? "Schreibe klar, direkt und professionell. Nutze die echten Zahlen aus den Daten. Sei ausführlich und detailliert." : "Write clearly, directly, and professionally. Use actual numbers. Be thorough and detailed."}`;
+${isDE
+  ? `WICHTIGE FORMATIERUNGSREGELN:
+- Schreibe klar, direkt und auf den Punkt
+- Jede Section beginnt mit 1-2 Sätzen Zusammenfassung, dann Details
+- Nutze **Fettdruck** für alle wichtigen Zahlen und Kernaussagen — der Leser soll beim Überfliegen sofort die Key Facts sehen
+- Verwende Bullet Points (nicht Tabellen) um Daten darzustellen
+- Jeder Bullet Point: 1-2 Sätze, beginnt mit dem **wichtigsten Punkt fett**
+- Nutze ### Zwischenüberschriften um längere Sections zu gliedern (Content-Analyse, Sofort-Maßnahmen)
+- Absätze mit Leerzeilen dazwischen trennen
+- KEINE Markdown-Tabellen verwenden
+- Qualität > Quantität: lieber 3 starke Punkte als 6 schwache
+- Wenn du ein bestimmtes Reel erwähnst, verlinke es als Markdown-Link: [Reel 3](URL). Die URLs findest du in den Reel-Daten oben.`
+  : `IMPORTANT FORMATTING RULES:
+- Write clearly, directly, and to the point
+- Each section starts with 1-2 summary sentences, then details
+- Use **bold** for all key numbers and core statements — the reader should see key facts when scanning
+- Use bullet points (not tables) to present data
+- Each bullet point: 1-2 sentences, starts with the **most important point in bold**
+- Use ### sub-headers to break up longer sections (Content Analysis, Action Items)
+- Separate paragraphs with blank lines
+- DO NOT use markdown tables
+- Quality > quantity: 3 strong points beat 6 weak ones
+- When referencing a specific reel, link it as a markdown link: [Reel 3](URL). The URLs are in the reel data above.`}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -163,7 +196,7 @@ export async function POST(req: NextRequest) {
 
         const message = await client.messages.create({
           model: "claude-sonnet-4-6",
-          max_tokens: 4096,
+          max_tokens: 8192,
           messages: [{ role: "user", content: prompt }],
         });
 
