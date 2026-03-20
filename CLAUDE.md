@@ -48,16 +48,29 @@ npm run dev
 6. **Generate** — Send analysis + brand context to Claude for adapted video concepts
 7. **Save** — Append results to `data/videos.csv`, viewable in the Videos page with thumbnails
 
-### Script Generation Pipeline (Weekly)
+### Strategy Generation Pipeline — Multi-Step SSE Pipeline
 
-1. **Load All Context** — Client profile, brand positioning, strategy (pillars + weekly schedule), dream customer, provider identity
-2. **Load Audit Report** — Most recent Instagram audit from `data/analyses.csv` (strengths, weaknesses, optimal video length, content patterns, sofort-massnahmen)
-3. **Load Performance Data** — Own top videos (with hooks, topics, whyItWorked) + competitor top videos
-4. **Load Voice Training** — Client-specific transcript examples for tone matching
-5. **Generate Full Week** — Single Claude call produces N scripts (one per active day) with strategic reasoning
-6. **Review & Save** — User reviews generated scripts, saves individually or all at once
+1. **Load Context** — Client profile, audit, performance, competitors, voice profile (no data truncation)
+2. **Data Analysis & Goal** — Single Claude call analyzing all data, extracting structured insights, determining reach/trust/revenue goal
+3. **Strategy Creation** — Single Claude call creating 3-5 content pillars with 4-6 structured video ideas each + weekly plan
+4. **Strategy Review** — Single Claude call checking consistency, voice-format match, subtopic quality. Applies corrections.
+5. **Stream to User** — SSE events show real-time progress: analysis → strategy → review
 
-Key endpoint: `POST /api/configs/[id]/generate-week-scripts`
+Key endpoint: `POST /api/configs/[id]/generate-strategy` (SSE stream)
+Prompts: `src/lib/prompts/strategy-analysis.ts`, `strategy-creation.ts`, `strategy-review.ts`
+
+### Script Generation Pipeline (Weekly) — Multi-Step SSE Pipeline
+
+1. **Load Context** — Client profile, brand positioning, strategy, audit report, performance data, competitor videos
+2. **Voice Profile** — Extract/cache structured voice profile from training transcripts (tone, energy, favorite words, sentence patterns)
+3. **Topic Selection** — Focused Claude call selecting N strategic topics based on audit + performance data only
+4. **Hook Generation** — N parallel Claude calls, each producing 3 hook options and selecting the best (focused on first 3 seconds only)
+5. **Body Writing** — N parallel Claude calls, each writing body + CTA with voice profile matching (no audit/competitor context — just voice + brand + topic)
+6. **Quality Review** — Single Claude call reviewing all scripts for AI language, voice match, and week coherence. Applies corrections.
+7. **Stream to User** — SSE events show real-time progress: steps completing, scripts appearing one by one
+
+Key endpoint: `POST /api/configs/[id]/generate-week-scripts` (SSE stream)
+Voice profile: `POST /api/configs/[id]/generate-voice-profile`
 
 ### Two Customizable Prompts Per Config
 

@@ -9,6 +9,18 @@ export { BODY_RULES, CTA_RULES, CONCRETENESS_RULES, VARIETY_RULES, TITLE_RULES, 
 export { WEEK_COHERENCE_RULES, REASONING_RULES, AUDIT_USAGE_RULES, TOPIC_SPECIFICITY_RULES } from "./scripting";
 export type { StrategyPromptContext, StrategyOutput } from "./strategy-generation";
 
+// Multi-step strategy pipeline prompts
+export { STRATEGY_ANALYSIS_SYSTEM, STRATEGY_ANALYSIS_TOOL } from "./strategy-analysis";
+export { strategyCreationSystemPrompt, STRATEGY_CREATION_TOOL } from "./strategy-creation";
+export { STRATEGY_REVIEW_SYSTEM, STRATEGY_REVIEW_TOOL } from "./strategy-review";
+
+// Multi-step pipeline prompts
+export { VOICE_PROFILE_SYSTEM, VOICE_PROFILE_TOOL } from "./voice-profile";
+export { topicSelectionSystemPrompt, TOPIC_SELECTION_TOOL } from "./topic-selection";
+export { HOOK_GENERATION_SYSTEM, HOOK_GENERATION_TOOL } from "./hook-generation";
+export { bodyWritingSystemPrompt, BODY_WRITING_TOOL } from "./body-writing";
+export { QUALITY_REVIEW_SYSTEM, QUALITY_REVIEW_TOOL } from "./quality-review";
+
 import { LANGUAGE_RULES, LENGTH_RULES } from "./language";
 import { HOOK_RULES, HOOK_PATTERNS } from "./hooks";
 import { BODY_RULES, CTA_RULES, CONCRETENESS_RULES, VARIETY_RULES, TITLE_RULES, ANTI_PATTERNS } from "./quality";

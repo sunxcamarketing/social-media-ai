@@ -27,8 +27,13 @@ import {
   FileText,
   ArrowRight,
   CalendarDays,
+  Loader2,
+  BarChart3,
+  Lightbulb,
+  Shield,
+  CheckCircle2,
+  Circle,
 } from "lucide-react";
-import { Loader2 } from "lucide-react";
 import type { Config } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
@@ -60,8 +65,11 @@ const TYPE_COLORS: Record<string, string> = {
   "Promotion / Offer":         "bg-blush/20 text-blush-dark border-blush/40",
 };
 
-interface Pillar { name: string; subTopics: string; }
-interface DaySlot { type: string; format: string; reason?: string; }
+interface StructuredSubTopic { title: string; angle: string; }
+interface Pillar { name: string; why?: string; subTopics: string | StructuredSubTopic[]; }
+// Edit form uses string-only subTopics
+interface PillarForm { name: string; subTopics: string; }
+interface DaySlot { type: string; format: string; pillar?: string; reason?: string; }
 type WeeklyStructure = Record<string, DaySlot>;
 
 function parsePillars(raw: string): Pillar[] {
@@ -155,7 +163,7 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
 
 interface StrategyForm {
   strategyGoal: string;
-  pillars: Pillar[];
+  pillars: PillarForm[];
   weekly: WeeklyStructure;
 }
 
@@ -171,14 +179,14 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
 
   useEffect(() => { if (open) setForm(initial); }, [open, initial]);
 
-  const setPillar = (i: number, field: keyof Pillar, val: string) => {
+  const setPillar = (i: number, field: keyof PillarForm, val: string) => {
     const next = [...form.pillars];
     next[i] = { ...next[i], [field]: val };
     setForm({ ...form, pillars: next });
   };
   const addPillar = () => {
     if (form.pillars.length >= 5) return;
-    setForm({ ...form, pillars: [...form.pillars, { name: "", subTopics: "" }] });
+    setForm({ ...form, pillars: [...form.pillars, { name: "", subTopics: "" } as PillarForm] });
   };
   const removePillar = (i: number) => setForm({ ...form, pillars: form.pillars.filter((_, idx) => idx !== i) });
   const setDay = (day: string, field: keyof DaySlot, val: string) =>
@@ -281,6 +289,110 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
   );
 }
 
+// ── Strategy Pipeline Progress ───────────────────────────────────────────────
+
+type StrategyPipelineStep = "context" | "analysis" | "strategy" | "review" | "done";
+
+const STRATEGY_PIPELINE_STEPS: { key: StrategyPipelineStep; label: string; icon: React.ElementType }[] = [
+  { key: "context", label: "Daten laden", icon: FileText },
+  { key: "analysis", label: "Analyse & Ziel", icon: BarChart3 },
+  { key: "strategy", label: "Pillars & Wochenplan", icon: Lightbulb },
+  { key: "review", label: "Qualitätsprüfung", icon: Shield },
+];
+
+function StrategyPipelineProgress({
+  currentStep,
+  streamedGoal,
+  streamedGoalReasoning,
+  insightCount,
+  pillarNames,
+  reviewIssueCount,
+  assessment,
+}: {
+  currentStep: StrategyPipelineStep | null;
+  streamedGoal: string | null;
+  streamedGoalReasoning: string | null;
+  insightCount: number;
+  pillarNames: string[];
+  reviewIssueCount: number;
+  assessment: string;
+}) {
+  const stepIndex = currentStep
+    ? STRATEGY_PIPELINE_STEPS.findIndex(s => s.key === currentStep)
+    : -1;
+  const isDone = currentStep === "done";
+
+  return (
+    <div className="space-y-3">
+      {STRATEGY_PIPELINE_STEPS.map((step, i) => {
+        const isComplete = isDone || i < stepIndex;
+        const isCurrent = !isDone && i === stepIndex;
+        const Icon = step.icon;
+
+        return (
+          <div key={step.key} className="flex items-start gap-3">
+            <div className="shrink-0 mt-0.5">
+              {isComplete ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              ) : isCurrent ? (
+                <Loader2 className="h-4 w-4 text-blush-dark animate-spin" />
+              ) : (
+                <Circle className="h-4 w-4 text-ocean/20" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Icon className={`h-3.5 w-3.5 ${isComplete ? "text-green-500" : isCurrent ? "text-blush-dark" : "text-ocean/30"}`} />
+                <span className={`text-sm ${isComplete ? "text-ocean" : isCurrent ? "text-ocean font-medium" : "text-ocean/40"}`}>
+                  {step.label}
+                  {step.key === "analysis" && isComplete && insightCount > 0 && (
+                    <span className="ml-1.5 text-[10px] text-green-600">({insightCount} Erkenntnisse)</span>
+                  )}
+                  {step.key === "strategy" && isComplete && pillarNames.length > 0 && (
+                    <span className="ml-1.5 text-[10px] text-green-600">({pillarNames.length} Pillars)</span>
+                  )}
+                  {step.key === "review" && isComplete && (
+                    <span className="ml-1.5 text-[10px] text-green-600">
+                      ({reviewIssueCount === 0 ? "alles gut" : `${reviewIssueCount} Korrekturen`})
+                    </span>
+                  )}
+                </span>
+              </div>
+              {/* Show goal after analysis completes */}
+              {step.key === "analysis" && isComplete && streamedGoal && (
+                <div className="mt-1.5 ml-5">
+                  <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-medium border ${
+                    GOAL_LABELS[streamedGoal]?.color || "bg-ocean/5 text-ocean border-ocean/10"
+                  }`}>
+                    Ziel: {GOAL_LABELS[streamedGoal]?.label || streamedGoal}
+                  </span>
+                  {streamedGoalReasoning && (
+                    <p className="text-[11px] text-ocean/70 mt-1 leading-relaxed">{streamedGoalReasoning}</p>
+                  )}
+                </div>
+              )}
+              {/* Show pillar names after strategy completes */}
+              {step.key === "strategy" && isComplete && pillarNames.length > 0 && (
+                <div className="mt-1.5 ml-5 flex flex-wrap gap-1">
+                  {pillarNames.map((name, pi) => (
+                    <span key={pi} className="inline-flex items-center rounded-lg bg-blush/20 border border-blush/40 px-2 py-0.5 text-[10px] text-blush-dark">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Show assessment after review */}
+              {step.key === "review" && isComplete && assessment && (
+                <p className="mt-1.5 ml-5 text-[11px] text-ocean/70 leading-relaxed">{assessment}</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface StrategyMeta {
   contentTypeCount: number;
   formatCount: number;
@@ -302,13 +414,21 @@ export default function ClientStrategyPage() {
     allFormats: BUILT_IN_FORMATS,
   });
 
-  const { strategyGen, startStrategyGeneration, clearStrategyGen, analysisGen, startAnalysis, clearAnalysisGen } = useGeneration();
-  const strategyState = strategyGen.get(id);
+  const { analysisGen, startAnalysis, clearAnalysisGen } = useGeneration();
   const analysisState = analysisGen.get(id);
-  const generating = strategyState?.status === "running";
   const analyzing = analysisState?.status === "running";
-  const generateError = strategyState?.status === "error" ? (strategyState.error ?? "Generation failed") : null;
   const analyzeError = analysisState?.status === "error" ? (analysisState.error ?? "Analysis failed") : null;
+
+  // SSE pipeline state
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [pipelineStep, setPipelineStep] = useState<StrategyPipelineStep | null>(null);
+  const [streamedGoal, setStreamedGoal] = useState<string | null>(null);
+  const [streamedGoalReasoning, setStreamedGoalReasoning] = useState<string | null>(null);
+  const [insightCount, setInsightCount] = useState(0);
+  const [pillarNames, setPillarNames] = useState<string[]>([]);
+  const [reviewIssueCount, setReviewIssueCount] = useState(0);
+  const [reviewAssessment, setReviewAssessment] = useState("");
 
   const loadClient = () =>
     fetch(`/api/configs/${id}`).then((r) => r.json() as Promise<Config>);
@@ -316,13 +436,6 @@ export default function ClientStrategyPage() {
   useEffect(() => { loadClient().then(setClient); }, [id]);
 
   // Reload client data when background tasks complete
-  useEffect(() => {
-    if (strategyState?.status === "done") {
-      loadClient().then(setClient);
-      clearStrategyGen(id);
-    }
-  }, [strategyState?.status]);
-
   useEffect(() => {
     if (analysisState?.status === "done") {
       loadClient().then(setClient);
@@ -349,7 +462,71 @@ export default function ClientStrategyPage() {
   }, []);
 
   const runAnalysis = () => { startAnalysis(id); };
-  const generateStrategy = () => { startStrategyGeneration(id); };
+
+  const generateStrategy = async () => {
+    setGenerating(true);
+    setGenerateError(null);
+    setPipelineStep("context");
+    setStreamedGoal(null);
+    setStreamedGoalReasoning(null);
+    setInsightCount(0);
+    setPillarNames([]);
+    setReviewIssueCount(0);
+    setReviewAssessment("");
+
+    try {
+      const res = await fetch(`/api/configs/${id}/generate-strategy`, { method: "POST" });
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No response stream");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          let data: Record<string, unknown>;
+          try { data = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (data.step === "error") {
+            setGenerateError(String(data.message || "Unbekannter Fehler"));
+            setGenerating(false);
+            return;
+          }
+
+          if (data.step === "context" && data.status === "done") {
+            setPipelineStep("analysis");
+          } else if (data.step === "analysis" && data.status === "done") {
+            setPipelineStep("strategy");
+            setStreamedGoal(data.goal as string);
+            setStreamedGoalReasoning(data.goalReasoning as string);
+            setInsightCount(data.insightCount as number || 0);
+          } else if (data.step === "strategy" && data.status === "done") {
+            setPipelineStep("review");
+            setPillarNames((data.pillars as string[]) || []);
+          } else if (data.step === "review" && data.status === "done") {
+            setReviewIssueCount(data.issueCount as number || 0);
+            setReviewAssessment(data.assessment as string || "");
+          } else if (data.step === "done") {
+            setPipelineStep("done");
+            // Reload client data with new strategy
+            loadClient().then(setClient);
+          }
+        }
+      }
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : "Fehler bei der Generierung");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const saveStrategy = async (form: StrategyForm) => {
     if (!client) return;
@@ -382,7 +559,12 @@ export default function ClientStrategyPage() {
 
   const strategyInitial: StrategyForm = {
     strategyGoal: client.strategyGoal || "",
-    pillars: pillars.length > 0 ? pillars : [{ name: "", subTopics: "" }],
+    pillars: pillars.length > 0 ? pillars.map(p => ({
+      ...p,
+      subTopics: Array.isArray(p.subTopics)
+        ? p.subTopics.map((st: StructuredSubTopic) => st.title).join(", ")
+        : p.subTopics,
+    })) : [{ name: "", subTopics: "" }],
     weekly: Object.fromEntries(activeDays.map((d) => [d, weekly[d] || { type: "", format: "" }])),
   };
 
@@ -570,19 +752,17 @@ export default function ClientStrategyPage() {
             {generateError}
           </div>
         )}
-        {generating && (
-          <div className="rounded-xl bg-blush/10 border border-blush/40 px-4 py-3 space-y-1">
-            <p className="text-sm text-ocean">{t("strategy.aiGenerating")}</p>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {insights && (
-                <span className="text-[10px] bg-green-50 text-green-600 border border-green-200 rounded-full px-2 py-0.5">Performance-Daten</span>
-              )}
-              {meta.trainingCount > 0 && (
-                <span className="text-[10px] bg-blush/20 text-blush-dark border border-blush/40 rounded-full px-2 py-0.5">{meta.trainingCount} Training Examples</span>
-              )}
-              <span className="text-[10px] bg-ocean/5 text-ocean/70 border border-ocean/10 rounded-full px-2 py-0.5">Client-Profil</span>
-              <span className="text-[10px] bg-blue-50 text-blue-500 border border-blue-200 rounded-full px-2 py-0.5">Audit + Competitor</span>
-            </div>
+        {generating && pipelineStep && (
+          <div className="rounded-xl bg-blush/10 border border-blush/40 px-5 py-4">
+            <StrategyPipelineProgress
+              currentStep={pipelineStep}
+              streamedGoal={streamedGoal}
+              streamedGoalReasoning={streamedGoalReasoning}
+              insightCount={insightCount}
+              pillarNames={pillarNames}
+              reviewIssueCount={reviewIssueCount}
+              assessment={reviewAssessment}
+            />
           </div>
         )}
 
@@ -636,8 +816,25 @@ export default function ClientStrategyPage() {
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blush/30 text-[10px] font-bold text-blush-dark">{i + 1}</span>
                         <p className="text-sm font-medium">{pillar.name}</p>
                       </div>
+                      {pillar.why && (
+                        <p className="text-[11px] text-ocean/70 mt-1 pl-7 italic">{pillar.why}</p>
+                      )}
                       {pillar.subTopics && (
-                        <p className="text-xs text-ocean mt-2 leading-relaxed pl-7">{pillar.subTopics}</p>
+                        Array.isArray(pillar.subTopics) ? (
+                          <div className="mt-2 pl-7 space-y-1.5">
+                            {pillar.subTopics.map((st: StructuredSubTopic, si: number) => (
+                              <div key={si} className="flex items-start gap-1.5">
+                                <span className="text-ocean/30 text-[10px] mt-0.5">•</span>
+                                <div>
+                                  <p className="text-xs text-ocean font-medium leading-snug">{st.title}</p>
+                                  {st.angle && <p className="text-[10px] text-ocean/60 leading-snug">{st.angle}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-ocean mt-2 leading-relaxed pl-7">{pillar.subTopics}</p>
+                        )
                       )}
                     </div>
                   ))}
