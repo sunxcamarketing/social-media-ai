@@ -2,15 +2,16 @@
 
 ## Your Role
 
-Aysun — founder and operator. Builds the systems, serves clients, and directs the AI-assisted workflow. Responsible for system design, client delivery, and content strategy.
+Aysun — founder of Sun x ca, Social Media Managerin und Strategin. Helps German-speaking entrepreneurs, creators, and personal brands scale their profiles, build communities, find customers, and monetize through social media. Based in Germany and Dubai, serving clients worldwide.
 
 ## Key Responsibilities
 
-- Building and maintaining the viral content analysis pipeline
+- Social media management and content strategy for clients
+- Teaching profile scaling, monetization, and organic growth
+- Building and maintaining the AI-powered content pipeline
 - Configuring analysis prompts and concept generation prompts per client
 - Managing competitor/creator lists and configurations
-- Delivering viral video concepts to clients
 
 ## How This Workspace Helps
 
-This workspace is where the code-based version of the Million Dollar Virality System is being built. Claude assists with architecture decisions, implementation, debugging, and iterating on the system.
+This workspace is where Sun x ca's AI tools are built — the virality pipeline, strategy generator, script writer, and audit system. Claude assists with architecture decisions, implementation, debugging, and iterating on the system.

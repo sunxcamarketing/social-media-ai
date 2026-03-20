@@ -69,6 +69,23 @@ async function getInstagramVideoUrl(postUrl: string): Promise<string> {
   return videoUrl;
 }
 
+async function getTikTokVideoUrl(postUrl: string): Promise<string> {
+  const res = await fetch(`https://tikwm.com/api/?url=${encodeURIComponent(postUrl)}`, {
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) throw new Error(`TikTok-Video-Extraktion fehlgeschlagen: ${res.status}`);
+  const data = await res.json() as { code: number; msg: string; data?: { play?: string; hdplay?: string } };
+
+  if (data.code !== 0 || !data.data) {
+    throw new Error(`TikTok-Video konnte nicht extrahiert werden: ${data.msg || "Unbekannter Fehler"}`);
+  }
+
+  const videoUrl = data.data.hdplay || data.data.play;
+  if (!videoUrl) throw new Error("Kein Video in diesem TikTok-Post gefunden.");
+  return videoUrl;
+}
+
 async function downloadVideoBuffer(videoUrl: string): Promise<{ buffer: Buffer; mimeType: string }> {
   const res = await fetch(videoUrl, {
     headers: {
@@ -106,9 +123,8 @@ export async function POST(request: Request) {
       transcript = await analyzeVideo(uri, uploadedMime, TRANSCRIBE_PROMPT, 2);
 
     } else if (platform === "tiktok") {
-      // TikTok: try direct download from the CDN URL embedded in the page
-      // Fall back to error with hint if it doesn't work
-      const { buffer, mimeType } = await downloadVideoBuffer(url);
+      const videoUrl = await getTikTokVideoUrl(url);
+      const { buffer, mimeType } = await downloadVideoBuffer(videoUrl);
       const { uri, mimeType: uploadedMime } = await uploadVideo(buffer, mimeType);
       transcript = await analyzeVideo(uri, uploadedMime, TRANSCRIBE_PROMPT, 2);
 
