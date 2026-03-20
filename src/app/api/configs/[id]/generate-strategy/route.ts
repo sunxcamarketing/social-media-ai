@@ -319,9 +319,13 @@ Erstelle 3-5 Content Pillars und einen Wochenplan für ${postsPerWeek}×/Woche (
           return;
         }
 
-        let creationResult = creationTu.input as {
-          pillars: Array<{ name: string; why: string; subTopics: Array<{ title: string; angle: string }> }>;
-          weekly: Record<string, { type: string; format: string; pillar: string; reason: string }>;
+        const creationRaw = creationTu.input as {
+          pillars?: Array<{ name: string; why: string; subTopics: Array<{ title: string; angle: string }> }>;
+          weekly?: Record<string, { type: string; format: string; pillar: string; reason: string }>;
+        };
+        let creationResult = {
+          pillars: creationRaw.pillars || [],
+          weekly: creationRaw.weekly || {} as Record<string, { type: string; format: string; pillar: string; reason: string }>,
         };
 
         sendEvent(controller, {
@@ -386,10 +390,10 @@ Prüfe diese Strategie.`;
             overallAssessment = review.overallAssessment || "";
 
             // Apply revisions if provided
-            if (review.revisedPillars && review.revisedPillars.length > 0) {
+            if (review.revisedPillars && Array.isArray(review.revisedPillars) && review.revisedPillars.length > 0) {
               creationResult.pillars = review.revisedPillars;
             }
-            if (review.revisedWeekly && Object.keys(review.revisedWeekly).length > 0) {
+            if (review.revisedWeekly && typeof review.revisedWeekly === "object" && Object.keys(review.revisedWeekly).length > 0) {
               creationResult.weekly = review.revisedWeekly;
             }
           }

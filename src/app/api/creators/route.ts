@@ -27,30 +27,31 @@ export async function POST(request: Request) {
     lastScrapedAt: "",
   };
 
-  // Scrape stats in the background — save immediately, then update
   creators.push(newCreator);
   await writeCreators(creators);
 
-  // Try to scrape stats (non-blocking for the response)
-  try {
-    const stats = await scrapeCreatorStats(body.username);
-    const updated = await readCreators();
-    const idx = updated.findIndex((c) => c.id === newCreator.id);
-    if (idx !== -1) {
-      updated[idx] = {
-        ...updated[idx],
-        profilePicUrl: stats.profilePicUrl,
-        followers: stats.followers,
-        reelsCount30d: stats.reelsCount30d,
-        avgViews30d: stats.avgViews30d,
-        lastScrapedAt: new Date().toISOString(),
-      };
-      await writeCreators(updated);
-      return NextResponse.json(updated[idx], { status: 201 });
+  // Scrape full stats in the background — don't block the response
+  scrapeCreatorStats(body.username).then(async (stats) => {
+    try {
+      const updated = await readCreators();
+      const idx = updated.findIndex((c) => c.id === newCreator.id);
+      if (idx !== -1) {
+        updated[idx] = {
+          ...updated[idx],
+          profilePicUrl: stats.profilePicUrl || updated[idx].profilePicUrl,
+          followers: stats.followers,
+          reelsCount30d: stats.reelsCount30d,
+          avgViews30d: stats.avgViews30d,
+          lastScrapedAt: new Date().toISOString(),
+        };
+        await writeCreators(updated);
+      }
+    } catch (err) {
+      console.error(`Failed to update stats for @${body.username}:`, err);
     }
-  } catch (err) {
+  }).catch((err) => {
     console.error(`Failed to scrape stats for @${body.username}:`, err);
-  }
+  });
 
   return NextResponse.json(newCreator, { status: 201 });
 }
