@@ -205,12 +205,21 @@ function ScriptsTab() {
         setScripts(prev => [created, ...prev]);
       }
       setDialogOpen(false);
+      // Regenerate voice profile in background
+      if (form.clientId) {
+        fetch(`/api/configs/${form.clientId}/generate-voice-profile`, { method: "POST" }).catch(() => {});
+      }
     } finally { setSaving(false); }
   }
 
   async function handleDelete(id: string) {
+    const deleted = scripts.find(s => s.id === id);
     await fetch(`/api/training-scripts?id=${id}`, { method: "DELETE" });
     setScripts(prev => prev.filter(s => s.id !== id));
+    // Regenerate voice profile in background
+    if (deleted?.clientId) {
+      fetch(`/api/configs/${deleted.clientId}/generate-voice-profile`, { method: "POST" }).catch(() => {});
+    }
   }
 
   const clientName = (id: string) => {

@@ -1,13 +1,23 @@
-import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { readConfigs, readVideos, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
-import { weekScriptsSystemPrompt } from "@/lib/prompts";
+import { topicSelectionSystemPrompt, TOPIC_SELECTION_TOOL } from "@/lib/prompts/topic-selection";
+import { HOOK_GENERATION_SYSTEM, HOOK_GENERATION_TOOL } from "@/lib/prompts/hook-generation";
+import { bodyWritingSystemPrompt, BODY_WRITING_TOOL } from "@/lib/prompts/body-writing";
+import { QUALITY_REVIEW_SYSTEM, QUALITY_REVIEW_TOOL } from "@/lib/prompts/quality-review";
+import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
+import type { VoiceProfile } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
 export const maxDuration = 120;
 
-// ── Audit report extraction ─────────────────────────────────────────────────
+// ── SSE helper ──────────────────────────────────────────────────────────────
+
+function sendEvent(controller: ReadableStreamDefaultController, data: Record<string, unknown>) {
+  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
+}
+
+// ── Audit report extraction (kept from old version, still used elsewhere) ───
 
 export function extractAuditContext(report: string): {
   profileOverview: string;
@@ -92,191 +102,190 @@ function videoInsightBlock(v: VideoInsight, index: number): string {
 }
 
 
-// ── Main endpoint ───────────────────────────────────────────────────────────
+// ── Main endpoint — Multi-Step SSE Pipeline ─────────────────────────────────
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
-  if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // ════════════════════════════════════════════════════════════════════
+        // STEP 1: LOAD CONTEXT
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, { step: "context", status: "loading" });
 
-  // ── Client context ──────────────────────────────────────────────────────
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  const customerProblems = (() => { try { return JSON.parse(config.customerProblems || "{}"); } catch { return {}; } })();
-
-  const clientContext = [
-    config.name && `Name: ${config.name}`,
-    config.role && `Rolle: ${config.role}`,
-    config.company && `Unternehmen: ${config.company}`,
-    config.creatorsCategory && `Nische: ${config.creatorsCategory}`,
-    config.businessContext && `Business-Kontext: ${config.businessContext}`,
-    config.professionalBackground && `Hintergrund: ${config.professionalBackground}`,
-  ].filter(Boolean).join("\n");
-
-  const brandContext = [
-    config.brandFeeling && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem && `Kernproblem das gelöst wird: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.humanDifferentiation && `Menschliche Differenzierung: ${config.humanDifferentiation}`,
-    config.providerRole && `Anbieter-Rolle: ${config.providerRole}`,
-    config.providerBeliefs && `Überzeugungen: ${config.providerBeliefs}`,
-    config.providerStrengths && `Stärken: ${config.providerStrengths}`,
-    config.authenticityZone && `Authentizitätszone: ${config.authenticityZone}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-    dreamCustomer.profession && `Traumkunden-Beruf: ${dreamCustomer.profession}`,
-    dreamCustomer.values && `Traumkunden-Werte: ${dreamCustomer.values}`,
-    customerProblems.mental && `Mentale Probleme: ${customerProblems.mental}`,
-    customerProblems.financial && `Finanzielle Probleme: ${customerProblems.financial}`,
-    customerProblems.social && `Soziale Probleme: ${customerProblems.social}`,
-  ].filter(Boolean).join("\n");
-
-  // ── Strategy ────────────────────────────────────────────────────────────
-  const pillars: { name: string; subTopics?: string }[] = (() => {
-    try { return JSON.parse(config.strategyPillars || "[]") || []; } catch { return []; }
-  })();
-  const weekly: Record<string, { type: string; format: string }> = (() => {
-    try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
-  })();
-
-  const strategyJson = await readStrategyConfig();
-  const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
-  const allFormats = [...BUILT_IN_FORMATS, ...(strategyJson.customFormats || [])];
-
-  const postsPerWeek = parseInt(config.postsPerWeek || "5", 10);
-  const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const activeDays = ALL_DAYS.slice(0, postsPerWeek);
-  const pillarNames = pillars.map(p => p.name);
-
-  function getPillarForDay(dayIndex: number): string {
-    if (pillarNames.length > 0) return pillarNames[dayIndex % pillarNames.length];
-    return "Allgemein";
-  }
-
-  const weekSchedule = activeDays.map((day, i) => {
-    const d = weekly[day];
-    return {
-      day,
-      contentType: d?.type || allContentTypes[i % allContentTypes.length]?.name || "Education / Value",
-      format: d?.format || allFormats[i % allFormats.length]?.name || "Face to Camera",
-      pillar: getPillarForDay(i),
-    };
-  });
-
-  const pillarBlock = pillars.map(p => {
-    let line = `- ${p.name}`;
-    if (p.subTopics) line += `\n  Unterthemen: ${p.subTopics}`;
-    return line;
-  }).join("\n");
-
-  // ── Audit report ────────────────────────────────────────────────────────
-  const auditBlock = await getAuditBlock(id);
-
-  // ── Performance data ────────────────────────────────────────────────────
-  const insights = parseInsights(config.performanceInsights || "");
-  const ownTopVideos: VideoInsight[] = [
-    ...(insights?.top30Days || []),
-    ...(insights?.topAllTime || []),
-  ];
-
-  const allVideos = await readVideos();
-  const creatorVideos = allVideos
-    .filter(v => v.configName === config.configName && v.views > 0)
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 6);
-
-  const ownPerformanceBlock = ownTopVideos.length > 0
-    ? `<own_top_videos>\n${ownTopVideos.slice(0, 5).map((v, i) => videoInsightBlock(v, i)).join("\n\n")}\n</own_top_videos>`
-    : "";
-
-  const creatorBlock = creatorVideos.length > 0
-    ? `<competitor_videos>\n${creatorVideos.map((v, i) => {
-        const lines = [`[${i + 1}] @${v.creator} · ${fmt(v.views)} Views${v.durationSeconds ? ` · ${fmtDuration(v.durationSeconds)}` : ""}`];
-        if (v.analysis) {
-          const getSection = (label: string) => {
-            const m = v.analysis.match(new RegExp(`${label}[:\\s]+([\\s\\S]*?)(?=\\n[A-Z][\\w /]+[:\\s]|$)`, "i"));
-            return m ? m[1].trim().slice(0, 150) : "";
-          };
-          const hook = getSection("HOOK");
-          if (hook) lines.push(`Hook: ${hook}`);
+        const configs = await readConfigs();
+        const config = configs.find((c) => c.id === id);
+        if (!config) {
+          sendEvent(controller, { step: "error", message: "Config not found" });
+          controller.close();
+          return;
         }
-        return lines.join("\n");
-      }).join("\n\n")}\n</competitor_videos>`
-    : "";
 
-  // ── Voice training ──────────────────────────────────────────────────────
-  const clientTrainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === id);
-  const voiceBlock = clientTrainingScripts.length > 0
-    ? `<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt — Wortwahl, Satzlänge, Energie, Sprechrhythmus.\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- Beispiel ${i + 1}${ts.format ? ` (${ts.format})` : ""} ---\n${(ts.script || "").slice(0, 2000)}`).join("\n\n")}\n</voice_examples>`
-    : "";
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        if (!apiKey) {
+          sendEvent(controller, { step: "error", message: "ANTHROPIC_API_KEY not set" });
+          controller.close();
+          return;
+        }
 
-  // ── Existing scripts (avoid repetition) ─────────────────────────────────
-  const existingScripts = (await readScripts()).filter(s => s.clientId === id);
-  const recentTitles = existingScripts.slice(-20).map(s => s.title).filter(Boolean);
-  const recentBlock = recentTitles.length > 0
-    ? `<already_covered>\nDiese Themen wurden bereits behandelt — vermeide sie:\n${recentTitles.map(t => `- ${t}`).join("\n")}\n</already_covered>`
-    : "";
+        const claude = new Anthropic({ apiKey });
 
-  // ── Duration info ───────────────────────────────────────────────────────
-  const allDurations: number[] = [
-    ...ownTopVideos.filter(v => v.durationSeconds > 0).map(v => v.durationSeconds),
-    ...creatorVideos.filter(v => v.durationSeconds > 0).map(v => v.durationSeconds),
-  ];
-  const avgDuration = allDurations.length > 0
-    ? Math.round(allDurations.reduce((a, b) => a + b, 0) / allDurations.length)
-    : 0;
-  const maxWords = avgDuration > 0 ? Math.round(avgDuration * 2) : 0;
+        // Client context
+        const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
+        const customerProblems = (() => { try { return JSON.parse(config.customerProblems || "{}"); } catch { return {}; } })();
 
-  // ── Tool schema ─────────────────────────────────────────────────────────
-  const WEEK_SCRIPTS_TOOL = {
-    name: "submit_week_scripts",
-    description: "Die komplette Woche mit strategischen Video-Skripten einreichen",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        scripts: {
-          type: "array" as const,
-          items: {
-            type: "object" as const,
-            properties: {
-              day: { type: "string", enum: activeDays },
-              pillar: { type: "string", enum: pillarNames.length > 0 ? pillarNames : undefined },
-              contentType: { type: "string", enum: allContentTypes.map(t => t.name) },
-              format: { type: "string", enum: allFormats.map(f => f.name) },
-              title: { type: "string", description: "Konkreter Arbeitstitel (max 10 Wörter)" },
-              hook: { type: "string", description: "Gesprochener Einstieg — max 1-2 Sätze. Muss sofort packen." },
-              body: { type: "string", description: `Hauptteil als gesprochener Text. Absätze mit \\n trennen. Jeder Absatz = ein neuer Gedanke.${maxWords > 0 ? ` MAX ${maxWords} Wörter für Hook+Body+CTA zusammen.` : ""}` },
-              cta: { type: "string", description: "Call to Action mit konkreter Kommentar-Aufforderung — max 1-2 Sätze." },
-              reasoning: { type: "string", description: "STRATEGISCHE BEGRÜNDUNG: Welche Daten aus dem Audit/der Performance stützen dieses Skript? Warum genau dieses Thema, dieser Hook-Stil, dieses Format? 2-3 Sätze." },
-            },
-            required: ["day", "pillar", "contentType", "format", "title", "hook", "body", "cta", "reasoning"],
-          },
-          minItems: activeDays.length,
-          maxItems: activeDays.length,
-        },
-      },
-      required: ["scripts"],
-    },
-  };
+        const clientContext = [
+          config.name && `Name: ${config.name}`,
+          config.role && `Rolle: ${config.role}`,
+          config.company && `Unternehmen: ${config.company}`,
+          config.creatorsCategory && `Nische: ${config.creatorsCategory}`,
+          config.businessContext && `Business-Kontext: ${config.businessContext}`,
+          config.professionalBackground && `Hintergrund: ${config.professionalBackground}`,
+        ].filter(Boolean).join("\n");
 
-  // ── Prompts ─────────────────────────────────────────────────────────────
-  const systemPrompt = weekScriptsSystemPrompt({
-    numDays: activeDays.length,
-    maxWords,
-    durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
-  });
+        const brandContext = [
+          config.brandFeeling && `Marken-Gefühl: ${config.brandFeeling}`,
+          config.brandProblem && `Kernproblem: ${config.brandProblem}`,
+          config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
+          config.humanDifferentiation && `Differenzierung: ${config.humanDifferentiation}`,
+          config.providerRole && `Anbieter-Rolle: ${config.providerRole}`,
+          config.authenticityZone && `Authentizitätszone: ${config.authenticityZone}`,
+          dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
+          customerProblems.mental && `Mentale Probleme: ${customerProblems.mental}`,
+        ].filter(Boolean).join("\n");
 
-  const userPrompt = `<client_profile>
-${clientContext}
-</client_profile>
+        // Strategy
+        const pillars: { name: string; subTopics?: string }[] = (() => {
+          try { return JSON.parse(config.strategyPillars || "[]") || []; } catch { return []; }
+        })();
+        const weekly: Record<string, { type: string; format: string }> = (() => {
+          try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
+        })();
 
-<brand_positioning>
-${brandContext}
-</brand_positioning>
+        const strategyJson = await readStrategyConfig();
+        const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
+        const allFormats = [...BUILT_IN_FORMATS, ...(strategyJson.customFormats || [])];
 
-<content_strategy>
+        const postsPerWeek = parseInt(config.postsPerWeek || "5", 10);
+        const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const activeDays = ALL_DAYS.slice(0, postsPerWeek);
+        const pillarNames = pillars.map(p => p.name);
+
+        function getPillarForDay(dayIndex: number): string {
+          if (pillarNames.length > 0) return pillarNames[dayIndex % pillarNames.length];
+          return "Allgemein";
+        }
+
+        const weekSchedule = activeDays.map((day, i) => {
+          const d = weekly[day];
+          return {
+            day,
+            contentType: d?.type || allContentTypes[i % allContentTypes.length]?.name || "Education / Value",
+            format: d?.format || allFormats[i % allFormats.length]?.name || "Face to Camera",
+            pillar: getPillarForDay(i),
+          };
+        });
+
+        const pillarBlock = pillars.map(p => {
+          let line = `- ${p.name}`;
+          if (Array.isArray(p.subTopics)) {
+            line += "\n" + p.subTopics.map((st: { title: string; angle?: string }) =>
+              `  • ${st.title}${st.angle ? ` (${st.angle})` : ""}`
+            ).join("\n");
+          } else if (p.subTopics) {
+            line += `\n  Unterthemen: ${p.subTopics}`;
+          }
+          return line;
+        }).join("\n");
+
+        // Audit report
+        const auditBlock = await getAuditBlock(id);
+
+        // Performance data
+        const insights = parseInsights(config.performanceInsights || "");
+        const ownTopVideos: VideoInsight[] = [
+          ...(insights?.top30Days || []),
+          ...(insights?.topAllTime || []),
+        ];
+
+        const allVideos = await readVideos();
+        const creatorVideos = allVideos
+          .filter(v => v.configName === config.configName && v.views > 0)
+          .sort((a, b) => b.views - a.views)
+          .slice(0, 6);
+
+        const ownPerformanceBlock = ownTopVideos.length > 0
+          ? `<own_top_videos>\n${ownTopVideos.slice(0, 5).map((v, i) => videoInsightBlock(v, i)).join("\n\n")}\n</own_top_videos>`
+          : "";
+
+        const competitorHooksBlock = creatorVideos.length > 0
+          ? creatorVideos.map((v, i) => {
+              const lines = [`[${i + 1}] @${v.creator} · ${fmt(v.views)} Views`];
+              if (v.analysis) {
+                const m = v.analysis.match(/HOOK[:\s]+([\s\S]*?)(?=\n[A-Z][\w /]+[:\s]|$)/i);
+                if (m) lines.push(`Hook: ${m[1].trim().slice(0, 150)}`);
+              }
+              return lines.join("\n");
+            }).join("\n\n")
+          : "";
+
+        // Existing scripts (avoid repetition)
+        const existingScripts = (await readScripts()).filter(s => s.clientId === id);
+        const recentTitles = existingScripts.slice(-20).map(s => s.title).filter(Boolean);
+        const recentBlock = recentTitles.length > 0
+          ? `\nBEREITS BEHANDELT (vermeide diese Themen):\n${recentTitles.map(t => `- ${t}`).join("\n")}`
+          : "";
+
+        // Duration info
+        const allDurations: number[] = [
+          ...ownTopVideos.filter(v => v.durationSeconds > 0).map(v => v.durationSeconds),
+          ...creatorVideos.filter(v => v.durationSeconds > 0).map(v => v.durationSeconds),
+        ];
+        const avgDuration = allDurations.length > 0
+          ? Math.round(allDurations.reduce((a, b) => a + b, 0) / allDurations.length)
+          : 0;
+        const maxWords = avgDuration > 0 ? Math.round(avgDuration * 2) : 0;
+        const clientName = config.name || config.configName || "Kunde";
+
+        sendEvent(controller, { step: "context", status: "done" });
+
+        // ════════════════════════════════════════════════════════════════════
+        // STEP 2: VOICE PROFILE
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, { step: "voice", status: "loading" });
+
+        let voiceProfile: VoiceProfile | null = await getVoiceProfile(id);
+        if (!voiceProfile) {
+          // Try generating it
+          voiceProfile = await generateVoiceProfile(id, clientName).catch(() => null);
+        }
+
+        const voiceBlock = voiceProfile
+          ? voiceProfileToPromptBlock(voiceProfile, clientName)
+          : "";
+
+        sendEvent(controller, {
+          step: "voice",
+          status: "done",
+          hasVoice: !!voiceProfile,
+        });
+
+        // ════════════════════════════════════════════════════════════════════
+        // STEP 3: TOPIC SELECTION (1 focused call)
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, { step: "topics", status: "loading" });
+
+        const topicSystemPrompt = topicSelectionSystemPrompt(activeDays.length);
+        const topicTool = TOPIC_SELECTION_TOOL(
+          activeDays,
+          pillarNames,
+          allContentTypes.map(t => t.name),
+          allFormats.map(f => f.name),
+        );
+
+        const topicUserPrompt = `<content_strategy>
 CONTENT PILLARS:
 ${pillarBlock}
 
@@ -288,55 +297,273 @@ ${auditBlock}
 
 ${ownPerformanceBlock}
 
-${creatorBlock}
-
-${voiceBlock}
+${competitorHooksBlock ? `<competitor_videos>\n${competitorHooksBlock}\n</competitor_videos>` : ""}
 
 ${recentBlock}
 
-AUFTRAG: Erstelle ${activeDays.length} strategische Video-Skripte für diese Woche. Eines pro Tag. Halte dich an den Wochenplan (Tag → Content-Type → Format → Pillar). Jedes Skript muss datenbasiert begründet sein.`;
+<client>
+${clientContext}
+Nische: ${config.creatorsCategory || ""}
+</client>
 
-  const client = new Anthropic({ apiKey });
+AUFTRAG: Wähle ${activeDays.length} strategisch optimale Themen für diese Woche. Eines pro Tag.`;
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 8000,
-    system: systemPrompt,
-    tools: [WEEK_SCRIPTS_TOOL],
-    tool_choice: { type: "tool", name: "submit_week_scripts" },
-    messages: [{ role: "user", content: userPrompt }],
+        const topicMessage = await claude.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 2000,
+          system: topicSystemPrompt,
+          tools: [topicTool],
+          tool_choice: { type: "tool", name: "submit_topics" },
+          messages: [{ role: "user", content: topicUserPrompt }],
+        });
+
+        const topicToolUse = topicMessage.content.find(b => b.type === "tool_use");
+        if (!topicToolUse || topicToolUse.type !== "tool_use") {
+          sendEvent(controller, { step: "error", message: "KI konnte keine Themen auswählen." });
+          controller.close();
+          return;
+        }
+
+        const topicResult = topicToolUse.input as {
+          topics: Array<{
+            day: string; pillar: string; contentType: string; format: string;
+            title: string; description: string; reasoning: string;
+          }>;
+        };
+
+        // Ensure schedule alignment
+        const topics = topicResult.topics.map((t, i) => ({
+          ...t,
+          day: weekSchedule[i]?.day || t.day,
+          pillar: t.pillar || weekSchedule[i]?.pillar || "",
+          contentType: t.contentType || weekSchedule[i]?.contentType || "",
+          format: t.format || weekSchedule[i]?.format || "",
+        }));
+
+        sendEvent(controller, {
+          step: "topics",
+          status: "done",
+          topics: topics.map(t => ({ day: t.day, title: t.title, pillar: t.pillar })),
+        });
+
+        // ════════════════════════════════════════════════════════════════════
+        // STEP 4: HOOK GENERATION (N parallel calls)
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, { step: "hooks", status: "loading", total: topics.length });
+
+        const voiceToneBlock = voiceProfile
+          ? `\nSTIMMPROFIL:\nTon: ${voiceProfile.tone}\nEnergie: ${voiceProfile.energy}\nLieblingswörter: ${voiceProfile.favoriteWords.slice(0, 5).join(", ")}`
+          : "";
+
+        const hookPromises = topics.map(async (topic, idx) => {
+          const userPrompt = `THEMA: ${topic.title}
+BESCHREIBUNG: ${topic.description}
+Content-Type: ${topic.contentType} | Format: ${topic.format}
+
+${competitorHooksBlock ? `COMPETITOR-HOOKS (was in der Nische funktioniert):\n${competitorHooksBlock}` : ""}
+${voiceToneBlock}
+
+Erstelle 3 Hook-Optionen für dieses Thema.`;
+
+          try {
+            const msg = await claude.messages.create({
+              model: "claude-sonnet-4-6",
+              max_tokens: 500,
+              system: HOOK_GENERATION_SYSTEM,
+              tools: [HOOK_GENERATION_TOOL],
+              tool_choice: { type: "tool", name: "submit_hooks" },
+              messages: [{ role: "user", content: userPrompt }],
+            });
+
+            const tu = msg.content.find(b => b.type === "tool_use");
+            if (tu && tu.type === "tool_use") {
+              const result = tu.input as {
+                options: Array<{ hook: string; pattern: string }>;
+                selected: number;
+                selectionReason: string;
+              };
+              const selectedHook = result.options[result.selected]?.hook || result.options[0]?.hook || "";
+              sendEvent(controller, { step: "hooks", status: "done", index: idx, hook: selectedHook });
+              return { hook: selectedHook, allOptions: result.options, reason: result.selectionReason };
+            }
+          } catch {
+            // Fallback: simple hook
+          }
+
+          // Fallback hook
+          const fallback = topic.title;
+          sendEvent(controller, { step: "hooks", status: "done", index: idx, hook: fallback });
+          return { hook: fallback, allOptions: [], reason: "fallback" };
+        });
+
+        const hookResults = await Promise.all(hookPromises);
+        sendEvent(controller, { step: "hooks", status: "all_done" });
+
+        // ════════════════════════════════════════════════════════════════════
+        // STEP 5: BODY WRITING (N parallel calls)
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, { step: "bodies", status: "loading", total: topics.length });
+
+        const bodySystemPrompt = bodyWritingSystemPrompt({
+          maxWords,
+          durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
+        });
+
+        const bodyPromises = topics.map(async (topic, idx) => {
+          const hook = hookResults[idx].hook;
+
+          const userPrompt = `<client>
+${clientContext}
+${brandContext}
+</client>
+
+${voiceBlock}
+
+THEMA: ${topic.title}
+BESCHREIBUNG: ${topic.description}
+HOOK (bereits fertig): "${hook}"
+
+Schreibe jetzt Body und CTA. Der Hook steht — baue darauf auf.`;
+
+          try {
+            const msg = await claude.messages.create({
+              model: "claude-sonnet-4-6",
+              max_tokens: 1500,
+              system: bodySystemPrompt,
+              tools: [BODY_WRITING_TOOL(maxWords)],
+              tool_choice: { type: "tool", name: "submit_body" },
+              messages: [{ role: "user", content: userPrompt }],
+            });
+
+            const tu = msg.content.find(b => b.type === "tool_use");
+            if (tu && tu.type === "tool_use") {
+              const result = tu.input as { body: string; cta: string };
+              sendEvent(controller, {
+                step: "bodies",
+                status: "done",
+                index: idx,
+                title: topic.title,
+                day: topic.day,
+              });
+              return { body: result.body, cta: result.cta };
+            }
+          } catch {
+            // Fallback
+          }
+
+          sendEvent(controller, { step: "bodies", status: "done", index: idx, title: topic.title, day: topic.day });
+          return { body: "", cta: "" };
+        });
+
+        const bodyResults = await Promise.all(bodyPromises);
+        sendEvent(controller, { step: "bodies", status: "all_done" });
+
+        // ════════════════════════════════════════════════════════════════════
+        // STEP 6: QUALITY REVIEW (1 call reviewing all scripts)
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, { step: "review", status: "loading" });
+
+        // Assemble scripts for review
+        const assembledScripts = topics.map((topic, i) => ({
+          day: topic.day,
+          pillar: topic.pillar,
+          contentType: topic.contentType,
+          format: topic.format,
+          title: topic.title,
+          hook: hookResults[i].hook,
+          body: bodyResults[i].body,
+          cta: bodyResults[i].cta,
+          reasoning: topic.reasoning,
+        }));
+
+        const reviewUserPrompt = `${voiceBlock ? voiceBlock + "\n\n" : ""}${assembledScripts.map((s, i) => `--- SKRIPT ${i + 1} (${s.day}) ---
+TITEL: ${s.title}
+HOOK: ${s.hook}
+BODY: ${s.body}
+CTA: ${s.cta}`).join("\n\n")}
+
+Prüfe alle ${assembledScripts.length} Skripte.`;
+
+        let finalScripts = assembledScripts;
+        let reviewIssues: string[] = [];
+
+        try {
+          const reviewMsg = await claude.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 4000,
+            system: QUALITY_REVIEW_SYSTEM,
+            tools: [QUALITY_REVIEW_TOOL(assembledScripts.length)],
+            tool_choice: { type: "tool", name: "submit_review" },
+            messages: [{ role: "user", content: reviewUserPrompt }],
+          });
+
+          const tu = reviewMsg.content.find(b => b.type === "tool_use");
+          if (tu && tu.type === "tool_use") {
+            const review = tu.input as {
+              scripts: Array<{
+                index: number;
+                issues: string[];
+                revised?: { hook?: string; body?: string; cta?: string } | null;
+              }>;
+              weekCoherence: string;
+            };
+
+            // Apply revisions
+            for (const r of review.scripts) {
+              if (r.revised && finalScripts[r.index]) {
+                if (r.revised.hook) finalScripts[r.index].hook = r.revised.hook;
+                if (r.revised.body) finalScripts[r.index].body = r.revised.body;
+                if (r.revised.cta) finalScripts[r.index].cta = r.revised.cta;
+              }
+              if (r.issues.length > 0) {
+                reviewIssues.push(...r.issues.map(issue => `Skript ${r.index + 1}: ${issue}`));
+              }
+            }
+          }
+        } catch {
+          // Review failed — use scripts as-is
+        }
+
+        sendEvent(controller, {
+          step: "review",
+          status: "done",
+          issueCount: reviewIssues.length,
+          issues: reviewIssues.slice(0, 10),
+        });
+
+        // ════════════════════════════════════════════════════════════════════
+        // STEP 7: DONE
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, {
+          step: "done",
+          scripts: finalScripts,
+          _meta: {
+            hasAudit: auditBlock.length > 0,
+            hasVoiceProfile: !!voiceProfile,
+            ownVideosUsed: ownTopVideos.length,
+            creatorVideosUsed: creatorVideos.length,
+            avgViralDurationSeconds: avgDuration || null,
+            targetWords: maxWords || null,
+            reviewIssuesFixed: reviewIssues.length,
+          },
+        });
+
+        controller.close();
+      } catch (err) {
+        sendEvent(controller, {
+          step: "error",
+          message: err instanceof Error ? err.message : "Unbekannter Fehler",
+        });
+        controller.close();
+      }
+    },
   });
 
-  const toolUse = message.content.find((b) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    return NextResponse.json({ error: "KI hat keine Skripte generiert." }, { status: 500 });
-  }
-
-  const input = toolUse.input as {
-    scripts: Array<{
-      day: string; pillar: string; contentType: string; format: string;
-      title: string; hook: string; body: string; cta: string; reasoning: string;
-    }>;
-  };
-
-  // Ensure day/pillar/type/format from schedule are used
-  const scripts = input.scripts.map((s, i) => ({
-    ...s,
-    day: weekSchedule[i]?.day || s.day,
-    pillar: s.pillar || weekSchedule[i]?.pillar || "",
-    contentType: s.contentType || weekSchedule[i]?.contentType || "",
-    format: s.format || weekSchedule[i]?.format || "",
-  }));
-
-  return NextResponse.json({
-    scripts,
-    _meta: {
-      hasAudit: auditBlock.length > 0,
-      ownVideosUsed: ownTopVideos.length,
-      creatorVideosUsed: creatorVideos.length,
-      trainingScriptsUsed: clientTrainingScripts.length,
-      avgViralDurationSeconds: avgDuration || null,
-      targetWords: maxWords || null,
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
 }

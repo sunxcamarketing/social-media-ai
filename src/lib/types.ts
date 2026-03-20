@@ -44,6 +44,7 @@ export interface Config {
   igCategory: string;
   igVerified: string;
   igLastUpdated: string;
+  voiceProfile: string; // JSON: VoiceProfile
 }
 
 export interface Creator {
@@ -131,6 +132,30 @@ export interface Analysis {
   profileAvgViews30d: number;
   profilePicUrl: string;
   createdAt: string;
+}
+
+export interface VoiceProfile {
+  avgSentenceLength: number;
+  favoriteWords: string[];
+  avoidedPatterns: string[];
+  tone: string;
+  energy: string;
+  sentencePatterns: string;
+  slangMarkers: string[];
+  exampleSentences: string[];
+  summary: string;
+}
+
+export interface StrategyInsight {
+  category: "performance" | "audit" | "competitor" | "gap";
+  insight: string;
+  dataPoint: string;
+  implication: string;
+}
+
+export interface StructuredSubTopic {
+  title: string;
+  angle: string;
 }
 
 export interface PipelineParams {

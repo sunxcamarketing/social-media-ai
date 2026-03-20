@@ -28,6 +28,11 @@ import {
   Plus,
   CheckCircle2,
   AlertTriangle,
+  Mic,
+  Target,
+  Zap,
+  PenTool,
+  Shield,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 
@@ -67,12 +72,24 @@ type WeekScript = {
 
 type GenerationMeta = {
   hasAudit: boolean;
+  hasVoiceProfile: boolean;
   ownVideosUsed: number;
   creatorVideosUsed: number;
-  trainingScriptsUsed: number;
   avgViralDurationSeconds: number | null;
   targetWords: number | null;
+  reviewIssuesFixed: number;
 };
+
+type PipelineStep = "idle" | "context" | "voice" | "topics" | "hooks" | "bodies" | "review" | "done" | "error";
+
+const PIPELINE_STEPS: { key: PipelineStep; label: string; icon: React.ElementType }[] = [
+  { key: "context", label: "Kontext laden", icon: FileText },
+  { key: "voice", label: "Stimmprofil", icon: Mic },
+  { key: "topics", label: "Themen auswählen", icon: Target },
+  { key: "hooks", label: "Hooks generieren", icon: Zap },
+  { key: "bodies", label: "Skripte schreiben", icon: PenTool },
+  { key: "review", label: "Qualitätsprüfung", icon: Shield },
+];
 
 const STATUS_OPTIONS = [
   { value: "entwurf", label: "Entwurf", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
@@ -84,7 +101,80 @@ function statusColor(s: string) {
   return STATUS_OPTIONS.find(o => o.value === s)?.color || "bg-ocean/[0.02] text-ocean/70 border-ocean/[0.06]";
 }
 
-// ── Generated Script Card (the main star) ───────────────────────────────────
+// ── Pipeline Progress Component ─────────────────────────────────────────────
+
+function PipelineProgress({
+  currentStep,
+  hooksProgress,
+  bodiesProgress,
+  totalScripts,
+  topics,
+  error,
+}: {
+  currentStep: PipelineStep;
+  hooksProgress: number;
+  bodiesProgress: number;
+  totalScripts: number;
+  topics: { day: string; title: string; pillar: string }[];
+  error: string | null;
+}) {
+  const stepOrder = PIPELINE_STEPS.map(s => s.key);
+  const currentIdx = stepOrder.indexOf(currentStep);
+
+  return (
+    <div className="rounded-xl bg-gradient-to-r from-ocean/[0.03] to-blush/[0.03] border border-ocean/[0.08] p-5 space-y-4">
+      <div className="flex items-center gap-4 flex-wrap">
+        {PIPELINE_STEPS.map((step, i) => {
+          const Icon = step.icon;
+          const isActive = step.key === currentStep;
+          const isDone = currentIdx > i || currentStep === "done";
+          const isPending = currentIdx < i && currentStep !== "done";
+
+          let progressText = "";
+          if (step.key === "hooks" && isActive) progressText = ` (${hooksProgress}/${totalScripts})`;
+          if (step.key === "bodies" && isActive) progressText = ` (${bodiesProgress}/${totalScripts})`;
+
+          return (
+            <div key={step.key} className="flex items-center gap-1.5">
+              {isDone ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              ) : isActive ? (
+                <Loader2 className="h-4 w-4 text-ocean animate-spin" />
+              ) : (
+                <Icon className="h-4 w-4 text-ocean/25" />
+              )}
+              <span className={`text-xs font-medium ${
+                isDone ? "text-green-600" : isActive ? "text-ocean" : "text-ocean/30"
+              }`}>
+                {step.label}{progressText}
+              </span>
+              {i < PIPELINE_STEPS.length - 1 && (
+                <span className="text-ocean/15 mx-1">→</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Show selected topics once available */}
+      {topics.length > 0 && (currentStep === "hooks" || currentStep === "bodies" || currentStep === "review" || currentStep === "done") && (
+        <div className="flex flex-wrap gap-2">
+          {topics.map((t, i) => (
+            <span key={i} className="text-[10px] bg-white/80 border border-ocean/[0.06] rounded-lg px-2.5 py-1 text-ocean/70">
+              <span className="font-semibold text-blush-dark">{DAY_SHORT[t.day] || t.day}</span> {t.title}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Generated Script Card ───────────────────────────────────────────────────
 
 function GeneratedScriptCard({
   script,
@@ -119,7 +209,6 @@ function GeneratedScriptCard({
 
   return (
     <div className="rounded-2xl border border-ocean/[0.08] overflow-hidden bg-white/50">
-      {/* Header row */}
       <div
         role="button"
         tabIndex={0}
@@ -143,7 +232,6 @@ function GeneratedScriptCard({
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
           <button onClick={handleCopy} className="h-8 w-8 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-ocean/5 transition-colors">
             {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
@@ -161,10 +249,8 @@ function GeneratedScriptCard({
         </div>
       </div>
 
-      {/* Expanded content */}
       {expanded && (
         <div className="px-5 pb-5 space-y-3 border-t border-ocean/5">
-          {/* Reasoning — always prominent */}
           {script.reasoning && (
             <div className="flex gap-2.5 mt-3 rounded-xl bg-amber-50/80 border border-amber-200/50 px-4 py-3">
               <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
@@ -172,7 +258,6 @@ function GeneratedScriptCard({
             </div>
           )}
 
-          {/* Script sections */}
           <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 overflow-hidden">
             {script.hook && (
               <div className="px-4 py-3 border-b border-ocean/5">
@@ -194,7 +279,6 @@ function GeneratedScriptCard({
             )}
           </div>
 
-          {/* Meta */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-blush-dark/60 rounded-md bg-blush/20 border border-blush/30 px-2 py-0.5">{script.pillar}</span>
             <span className="text-[10px] text-ocean/50">{words} Wörter · ~{dur}</span>
@@ -205,7 +289,7 @@ function GeneratedScriptCard({
   );
 }
 
-// ── Saved Script Card (compact) ─────────────────────────────────────────────
+// ── Saved Script Card ───────────────────────────────────────────────────────
 
 function SavedScriptCard({
   script,
@@ -290,12 +374,19 @@ export default function ClientScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [hasAudit, setHasAudit] = useState<boolean | null>(null);
 
-  // Week generation
+  // Week generation — pipeline state
   const [weekScripts, setWeekScripts] = useState<WeekScript[]>([]);
   const [weekLoading, setWeekLoading] = useState(false);
   const [weekError, setWeekError] = useState<string | null>(null);
   const [weekMeta, setWeekMeta] = useState<GenerationMeta | null>(null);
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
+
+  // Pipeline progress
+  const [pipelineStep, setPipelineStep] = useState<PipelineStep>("idle");
+  const [hooksProgress, setHooksProgress] = useState(0);
+  const [bodiesProgress, setBodiesProgress] = useState(0);
+  const [totalScripts, setTotalScripts] = useState(0);
+  const [selectedTopics, setSelectedTopics] = useState<{ day: string; title: string; pillar: string }[]>([]);
 
   // Saved scripts
   const [filterStatus, setFilterStatus] = useState("all");
@@ -313,27 +404,78 @@ export default function ClientScriptsPage() {
     fetch(`/api/analyses?clientId=${id}`).then(r => r.json()).then((analyses: unknown[]) => setHasAudit(analyses.length > 0));
   }, [id, loadScripts]);
 
-  // ── Generate full week ──────────────────────────────────────────────────
+  // ── Generate full week (SSE streaming) ──────────────────────────────────
   const generateWeek = async () => {
     setWeekLoading(true);
     setWeekError(null);
     setWeekScripts([]);
     setSavedSet(new Set());
     setWeekMeta(null);
+    setPipelineStep("context");
+    setHooksProgress(0);
+    setBodiesProgress(0);
+    setTotalScripts(0);
+    setSelectedTopics([]);
 
     try {
       const res = await fetch(`/api/configs/${id}/generate-week-scripts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch { throw new Error("Server-Antwort war kein gültiges JSON — möglicherweise Timeout. Bitte erneut versuchen."); }
-      if (!res.ok) throw new Error(data.error || "Generierung fehlgeschlagen");
-      setWeekScripts(data.scripts || []);
-      setWeekMeta(data._meta || null);
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Keine Server-Antwort");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          let data;
+          try { data = JSON.parse(line.slice(6)); } catch { continue; }
+
+          // Handle pipeline events
+          if (data.step === "error") {
+            setWeekError(data.message || "Unbekannter Fehler");
+            setPipelineStep("error");
+          } else if (data.step === "context" && data.status === "done") {
+            setPipelineStep("voice");
+          } else if (data.step === "voice" && data.status === "done") {
+            setPipelineStep("topics");
+          } else if (data.step === "topics" && data.status === "done") {
+            setPipelineStep("hooks");
+            setSelectedTopics(data.topics || []);
+            setTotalScripts(data.topics?.length || 0);
+          } else if (data.step === "hooks" && data.status === "loading") {
+            setTotalScripts(data.total || 0);
+          } else if (data.step === "hooks" && data.status === "done" && data.index !== undefined) {
+            setHooksProgress(prev => prev + 1);
+          } else if (data.step === "hooks" && data.status === "all_done") {
+            setPipelineStep("bodies");
+          } else if (data.step === "bodies" && data.status === "done" && data.index !== undefined) {
+            setBodiesProgress(prev => prev + 1);
+          } else if (data.step === "bodies" && data.status === "all_done") {
+            setPipelineStep("review");
+          } else if (data.step === "review" && data.status === "done") {
+            setPipelineStep("done");
+          } else if (data.step === "done") {
+            setPipelineStep("done");
+            setWeekScripts(data.scripts || []);
+            setWeekMeta(data._meta || null);
+          }
+        }
+      }
     } catch (e) {
       setWeekError(e instanceof Error ? e.message : "Unbekannter Fehler");
+      setPipelineStep("error");
     } finally {
       setWeekLoading(false);
     }
@@ -375,7 +517,6 @@ export default function ClientScriptsPage() {
   };
 
   const allSaved = weekScripts.length > 0 && weekScripts.every((_, i) => savedSet.has(i));
-  const someSaved = savedSet.size > 0;
 
   // ── Saved scripts CRUD ──────────────────────────────────────────────────
   const openEdit = (script: Script) => {
@@ -416,6 +557,7 @@ export default function ClientScriptsPage() {
   };
 
   const filtered = filterStatus === "all" ? scripts : scripts.filter(s => s.status === filterStatus);
+  const isPipelineActive = pipelineStep !== "idle" && pipelineStep !== "done" && pipelineStep !== "error";
 
   return (
     <div className="space-y-8">
@@ -437,12 +579,11 @@ export default function ClientScriptsPage() {
             <div>
               <p className="text-base font-semibold">Woche generieren</p>
               <p className="text-xs text-ocean/60 mt-0.5">
-                KI erstellt strategisch begründete Skripte basierend auf Audit, Performance & Strategie
+                Multi-Step Pipeline: Themen → Hooks → Skripte → Qualitätsprüfung
               </p>
             </div>
           </div>
 
-          {/* Data sources */}
           <div className="hidden sm:flex flex-col gap-1 items-end shrink-0">
             {hasAudit === true && (
               <span className="text-[11px] text-green-600 flex items-center gap-1">
@@ -463,13 +604,26 @@ export default function ClientScriptsPage() {
           className="h-11 px-8 rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-2.5 text-white text-sm"
         >
           {weekLoading
-            ? <><Loader2 className="h-4 w-4 animate-spin" /> Strategische Skripte werden erstellt...</>
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Pipeline läuft...</>
             : weekScripts.length > 0
               ? <><Sparkles className="h-4 w-4" /> Neue Woche generieren</>
               : <><Sparkles className="h-4 w-4" /> Woche generieren</>}
         </Button>
 
-        {weekError && (
+        {/* Pipeline Progress */}
+        {(isPipelineActive || pipelineStep === "done" || pipelineStep === "error") && (
+          <PipelineProgress
+            currentStep={pipelineStep}
+            hooksProgress={hooksProgress}
+            bodiesProgress={bodiesProgress}
+            totalScripts={totalScripts}
+            topics={selectedTopics}
+            error={weekError}
+          />
+        )}
+
+        {/* Error outside pipeline */}
+        {weekError && pipelineStep === "idle" && (
           <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{weekError}</p>
         )}
 
@@ -480,10 +634,11 @@ export default function ClientScriptsPage() {
             {weekMeta && (
               <div className="flex items-center gap-3 text-[11px] text-ocean/50 flex-wrap">
                 {weekMeta.hasAudit && <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> Audit integriert</span>}
+                {weekMeta.hasVoiceProfile && <span className="flex items-center gap-1"><Mic className="h-3 w-3 text-green-500" /> Stimmprofil aktiv</span>}
                 {weekMeta.ownVideosUsed > 0 && <span>{weekMeta.ownVideosUsed} eigene Top-Videos</span>}
                 {weekMeta.creatorVideosUsed > 0 && <span>{weekMeta.creatorVideosUsed} Competitor-Videos</span>}
-                {weekMeta.trainingScriptsUsed > 0 && <span>{weekMeta.trainingScriptsUsed} Voice-Beispiele</span>}
                 {weekMeta.targetWords && <span>Ziel: ~{weekMeta.targetWords} Wörter/Skript</span>}
+                {weekMeta.reviewIssuesFixed > 0 && <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-green-500" /> {weekMeta.reviewIssuesFixed} Korrekturen</span>}
               </div>
             )}
 

@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     igFullName: "", igBio: "", igFollowers: "", igFollowing: "",
     igPostsCount: "", igProfilePicUrl: "", igCategory: "", igVerified: "", igLastUpdated: "",
     authenticityZone: body.authenticityZone || "",
+    voiceProfile: "",
   };
   configs.push(newConfig);
   await writeConfigs(configs);

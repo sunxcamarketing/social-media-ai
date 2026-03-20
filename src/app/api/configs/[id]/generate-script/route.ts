@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { getVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
 import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { singleScriptSystemPrompt, topicScriptSystemPrompt } from "@/lib/prompts";
@@ -209,10 +210,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ? `\nBEREITS ERSTELLT (vermeide diese Themen):\n${recentTitles.map(t => `- ${t}`).join("\n")}`
     : "";
 
-  // ── Voice training: client-specific transcripts ─────────────────────────
-  const allTrainingScripts = await readTrainingScripts();
-  const clientTrainingScripts = allTrainingScripts.filter(ts => ts.clientId === id);
-  const voiceBlock = clientTrainingScripts.length > 0 ? `
+  // ── Voice: prefer cached profile, fallback to raw transcripts ────────────
+  const voiceProfile = await getVoiceProfile(id);
+  const clientTrainingScripts = voiceProfile ? [] : (await readTrainingScripts()).filter(ts => ts.clientId === id);
+  const voiceBlock = voiceProfile
+    ? voiceProfileToPromptBlock(voiceProfile, config.name || "der Kunde")
+    : clientTrainingScripts.length > 0 ? `
 <voice_examples>
 Die folgenden Transkripte zeigen, wie ${config.name || "der Kunde"} wirklich spricht. Imitiere diesen Stil exakt — Wortwahl, Satzlänge, Energie, Sprechrhythmus.
 ${clientTrainingScripts.slice(0, 8).map((ts, i) => {
@@ -395,11 +398,14 @@ async function handleTopicScript(
     dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
   ].filter(Boolean).join("\n");
 
-  // Voice training
-  const clientTrainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
-  const voiceBlock = clientTrainingScripts.length > 0
-    ? `\n<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt:\n${clientTrainingScripts.slice(0, 6).map((ts, i) => `--- ${i + 1} ---\n${(ts.script || "").slice(0, 2000)}`).join("\n\n")}\n</voice_examples>`
-    : "";
+  // Voice: prefer cached profile, fallback to raw transcripts
+  const topicVoiceProfile = await getVoiceProfile(clientId);
+  const topicTrainingScripts = topicVoiceProfile ? [] : (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
+  const voiceBlock = topicVoiceProfile
+    ? "\n" + voiceProfileToPromptBlock(topicVoiceProfile, config.name || "der Kunde")
+    : topicTrainingScripts.length > 0
+      ? `\n<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt:\n${topicTrainingScripts.slice(0, 6).map((ts, i) => `--- ${i + 1} ---\n${(ts.script || "").slice(0, 2000)}`).join("\n\n")}\n</voice_examples>`
+      : "";
 
   // Audit report
   const topicAuditBlock = await getAuditBlock(clientId);
@@ -511,7 +517,7 @@ Schreibe jetzt das Skript zu genau diesem Thema.`;
       actualWords: countWords(scriptText),
       targetWords: maxWords || null,
       avgViralDurationSeconds: avgDuration || null,
-      trainingScriptsUsed: clientTrainingScripts.length,
+      trainingScriptsUsed: topicTrainingScripts.length,
     },
   });
 }
