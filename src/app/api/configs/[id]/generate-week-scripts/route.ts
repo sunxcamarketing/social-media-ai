@@ -9,7 +9,7 @@ import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock } from
 import type { VoiceProfile } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 // ── SSE helper ──────────────────────────────────────────────────────────────
 
@@ -488,7 +488,7 @@ Prüfe alle ${assembledScripts.length} Skripte.`;
         let reviewIssues: string[] = [];
 
         try {
-          const reviewMsg = await claude.messages.create({
+          const reviewPromise = claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 4000,
             system: QUALITY_REVIEW_SYSTEM,
@@ -497,30 +497,39 @@ Prüfe alle ${assembledScripts.length} Skripte.`;
             messages: [{ role: "user", content: reviewUserPrompt }],
           });
 
-          const tu = reviewMsg.content.find(b => b.type === "tool_use");
-          if (tu && tu.type === "tool_use") {
-            const review = tu.input as {
-              scripts: Array<{
-                index: number;
-                issues: string[];
-                revised?: { hook?: string; body?: string; cta?: string } | null;
-              }>;
-              weekCoherence: string;
-            };
+          // 60s timeout for review — if it takes longer, skip and use scripts as-is
+          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 60000));
+          const reviewMsg = await Promise.race([reviewPromise, timeoutPromise]);
 
-            // Apply revisions
-            for (const r of review.scripts) {
-              if (r.revised && finalScripts[r.index]) {
-                if (r.revised.hook) finalScripts[r.index].hook = r.revised.hook;
-                if (r.revised.body) finalScripts[r.index].body = r.revised.body;
-                if (r.revised.cta) finalScripts[r.index].cta = r.revised.cta;
-              }
-              if (r.issues.length > 0) {
-                reviewIssues.push(...r.issues.map(issue => `Skript ${r.index + 1}: ${issue}`));
+          if (reviewMsg) {
+            const tu = reviewMsg.content.find(b => b.type === "tool_use");
+            if (tu && tu.type === "tool_use") {
+              const review = tu.input as {
+                scripts: Array<{
+                  index: number;
+                  issues: string[];
+                  revised?: { hook?: string; body?: string; cta?: string } | null;
+                }>;
+                weekCoherence: string;
+              };
+
+              // Apply revisions
+              for (const r of review.scripts) {
+                if (r.revised && finalScripts[r.index]) {
+                  if (r.revised.hook) finalScripts[r.index].hook = r.revised.hook;
+                  if (r.revised.body) finalScripts[r.index].body = r.revised.body;
+                  if (r.revised.cta) finalScripts[r.index].cta = r.revised.cta;
+                }
+                if (r.issues.length > 0) {
+                  reviewIssues.push(...r.issues.map(issue => `Skript ${r.index + 1}: ${issue}`));
+                }
               }
             }
+          } else {
+            console.log("Quality review timed out after 60s — using scripts as-is");
           }
-        } catch {
+        } catch (reviewErr) {
+          console.error("Quality review failed:", reviewErr instanceof Error ? reviewErr.message : reviewErr);
           // Review failed — use scripts as-is
         }
 
