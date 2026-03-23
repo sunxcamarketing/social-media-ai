@@ -137,6 +137,8 @@ ${isDE
 - When referencing a specific reel, link it as a markdown link: [Reel 3](URL). The URLs are in the reel data above.`}`;
 }
 
+export const maxDuration = 120;
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { instagramHandle, lang = "de" } = body;
@@ -158,8 +160,10 @@ export async function POST(req: NextRequest) {
         let profile;
         try {
           profile = await scrapeCreatorStats(username);
-        } catch {
-          sendEvent(controller, { phase: "error", message: `Instagram-Profil @${username} konnte nicht gefunden werden.` });
+        } catch (scrapeErr) {
+          const msg = scrapeErr instanceof Error ? scrapeErr.message : `Instagram-Profil @${username} konnte nicht gefunden werden.`;
+          console.error("Audit scrape error:", msg);
+          sendEvent(controller, { phase: "error", message: msg });
           controller.close();
           return;
         }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, writeConfigs } from "@/lib/csv";
+import { readConfigs, updateConfig } from "@/lib/csv";
 
 export const maxDuration = 60;
 
@@ -99,8 +99,7 @@ ${text}`,
     }
   }
 
-  configs[index] = { ...config, ...toSave };
-  await writeConfigs(configs);
+  await updateConfig(id, toSave);
 
   return NextResponse.json({ updated: toSave });
 }

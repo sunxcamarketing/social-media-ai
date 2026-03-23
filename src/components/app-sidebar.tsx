@@ -93,6 +93,11 @@ export function AppSidebar() {
           twitter: form.twitter.trim(),
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Fehler beim Erstellen");
+        return;
+      }
       const created: Config = await res.json();
       setClients((prev) => [...prev, created]);
       setNewOpen(false);

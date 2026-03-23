@@ -14,6 +14,27 @@ export async function writeConfigs(configs: Config[]) {
   if (error) throw error;
 }
 
+export async function insertConfig(config: Config) {
+  const { error } = await supabase.from("configs").insert(config);
+  if (error) throw error;
+}
+
+export async function updateConfig(id: string, fields: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  // Remove unknown/null fields to avoid Supabase column errors
+  const { id: _id, ...rest } = fields;
+  const cleanFields = Object.fromEntries(
+    Object.entries(rest).filter(([, v]) => v !== undefined)
+  );
+  const { data, error } = await supabase
+    .from("configs")
+    .update(cleanFields)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteConfig(id: string) {
   const { error } = await supabase.from("configs").delete().eq("id", id);
   if (error) throw error;

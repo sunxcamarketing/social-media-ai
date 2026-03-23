@@ -220,7 +220,7 @@ function ClientInformationContent() {
 
   // Forms
   const [basicForm, setBasicForm] = useState({
-    name: "", company: "", role: "", location: "",
+    configName: "", name: "", company: "", role: "", location: "",
     businessContext: "", professionalBackground: "", keyAchievements: "",
     website: "", instagram: "", tiktok: "", youtube: "", linkedin: "", twitter: "",
   });
@@ -277,12 +277,20 @@ function ClientInformationContent() {
     }
   }, [enrichState?.status]);
 
+  const [igError, setIgError] = useState<string | null>(null);
+
   const loadIgProfile = (refresh = false) => {
     setIgLoading(true);
+    setIgError(null);
     fetch(`/api/configs/${id}/instagram-profile`, { method: refresh ? "POST" : "GET" })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => setIgProfile(data))
-      .catch(() => {})
+      .then(async (r) => {
+        if (r.ok) return r.json();
+        const err = await r.json().catch(() => ({}));
+        if (refresh || r.status !== 404) setIgError(err.error || "Profil nicht gefunden");
+        return null;
+      })
+      .then((data) => { if (data) setIgProfile(data); })
+      .catch(() => { if (refresh) setIgError("Verbindungsfehler"); })
       .finally(() => setIgLoading(false));
   };
 
@@ -311,21 +319,34 @@ function ClientInformationContent() {
     }
   };
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const savePartial = async (partial: Partial<Config>) => {
     if (!client) return;
     setSaving(true);
-    await fetch("/api/configs", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...client, ...partial }),
-    });
-    setSaving(false);
-    await loadClient().then(setClient);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/configs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: client.id, ...partial }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Save failed (${res.status})`);
+      }
+      await loadClient().then(setClient);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openBasic = () => {
     if (!client) return;
     setBasicForm({
+      configName: client.configName || "",
       name: client.name || "", company: client.company || "",
       role: client.role || "", location: client.location || "",
       businessContext: client.businessContext || "",
@@ -335,6 +356,7 @@ function ClientInformationContent() {
       tiktok: client.tiktok || "", youtube: client.youtube || "",
       linkedin: client.linkedin || "", twitter: client.twitter || "",
     });
+    setSaveError(null);
     setBasicOpen(true);
   };
 
@@ -510,6 +532,12 @@ function ClientInformationContent() {
           {igLoading && !igProfile && (
             <div className="flex items-center gap-2 text-sm text-ocean/70 py-2">
               <Loader2 className="h-4 w-4 animate-spin" /> {t("info.profileLoading")}
+            </div>
+          )}
+
+          {igError && (
+            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">
+              {igError}
             </div>
           )}
 
@@ -755,6 +783,13 @@ function ClientInformationContent() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>{t("editBasic.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
+            {saveError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">{saveError}</div>
+            )}
+            <div>
+              <Label className="text-xs text-ocean/70">{t("editBasic.displayName") || "Anzeigename"}</Label>
+              <Input value={basicForm.configName} onChange={(e) => setBasicForm({ ...basicForm, configName: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" placeholder="Name in der Sidebar" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {(["name", "company", "role", "location"] as const).map((key) => (
                 <div key={key}>

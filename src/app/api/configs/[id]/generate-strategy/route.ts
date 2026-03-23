@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, writeConfigs, readVideos, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { readConfigs, updateConfig, readVideos, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS, type ContentType, type ContentFormat } from "@/lib/strategy";
 import { STRATEGY_ANALYSIS_SYSTEM, STRATEGY_ANALYSIS_TOOL } from "@/lib/prompts/strategy-analysis";
 import { strategyCreationSystemPrompt, STRATEGY_CREATION_TOOL } from "@/lib/prompts/strategy-creation";
@@ -426,13 +426,11 @@ Prüfe diese Strategie.`;
           _reasoning: analysisResult.goalReasoning || "",
         };
 
-        configs[configIndex] = {
-          ...config,
+        await updateConfig(id, {
           strategyGoal: analysisResult.goal || config.strategyGoal,
           strategyPillars: JSON.stringify(storagePillars),
           strategyWeekly: JSON.stringify(weeklyWithReasoning),
-        };
-        await writeConfigs(configs);
+        });
 
         sendEvent(controller, {
           step: "done",

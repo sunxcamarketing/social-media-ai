@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readConfigs, writeConfigs } from "@/lib/csv";
+import { readConfigs, updateConfig } from "@/lib/csv";
 import { scrapeReels } from "@/lib/apify";
 import { uploadVideo, analyzeVideo } from "@/lib/gemini";
 
@@ -131,9 +131,7 @@ export async function POST(
   };
 
   // Persist
-  const idx = configs.findIndex((c) => c.id === id);
-  configs[idx] = { ...configs[idx], performanceInsights: JSON.stringify(insights) };
-  await writeConfigs(configs);
+  await updateConfig(id, { performanceInsights: JSON.stringify(insights) });
 
   return NextResponse.json(insights);
 }

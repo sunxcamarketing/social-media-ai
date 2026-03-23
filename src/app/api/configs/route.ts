@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
-import { readConfigs, writeConfigs } from "@/lib/csv";
+import { readConfigs } from "@/lib/csv";
 import type { Config } from "@/lib/types";
 
 export async function GET() {
@@ -10,11 +10,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const configs = await readConfigs();
   const newConfig: Config = {
     id: uuid(),
     configName: body.configName,
-    creatorsCategory: body.creatorsCategory,
+    creatorsCategory: body.creatorsCategory || "",
     name: body.name || "",
     company: body.company || "",
     role: body.role || "",
@@ -47,19 +46,28 @@ export async function POST(request: Request) {
     authenticityZone: body.authenticityZone || "",
     voiceProfile: "",
   };
-  configs.push(newConfig);
-  await writeConfigs(configs);
-  return NextResponse.json(newConfig, { status: 201 });
+  try {
+    const { insertConfig } = await import("@/lib/csv");
+    await insertConfig(newConfig);
+    return NextResponse.json(newConfig, { status: 201 });
+  } catch (e) {
+    console.error("POST /api/configs error:", e);
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Create failed" }, { status: 500 });
+  }
 }
 
 export async function PUT(request: Request) {
   const body = await request.json();
-  const configs = await readConfigs();
-  const index = configs.findIndex((c) => c.id === body.id);
-  if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  configs[index] = { ...configs[index], ...body };
-  await writeConfigs(configs);
-  return NextResponse.json(configs[index]);
+  if (!body.id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  try {
+    const { updateConfig } = await import("@/lib/csv");
+    const updated = await updateConfig(body.id, body);
+    if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(updated);
+  } catch (e) {
+    console.error("PUT /api/configs error:", e);
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Save failed" }, { status: 500 });
+  }
 }
 
 export async function DELETE(request: Request) {

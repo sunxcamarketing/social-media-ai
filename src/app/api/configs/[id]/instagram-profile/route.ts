@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readConfigs, writeConfigs } from "@/lib/csv";
+import { readConfigs, updateConfig } from "@/lib/csv";
 
 export interface InstagramProfileData {
   username: string;
@@ -39,14 +39,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   } satisfies InstagramProfileData);
 }
 
-// POST — fetch fresh data from Apify and save to CSV
+// POST — fetch fresh data from Apify and save to DB
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const configs = await readConfigs();
-  const index = configs.findIndex((c) => c.id === id);
-  if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const config = configs[index];
+  const config = configs.find((c) => c.id === id);
+  if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!config.instagram) return NextResponse.json({ error: "No Instagram handle" }, { status: 400 });
 
   const token = process.env.APIFY_API_TOKEN;
@@ -77,13 +75,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
     const data = await res.json();
     const p = data[0];
-    if (!p) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    if (!p) return NextResponse.json({ error: `@${username} wurde auf Instagram nicht gefunden. Bitte Handle prüfen.` }, { status: 404 });
 
     const lastUpdated = new Date().toISOString();
 
-    // Save to CSV
-    configs[index] = {
-      ...config,
+    const igFields = {
       igFullName: p.fullName || "",
       igBio: p.biography || "",
       igFollowers: String(p.followersCount || 0),
@@ -94,7 +90,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       igVerified: String(p.verified || false),
       igLastUpdated: lastUpdated,
     };
-    await writeConfigs(configs);
+
+    await updateConfig(id, igFields);
 
     return NextResponse.json({
       username,
@@ -109,6 +106,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       lastUpdated,
     } satisfies InstagramProfileData);
   } catch {
-    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+    return NextResponse.json({ error: `Profil @${username} konnte nicht geladen werden` }, { status: 500 });
   }
 }

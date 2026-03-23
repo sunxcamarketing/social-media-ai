@@ -92,6 +92,7 @@ export async function scrapeCreatorStats(username: string): Promise<CreatorStats
           resultsType: "details",
           resultsLimit: 1,
         }),
+        signal: AbortSignal.timeout(60000),
       }
     ),
     // 2. Recent posts
@@ -107,6 +108,7 @@ export async function scrapeCreatorStats(username: string): Promise<CreatorStats
           onlyPostsNewerThan: sinceDate,
           addParentData: false,
         }),
+        signal: AbortSignal.timeout(60000),
       }
     ),
   ]);
@@ -117,7 +119,10 @@ export async function scrapeCreatorStats(username: string): Promise<CreatorStats
   }
 
   const profileData = await profileRes.json() as ApifyProfileResult[];
-  const profile = profileData[0] || {};
+  const profile = profileData[0];
+  if (!profile) {
+    throw new Error(`Instagram-Profil @${username} wurde nicht gefunden. Bitte prüfe ob der Handle existiert und das Profil öffentlich ist.`);
+  }
   const profilePicUrl = profile.profilePicUrl || profile.profilePicUrlHD || "";
   const followers = profile.followersCount || 0;
 
