@@ -328,10 +328,12 @@ function SavedScriptCard({
   group,
   onEdit,
   onDelete,
+  onStatusChange,
 }: {
   group: ScriptGroup;
   onEdit: (script: Script) => void;
   onDelete: (scriptId: string) => void;
+  onStatusChange: (scriptId: string, newStatus: string) => void;
 }) {
   const hasBoth = !!(group.kurz && group.lang);
   const [variant, setVariant] = useState<"kurz" | "lang">(hasBoth ? "lang" : group.kurz ? "kurz" : "lang");
@@ -350,6 +352,14 @@ function SavedScriptCard({
     await navigator.clipboard.writeText(fullText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const cycleStatus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const order = STATUS_OPTIONS.map(o => o.value);
+    const idx = order.indexOf(active.status);
+    const next = order[(idx + 1) % order.length];
+    onStatusChange(active.id, next);
   };
 
   return (
@@ -395,9 +405,11 @@ function SavedScriptCard({
         <div className="hidden md:flex items-center gap-2 shrink-0">
           {active.contentType && <span className="text-[10px] text-ocean/60 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{active.contentType}</span>}
           {dur && <span className="text-[10px] text-ocean/50 flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{dur}</span>}
-          <Badge className={`rounded-md text-[10px] border ${statusColor(active.status)}`}>
-            {STATUS_OPTIONS.find(o => o.value === active.status)?.label || active.status}
-          </Badge>
+          <button onClick={cycleStatus} className="cursor-pointer">
+            <Badge className={`rounded-md text-[10px] border ${statusColor(active.status)} hover:opacity-80 transition-opacity`}>
+              {STATUS_OPTIONS.find(o => o.value === active.status)?.label || active.status}
+            </Badge>
+          </button>
         </div>
         <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
           <button onClick={handleCopy} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-warm-white transition-colors">
@@ -645,6 +657,15 @@ export default function ClientScriptsPage() {
     loadScripts();
   };
 
+  const handleStatusChange = async (scriptId: string, newStatus: string) => {
+    await fetch("/api/scripts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: scriptId, status: newStatus }),
+    });
+    loadScripts();
+  };
+
   const filtered = filterStatus === "all" ? scripts : scripts.filter(s => s.status === filterStatus);
   const grouped = groupScripts(filtered);
   const isPipelineActive = pipelineStep !== "idle" && pipelineStep !== "done" && pipelineStep !== "error";
@@ -789,7 +810,7 @@ export default function ClientScriptsPage() {
 
         <div className="space-y-2">
           {grouped.map(g => (
-            <SavedScriptCard key={g.base} group={g} onEdit={openEdit} onDelete={handleDelete} />
+            <SavedScriptCard key={g.base} group={g} onEdit={openEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />
           ))}
           {grouped.length === 0 && (
             <div className="rounded-2xl border border-ocean/5 bg-ocean/[0.01] p-12 text-center">
