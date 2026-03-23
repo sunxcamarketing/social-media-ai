@@ -39,16 +39,18 @@ export default function ClientAuditPage() {
   const profile = audit?.profile ?? null;
   const report = audit?.report ?? "";
   const error = audit?.error ?? "";
-  const unsavedReport = !!report && !running && !saved;
 
   useEffect(() => {
     fetch(`/api/configs/${id}`).then((r) => r.json()).then(setClient).catch(() => {});
     loadAnalyses();
   }, [id]);
 
-  // Reset saved state when a new audit completes
+  // Auto-save when audit completes
   useEffect(() => {
-    if (report && !running) setSaved(false);
+    if (report && !running && !saved && profile) {
+      saveAudit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report, running]);
 
   function loadAnalyses() {
@@ -203,14 +205,16 @@ export default function ClientAuditPage() {
         <div className="rounded-2xl bg-red-50 border border-red-200 px-6 py-4 text-sm text-red-600">{error}</div>
       )}
 
-      {/* Unsaved new report */}
-      {unsavedReport && (
+      {/* Just-completed report (auto-saved) */}
+      {report && !running && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-blush animate-pulse" />
-            <h2 className="text-sm font-semibold text-ocean">Neuer Audit — noch nicht gespeichert</h2>
-          </div>
-          <AuditReport report={report} profile={profile} onSave={saveAudit} saved={saved} />
+          {saved && (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <div className="h-2 w-2 rounded-full bg-green-500" />
+              Audit automatisch gespeichert
+            </div>
+          )}
+          <AuditReport report={report} profile={profile} saved />
         </div>
       )}
 
@@ -283,7 +287,7 @@ export default function ClientAuditPage() {
                 })}
               </div>
             </>
-          ) : !unsavedReport && handle ? (
+          ) : !report && handle ? (
             <div className="text-center py-12">
               <Search className="mx-auto h-8 w-8 text-ocean/20 mb-3" />
               <p className="text-sm text-ocean/70">Noch kein Audit vorhanden.</p>
