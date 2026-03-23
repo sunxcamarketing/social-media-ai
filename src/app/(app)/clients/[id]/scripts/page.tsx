@@ -33,6 +33,8 @@ import {
   Zap,
   PenTool,
   Shield,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 
@@ -50,6 +52,37 @@ function fmtDuration(s: number): string {
   if (!s) return "?s";
   if (s < 60) return `${s}s`;
   return `${Math.floor(s / 60)}m${s % 60 > 0 ? `${s % 60}s` : ""}`;
+}
+
+function baseTitle(title: string): string {
+  return title.replace(/\s*\((Kurz|Lang)\)\s*$/, "").trim();
+}
+
+function scriptVariant(title: string): "kurz" | "lang" | null {
+  if (/\(Kurz\)\s*$/.test(title)) return "kurz";
+  if (/\(Lang\)\s*$/.test(title)) return "lang";
+  return null;
+}
+
+type ScriptGroup = {
+  base: string;
+  kurz?: Script;
+  lang?: Script;
+  single?: Script; // no variant suffix
+};
+
+function groupScripts(scripts: Script[]): ScriptGroup[] {
+  const map = new Map<string, ScriptGroup>();
+  for (const s of scripts) {
+    const variant = scriptVariant(s.title);
+    const base = baseTitle(s.title);
+    if (!map.has(base)) map.set(base, { base });
+    const group = map.get(base)!;
+    if (variant === "kurz") group.kurz = s;
+    else if (variant === "lang") group.lang = s;
+    else group.single = s;
+  }
+  return Array.from(map.values());
 }
 
 function wordCount(text: string): number {
@@ -289,21 +322,26 @@ function GeneratedScriptCard({
   );
 }
 
-// ── Saved Script Card ───────────────────────────────────────────────────────
+// ── Saved Script Card (with Kurz/Lang toggle) ──────────────────────────────
 
 function SavedScriptCard({
-  script,
+  group,
   onEdit,
   onDelete,
 }: {
-  script: Script;
-  onEdit: () => void;
-  onDelete: () => void;
+  group: ScriptGroup;
+  onEdit: (script: Script) => void;
+  onDelete: (scriptId: string) => void;
 }) {
+  const hasBoth = !!(group.kurz && group.lang);
+  const [variant, setVariant] = useState<"kurz" | "lang">(hasBoth ? "lang" : group.kurz ? "kurz" : "lang");
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const fullText = [script.hook, script.body, script.cta].filter(Boolean).join("\n\n");
+  const active: Script | undefined = group.single || (variant === "kurz" ? group.kurz : group.lang) || group.kurz || group.lang;
+  if (!active) return null;
+
+  const fullText = [active.hook, active.body, active.cta].filter(Boolean).join("\n\n");
   const words = wordCount(fullText);
   const dur = words > 0 ? fmtDuration(Math.round((words / 125) * 60)) : null;
 
@@ -324,34 +362,85 @@ function SavedScriptCard({
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-warm-white transition-colors cursor-pointer"
       >
         <ChevronDown className={`h-3 w-3 text-ocean/50 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
-        <span className="flex-1 text-sm font-medium truncate">{script.title || "Ohne Titel"}</span>
+        <span className="flex-1 text-sm font-medium truncate">{group.base || active.title || "Ohne Titel"}</span>
+
+        {/* Kurz/Lang toggle */}
+        {hasBoth && (
+          <div className="flex shrink-0 rounded-lg border border-ocean/[0.08] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setVariant("kurz")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                variant === "kurz"
+                  ? "bg-blush/25 text-blush-dark"
+                  : "text-ocean/40 hover:text-ocean/60 hover:bg-ocean/[0.02]"
+              }`}
+            >
+              <Minimize2 className="h-2.5 w-2.5" />
+              Kurz
+            </button>
+            <button
+              onClick={() => setVariant("lang")}
+              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium transition-colors border-l border-ocean/[0.08] ${
+                variant === "lang"
+                  ? "bg-blush/25 text-blush-dark"
+                  : "text-ocean/40 hover:text-ocean/60 hover:bg-ocean/[0.02]"
+              }`}
+            >
+              <Maximize2 className="h-2.5 w-2.5" />
+              Lang
+            </button>
+          </div>
+        )}
+
         <div className="hidden md:flex items-center gap-2 shrink-0">
-          {script.contentType && <span className="text-[10px] text-ocean/60 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{script.contentType}</span>}
+          {active.contentType && <span className="text-[10px] text-ocean/60 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{active.contentType}</span>}
           {dur && <span className="text-[10px] text-ocean/50 flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{dur}</span>}
-          <Badge className={`rounded-md text-[10px] border ${statusColor(script.status)}`}>
-            {STATUS_OPTIONS.find(o => o.value === script.status)?.label || script.status}
+          <Badge className={`rounded-md text-[10px] border ${statusColor(active.status)}`}>
+            {STATUS_OPTIONS.find(o => o.value === active.status)?.label || active.status}
           </Badge>
         </div>
         <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
           <button onClick={handleCopy} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-warm-white transition-colors">
             {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-warm-white transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onEdit(active); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-warm-white transition-colors">
             <Pencil className="h-3 w-3" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-red-500 hover:bg-red-50 transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(active.id); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-red-500 hover:bg-red-50 transition-colors">
             <Trash2 className="h-3 w-3" />
           </button>
         </div>
       </div>
       {expanded && (
         <div className="px-4 pb-4 pt-1 space-y-3 border-t border-ocean/5">
-          <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-4 py-3">
-            <p className="text-sm text-ocean/80 leading-relaxed whitespace-pre-wrap">{fullText}</p>
-          </div>
+          {active.hook ? (
+            <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 overflow-hidden">
+              <div className="px-4 py-3 border-b border-ocean/5">
+                <p className="text-[9px] uppercase tracking-wider text-blush-dark/60 font-medium mb-1.5">Hook</p>
+                <p className="text-sm text-ocean/90 leading-relaxed font-medium">{active.hook}</p>
+              </div>
+              {active.body && (
+                <div className="px-4 py-3 border-b border-ocean/5">
+                  <p className="text-[9px] uppercase tracking-wider text-ocean/40 font-medium mb-1.5">Skript</p>
+                  <p className="text-sm text-ocean/75 leading-relaxed whitespace-pre-wrap">{active.body}</p>
+                </div>
+              )}
+              {active.cta && (
+                <div className="px-4 py-3">
+                  <p className="text-[9px] uppercase tracking-wider text-green-600/60 font-medium mb-1.5">CTA</p>
+                  <p className="text-sm text-ocean/75 leading-relaxed">{active.cta}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-4 py-3">
+              <p className="text-sm text-ocean/80 leading-relaxed whitespace-pre-wrap">{fullText}</p>
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            {script.pillar && <span className="text-[10px] text-blush-dark/60 rounded bg-blush/20 border border-blush/30 px-2 py-0.5">{script.pillar}</span>}
-            {script.format && <span className="text-[10px] text-ocean/50">{script.format}</span>}
+            {active.pillar && <span className="text-[10px] text-blush-dark/60 rounded bg-blush/20 border border-blush/30 px-2 py-0.5">{active.pillar}</span>}
+            {active.format && <span className="text-[10px] text-ocean/50">{active.format}</span>}
+            {hasBoth && <span className="text-[10px] text-ocean/40">· {variant === "kurz" ? "~30s" : "Vollversion"}</span>}
           </div>
         </div>
       )}
@@ -557,6 +646,7 @@ export default function ClientScriptsPage() {
   };
 
   const filtered = filterStatus === "all" ? scripts : scripts.filter(s => s.status === filterStatus);
+  const grouped = groupScripts(filtered);
   const isPipelineActive = pipelineStep !== "idle" && pipelineStep !== "done" && pipelineStep !== "error";
 
   return (
@@ -689,7 +779,7 @@ export default function ClientScriptsPage() {
                 {s.label}
               </button>
             ))}
-            <span className="ml-1 text-[11px] text-ocean/50">{filtered.length} Skripte</span>
+            <span className="ml-1 text-[11px] text-ocean/50">{grouped.length} Skripte</span>
           </div>
           <Button variant="ghost" onClick={openNew}
             className="rounded-xl h-9 gap-1.5 border border-ocean/[0.06] text-xs text-ocean/60">
@@ -698,10 +788,10 @@ export default function ClientScriptsPage() {
         </div>
 
         <div className="space-y-2">
-          {filtered.map(script => (
-            <SavedScriptCard key={script.id} script={script} onEdit={() => openEdit(script)} onDelete={() => handleDelete(script.id)} />
+          {grouped.map(g => (
+            <SavedScriptCard key={g.base} group={g} onEdit={openEdit} onDelete={handleDelete} />
           ))}
-          {filtered.length === 0 && (
+          {grouped.length === 0 && (
             <div className="rounded-2xl border border-ocean/5 bg-ocean/[0.01] p-12 text-center">
               <FileText className="mx-auto h-8 w-8 text-ocean/15 mb-3" />
               <p className="text-sm text-ocean/50">Noch keine gespeicherten Skripte.</p>
