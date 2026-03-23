@@ -95,6 +95,10 @@ async function fetchProfileWithRetry(token: string, username: string, retries = 
 
     if (!res.ok) {
       const text = await res.text();
+      // Don't retry on billing/quota errors
+      if (res.status === 402 || res.status === 403 || text.includes("usage") || text.includes("limit")) {
+        throw new Error("Apify-Monatslimit erreicht. Bitte erhöhe dein Limit unter console.apify.com/billing.");
+      }
       if (attempt < retries) {
         console.log(`Apify profile attempt ${attempt + 1} failed (${res.status}), retrying in 3s...`);
         await new Promise((r) => setTimeout(r, 3000));
