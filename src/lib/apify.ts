@@ -73,56 +73,66 @@ export interface CreatorStatsWithReels extends CreatorStats {
   reels: ApifyReel[];
 }
 
+async function fetchApify(token: string, body: Record<string, unknown>, timeoutMs = 90000): Promise<Response> {
+  return fetch(
+    `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}&timeout=60`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    }
+  );
+}
+
+async function fetchProfileWithRetry(token: string, username: string, retries = 2): Promise<ApifyProfileResult> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetchApify(token, {
+      directUrls: [`https://www.instagram.com/${username}/`],
+      resultsType: "details",
+      resultsLimit: 1,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      if (attempt < retries) {
+        console.log(`Apify profile attempt ${attempt + 1} failed (${res.status}), retrying in 3s...`);
+        await new Promise((r) => setTimeout(r, 3000));
+        continue;
+      }
+      throw new Error(`Apify-Fehler ${res.status}: ${text.slice(0, 200)}`);
+    }
+
+    const data = await res.json() as ApifyProfileResult[];
+    if (data[0]) return data[0];
+
+    if (attempt < retries) {
+      console.log(`Apify returned empty for @${username}, retrying in 3s...`);
+      await new Promise((r) => setTimeout(r, 3000));
+      continue;
+    }
+  }
+  throw new Error(`Instagram-Profil @${username} wurde nicht gefunden. Bitte prüfe ob der Handle existiert und das Profil öffentlich ist.`);
+}
+
 export async function scrapeCreatorStats(username: string): Promise<CreatorStatsWithReels> {
   const token = getToken();
   const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
 
-  // Run BOTH Apify calls in parallel — cuts wait time roughly in half
-  const [profileRes, postsRes] = await Promise.all([
-    // 1. Profile info
-    fetch(
-      `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          directUrls: [`https://www.instagram.com/${username}/`],
-          resultsType: "details",
-          resultsLimit: 1,
-        }),
-        signal: AbortSignal.timeout(60000),
-      }
-    ),
-    // 2. Recent posts
-    fetch(
-      `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          directUrls: [`https://www.instagram.com/${username}/`],
-          resultsType: "posts",
-          resultsLimit: 50,
-          onlyPostsNewerThan: sinceDate,
-          addParentData: false,
-        }),
-        signal: AbortSignal.timeout(60000),
-      }
-    ),
+  // Fetch profile with retry, posts in parallel
+  const [profile, postsRes] = await Promise.all([
+    fetchProfileWithRetry(token, username),
+    fetchApify(token, {
+      directUrls: [`https://www.instagram.com/${username}/`],
+      resultsType: "posts",
+      resultsLimit: 50,
+      onlyPostsNewerThan: sinceDate,
+      addParentData: false,
+    }),
   ]);
 
-  if (!profileRes.ok) {
-    const text = await profileRes.text();
-    throw new Error(`Apify profile error ${profileRes.status}: ${text}`);
-  }
-
-  const profileData = await profileRes.json() as ApifyProfileResult[];
-  const profile = profileData[0];
-  if (!profile) {
-    throw new Error(`Instagram-Profil @${username} wurde nicht gefunden. Bitte prüfe ob der Handle existiert und das Profil öffentlich ist.`);
-  }
   const profilePicUrl = profile.profilePicUrl || profile.profilePicUrlHD || "";
   const followers = profile.followersCount || 0;
 
