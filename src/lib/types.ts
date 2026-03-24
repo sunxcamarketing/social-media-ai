@@ -45,6 +45,7 @@ export interface Config {
   igVerified: string;
   igLastUpdated: string;
   voiceProfile: string; // JSON: VoiceProfile
+  googleDriveFolder: string;
 }
 
 export interface Creator {
@@ -108,6 +109,7 @@ export interface TrainingScript {
   audioHook: string;    // spoken/audio hook
   script: string;       // main body script
   cta: string;          // call to action
+  sourceId: string;     // e.g. "gdrive:<fileId>" for deduplication
   createdAt: string;
 }
 

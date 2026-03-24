@@ -51,6 +51,13 @@ const translations: Record<string, { de: string; en: string }> = {
   "info.addInformation": { de: "Informationen hinzufügen", en: "Add information" },
   "info.edit": { de: "Bearbeiten", en: "Edit" },
   "info.save": { de: "Speichern", en: "Save Changes" },
+  "info.driveFolder": { de: "Google Drive Ordner", en: "Google Drive Folder" },
+  "info.driveImport": { de: "Von Drive importieren", en: "Import from Drive" },
+  "info.driveImporting": { de: "Importiere…", en: "Importing…" },
+  "info.driveHint": { de: "Ordner muss mit der Service-Account-E-Mail geteilt werden", en: "Folder must be shared with the service account email" },
+  "info.drivePlaceholder": { de: "https://drive.google.com/drive/folders/...", en: "https://drive.google.com/drive/folders/..." },
+  "info.driveSuccess": { de: "{{count}} Dokument(e) importiert. Voice Profile generiert.", en: "{{count}} document(s) imported. Voice profile generated." },
+  "info.driveSuccessNoVoice": { de: "{{count}} Dokument(e) importiert.", en: "{{count}} document(s) imported." },
   "info.saving": { de: "Wird gespeichert…", en: "Saving…" },
 
   // Follow-up dialog

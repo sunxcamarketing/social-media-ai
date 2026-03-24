@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     igPostsCount: "", igProfilePicUrl: "", igCategory: "", igVerified: "", igLastUpdated: "",
     authenticityZone: body.authenticityZone || "",
     voiceProfile: "",
+    googleDriveFolder: body.googleDriveFolder || "",
   };
   try {
     const { insertConfig } = await import("@/lib/csv");

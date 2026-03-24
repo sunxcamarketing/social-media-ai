@@ -39,7 +39,8 @@ CREATE TABLE configs (
   "igProfilePicUrl" TEXT DEFAULT '',
   "igCategory" TEXT DEFAULT '',
   "igVerified" TEXT DEFAULT '',
-  "igLastUpdated" TEXT DEFAULT ''
+  "igLastUpdated" TEXT DEFAULT '',
+  "googleDriveFolder" TEXT DEFAULT ''
 );
 
 -- Creators
@@ -108,6 +109,7 @@ CREATE TABLE training_scripts (
   audio_hook TEXT DEFAULT '',
   script TEXT DEFAULT '',
   cta TEXT DEFAULT '',
+  source_id TEXT DEFAULT NULL,
   created_at TEXT
 );
 

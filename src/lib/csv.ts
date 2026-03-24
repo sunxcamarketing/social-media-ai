@@ -219,6 +219,7 @@ export async function readTrainingScripts(): Promise<TrainingScript[]> {
     audioHook: (r.audio_hook as string) || "",
     script: (r.script as string) || "",
     cta: (r.cta as string) || "",
+    sourceId: (r.source_id as string) || "",
     createdAt: (r.created_at as string) || "",
   }));
 }
@@ -233,6 +234,7 @@ export async function writeTrainingScripts(scripts: TrainingScript[]) {
     audio_hook: s.audioHook,
     script: s.script,
     cta: s.cta,
+    source_id: s.sourceId || null,
     created_at: s.createdAt || null,
   }));
   const { error } = await supabase.from("training_scripts").upsert(rows, { onConflict: "id" });

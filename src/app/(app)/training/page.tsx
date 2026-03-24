@@ -74,7 +74,7 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => voi
 // ═══════════════════════════════════════════════════════════════════════════
 
 const EMPTY_SCRIPT: Omit<TrainingScript, "id" | "createdAt"> = {
-  clientId: "", format: "", textHook: "", visualHook: "", audioHook: "", script: "", cta: "",
+  clientId: "", format: "", textHook: "", visualHook: "", audioHook: "", script: "", cta: "", sourceId: "",
 };
 
 function ScriptCard({ script, onEdit, onDelete, clientLabel }: {
@@ -190,7 +190,7 @@ function ScriptsTab() {
   function openAdd() { setEditing(null); setForm(EMPTY_SCRIPT); setDialogOpen(true); }
   function openEdit(s: TrainingScript) {
     setEditing(s);
-    setForm({ clientId: s.clientId, format: s.format, textHook: s.textHook, visualHook: s.visualHook, audioHook: s.audioHook, script: s.script, cta: s.cta });
+    setForm({ clientId: s.clientId, format: s.format, textHook: s.textHook, visualHook: s.visualHook, audioHook: s.audioHook, script: s.script, cta: s.cta, sourceId: s.sourceId || "" });
     setDialogOpen(true);
   }
 
