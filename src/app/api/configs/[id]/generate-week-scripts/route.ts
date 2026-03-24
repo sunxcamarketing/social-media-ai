@@ -6,8 +6,8 @@ import { trendResearchSystemPrompt, TREND_RESEARCH_TOOL } from "@/lib/prompts/tr
 import { HOOK_GENERATION_SYSTEM, HOOK_GENERATION_TOOL } from "@/lib/prompts/hook-generation";
 import { bodyWritingSystemPrompt, BODY_WRITING_TOOL } from "@/lib/prompts/body-writing";
 import { QUALITY_REVIEW_SYSTEM, QUALITY_REVIEW_TOOL } from "@/lib/prompts/quality-review";
-import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
-import type { VoiceProfile } from "@/lib/types";
+import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, generateScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
+import type { VoiceProfile, ScriptStructureProfile } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
 export const maxDuration = 300;
@@ -295,24 +295,32 @@ ${crossNicheVideos.map((v, i) => {
         sendEvent(controller, { step: "context", status: "done" });
 
         // ════════════════════════════════════════════════════════════════════
-        // STEP 2: VOICE PROFILE
+        // STEP 2: VOICE PROFILE + SCRIPT STRUCTURE
         // ════════════════════════════════════════════════════════════════════
         sendEvent(controller, { step: "voice", status: "loading" });
 
-        let voiceProfile: VoiceProfile | null = await getVoiceProfile(id);
-        if (!voiceProfile) {
-          // Try generating it
-          voiceProfile = await generateVoiceProfile(id, clientName).catch(() => null);
-        }
+        // Load both profiles in parallel (cached or generate)
+        const [voiceResult, structureResult] = await Promise.allSettled([
+          getVoiceProfile(id).then(async (p) => p || await generateVoiceProfile(id, clientName)),
+          getScriptStructure(id).then(async (s) => s || await generateScriptStructure(id, clientName)),
+        ]);
+
+        const voiceProfile: VoiceProfile | null = voiceResult.status === "fulfilled" ? voiceResult.value : null;
+        const scriptStructure: ScriptStructureProfile | null = structureResult.status === "fulfilled" ? structureResult.value : null;
 
         const voiceBlock = voiceProfile
           ? voiceProfileToPromptBlock(voiceProfile, clientName)
+          : "";
+
+        const structureBlock = scriptStructure
+          ? scriptStructureToPromptBlock(scriptStructure)
           : "";
 
         sendEvent(controller, {
           step: "voice",
           status: "done",
           hasVoice: !!voiceProfile,
+          hasStructure: !!scriptStructure,
         });
 
         // ════════════════════════════════════════════════════════════════════
@@ -450,6 +458,11 @@ AUFTRAG: Wähle ${activeDays.length} strategisch optimale Themen für diese Woch
           ? `\nSTIMMPROFIL:\nTon: ${voiceProfile.tone}\nEnergie: ${voiceProfile.energy}\nLieblingswörter: ${voiceProfile.favoriteWords.slice(0, 5).join(", ")}`
           : "";
 
+        // Script structure hook patterns for reference
+        const structureHookBlock = scriptStructure
+          ? `\nSKRIPT-STRUKTUR HOOK-MUSTER (aus Training gelernt — bevorzuge diese):\n${scriptStructure.hookPatterns.map(h => `- ${h.pattern}: "${h.example}"`).join("\n")}`
+          : "";
+
         const hookPromises = topics.map(async (topic, idx) => {
           const userPrompt = `THEMA: ${topic.title}
 BESCHREIBUNG: ${topic.description}
@@ -457,6 +470,7 @@ Content-Type: ${topic.contentType} | Format: ${topic.format}
 
 ${competitorHooksBlock ? `COMPETITOR-HOOKS (was in der Nische funktioniert):\n${competitorHooksBlock}` : ""}
 ${usedPatternsBlock ? `\nBEREITS VERWENDETE HOOK-MUSTER (vermeide Wiederholung, wähle ANDERE):\n${usedPatternsBlock}` : ""}
+${structureHookBlock}
 ${voiceToneBlock}
 
 Erstelle 3 Hook-Optionen für dieses Thema. Nutze Hook-Muster die NOCH NICHT oft verwendet wurden.`;
@@ -517,11 +531,13 @@ ${brandContext}
 
 ${voiceBlock}
 
+${structureBlock}
+
 THEMA: ${topic.title}
 BESCHREIBUNG: ${topic.description}
 HOOK (bereits fertig): "${hook}"
 
-Schreibe jetzt Body und CTA. Der Hook steht — baue darauf auf.`;
+Schreibe jetzt Body und CTA. Der Hook steht — baue darauf auf. Folge den Strukturmustern aus dem Skript-Aufbau-Profil.`;
 
           try {
             const msg = await claude.messages.create({
@@ -575,7 +591,7 @@ Schreibe jetzt Body und CTA. Der Hook steht — baue darauf auf.`;
           reasoning: topic.reasoning,
         }));
 
-        const reviewUserPrompt = `${voiceBlock ? voiceBlock + "\n\n" : ""}${assembledScripts.map((s, i) => `--- SKRIPT ${i + 1} (${s.day}) ---
+        const reviewUserPrompt = `${voiceBlock ? voiceBlock + "\n\n" : ""}${structureBlock ? structureBlock + "\n\n" : ""}${assembledScripts.map((s, i) => `--- SKRIPT ${i + 1} (${s.day}) ---
 TITEL: ${s.title}
 HOOK: ${s.hook}
 BODY: ${s.body}

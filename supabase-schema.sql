@@ -40,6 +40,7 @@ CREATE TABLE configs (
   "igCategory" TEXT DEFAULT '',
   "igVerified" TEXT DEFAULT '',
   "igLastUpdated" TEXT DEFAULT '',
+  "scriptStructure" TEXT DEFAULT '',
   "googleDriveFolder" TEXT DEFAULT ''
 );
 

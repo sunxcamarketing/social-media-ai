@@ -16,6 +16,7 @@ export { STRATEGY_REVIEW_SYSTEM, STRATEGY_REVIEW_TOOL } from "./strategy-review"
 
 // Multi-step pipeline prompts
 export { VOICE_PROFILE_SYSTEM, VOICE_PROFILE_TOOL } from "./voice-profile";
+export { SCRIPT_STRUCTURE_SYSTEM, SCRIPT_STRUCTURE_TOOL } from "./script-structure";
 export { topicSelectionSystemPrompt, TOPIC_SELECTION_TOOL } from "./topic-selection";
 export { HOOK_GENERATION_SYSTEM, HOOK_GENERATION_TOOL } from "./hook-generation";
 export { bodyWritingSystemPrompt, BODY_WRITING_TOOL } from "./body-writing";

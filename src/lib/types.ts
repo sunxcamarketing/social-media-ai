@@ -45,6 +45,7 @@ export interface Config {
   igVerified: string;
   igLastUpdated: string;
   voiceProfile: string; // JSON: VoiceProfile
+  scriptStructure: string; // JSON: ScriptStructureProfile
   googleDriveFolder: string;
 }
 
@@ -146,6 +147,29 @@ export interface VoiceProfile {
   sentencePatterns: string;
   slangMarkers: string[];
   exampleSentences: string[];
+  summary: string;
+}
+
+export interface ScriptStructureProfile {
+  hookPatterns: Array<{
+    pattern: string;
+    description: string;
+    frequency: string;
+    example: string;
+  }>;
+  bodyStructures: Array<{
+    name: string;
+    steps: string[];
+    example: string;
+  }>;
+  transitionPatterns: string[];
+  ctaPatterns: Array<{
+    pattern: string;
+    example: string;
+  }>;
+  avgParagraphs: number;
+  dramaturgicFlow: string;
+  keyRules: string[];
   summary: string;
 }
 

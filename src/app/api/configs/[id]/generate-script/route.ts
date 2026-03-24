@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
-import { getVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
+import { getVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
 import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { singleScriptSystemPrompt, topicScriptSystemPrompt } from "@/lib/prompts";
@@ -210,8 +210,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ? `\nBEREITS ERSTELLT (vermeide diese Themen):\n${recentTitles.map(t => `- ${t}`).join("\n")}`
     : "";
 
-  // ── Voice: prefer cached profile, fallback to raw transcripts ────────────
+  // ── Voice + Script Structure: prefer cached profiles ─────────────────────
   const voiceProfile = await getVoiceProfile(id);
+  const scriptStructure = await getScriptStructure(id);
   const clientTrainingScripts = voiceProfile ? [] : (await readTrainingScripts()).filter(ts => ts.clientId === id);
   const voiceBlock = voiceProfile
     ? voiceProfileToPromptBlock(voiceProfile, config.name || "der Kunde")
@@ -223,6 +224,9 @@ ${clientTrainingScripts.slice(0, 8).map((ts, i) => {
 ${(ts.script || "").slice(0, 2000)}`;
 }).join("\n\n")}
 </voice_examples>` : "";
+  const structureBlock = scriptStructure
+    ? scriptStructureToPromptBlock(scriptStructure)
+    : "";
 
   // ── Performance context blocks ────────────────────────────────────────────
   const ownPerformanceBlock = ownTopVideos.length > 0 ? `
@@ -286,7 +290,7 @@ ${pillarBlock}
 WOCHENPLAN (${postsPerWeek}×/Woche):
 ${Object.entries(weekly).map(([day, d]) => `${day}: ${d.type} | ${d.format}`).join("\n")}
 </strategy>
-${ownPerformanceBlock}${creatorBlock}${auditBlock}${voiceBlock}${recentTopics}
+${ownPerformanceBlock}${creatorBlock}${auditBlock}${voiceBlock}${structureBlock}${recentTopics}
 ${hint ? `\nHINWEIS: ${hint}` : ""}
 
 ${dayOverrideBlock}`;
@@ -398,14 +402,18 @@ async function handleTopicScript(
     dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
   ].filter(Boolean).join("\n");
 
-  // Voice: prefer cached profile, fallback to raw transcripts
+  // Voice + Structure: prefer cached profiles
   const topicVoiceProfile = await getVoiceProfile(clientId);
+  const topicScriptStructure = await getScriptStructure(clientId);
   const topicTrainingScripts = topicVoiceProfile ? [] : (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
   const voiceBlock = topicVoiceProfile
     ? "\n" + voiceProfileToPromptBlock(topicVoiceProfile, config.name || "der Kunde")
     : topicTrainingScripts.length > 0
       ? `\n<voice_examples>\nSo spricht ${config.name || "der Kunde"} wirklich. Imitiere diesen Stil exakt:\n${topicTrainingScripts.slice(0, 6).map((ts, i) => `--- ${i + 1} ---\n${(ts.script || "").slice(0, 2000)}`).join("\n\n")}\n</voice_examples>`
       : "";
+  const topicStructureBlock = topicScriptStructure
+    ? "\n" + scriptStructureToPromptBlock(topicScriptStructure)
+    : "";
 
   // Audit report
   const topicAuditBlock = await getAuditBlock(clientId);
@@ -450,7 +458,7 @@ async function handleTopicScript(
 ${clientContext}
 </client>
 ${topicAuditBlock}
-${voiceBlock}
+${voiceBlock}${topicStructureBlock}
 ${hint ? `\nHINWEIS: ${hint}` : ""}
 
 THEMA: ${topic.title}

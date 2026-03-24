@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 import { readConfigs } from "@/lib/csv";
 import { supabase } from "@/lib/supabase";
 import { parseFolderIdFromUrl, fetchAllDocsFromFolder } from "@/lib/google-drive";
-import { generateVoiceProfile } from "@/lib/voice-profile";
+import { generateVoiceProfile, generateScriptStructure } from "@/lib/voice-profile";
 
 export const maxDuration = 300;
 
@@ -81,16 +81,29 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       }
     }
 
-    // Regenerate voice profile
+    // Regenerate both profiles in parallel
+    const clientName = config.name || config.configName || "Kunde";
     let voiceProfileGenerated = false;
-    try {
-      const profile = await generateVoiceProfile(id, config.name || config.configName || "Kunde");
-      voiceProfileGenerated = !!profile;
-    } catch (e) {
-      console.error("Voice profile generation failed:", e);
+    let scriptStructureGenerated = false;
+
+    const [voiceResult, structureResult] = await Promise.allSettled([
+      generateVoiceProfile(id, clientName),
+      generateScriptStructure(id, clientName),
+    ]);
+
+    if (voiceResult.status === "fulfilled" && voiceResult.value) {
+      voiceProfileGenerated = true;
+    } else if (voiceResult.status === "rejected") {
+      console.error("Voice profile generation failed:", voiceResult.reason);
     }
 
-    return NextResponse.json({ imported, voiceProfileGenerated });
+    if (structureResult.status === "fulfilled" && structureResult.value) {
+      scriptStructureGenerated = true;
+    } else if (structureResult.status === "rejected") {
+      console.error("Script structure generation failed:", structureResult.reason);
+    }
+
+    return NextResponse.json({ imported, voiceProfileGenerated, scriptStructureGenerated });
   } catch (e) {
     console.error("sync-drive error:", e);
     return NextResponse.json(
