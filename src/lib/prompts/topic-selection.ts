@@ -20,6 +20,9 @@ ${AUDIT_USAGE_RULES}
 - Variiere die Themen über die Woche — keine zwei Videos zum gleichen Unterthema.
 - Halte dich an den vorgegebenen Wochenplan (Content-Type und Format pro Tag).
 - Jedes Thema braucht eine BEGRÜNDUNG: Welche konkreten Daten stützen diese Wahl?
+- Wenn Trend-Themen gegeben: Mindestens 1-2 aktuelle Trends aufgreifen und für den Kunden adaptieren.
+- Wenn Cross-Nische-Inspiration gegeben: Prüfe ob Formate oder Hook-Muster aus anderen Nischen adaptiert werden können. Nicht das Thema kopieren, sondern das FORMAT übertragen.
+- KREATIVITÄT: Überrasche. Nicht immer die naheliegendste Idee. Mische unerwartete Winkel mit bewährten Formaten.
 
 ${ANTI_PATTERNS}`;
 }

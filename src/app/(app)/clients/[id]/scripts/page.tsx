@@ -98,6 +98,7 @@ type WeekScript = {
   format: string;
   title: string;
   hook: string;
+  hookPattern: string;
   body: string;
   cta: string;
   reasoning: string;
@@ -113,11 +114,12 @@ type GenerationMeta = {
   reviewIssuesFixed: number;
 };
 
-type PipelineStep = "idle" | "context" | "voice" | "topics" | "hooks" | "bodies" | "review" | "done" | "error";
+type PipelineStep = "idle" | "context" | "voice" | "trends" | "topics" | "hooks" | "bodies" | "review" | "done" | "error";
 
 const PIPELINE_STEPS: { key: PipelineStep; label: string; icon: React.ElementType }[] = [
   { key: "context", label: "Kontext laden", icon: FileText },
   { key: "voice", label: "Stimmprofil", icon: Mic },
+  { key: "trends", label: "Trend-Recherche", icon: Lightbulb },
   { key: "topics", label: "Themen auswählen", icon: Target },
   { key: "hooks", label: "Hooks generieren", icon: Zap },
   { key: "bodies", label: "Skripte schreiben", icon: PenTool },
@@ -550,6 +552,8 @@ export default function ClientScriptsPage() {
           } else if (data.step === "context" && data.status === "done") {
             setPipelineStep("voice");
           } else if (data.step === "voice" && data.status === "done") {
+            setPipelineStep("trends");
+          } else if (data.step === "trends" && data.status === "done") {
             setPipelineStep("topics");
           } else if (data.step === "topics" && data.status === "done") {
             setPipelineStep("hooks");
@@ -596,6 +600,7 @@ export default function ClientScriptsPage() {
         contentType: s.contentType,
         format: s.format,
         hook: s.hook,
+        hookPattern: s.hookPattern || "",
         body: s.body,
         cta: s.cta,
         status: "entwurf",

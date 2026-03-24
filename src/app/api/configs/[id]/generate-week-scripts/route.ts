@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideos, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { topicSelectionSystemPrompt, TOPIC_SELECTION_TOOL } from "@/lib/prompts/topic-selection";
+import { trendResearchSystemPrompt, TREND_RESEARCH_TOOL } from "@/lib/prompts/trend-research";
 import { HOOK_GENERATION_SYSTEM, HOOK_GENERATION_TOOL } from "@/lib/prompts/hook-generation";
 import { bodyWritingSystemPrompt, BODY_WRITING_TOOL } from "@/lib/prompts/body-writing";
 import { QUALITY_REVIEW_SYSTEM, QUALITY_REVIEW_TOOL } from "@/lib/prompts/quality-review";
@@ -220,6 +221,28 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           ? `<own_top_videos>\n${ownTopVideos.slice(0, 5).map((v, i) => videoInsightBlock(v, i)).join("\n\n")}\n</own_top_videos>`
           : "";
 
+        // Cross-niche inspiration: top videos from OTHER configs
+        const crossNicheVideos = allVideos
+          .filter(v => v.configName !== config.configName && v.views > 0 && v.analysis)
+          .sort((a, b) => b.views - a.views)
+          .slice(0, 5);
+
+        const crossNicheBlock = crossNicheVideos.length > 0
+          ? `<cross_niche_inspiration>
+Virale Videos aus ANDEREN Nischen — Formate und Hooks die du adaptieren kannst:
+${crossNicheVideos.map((v, i) => {
+              const lines = [`[${i + 1}] @${v.creator} · ${fmt(v.views)} Views · Nische: ${v.configName}`];
+              if (v.analysis) {
+                const m = v.analysis.match(/HOOK[:\s]+([\s\S]*?)(?=\n[A-Z][\w /]+[:\s]|$)/i);
+                if (m) lines.push(`Hook: ${m[1].trim().slice(0, 150)}`);
+                const f = v.analysis.match(/(?:FORMAT|KONZEPT|CONCEPT)[:\s]+([\s\S]*?)(?=\n[A-Z][\w /]+[:\s]|$)/i);
+                if (f) lines.push(`Format: ${f[1].trim().slice(0, 150)}`);
+              }
+              return lines.join("\n");
+            }).join("\n\n")}
+</cross_niche_inspiration>`
+          : "";
+
         const competitorHooksBlock = creatorVideos.length > 0
           ? creatorVideos.map((v, i) => {
               const lines = [`[${i + 1}] @${v.creator} · ${fmt(v.views)} Views`];
@@ -231,11 +254,31 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
             }).join("\n\n")
           : "";
 
-        // Existing scripts (avoid repetition)
+        // Existing scripts (avoid repetition) — include ALL with pillar + hook pattern
         const existingScripts = (await readScripts()).filter(s => s.clientId === id);
-        const recentTitles = existingScripts.slice(-20).map(s => s.title).filter(Boolean);
-        const recentBlock = recentTitles.length > 0
-          ? `\nBEREITS BEHANDELT (vermeide diese Themen):\n${recentTitles.map(t => `- ${t}`).join("\n")}`
+        const recentScriptsInfo = existingScripts.slice(-40).map(s => {
+          const parts = [`- ${s.title}`];
+          if (s.pillar) parts[0] += ` [${s.pillar}]`;
+          if (s.hookPattern) parts[0] += ` (Hook: ${s.hookPattern})`;
+          return parts[0];
+        }).filter(Boolean);
+        const recentBlock = recentScriptsInfo.length > 0
+          ? `\nBEREITS BEHANDELT (vermeide diese Themen UND Winkel):\n${recentScriptsInfo.join("\n")}`
+          : "";
+
+        // Hook pattern tracking
+        const usedPatterns = existingScripts
+          .filter(s => s.hookPattern)
+          .map(s => s.hookPattern);
+        const patternCounts: Record<string, number> = {};
+        for (const p of usedPatterns) {
+          patternCounts[p] = (patternCounts[p] || 0) + 1;
+        }
+        const usedPatternsBlock = Object.keys(patternCounts).length > 0
+          ? Object.entries(patternCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([pattern, count]) => `- ${pattern} (${count}× verwendet)`)
+              .join("\n")
           : "";
 
         // Duration info
@@ -273,6 +316,54 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         });
 
         // ════════════════════════════════════════════════════════════════════
+        // STEP 2.5: TREND RESEARCH (1 focused call)
+        // ════════════════════════════════════════════════════════════════════
+        sendEvent(controller, { step: "trends", status: "loading" });
+
+        let trendBlock = "";
+        try {
+          const trendSystem = trendResearchSystemPrompt(
+            config.creatorsCategory || "Social Media",
+            new Date().toISOString().split("T")[0],
+          );
+
+          const trendPromise = claude.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 1500,
+            system: trendSystem,
+            tools: [TREND_RESEARCH_TOOL],
+            tool_choice: { type: "tool", name: "submit_trends" },
+            messages: [{
+              role: "user",
+              content: `Nische: ${config.creatorsCategory || "Social Media"}\nKunde: ${clientName}${config.businessContext ? `\nBusiness: ${config.businessContext}` : ""}\n\n${recentBlock}\n\nIdentifiziere 5-8 aktuelle Trend-Themen für diese Nische.`,
+            }],
+          });
+
+          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 30000));
+          const trendMsg = await Promise.race([trendPromise, timeoutPromise]);
+
+          if (trendMsg) {
+            const tu = trendMsg.content.find(b => b.type === "tool_use");
+            if (tu && tu.type === "tool_use") {
+              const result = tu.input as { trends: Array<{ topic: string; angle: string; whyNow: string; hookIdea: string }> };
+              trendBlock = `<trending_topics>
+Aktuelle Trend-Themen (als INSPIRATION — mindestens 1-2 davon aufgreifen):
+${result.trends.map((t, i) => `${i + 1}. ${t.topic} — ${t.angle}\n   Warum jetzt: ${t.whyNow}\n   Hook-Idee: "${t.hookIdea}"`).join("\n")}
+</trending_topics>`;
+              sendEvent(controller, { step: "trends", status: "done", count: result.trends.length });
+            } else {
+              sendEvent(controller, { step: "trends", status: "done", count: 0 });
+            }
+          } else {
+            console.log("Trend research timed out after 30s — skipping");
+            sendEvent(controller, { step: "trends", status: "done", count: 0 });
+          }
+        } catch (e) {
+          console.error("Trend research failed:", e);
+          sendEvent(controller, { step: "trends", status: "done", count: 0 });
+        }
+
+        // ════════════════════════════════════════════════════════════════════
         // STEP 3: TOPIC SELECTION (1 focused call)
         // ════════════════════════════════════════════════════════════════════
         sendEvent(controller, { step: "topics", status: "loading" });
@@ -299,6 +390,10 @@ ${ownPerformanceBlock}
 
 ${competitorHooksBlock ? `<competitor_videos>\n${competitorHooksBlock}\n</competitor_videos>` : ""}
 
+${trendBlock}
+
+${crossNicheBlock}
+
 ${recentBlock}
 
 <client>
@@ -306,7 +401,7 @@ ${clientContext}
 Nische: ${config.creatorsCategory || ""}
 </client>
 
-AUFTRAG: Wähle ${activeDays.length} strategisch optimale Themen für diese Woche. Eines pro Tag.`;
+AUFTRAG: Wähle ${activeDays.length} strategisch optimale Themen für diese Woche. Eines pro Tag. Nutze die Trend-Themen und Cross-Nische-Inspiration als frische Ideen — mindestens 1-2 Themen sollten aktuelle Trends aufgreifen.`;
 
         const topicMessage = await claude.messages.create({
           model: "claude-sonnet-4-6",
@@ -361,9 +456,10 @@ BESCHREIBUNG: ${topic.description}
 Content-Type: ${topic.contentType} | Format: ${topic.format}
 
 ${competitorHooksBlock ? `COMPETITOR-HOOKS (was in der Nische funktioniert):\n${competitorHooksBlock}` : ""}
+${usedPatternsBlock ? `\nBEREITS VERWENDETE HOOK-MUSTER (vermeide Wiederholung, wähle ANDERE):\n${usedPatternsBlock}` : ""}
 ${voiceToneBlock}
 
-Erstelle 3 Hook-Optionen für dieses Thema.`;
+Erstelle 3 Hook-Optionen für dieses Thema. Nutze Hook-Muster die NOCH NICHT oft verwendet wurden.`;
 
           try {
             const msg = await claude.messages.create({
@@ -382,9 +478,11 @@ Erstelle 3 Hook-Optionen für dieses Thema.`;
                 selected: number;
                 selectionReason: string;
               };
-              const selectedHook = result.options[result.selected]?.hook || result.options[0]?.hook || "";
+              const selectedIdx = result.selected ?? 0;
+              const selectedHook = result.options[selectedIdx]?.hook || result.options[0]?.hook || "";
+              const selectedPattern = result.options[selectedIdx]?.pattern || result.options[0]?.pattern || "";
               sendEvent(controller, { step: "hooks", status: "done", index: idx, hook: selectedHook });
-              return { hook: selectedHook, allOptions: result.options, reason: result.selectionReason };
+              return { hook: selectedHook, pattern: selectedPattern, allOptions: result.options, reason: result.selectionReason };
             }
           } catch {
             // Fallback: simple hook
@@ -393,7 +491,7 @@ Erstelle 3 Hook-Optionen für dieses Thema.`;
           // Fallback hook
           const fallback = topic.title;
           sendEvent(controller, { step: "hooks", status: "done", index: idx, hook: fallback });
-          return { hook: fallback, allOptions: [], reason: "fallback" };
+          return { hook: fallback, pattern: "", allOptions: [], reason: "fallback" };
         });
 
         const hookResults = await Promise.all(hookPromises);
@@ -471,6 +569,7 @@ Schreibe jetzt Body und CTA. Der Hook steht — baue darauf auf.`;
           format: topic.format,
           title: topic.title,
           hook: hookResults[i].hook,
+          hookPattern: hookResults[i].pattern || "",
           body: bodyResults[i].body,
           cta: bodyResults[i].cta,
           reasoning: topic.reasoning,

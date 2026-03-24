@@ -82,6 +82,7 @@ CREATE TABLE scripts (
   content_type TEXT DEFAULT '',
   format TEXT DEFAULT '',
   hook TEXT DEFAULT '',
+  hook_pattern TEXT DEFAULT '',
   body TEXT DEFAULT '',
   cta TEXT DEFAULT '',
   status TEXT DEFAULT 'entwurf',

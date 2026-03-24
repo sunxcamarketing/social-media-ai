@@ -94,6 +94,7 @@ export interface Script {
   contentType: string;
   format: string;
   hook: string;
+  hookPattern: string;
   body: string;
   cta: string;
   status: string;

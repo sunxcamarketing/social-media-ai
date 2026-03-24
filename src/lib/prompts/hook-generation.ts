@@ -21,7 +21,8 @@ REGELN:
 - Max 1-2 Sätze. Kein Wort zu viel.
 - KEIN "Wusstest du...", "Stell dir vor...", "In der heutigen Zeit..." oder ähnliche AI-Floskeln.
 - Der Hook muss ein OFFENES LOOP erzeugen — der Zuschauer MUSS weiterschauen.
-- Wenn Voice-Infos vorhanden: Ton und Energie des Kunden treffen.`;
+- Wenn Voice-Infos vorhanden: Ton und Energie des Kunden treffen.
+- Wenn bereits verwendete Hook-Muster gegeben: Wähle ein ANDERES Muster. Abwechslung ist entscheidend. Bevorzuge Muster die noch selten oder gar nicht verwendet wurden.`;
 
 export const HOOK_GENERATION_TOOL = {
   name: "submit_hooks",

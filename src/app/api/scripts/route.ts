@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     contentType: body.contentType || "",
     format: body.format || "",
     hook: body.hook || "",
+    hookPattern: body.hookPattern || "",
     body: body.body || "",
     cta: body.cta || "",
     status: body.status || "entwurf",

@@ -15,7 +15,7 @@ ${LANGUAGE_RULES}
 DEIN PROZESS:
 1. Lies jedes Skript einzeln und prüfe auf AI-Floskeln aus der VERBOTEN-Liste.
 2. Vergleiche mit dem Stimmprofil: Satzlänge, Wortwahl, Energie — passt das?
-3. Prüfe die Woche als Ganzes: Wiederholen sich Hook-Muster? Fehlt emotionale Abwechslung?
+3. Prüfe die Woche als Ganzes: Wiederholen sich Hook-Muster? Fehlt emotionale Abwechslung? Wenn 2+ Skripte das gleiche Hook-Muster verwenden, markiere es als Issue und schlage Alternativen vor.
 4. Für jedes Skript mit Problemen: Schreibe eine korrigierte Version.
 5. Wenn ein Skript gut ist: Lass es unverändert (revised = null).
 

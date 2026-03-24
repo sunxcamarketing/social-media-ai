@@ -130,7 +130,7 @@ REGELN:
   }
 
   const { scripts } = tool.input as {
-    scripts: { title: string; pillar: string; contentType: string; format: string; hook: string; body: string; cta: string }[];
+    scripts: { title: string; pillar: string; contentType: string; format: string; hook: string; hookPattern?: string; body: string; cta: string }[];
   };
 
   const existing = await readScripts();
@@ -143,6 +143,7 @@ REGELN:
     contentType: s.contentType || "",
     format: s.format || "",
     hook: s.hook || "",
+    hookPattern: s.hookPattern || "",
     body: s.body || "",
     cta: s.cta || "",
     status: "entwurf",
