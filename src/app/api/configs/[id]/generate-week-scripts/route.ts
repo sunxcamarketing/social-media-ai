@@ -1,11 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideos, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
-import { topicSelectionSystemPrompt, TOPIC_SELECTION_TOOL } from "@/lib/prompts/topic-selection";
-import { trendResearchSystemPrompt, TREND_RESEARCH_TOOL } from "@/lib/prompts/trend-research";
-import { HOOK_GENERATION_SYSTEM, HOOK_GENERATION_TOOL } from "@/lib/prompts/hook-generation";
-import { bodyWritingSystemPrompt, BODY_WRITING_TOOL } from "@/lib/prompts/body-writing";
-import { QUALITY_REVIEW_SYSTEM, QUALITY_REVIEW_TOOL } from "@/lib/prompts/quality-review";
+import { buildPrompt, TOPIC_SELECTION_TOOL, TREND_RESEARCH_TOOL, HOOK_GENERATION_TOOL, BODY_WRITING_TOOL, QUALITY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, generateScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
 import type { VoiceProfile, ScriptStructureProfile } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
@@ -330,10 +326,13 @@ ${crossNicheVideos.map((v, i) => {
 
         let trendBlock = "";
         try {
-          const trendSystem = trendResearchSystemPrompt(
-            config.creatorsCategory || "Social Media",
-            new Date().toISOString().split("T")[0],
-          );
+          const currentDate = new Date().toISOString().split("T")[0];
+          const monthLabel = new Date(currentDate).toLocaleString("de-DE", { month: "long", year: "numeric" });
+          const trendSystem = buildPrompt("trend-research", {
+            niche: config.creatorsCategory || "Social Media",
+            current_date: currentDate,
+            month_label: monthLabel,
+          });
 
           const trendPromise = claude.messages.create({
             model: "claude-sonnet-4-6",
@@ -376,7 +375,9 @@ ${result.trends.map((t, i) => `${i + 1}. ${t.topic} — ${t.angle}\n   Warum jet
         // ════════════════════════════════════════════════════════════════════
         sendEvent(controller, { step: "topics", status: "loading" });
 
-        const topicSystemPrompt = topicSelectionSystemPrompt(activeDays.length);
+        const topicSystemPrompt = buildPrompt("topic-selection", {
+          num_days: String(activeDays.length),
+        });
         const topicTool = TOPIC_SELECTION_TOOL(
           activeDays,
           pillarNames,
@@ -479,7 +480,7 @@ Erstelle 3 Hook-Optionen für dieses Thema. Nutze Hook-Muster die NOCH NICHT oft
             const msg = await claude.messages.create({
               model: "claude-sonnet-4-6",
               max_tokens: 500,
-              system: HOOK_GENERATION_SYSTEM,
+              system: buildPrompt("hook-generation"),
               tools: [HOOK_GENERATION_TOOL],
               tool_choice: { type: "tool", name: "submit_hooks" },
               messages: [{ role: "user", content: userPrompt }],
@@ -516,9 +517,15 @@ Erstelle 3 Hook-Optionen für dieses Thema. Nutze Hook-Muster die NOCH NICHT oft
         // ════════════════════════════════════════════════════════════════════
         sendEvent(controller, { step: "bodies", status: "loading", total: topics.length });
 
-        const bodySystemPrompt = bodyWritingSystemPrompt({
-          maxWords,
-          durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
+        const durationLabel = avgDuration > 0 ? fmtDuration(avgDuration) : "";
+        const laengeRegeln = maxWords > 0
+          ? `- LÄNGE: Max ${maxWords} Wörter gesamt (Hook+Body+CTA). Das entspricht ca. ${durationLabel} Sprechzeit. Kürzer ist besser.`
+          : `- LÄNGE: Instagram Reels sind kurz. Max 30-60 Sekunden Sprechzeit. Prägnant.`;
+        const bodySystemPrompt = buildPrompt("body-writing", {
+          laenge_regeln: laengeRegeln,
+          stimm_matching: "",
+          skript_struktur: "",
+          skript_beispiele: "",
         });
 
         const bodyPromises = topics.map(async (topic, idx) => {
@@ -606,7 +613,7 @@ Prüfe alle ${assembledScripts.length} Skripte.`;
           const reviewPromise = claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 4000,
-            system: QUALITY_REVIEW_SYSTEM,
+            system: buildPrompt("quality-review"),
             tools: [QUALITY_REVIEW_TOOL(assembledScripts.length)],
             tool_choice: { type: "tool", name: "submit_review" },
             messages: [{ role: "user", content: reviewUserPrompt }],

@@ -4,7 +4,7 @@ import { readConfigs, readCreators, readVideos, writeVideos } from "@/lib/csv";
 import { scrapeReels } from "@/lib/apify";
 import { uploadVideo, analyzeVideo } from "@/lib/gemini";
 import { generateNewConcepts } from "@/lib/claude";
-import { ANALYSIS_PROMPT, buildConceptsPrompt } from "@/lib/prompts";
+import { ANALYSIS_PROMPT, buildConceptsPrompt } from "@prompts";
 import type { Video } from "@/lib/types";
 
 interface ScrapedVideo {

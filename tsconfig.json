@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@prompts/*": ["./prompts/*"],
+      "@prompts": ["./prompts"]
     }
   },
   "include": [

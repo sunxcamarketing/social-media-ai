@@ -4,7 +4,7 @@ import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses
 import { getVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
 import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
-import { singleScriptSystemPrompt, topicScriptSystemPrompt } from "@/lib/prompts";
+import { buildPrompt } from "@prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
 export const maxDuration = 90;
@@ -265,9 +265,12 @@ ${creatorVideos.map((v, i) => {
   });
 
   // ── System prompt: role + rules ─────────────────────────────────────────
-  const systemPrompt = singleScriptSystemPrompt({
-    maxWords,
-    durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
+  const durationLabel = avgDuration > 0 ? fmtDuration(avgDuration) : "";
+  const laengeRegeln = maxWords > 0
+    ? `- LÄNGE: Max ${maxWords} Wörter gesamt (Hook+Body+CTA). Das entspricht ca. ${durationLabel} Sprechzeit. Kürzer ist besser.`
+    : `- LÄNGE: Instagram Reels sind kurz. Max 30-60 Sekunden Sprechzeit. Prägnant.`;
+  const systemPrompt = buildPrompt("single-script", {
+    laenge_regeln: laengeRegeln,
   });
 
   // ── User prompt: context + task ─────────────────────────────────────────
@@ -449,9 +452,12 @@ async function handleTopicScript(
     },
   };
 
-  const systemPrompt = topicScriptSystemPrompt({
-    maxWords,
-    durationLabel: avgDuration > 0 ? fmtDuration(avgDuration) : "",
+  const topicDurationLabel = avgDuration > 0 ? fmtDuration(avgDuration) : "";
+  const topicLaengeRegeln = maxWords > 0
+    ? `- LÄNGE: Max ${maxWords} Wörter gesamt (Hook+Body+CTA). Das entspricht ca. ${topicDurationLabel} Sprechzeit. Kürzer ist besser.`
+    : `- LÄNGE: Instagram Reels sind kurz. Max 30-60 Sekunden Sprechzeit. Prägnant.`;
+  const systemPrompt = buildPrompt("topic-script", {
+    laenge_regeln: topicLaengeRegeln,
   });
 
   const userPrompt = `<client>

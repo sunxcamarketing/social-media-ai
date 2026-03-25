@@ -1,9 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, updateConfig, readVideos, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS, type ContentType, type ContentFormat } from "@/lib/strategy";
-import { STRATEGY_ANALYSIS_SYSTEM, STRATEGY_ANALYSIS_TOOL } from "@/lib/prompts/strategy-analysis";
-import { strategyCreationSystemPrompt, STRATEGY_CREATION_TOOL } from "@/lib/prompts/strategy-creation";
-import { STRATEGY_REVIEW_SYSTEM, STRATEGY_REVIEW_TOOL } from "@/lib/prompts/strategy-review";
+import { buildPrompt, STRATEGY_ANALYSIS_TOOL, STRATEGY_CREATION_TOOL, STRATEGY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
 import type { VoiceProfile } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "../performance/route";
@@ -226,7 +224,7 @@ Analysiere ALLE Daten und bestimme das strategische Ziel.`;
           const analysisMsg = await claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 3000,
-            system: STRATEGY_ANALYSIS_SYSTEM,
+            system: buildPrompt("strategy-analysis"),
             tools: [STRATEGY_ANALYSIS_TOOL],
             tool_choice: { type: "tool", name: "submit_analysis" },
             messages: [{ role: "user", content: analysisUserPrompt }],
@@ -277,11 +275,11 @@ ${analysisResult.nichePatterns ? `Nischen-Muster: ${analysisResult.nichePatterns
 </data_insights>`
           : "";
 
-        const creationSystemPrompt = strategyCreationSystemPrompt({
-          postsPerWeek,
-          activeDays,
-          contentTypes: contentTypeNames,
-          formats: formatNames,
+        const creationSystemPrompt = buildPrompt("strategy-creation", {
+          posts_per_week: String(postsPerWeek),
+          active_days: activeDays.join(", "),
+          content_types: contentTypeNames.join(", "),
+          formats: formatNames.join(", "),
         });
 
         const creationTool = STRATEGY_CREATION_TOOL(activeDays, contentTypeNames, formatNames);
@@ -371,7 +369,7 @@ Prüfe diese Strategie.`;
           const reviewMsg = await claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 3000,
-            system: STRATEGY_REVIEW_SYSTEM,
+            system: buildPrompt("strategy-review"),
             tools: [STRATEGY_REVIEW_TOOL(activeDays)],
             tool_choice: { type: "tool", name: "submit_strategy_review" },
             messages: [{ role: "user", content: reviewUserPrompt }],

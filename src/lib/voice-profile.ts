@@ -7,8 +7,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { supabase } from "./supabase";
 import { readTrainingScripts, readConfigs } from "./csv";
-import { VOICE_PROFILE_SYSTEM, VOICE_PROFILE_TOOL } from "./prompts/voice-profile";
-import { SCRIPT_STRUCTURE_SYSTEM, SCRIPT_STRUCTURE_TOOL } from "./prompts/script-structure";
+import { buildPrompt, VOICE_PROFILE_TOOL, SCRIPT_STRUCTURE_TOOL } from "@prompts";
 import type { VoiceProfile, ScriptStructureProfile } from "./types";
 
 const BATCH_SIZE = 15; // docs per Claude call
@@ -107,7 +106,7 @@ async function extractVoiceProfileSingle(
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2000,
-    system: VOICE_PROFILE_SYSTEM,
+    system: buildPrompt("voice-profile"),
     tools: [VOICE_PROFILE_TOOL],
     tool_choice: { type: "tool", name: "submit_voice_profile" },
     messages: [{
@@ -142,7 +141,7 @@ Beispielsätze: ${p.exampleSentences.map(s => `"${s}"`).join(" | ")}`
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2000,
-    system: `${VOICE_PROFILE_SYSTEM}
+    system: `${buildPrompt("voice-profile")}
 
 ZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches von Transkripten. Konsolidiere sie zu EINEM finalen Stimmprofil. Behalte die besten und charakteristischsten Beispiele. Fasse Muster zusammen die in mehreren Batches vorkommen.`,
     tools: [VOICE_PROFILE_TOOL],
@@ -237,7 +236,7 @@ async function extractScriptStructureSingle(
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 3000,
-    system: SCRIPT_STRUCTURE_SYSTEM,
+    system: buildPrompt("script-structure"),
     tools: [SCRIPT_STRUCTURE_TOOL],
     tool_choice: { type: "tool", name: "submit_script_structure" },
     messages: [{
@@ -271,7 +270,7 @@ Regeln: ${s.keyRules.join(" | ")}`
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 3000,
-    system: `${SCRIPT_STRUCTURE_SYSTEM}
+    system: `${buildPrompt("script-structure")}
 
 ZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches. Konsolidiere sie zu EINEM finalen Struktur-Profil. Priorisiere Muster die in mehreren Batches vorkommen — die sind die echten Gewohnheiten.`,
     tools: [SCRIPT_STRUCTURE_TOOL],

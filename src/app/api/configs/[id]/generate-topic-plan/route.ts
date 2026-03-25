@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
-import { topicPlanSystemPrompt } from "@/lib/prompts";
+import { buildPrompt } from "@prompts";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 import type { TopicPlanItem } from "@/lib/types";
 
@@ -147,7 +147,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const client = new Anthropic({ apiKey });
 
-  const systemPrompt = topicPlanSystemPrompt;
+  const systemPrompt = buildPrompt("topic-plan");
 
   const userPrompt = `<client>
 ${clientContext}

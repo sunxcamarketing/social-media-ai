@@ -3,7 +3,7 @@ import { readConfigs, readCreators, readVideos, writeVideos } from "./csv";
 import { scrapeReels } from "./apify";
 import { uploadVideo, analyzeVideo } from "./gemini";
 import { generateNewConcepts } from "./claude";
-import { ANALYSIS_PROMPT, buildConceptsPrompt } from "./prompts";
+import { ANALYSIS_PROMPT, buildConceptsPrompt } from "@prompts";
 import type { PipelineParams, PipelineProgress, Video, ActiveTask } from "./types";
 
 const VIDEO_CONCURRENCY = 3;
