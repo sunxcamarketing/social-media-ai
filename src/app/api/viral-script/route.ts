@@ -129,7 +129,7 @@ export async function POST(request: Request) {
 
         const structureMsg = await claude.messages.create({
           model: MODEL,
-          max_tokens: 3000,
+          max_tokens: 4500,
           system: buildPrompt("viral-script-structure"),
           tools: [VIRAL_STRUCTURE_TOOL],
           tool_choice: { type: "tool", name: "submit_structure" },
@@ -141,14 +141,17 @@ export async function POST(request: Request) {
 
         const structureTool = structureMsg.content.find(b => b.type === "tool_use");
         if (!structureTool || structureTool.type !== "tool_use") throw new Error("Struktur-Analyse fehlgeschlagen");
-        const refStructure = structureTool.input as {
-          sentences: { text: string; role: string; technique: string; contentDescription: string }[];
-          pattern: string;
-          hookType: string;
-          hookAnalysis: string;
-          videoType: string;
-          energy: string;
+        const rawStructure = structureTool.input as Record<string, unknown>;
+        const refStructure = {
+          sentences: (rawStructure.sentences as { text: string; role: string; technique: string; contentDescription: string }[]) || [],
+          pattern: (rawStructure.pattern as string) || "",
+          hookType: (rawStructure.hookType as string) || "",
+          hookAnalysis: (rawStructure.hookAnalysis as string) || "",
+          videoType: (rawStructure.videoType as string) || "",
+          energy: (rawStructure.energy as string) || "",
         };
+
+        if (refStructure.sentences.length === 0) throw new Error("Struktur-Analyse hat keine Sätze extrahiert. Bitte erneut versuchen.");
 
         sendEvent(controller, { step: "structure", status: "done", data: { pattern: refStructure.pattern, hookType: refStructure.hookType, videoType: refStructure.videoType, energy: refStructure.energy, sentenceCount: refStructure.sentences.length } });
 
@@ -171,11 +174,14 @@ export async function POST(request: Request) {
 
         const hookTool = hookMsg.content.find(b => b.type === "tool_use");
         if (!hookTool || hookTool.type !== "tool_use") throw new Error("Hook-Generierung fehlgeschlagen");
-        const hookResult = hookTool.input as {
-          options: { hook: string; pattern: string }[];
-          selected: number;
-          selectionReason: string;
+        const rawHook = hookTool.input as Record<string, unknown>;
+        const hookResult = {
+          options: (rawHook.options as { hook: string; pattern: string }[]) || [],
+          selected: (rawHook.selected as number) ?? 0,
+          selectionReason: (rawHook.selectionReason as string) || "",
         };
+
+        if (hookResult.options.length === 0) throw new Error("Hook-Generierung hat keine Optionen erstellt. Bitte erneut versuchen.");
 
         sendEvent(controller, { step: "hooks", status: "done", data: hookResult });
 
