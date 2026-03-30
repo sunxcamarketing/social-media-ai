@@ -10,6 +10,7 @@ export interface PipelineStep {
   id: string;
   label: string;
   status: StepStatus;
+  message?: string;
 }
 
 interface HookOption { hook: string; pattern: string }
@@ -30,6 +31,7 @@ export interface FinalResult {
   structure: { pattern: string; hookType: string };
   production: ProductionNotes | null;
   reviewIssues: string[];
+  criticScores?: { short: number; long: number; rounds: number };
   reference: { creator: string; views: number };
 }
 
@@ -96,7 +98,7 @@ export function ViralScriptProvider({ children }: { children: ReactNode }) {
       { id: "structure", label: "Struktur extrahieren", status: "waiting" },
       { id: "hooks", label: "Hook-Varianten generieren", status: "waiting" },
       { id: "adapt", label: "Skript adaptieren", status: "waiting" },
-      { id: "review", label: "Qualitätsprüfung", status: "waiting" },
+      { id: "review", label: "Critic Agent prüft", status: "waiting" },
       { id: "production", label: "Filming Notes erstellen", status: "waiting" },
     ];
     setSteps(initialSteps);
@@ -148,7 +150,7 @@ export function ViralScriptProvider({ children }: { children: ReactNode }) {
               }
 
               setSteps(prev => prev.map(s =>
-                s.id === data.step ? { ...s, status: data.status as StepStatus } : s
+                s.id === data.step ? { ...s, status: data.status as StepStatus, ...(data.message ? { message: data.message } : {}) } : s
               ));
             } catch {
               // Skip parse errors

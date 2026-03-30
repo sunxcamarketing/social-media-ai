@@ -8,7 +8,7 @@ import {
 } from "@/lib/voice-profile";
 import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
 import {
-  buildPrompt, HOOK_GENERATION_TOOL, VIRAL_STRUCTURE_TOOL, VIRAL_ADAPT_TOOL, VIRAL_PRODUCTION_TOOL, VIRAL_SCRIPT_ANALYSIS_PROMPT,
+  buildPrompt, HOOK_GENERATION_TOOL, VIRAL_STRUCTURE_TOOL, VIRAL_ADAPT_TOOL, VIRAL_PRODUCTION_TOOL, VIRAL_CRITIC_TOOL, VIRAL_REVISE_TOOL, VIRAL_SCRIPT_ANALYSIS_PROMPT,
 } from "@prompts";
 
 export const maxDuration = 300;
@@ -226,52 +226,126 @@ export async function POST(request: Request) {
 
         sendEvent(controller, { step: "adapt", status: "done", data: { title: adaptResult.title, videoType: adaptResult.videoType || "" } });
 
-        // ── Step 5: Quality review ──────────────────────────────────────
+        // ── Step 5: Critic Agent Loop ─────────────────────────────────
         sendEvent(controller, { step: "review", status: "loading" });
 
-        const reviewSystemPrompt = `${buildPrompt("quality-review")}
+        let currentShort = { hook: adaptResult.hookShort, body: adaptResult.bodyShort, cta: adaptResult.ctaShort, textHook: adaptResult.textHookShort || "" };
+        let currentLong = { hook: adaptResult.hookLong, body: adaptResult.bodyLong, cta: adaptResult.ctaLong, textHook: adaptResult.textHookLong || "" };
 
-ZUSÄTZLICHE PRÜFUNGEN FÜR VIRAL SCRIPT BUILDER:
-- Führt JEDER Satz zurück zum Hook?
-- Gibt es Dopamin-Hits (Zuschauer fühlt sich als würde er gewinnen)?
-- 5-Jährigen-Test: Würde ein 5-Jähriger jeden Satz verstehen?
-- 3 Scroll-off Gründe: Ist irgendwo etwas verwirrend, langweilig oder unglaubwürdig?
-- Progressive Value: Wird die Info von Satz zu Satz BESSER?
-- Social Proof: Kommt Glaubwürdigkeit früh genug?`;
+        const criticSystemPrompt = buildPrompt("viral-script-critic");
+        const MAX_ITERATIONS = 3;
+        const allCritiqueRounds: { round: number; scoreShort: number; scoreLong: number; issues: string[]; changes?: string }[] = [];
 
-        const reviewMsg = await claude.messages.create({
-          model: MODEL,
-          max_tokens: 3000,
-          system: reviewSystemPrompt,
-          messages: [{
-            role: "user",
-            content: `${voiceBlock}\n\nPrüfe diese 2 Skript-Versionen:\n\n--- KURZ ---\nHook: ${adaptResult.hookShort}\nBody: ${adaptResult.bodyShort}\nCTA: ${adaptResult.ctaShort}\n\n--- LANG ---\nHook: ${adaptResult.hookLong}\nBody: ${adaptResult.bodyLong}\nCTA: ${adaptResult.ctaLong}\n\nGib korrigierte Versionen zurück wenn nötig. Antworte mit einem JSON-Objekt mit den Feldern: issues (string[]), revisedShort (object mit hook/body/cta oder null), revisedLong (object mit hook/body/cta oder null).`,
-          }],
-        });
+        for (let round = 1; round <= MAX_ITERATIONS; round++) {
+          // ── Critic bewertet ──
+          sendEvent(controller, { step: "review", status: "loading", message: `Critic Agent bewertet (Runde ${round}/${MAX_ITERATIONS})...` });
 
-        // Parse review — try to extract corrections
-        let finalShort = { hook: adaptResult.hookShort, body: adaptResult.bodyShort, cta: adaptResult.ctaShort, textHook: adaptResult.textHookShort || "" };
-        let finalLong = { hook: adaptResult.hookLong, body: adaptResult.bodyLong, cta: adaptResult.ctaLong, textHook: adaptResult.textHookLong || "" };
-        let reviewIssues: string[] = [];
+          const criticMsg = await claude.messages.create({
+            model: MODEL,
+            max_tokens: 3000,
+            system: criticSystemPrompt,
+            tools: [VIRAL_CRITIC_TOOL],
+            tool_choice: { type: "tool", name: "submit_critique" },
+            messages: [{
+              role: "user",
+              content: `<reference_structure>\nMuster: ${refStructure.pattern}\nAnzahl Sätze: ${refStructure.sentences.length}\n\n${structureMap}\n</reference_structure>\n\n<full_video_analysis>\n${referenceAnalysis}\n</full_video_analysis>\n\n${voiceBlock}\n\n<adapted_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</adapted_script>\n\nBewerte dieses adaptierte Skript. Sei streng.`,
+            }],
+          });
 
-        try {
-          const reviewText = reviewMsg.content.find(b => b.type === "text")?.text || "";
-          const jsonMatch = reviewText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            reviewIssues = parsed.issues || [];
-            if (parsed.revisedShort) {
-              finalShort = { ...finalShort, ...parsed.revisedShort };
-            }
-            if (parsed.revisedLong) {
-              finalLong = { ...finalLong, ...parsed.revisedLong };
-            }
-          }
-        } catch {
-          // Review parsing failed — use original scripts
+          const criticTool = criticMsg.content.find(b => b.type === "tool_use");
+          if (!criticTool || criticTool.type !== "tool_use") break;
+
+          const rawCritique = criticTool.input as Record<string, unknown>;
+          const critique = {
+            scoreShort: (rawCritique.scoreShort as number) ?? 5,
+            scoreLong: (rawCritique.scoreLong as number) ?? 5,
+            issuesShort: (rawCritique.issuesShort as { what: string; why: string; fix: string }[]) || [],
+            issuesLong: (rawCritique.issuesLong as { what: string; why: string; fix: string }[]) || [],
+            passedShort: (rawCritique.passedShort as boolean) ?? false,
+            passedLong: (rawCritique.passedLong as boolean) ?? false,
+            summary: (rawCritique.summary as string) || "",
+          };
+
+          const allIssues = [
+            ...critique.issuesShort.map(i => `[KURZ] ${i.what}: ${i.why}`),
+            ...critique.issuesLong.map(i => `[LANG] ${i.what}: ${i.why}`),
+          ];
+
+          allCritiqueRounds.push({ round, scoreShort: critique.scoreShort, scoreLong: critique.scoreLong, issues: allIssues });
+
+          sendEvent(controller, {
+            step: "review",
+            status: "loading",
+            data: {
+              round,
+              scoreShort: critique.scoreShort,
+              scoreLong: critique.scoreLong,
+              issueCount: allIssues.length,
+              summary: critique.summary,
+              passed: critique.passedShort && critique.passedLong,
+            },
+          });
+
+          // ── Beide bestanden? → Fertig ──
+          if (critique.passedShort && critique.passedLong) break;
+
+          // ── Letzte Runde? → Nicht mehr überarbeiten ──
+          if (round === MAX_ITERATIONS) break;
+
+          // ── Writer überarbeitet basierend auf Feedback ──
+          sendEvent(controller, { step: "review", status: "loading", message: `Writer Agent überarbeitet (Runde ${round}/${MAX_ITERATIONS})...` });
+
+          const feedbackForWriter = [
+            ...critique.issuesShort.map(i => `[KURZ] Problem: ${i.what} — Grund: ${i.why} — Fix: ${i.fix}`),
+            ...critique.issuesLong.map(i => `[LANG] Problem: ${i.what} — Grund: ${i.why} — Fix: ${i.fix}`),
+          ].join("\n");
+
+          const reviseMsg = await claude.messages.create({
+            model: MODEL,
+            max_tokens: 3000,
+            system: buildPrompt("viral-script-adapt"),
+            tools: [VIRAL_REVISE_TOOL],
+            tool_choice: { type: "tool", name: "submit_revised_script" },
+            messages: [{
+              role: "user",
+              content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_structure>\nMuster: ${refStructure.pattern}\nAnzahl Sätze: ${refStructure.sentences.length}\n\n${structureMap}\n</reference_structure>\n\n<full_video_analysis>\n${referenceAnalysis}\n</full_video_analysis>\n\n<current_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</current_script>\n\n<critic_feedback>\nScore Kurz: ${critique.scoreShort}/10 | Score Lang: ${critique.scoreLong}/10\n\n${feedbackForWriter}\n</critic_feedback>\n\nÜberarbeite das Skript basierend auf dem Critic-Feedback. Behebe JEDES genannte Problem. Behalte alles bei was gut ist. Die Referenz-Struktur und der Referenz-Inhalt bleiben heilig.`,
+            }],
+          });
+
+          const reviseTool = reviseMsg.content.find(b => b.type === "tool_use");
+          if (!reviseTool || reviseTool.type !== "tool_use") break;
+
+          const rawRevise = reviseTool.input as Record<string, unknown>;
+          currentShort = {
+            textHook: fixNewlines((rawRevise.textHookShort as string) || currentShort.textHook),
+            hook: fixNewlines((rawRevise.hookShort as string) || currentShort.hook),
+            body: fixNewlines((rawRevise.bodyShort as string) || currentShort.body),
+            cta: fixNewlines((rawRevise.ctaShort as string) || currentShort.cta),
+          };
+          currentLong = {
+            textHook: fixNewlines((rawRevise.textHookLong as string) || currentLong.textHook),
+            hook: fixNewlines((rawRevise.hookLong as string) || currentLong.hook),
+            body: fixNewlines((rawRevise.bodyLong as string) || currentLong.body),
+            cta: fixNewlines((rawRevise.ctaLong as string) || currentLong.cta),
+          };
+
+          const changesApplied = (rawRevise.changesApplied as string) || "";
+          allCritiqueRounds[allCritiqueRounds.length - 1].changes = changesApplied;
         }
 
-        sendEvent(controller, { step: "review", status: "done", data: { issues: reviewIssues } });
+        const finalShort = currentShort;
+        const finalLong = currentLong;
+        const reviewIssues = allCritiqueRounds.flatMap(r => r.issues);
+
+        sendEvent(controller, {
+          step: "review",
+          status: "done",
+          data: {
+            rounds: allCritiqueRounds,
+            finalScoreShort: allCritiqueRounds[allCritiqueRounds.length - 1]?.scoreShort ?? 0,
+            finalScoreLong: allCritiqueRounds[allCritiqueRounds.length - 1]?.scoreLong ?? 0,
+          },
+        });
 
         // ── Step 6: Production notes ────────────────────────────────────
         sendEvent(controller, { step: "production", status: "loading" });
@@ -311,6 +385,11 @@ ZUSÄTZLICHE PRÜFUNGEN FÜR VIRAL SCRIPT BUILDER:
             structure: { pattern: refStructure.pattern, hookType: refStructure.hookType, videoType: adaptResult.videoType || "" },
             production,
             reviewIssues,
+            criticScores: {
+              short: allCritiqueRounds[allCritiqueRounds.length - 1]?.scoreShort ?? 0,
+              long: allCritiqueRounds[allCritiqueRounds.length - 1]?.scoreLong ?? 0,
+              rounds: allCritiqueRounds.length,
+            },
             reference: {
               creator: referenceCreator,
               views: referenceViews,

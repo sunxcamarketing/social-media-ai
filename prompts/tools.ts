@@ -685,3 +685,69 @@ export const VIRAL_PRODUCTION_TOOL = {
     required: ["shots", "musicMood"],
   },
 };
+
+// ── Viral Script: Critic Agent ──────────────────────────────────────────
+
+export const VIRAL_CRITIC_TOOL = {
+  name: "submit_critique",
+  description: "Bewertung des adaptierten Skripts einreichen",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      scoreShort: { type: "number", description: "Gesamtnote für die kurze Version (1-10)" },
+      scoreLong: { type: "number", description: "Gesamtnote für die lange Version (1-10)" },
+      issuesShort: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            what: { type: "string", description: "WAS ist falsch? Konkreter Satz oder Stelle zitieren." },
+            why: { type: "string", description: "WARUM ist es falsch? Welches Kriterium wird verletzt?" },
+            fix: { type: "string", description: "WIE sollte es besser sein? Konkreter Verbesserungsvorschlag." },
+          },
+          required: ["what", "why", "fix"],
+        },
+        description: "Konkrete Probleme in der kurzen Version",
+      },
+      issuesLong: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            what: { type: "string", description: "WAS ist falsch?" },
+            why: { type: "string", description: "WARUM ist es falsch?" },
+            fix: { type: "string", description: "WIE sollte es besser sein?" },
+          },
+          required: ["what", "why", "fix"],
+        },
+        description: "Konkrete Probleme in der langen Version",
+      },
+      passedShort: { type: "boolean", description: "true wenn scoreShort >= 8" },
+      passedLong: { type: "boolean", description: "true wenn scoreLong >= 8" },
+      summary: { type: "string", description: "1-2 Sätze Gesamtbewertung" },
+    },
+    required: ["scoreShort", "scoreLong", "issuesShort", "issuesLong", "passedShort", "passedLong", "summary"],
+  },
+};
+
+// ── Viral Script: Revise (Writer reagiert auf Critic) ───────────────────
+
+export const VIRAL_REVISE_TOOL = {
+  name: "submit_revised_script",
+  description: "Überarbeitetes Skript einreichen basierend auf Critic-Feedback",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      textHookShort: { type: "string", description: "Text-Hook der kurzen Version (max 8 Wörter)" },
+      textHookLong: { type: "string", description: "Text-Hook der langen Version (max 8 Wörter)" },
+      hookShort: { type: "string", description: "Überarbeiteter Hook kurz" },
+      bodyShort: { type: "string", description: "Überarbeiteter Body kurz. Nutze echte Zeilenumbrüche." },
+      ctaShort: { type: "string", description: "Überarbeiteter CTA kurz" },
+      hookLong: { type: "string", description: "Überarbeiteter Hook lang" },
+      bodyLong: { type: "string", description: "Überarbeiteter Body lang. Nutze echte Zeilenumbrüche." },
+      ctaLong: { type: "string", description: "Überarbeiteter CTA lang" },
+      changesApplied: { type: "string", description: "Welche Änderungen wurden vorgenommen? (1-3 Sätze)" },
+    },
+    required: ["textHookShort", "textHookLong", "hookShort", "bodyShort", "ctaShort", "hookLong", "bodyLong", "ctaLong", "changesApplied"],
+  },
+};

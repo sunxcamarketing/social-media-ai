@@ -38,14 +38,19 @@ function StepIndicator({ steps }: { steps: PipelineStep[] }) {
             {s.status === "error" && <AlertTriangle className="h-4 w-4 text-red-500" />}
             {s.status === "waiting" && <div className="h-2 w-2 rounded-full bg-ocean/15" />}
           </div>
-          <span className={`text-sm font-light ${
-            s.status === "waiting" ? "text-ocean/30" :
-            s.status === "loading" ? "text-ocean/70" :
-            s.status === "error" ? "text-red-500" :
-            "text-ocean/50"
-          }`}>
-            {s.label}
-          </span>
+          <div className="flex flex-col">
+            <span className={`text-sm font-light ${
+              s.status === "waiting" ? "text-ocean/30" :
+              s.status === "loading" ? "text-ocean/70" :
+              s.status === "error" ? "text-red-500" :
+              "text-ocean/50"
+            }`}>
+              {s.label}
+            </span>
+            {s.message && s.status === "loading" && (
+              <span className="text-[11px] text-ocean/40 font-light">{s.message}</span>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -527,14 +532,28 @@ export default function ViralScriptPage() {
               <span className="text-[11px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">Hook: {vs.result.structure.hookType}</span>
             </div>
 
-            {/* Review Issues */}
+            {/* Critic Agent Results */}
             {vs.result.reviewIssues.length > 0 && (
-              <div className="mt-4 rounded-lg bg-orange-50 border border-orange-200 p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <AlertTriangle className="h-3 w-3 text-orange-500" />
-                  <span className="text-[11px] font-medium text-orange-700">Review-Hinweise</span>
+              <div className="mt-4 rounded-lg bg-ocean/[0.03] border border-ocean/10 p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-[11px] font-medium text-ocean/70">Critic Agent</span>
+                  {vs.result.criticScores && (
+                    <div className="flex gap-2 ml-auto">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${vs.result.criticScores.short >= 8 ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"}`}>
+                        Kurz: {vs.result.criticScores.short}/10
+                      </span>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${vs.result.criticScores.long >= 8 ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"}`}>
+                        Lang: {vs.result.criticScores.long}/10
+                      </span>
+                      {vs.result.criticScores.rounds > 1 && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
+                          {vs.result.criticScores.rounds} Runden
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <ul className="text-[11px] text-orange-600/80 space-y-0.5">
+                <ul className="text-[11px] text-ocean/50 space-y-0.5">
                   {vs.result.reviewIssues.map((issue, i) => <li key={i}>• {issue}</li>)}
                 </ul>
               </div>
