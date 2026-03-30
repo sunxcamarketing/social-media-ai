@@ -162,7 +162,7 @@ export async function POST(request: Request) {
 
         const hookMsg = await claude.messages.create({
           model: MODEL,
-          max_tokens: 1500,
+          max_tokens: 2500,
           system: buildPrompt("viral-hook-generation"),
           tools: [HOOK_GENERATION_TOOL],
           tool_choice: { type: "tool", name: "submit_hooks" },
@@ -193,7 +193,7 @@ export async function POST(request: Request) {
 
         const adaptMsg = await claude.messages.create({
           model: MODEL,
-          max_tokens: 3000,
+          max_tokens: 5000,
           system: buildPrompt("viral-script-adapt"),
           tools: [VIRAL_ADAPT_TOOL],
           tool_choice: { type: "tool", name: "submit_adapted_script" },
@@ -242,7 +242,7 @@ export async function POST(request: Request) {
 
           const criticMsg = await claude.messages.create({
             model: MODEL,
-            max_tokens: 3000,
+            max_tokens: 4000,
             system: criticSystemPrompt,
             tools: [VIRAL_CRITIC_TOOL],
             tool_choice: { type: "tool", name: "submit_critique" },
@@ -302,7 +302,7 @@ export async function POST(request: Request) {
 
           const reviseMsg = await claude.messages.create({
             model: MODEL,
-            max_tokens: 3000,
+            max_tokens: 5000,
             system: buildPrompt("viral-script-adapt"),
             tools: [VIRAL_REVISE_TOOL],
             tool_choice: { type: "tool", name: "submit_revised_script" },
@@ -352,7 +352,7 @@ export async function POST(request: Request) {
 
         const productionMsg = await claude.messages.create({
           model: MODEL,
-          max_tokens: 3000,
+          max_tokens: 4000,
           system: buildPrompt("viral-script-production"),
           tools: [VIRAL_PRODUCTION_TOOL],
           tool_choice: { type: "tool", name: "submit_production_notes" },
