@@ -599,8 +599,9 @@ export const VIRAL_STRUCTURE_TOOL = {
               description: "Strukturelle Funktion dieses Satzes",
             },
             technique: { type: "string", description: "Welche psychologische Technik wird genutzt (z.B. Kontrasteffekt, Social Proof, Open Loop)" },
+            contentDescription: { type: "string", description: "Was sagt der Satz INHALTLICH? Konkret beschreiben was der Satz thematisch tut. Z.B. 'Nennt 3 konkrete Fehler', 'Zeigt ein Vorher/Nachher-Ergebnis mit Zahlen', 'Stellt eine rhetorische Frage über das Kernproblem', 'Gibt Schritt 1 der Lösung'. Diese Beschreibung wird benutzt um den INHALT für eine andere Nische zu adaptieren." },
           },
-          required: ["text", "role", "technique"],
+          required: ["text", "role", "technique", "contentDescription"],
         },
         description: "Alle Sätze des Referenz-Videos in Reihenfolge",
       },
@@ -616,8 +617,16 @@ export const VIRAL_STRUCTURE_TOOL = {
         type: "string",
         description: "Warum funktioniert dieser Hook? Was macht ihn stark? 1-2 Sätze.",
       },
+      videoType: {
+        type: "string",
+        description: "Video-Art: z.B. 'Talking Head', 'Talking Head mit B-Roll', 'Screen Recording mit Voiceover', 'Listicle', 'Story/Anekdote', 'Vorher/Nachher'",
+      },
+      energy: {
+        type: "string",
+        description: "Energie und Tempo des Creators: z.B. 'schnell und energisch', 'ruhig und autoritär', 'locker und casual', 'ernst und direkt'",
+      },
     },
-    required: ["sentences", "pattern", "hookType", "hookAnalysis"],
+    required: ["sentences", "pattern", "hookType", "hookAnalysis", "videoType", "energy"],
   },
 };
 
@@ -638,9 +647,10 @@ export const VIRAL_ADAPT_TOOL = {
       bodyLong: { type: "string", description: "Body der langen Version. Nutze echte Zeilenumbrüche für Absätze." },
       ctaLong: { type: "string", description: "CTA der langen Version (1-2 Sätze)" },
       title: { type: "string", description: "Arbeitstitel für das Skript (max 10 Wörter)" },
+      videoType: { type: "string", description: "Video-Art die vom Original kopiert wird (z.B. 'Talking Head mit B-Roll Cuts', 'Screen Recording mit Voiceover', 'Listicle: 3 Tipps', 'Story/Anekdote'). MUSS identisch zum Original sein." },
       reasoning: { type: "string", description: "Welche Elemente des Originals wurden übernommen und warum (1-2 Sätze)" },
     },
-    required: ["textHookShort", "textHookLong", "hookShort", "bodyShort", "ctaShort", "hookLong", "bodyLong", "ctaLong", "title", "reasoning"],
+    required: ["textHookShort", "textHookLong", "hookShort", "bodyShort", "ctaShort", "hookLong", "bodyLong", "ctaLong", "title", "videoType", "reasoning"],
   },
 };
 

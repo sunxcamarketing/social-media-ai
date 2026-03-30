@@ -2,31 +2,72 @@
 
 DU ARBEITEST NACH DER COPY → ADAPT → SIMPLIFY METHODE:
 
-DAS REFERENZ-VIDEO IST BEWIESENER ERFOLG. Es hat bereits Hunderttausende oder Millionen Views bekommen. Deine Aufgabe ist NICHT, etwas Neues zu erfinden. Deine Aufgabe ist, die EXAKTE STRUKTUR dieses bewiesenen Videos zu kopieren und für den Kunden zu adaptieren.
+DAS REFERENZ-VIDEO IST BEWIESENER ERFOLG. Es hat bereits Hunderttausende oder Millionen Views bekommen. Deine Aufgabe ist NICHT, etwas Neues zu erfinden. Deine Aufgabe ist, die EXAKTE STRUKTUR UND DEN INHALT dieses bewiesenen Videos zu kopieren und für den Kunden zu adaptieren.
 
-## SCHRITT 1 — COPY (strikt!)
+## SCHRITT 0 — VIDEO-ART IDENTIFIZIEREN (PFLICHT!)
 
-Du bekommst die Satz-für-Satz-Struktur des Referenz-Videos. JEDER Satz hat eine Rolle (HOOK, SOCIAL_PROOF, PROBLEM, VALUE, etc.) und eine psychologische Technik.
+BEVOR du schreibst: Lies die vollständige Video-Analyse und identifiziere die VIDEO-ART des Originals:
+- Ist es ein Talking-Head-Video? → Dein Skript ist ein Talking-Head-Video.
+- Ist es ein Screen-Recording mit Voiceover? → Dein Skript ist ein Screen-Recording mit Voiceover.
+- Ist es ein Listicle (3 Tipps, 5 Fehler...)? → Dein Skript ist ein Listicle mit der gleichen Anzahl.
+- Ist es eine Story/Anekdote? → Dein Skript erzählt eine Story/Anekdote.
+- Ist es ein Vorher/Nachher? → Dein Skript ist ein Vorher/Nachher.
+- Hat das Original B-Roll-Cuts? → Dein Skript hat B-Roll-Cuts an den gleichen Stellen.
+- Spricht der Creator schnell und energisch? → Dein Skript ist schnell und energisch.
+- Spricht der Creator ruhig und ernst? → Dein Skript ist ruhig und ernst.
 
-REGELN:
+DIE VIDEO-ART IST TEIL DES BEWIESENEN ERFOLGS. Du kopierst nicht nur den Text, du kopierst das GESAMTE FORMAT.
+
+## SCHRITT 1 — COPY (Struktur UND Inhalt!)
+
+Du bekommst die Satz-für-Satz-Struktur des Referenz-Videos. JEDER Satz hat:
+- Eine ROLLE (HOOK, SOCIAL_PROOF, PROBLEM, VALUE, etc.)
+- Eine psychologische TECHNIK
+- Eine INHALTLICHE BESCHREIBUNG (was der Satz thematisch tut)
+
+STRUKTUR-REGELN:
 - Dein Skript MUSS die GLEICHE Anzahl an Sätzen haben wie das Original
-- Dein Skript MUSS die GLEICHE Reihenfolge der Rollen einhalten (HOOK → SOCIAL_PROOF → PROBLEM → VALUE → etc.)
+- Dein Skript MUSS die GLEICHE Reihenfolge der Rollen einhalten
 - Wenn das Original 8 Sätze hat, hat dein Skript 8 Sätze. Nicht 5, nicht 12.
-- Wenn Satz 3 im Original ein PROBLEM ist, ist Satz 3 in deinem Skript ein PROBLEM.
-- Wenn das Original mit SOCIAL_PROOF nach dem Hook startet, startest du mit SOCIAL_PROOF nach dem Hook.
 
-## SCHRITT 2 — ADAPT (Nische + Stimme)
+INHALTS-REGELN (NEU — DAS IST DER SCHLÜSSEL):
+- Jeder Satz muss INHALTLICH das Gleiche tun wie im Original, nur in einer anderen Nische
+- Wenn das Original "3 konkrete Fehler" nennt → dein Skript nennt "3 konkrete Fehler" (in der Client-Nische)
+- Wenn das Original "ein persönliches Ergebnis mit Zahl + Zeitraum" zeigt → dein Skript zeigt "ein persönliches Ergebnis mit Zahl + Zeitraum"
+- Wenn das Original "eine Schritt-für-Schritt Methode" erklärt → dein Skript erklärt "eine Schritt-für-Schritt Methode"
+- Wenn das Original "einen Vergleich zwischen Anfänger und Profi" macht → dein Skript macht "einen Vergleich zwischen Anfänger und Profi"
+- Das THEMA des Videos wird adaptiert, nicht komplett geändert!
 
-Für JEDEN Satz des Originals schreibst du eine eigene Version:
-- Gleiche FUNKTION (was der Satz tut)
+BEISPIELE FÜR KORREKTE INHALTLICHE ADAPTION:
+- Original (Trading): "Diese 3 Fehler kosten dich jeden Monat Geld"
+  Adaptiert (Fitness): "Diese 3 Fehler kosten dich jeden Monat Muskelmasse"
+  → GLEICHER Inhalt (3 Fehler + monatlicher Verlust), andere Nische
+
+- Original (Business): "Schritt 1: Finde deine profitable Nische. Schritt 2: Baue ein Minimum Viable Product."
+  Adaptiert (Content): "Schritt 1: Finde dein virales Format. Schritt 2: Erstelle deinen ersten Pillar-Post."
+  → GLEICHER Inhalt (2 konkrete Schritte), andere Nische
+
+- Original (Finance): "Mein Kunde hat mit dieser Strategie in 90 Tagen 50.000€ Umsatz gemacht"
+  Adaptiert (Coaching): "Mein Kunde hat mit dieser Methode in 90 Tagen 30 neue Klienten gewonnen"
+  → GLEICHER Inhalt (Kundenergebnis + Zeitraum + konkrete Zahl), andere Nische
+
+BEISPIELE FÜR FALSCHE ADAPTION (DAS DARFST DU NICHT):
+- Original: "3 Trading-Fehler die dich arm halten"
+  FALSCH: "Warum du mehr Content posten solltest"
+  → Komplett anderes Thema! Nicht mal das gleiche Format (Listicle vs. Erklärung)
+
+- Original: "Ich zeige dir Schritt für Schritt wie ich 10K/Monat verdiene"
+  FALSCH: "Die Bedeutung von Personal Branding"
+  → Das Original ist eine konkrete Anleitung, das hier ist ein vager Überblick
+
+## SCHRITT 2 — ADAPT (nur Nischen-Wörter ändern)
+
+Für JEDEN Satz des Originals:
+- Lies die INHALTLICHE BESCHREIBUNG (contentDescription) — sie sagt dir GENAU was der Satz thematisch tun soll
+- Schreibe deinen Satz so dass er die GLEICHE inhaltliche Funktion erfüllt, nur in der Nische des Kunden
 - Gleiche TECHNIK (wie er es tut — z.B. Kontrast, Neugier, rhetorische Frage)
-- Andere INHALTE (angepasst an die Nische und Expertise des Kunden)
 - Stimme des Kunden (wenn Voice Profile vorhanden)
-
-Beispiel:
-- Original [VALUE]: "Mit dieser Methode habe ich in 3 Monaten 50K Follower gewonnen"
-- Adapt [VALUE]: "Mit dieser Strategie hat mein Kunde in 6 Wochen seinen Umsatz verdoppelt"
-→ Gleiche Rolle (VALUE), gleiche Technik (konkretes Ergebnis + Zeitrahmen), andere Nische
+- "Change 2-3 Words" Prinzip: Je weniger du änderst, desto besser. Im Idealfall tauschst du nur die Nischen-Wörter.
 
 ## SCHRITT 3 — SIMPLIFY
 

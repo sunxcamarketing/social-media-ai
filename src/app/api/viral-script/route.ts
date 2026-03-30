@@ -142,13 +142,15 @@ export async function POST(request: Request) {
         const structureTool = structureMsg.content.find(b => b.type === "tool_use");
         if (!structureTool || structureTool.type !== "tool_use") throw new Error("Struktur-Analyse fehlgeschlagen");
         const refStructure = structureTool.input as {
-          sentences: { text: string; role: string; technique: string }[];
+          sentences: { text: string; role: string; technique: string; contentDescription: string }[];
           pattern: string;
           hookType: string;
           hookAnalysis: string;
+          videoType: string;
+          energy: string;
         };
 
-        sendEvent(controller, { step: "structure", status: "done", data: { pattern: refStructure.pattern, hookType: refStructure.hookType, sentenceCount: refStructure.sentences.length } });
+        sendEvent(controller, { step: "structure", status: "done", data: { pattern: refStructure.pattern, hookType: refStructure.hookType, videoType: refStructure.videoType, energy: refStructure.energy, sentenceCount: refStructure.sentences.length } });
 
         // ── Step 3: Generate 3 hook variants ────────────────────────────
         sendEvent(controller, { step: "hooks", status: "loading" });
@@ -158,12 +160,12 @@ export async function POST(request: Request) {
         const hookMsg = await claude.messages.create({
           model: MODEL,
           max_tokens: 1500,
-          system: buildPrompt("hook-generation"),
+          system: buildPrompt("viral-hook-generation"),
           tools: [HOOK_GENERATION_TOOL],
           tool_choice: { type: "tool", name: "submit_hooks" },
           messages: [{
             role: "user",
-            content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n${structureBlock}\n\n<reference_hook>\nDas Original-Video nutzt diesen Hook-Typ: ${refStructure.hookType}\nOriginal-Hook: "${refHookSentence}"\nWarum er funktioniert: ${refStructure.hookAnalysis}\n</reference_hook>\n\nThema: Adaptiere das Konzept des Referenz-Videos für ${clientName}.\nErstelle 3 Hook-Varianten. Mindestens eine soll dem Referenz-Muster folgen, mindestens eine soll einen anderen Ansatz versuchen.`,
+            content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_hook>\nOriginal-Hook: "${refHookSentence}"\nHook-Typ: ${refStructure.hookType}\nWarum er funktioniert: ${refStructure.hookAnalysis}\n</reference_hook>\n\nAdaptiere diesen BEWIESENEN Hook für ${clientName} (Nische: ${(config as unknown as Record<string, string>).creatorsCategory || "unbekannt"}).\n\nMethode: "Change 2-3 Words" — nimm den Original-Hook, tausche NUR die nischen-spezifischen Wörter. Die Satzstruktur und der Mechanismus bleiben IDENTISCH.\n\nErstelle 3 Varianten die alle dem gleichen Mechanismus folgen, aber die Nischen-Wörter leicht anders austauschen.`,
           }],
         });
 
@@ -181,7 +183,7 @@ export async function POST(request: Request) {
         sendEvent(controller, { step: "adapt", status: "loading" });
 
         const selectedHook = hookResult.options[hookResult.selected]?.hook || hookResult.options[0]?.hook || "";
-        const structureMap = refStructure.sentences.map((s, i) => `Satz ${i + 1} [${s.role}]: "${s.text}" — Technik: ${s.technique}`).join("\n");
+        const structureMap = refStructure.sentences.map((s, i) => `Satz ${i + 1} [${s.role}]: "${s.text}"\n  → Technik: ${s.technique}\n  → Inhalt: ${s.contentDescription}`).join("\n\n");
 
         const adaptMsg = await claude.messages.create({
           model: MODEL,
@@ -191,7 +193,7 @@ export async function POST(request: Request) {
           tool_choice: { type: "tool", name: "submit_adapted_script" },
           messages: [{
             role: "user",
-            content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n${structureBlock}\n${auditBlock}\n\n<reference_video>\nDieses Video hat ${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : "viral performt"}${referenceCreator ? ` von @${referenceCreator}` : ""}. Es ist BEWIESENER Erfolg.\n</reference_video>\n\n<reference_structure>\nMuster: ${refStructure.pattern}\nAnzahl Sätze: ${refStructure.sentences.length}\n\nDas Original hat exakt diese Satz-für-Satz-Struktur. Dein Skript MUSS diese Reihenfolge 1:1 einhalten:\n\n${structureMap}\n</reference_structure>\n\n<selected_hook>\n${selectedHook}\n</selected_hook>\n\nWICHTIG: Das Referenz-Video ist der BEWEIS dass diese Struktur funktioniert. Halte dich EXAKT an die Reihenfolge der Rollen. ${refStructure.sentences.length} Sätze im Original = ${refStructure.sentences.length} Sätze in deinem Skript. Adaptiere für ${clientName} in dessen Nische, aber die Struktur ist heilig.`,
+            content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n${structureBlock}\n${auditBlock}\n\n<reference_video>\nDieses Video hat ${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : "viral performt"}${referenceCreator ? ` von @${referenceCreator}` : ""}. Es ist BEWIESENER Erfolg.\n</reference_video>\n\n<full_video_analysis>\nDas ist die VOLLSTÄNDIGE Analyse des Original-Videos. Lies sie KOMPLETT — sie enthält das Transkript, die Visuals, die Text-Overlays, den Editing-Stil. Dein adaptiertes Video muss die gleiche VIDEO-ART und den gleichen AUFBAU haben:\n\n${referenceAnalysis}\n</full_video_analysis>\n\n<reference_structure>\nMuster: ${refStructure.pattern}\nAnzahl Sätze: ${refStructure.sentences.length}\n\nDas Original hat exakt diese Satz-für-Satz-Struktur. Dein Skript MUSS diese Reihenfolge 1:1 einhalten:\n\n${structureMap}\n</reference_structure>\n\n<selected_hook>\n${selectedHook}\n</selected_hook>\n\nWICHTIG — COPY → ADAPT REGELN:\n1. STRUKTUR ist heilig: ${refStructure.sentences.length} Sätze im Original = ${refStructure.sentences.length} Sätze in deinem Skript. Gleiche Reihenfolge der Rollen.\n2. VIDEO-ART kopieren: Das Original ist "${refStructure.videoType}" mit "${refStructure.energy}" Energie. Dein Video MUSS die gleiche Art und Energie haben.\n3. HOOK-TYP beibehalten: Der Hook-Mechanismus (${refStructure.hookType}) muss identisch sein. Nur die Nischen-Wörter ändern.\n4. INHALT kopieren: Lies die "Inhalt"-Beschreibung jedes Satzes in der Referenz-Struktur. Dein Satz muss INHALTLICH das Gleiche tun — nur in der Nische von ${clientName}. Wenn das Original "3 Fehler" nennt, nennst du "3 Fehler". Wenn es eine "Schritt-für-Schritt Anleitung" gibt, gibst du eine "Schritt-für-Schritt Anleitung". Das THEMA wird adaptiert, nicht ersetzt.\n5. "Change 2-3 Words" Prinzip: Je weniger du änderst, desto besser. Tausche nur Nischen-Wörter. Erfinde NICHTS Neues.`,
           }],
         });
 
@@ -201,7 +203,7 @@ export async function POST(request: Request) {
           textHookShort: string; textHookLong: string;
           hookShort: string; bodyShort: string; ctaShort: string;
           hookLong: string; bodyLong: string; ctaLong: string;
-          title: string; reasoning: string;
+          title: string; videoType: string; reasoning: string;
         };
 
         // Fix literal \n that Claude sometimes puts in tool output
@@ -216,7 +218,7 @@ export async function POST(request: Request) {
           ctaLong: fixNewlines(rawAdapt.ctaLong),
         };
 
-        sendEvent(controller, { step: "adapt", status: "done", data: { title: adaptResult.title } });
+        sendEvent(controller, { step: "adapt", status: "done", data: { title: adaptResult.title, videoType: adaptResult.videoType || "" } });
 
         // ── Step 5: Quality review ──────────────────────────────────────
         sendEvent(controller, { step: "review", status: "loading" });
@@ -300,7 +302,7 @@ ZUSÄTZLICHE PRÜFUNGEN FÜR VIRAL SCRIPT BUILDER:
             short: finalShort,
             long: finalLong,
             hooks: hookResult,
-            structure: { pattern: refStructure.pattern, hookType: refStructure.hookType },
+            structure: { pattern: refStructure.pattern, hookType: refStructure.hookType, videoType: adaptResult.videoType || "" },
             production,
             reviewIssues,
             reference: {
