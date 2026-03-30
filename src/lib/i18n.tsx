@@ -18,6 +18,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "nav.creators": { de: "Creators", en: "Creators" },
   "nav.training": { de: "Training", en: "Training" },
   "nav.transcribe": { de: "Transkribieren", en: "Transcribe" },
+  "nav.viralityChecklist": { de: "Virality Checklist", en: "Virality Checklist" },
 
   // New Client Dialog
   "newClient.title": { de: "Neuer Client", en: "New Client" },
@@ -413,6 +414,145 @@ const translations: Record<string, { de: string; en: string }> = {
   "scripts.creatorVideos": { de: "Creator-Videos", en: "Creator videos" },
   "scripts.noCreatorVideos": { de: "Keine Creator-Videos", en: "No creator videos" },
   "scripts.12months": { de: "12 Monate", en: "12 months" },
+
+  // Virality Checklist Page
+  "vc.title": { de: "Virality Checklist", en: "Virality Checklist" },
+  "vc.subtitle": { de: "4-Schritte Framework: Research → Script → Film → Edit", en: "4-Step Framework: Research → Script → Film → Edit" },
+  "vc.tipsTitle": { de: "Tipps & Insights", en: "Tips & Insights" },
+  "vc.checklist": { de: "Checklist", en: "Checklist" },
+  "vc.principles": { de: "10 Psychologische Prinzipien", en: "10 Psychological Principles" },
+
+  // Steps
+  "vc.step.research": { de: "Research", en: "Research" },
+  "vc.step.research.sub": { de: "Doom-Scrolling mit Intent", en: "Doom-Scrolling with Intent" },
+  "vc.step.scripting": { de: "Scripting", en: "Scripting" },
+  "vc.step.scripting.sub": { de: "Copy → Adapt → Simplify", en: "Copy → Adapt → Simplify" },
+  "vc.step.filming": { de: "Filming", en: "Filming" },
+  "vc.step.filming.sub": { de: "iPhone + CapCut Teleprompter", en: "iPhone + CapCut Teleprompter" },
+  "vc.step.editing": { de: "Editing", en: "Editing" },
+  "vc.step.editing.sub": { de: "CapCut auf dem iPhone", en: "CapCut on iPhone" },
+
+  // Research Tips
+  "vc.research.tip1.title": { de: "Outlier finden, nicht irgendwas", en: "Find outliers, not just anything" },
+  "vc.research.tip1.detail": { de: "Such Videos mit 5.000–10.000+ Likes. Das ist der Indikator dass der Algorithmus das Video pusht. Besonders stark: 1M Views auf einem 68K-Follower-Account.", en: "Look for videos with 5,000–10,000+ likes. That's the indicator the algorithm is pushing the video. Especially powerful: 1M views on a 68K-follower account." },
+  "vc.research.tip2.title": { de: "Nische UND Format matchen", en: "Match niche AND format" },
+  "vc.research.tip2.detail": { de: "Nicht nur Nische ODER Format — beides muss passen. Ein virales Kochvideo hilft dir nicht wenn du Business-Content machst, selbst wenn das Format ähnlich ist.", en: "Not just niche OR format — both must match. A viral cooking video won't help if you make business content, even if the format is similar." },
+  "vc.research.tip3.title": { de: "Algorithmus = Watch Time", en: "Algorithm = Watch Time" },
+  "vc.research.tip3.detail": { de: "Vergiss Hashtags. Vergiss Posting-Zeiten. Der Algorithmus optimiert einzig und allein für Watch Time und Engagement. Das ist die einzige Metrik die zählt.", en: "Forget hashtags. Forget posting times. The algorithm optimizes solely for watch time and engagement. That's the only metric that matters." },
+  "vc.research.tip4.title": { de: "Outlier erkennen", en: "Spot outliers" },
+  "vc.research.tip4.detail": { de: "Check ob das Video ein Outlier für DIESEN Creator ist. 100K Views auf einem Account mit 2M Followern ist normal — 100K Views auf einem Account mit 5K Followern ist ein Outlier.", en: "Check if the video is an outlier for THIS creator. 100K views on an account with 2M followers is normal — 100K views on an account with 5K followers is an outlier." },
+
+  // Scripting Tips
+  "vc.scripting.tip1.title": { de: "Hook = Make or Break", en: "Hook = Make or Break" },
+  "vc.scripting.tip1.detail": { de: "Der erste Satz entscheidet ALLES. Er muss die Wünsche und Desires deines idealen Zuschauers ansprechen. Jeder weitere Satz muss auf den Hook zurückführen.", en: "The first sentence decides EVERYTHING. It must address the desires of your ideal viewer. Every subsequent sentence must lead back to the hook." },
+  "vc.scripting.tip2.title": { de: "Copy → Adapt → Simplify", en: "Copy → Adapt → Simplify" },
+  "vc.scripting.tip2.detail": { de: "Öffne ein Google Doc. Schreib die Original-Sätze Zeile für Zeile ab. Darunter: DEINE Version in DEINER Nische. Denk kritisch darüber nach WARUM es viral ging.", en: "Open a Google Doc. Write down the original sentences line by line. Below: YOUR version in YOUR niche. Think critically about WHY it went viral." },
+  "vc.scripting.tip3.title": { de: "5-Jährigen-Test", en: "5-Year-Old Test" },
+  "vc.scripting.tip3.detail": { de: "Ein 5-Jähriger sollte es verstehen. Kein Fachjargon. Kein PhD-Dissertations-Vibe. Short Form = ein schneller Dopamin-Hit, nicht eine Vorlesung.", en: "A 5-year-old should understand it. No jargon. No PhD dissertation vibe. Short form = a quick dopamine hit, not a lecture." },
+  "vc.scripting.tip4.title": { de: "Dopamin-Hits einbauen", en: "Build in dopamine hits" },
+  "vc.scripting.tip4.detail": { de: "Gib dem Zuschauer das Gefühl dass er gewinnt, nur weil er zuschaut. Die meisten speichern Content und wenden ihn nie an — mach dass sie sich fühlen als machen sie Fortschritt.", en: "Make the viewer feel like they're winning just by watching. Most save content and never apply it — make them feel like they're making progress." },
+  "vc.scripting.tip5.title": { de: "Scroll-off Gründe eliminieren", en: "Eliminate scroll-off reasons" },
+  "vc.scripting.tip5.detail": { de: "Les das Skript laut vor. Frag: 'Wenn ich ein Fremder wäre — würde ich hier wegwischen?' 3 Gründe zum Wegwischen: verwirrt, gelangweilt, aufgehört zu glauben.", en: "Read the script out loud. Ask: 'If I were a stranger — would I swipe away here?' 3 reasons to swipe: confused, bored, stopped believing." },
+  "vc.scripting.tip6.title": { de: "One Quick Win", en: "One Quick Win" },
+  "vc.scripting.tip6.detail": { de: "Versuch nicht in 60 Sekunden alles zu erklären. Der Zuschauer soll EINE Sache verstehen. EIN Gefühl von Verständnis. Das reicht.", en: "Don't try to explain everything in 60 seconds. The viewer should understand ONE thing. ONE feeling of understanding. That's enough." },
+
+  // Filming Tips
+  "vc.filming.tip1.title": { de: "High Energy State", en: "High Energy State" },
+  "vc.filming.tip1.detail": { de: "Vor dem Filmen: Energy Drink, Stretching, tiefe Atemzüge. Noise-Cancelling Kopfhörer mit Focus-Musik. Du musst vom Business-Brain ins charismatische-Kamera-Person-Brain switchen.", en: "Before filming: energy drink, stretching, deep breaths. Noise-cancelling headphones with focus music. You need to switch from business-brain to charismatic-camera-person-brain." },
+  "vc.filming.tip2.title": { de: "Teleprompter Hack", en: "Teleprompter Hack" },
+  "vc.filming.tip2.detail": { de: "CapCut → Kamera → Kamera drehen → 3 Minuten → Teleprompter. Skript reinkopieren. Ziel: Es soll NICHT aussehen als würdest du ablesen. Natürliche Energie, keine übertriebenen Worte.", en: "CapCut → Camera → Flip camera → 3 minutes → Teleprompter. Paste script. Goal: It should NOT look like you're reading. Natural energy, no exaggerated words." },
+  "vc.filming.tip3.title": { de: "Stell dir jemanden vor", en: "Imagine someone" },
+  "vc.filming.tip3.detail": { de: "Visualisiere eine Person die vor dir sitzt. Der Zuschauer soll das Gefühl haben mit einem echten Menschen zu reden — nicht mit einem Roboter der ein Skript abliest.", en: "Visualize a person sitting in front of you. The viewer should feel like they're talking to a real person — not a robot reading a script." },
+  "vc.filming.tip4.title": { de: "Kein fancy Equipment nötig", en: "No fancy equipment needed" },
+  "vc.filming.tip4.detail": { de: "iPhone reicht völlig. Stapel Bücher für den Desk-Shot. Du musst es nicht in einem Take schaffen — mach Fehler, film weiter, schneide in der Bearbeitung.", en: "iPhone is totally enough. Stack of books for the desk shot. You don't have to nail it in one take — make mistakes, keep filming, cut in editing." },
+
+  // Editing Tips
+  "vc.editing.tip1.title": { de: "4-Schritte Editing-Prozess", en: "4-Step Editing Process" },
+  "vc.editing.tip1.detail": { de: "1) Rough Cut — Stille und Fehler rausschneiden. 2) B-Roll — Clips die zum Gesagten passen. 3) Auto-Captions — TikTok Classic Font. 4) Musik — nur instrumental.", en: "1) Rough Cut — cut silence and mistakes. 2) B-Roll — clips that match what's said. 3) Auto-Captions — TikTok Classic Font. 4) Music — instrumental only." },
+  "vc.editing.tip2.title": { de: "Dead Space = Tod", en: "Dead Space = Death" },
+  "vc.editing.tip2.detail": { de: "Schneide ALLE Atempausen, Versprecher, Stille raus. Selbst 0,5 Sekunden Dead Space lässt das Video langsamer wirken. Besonders wichtig für neue Creator.", en: "Cut ALL breathing pauses, slip-ups, silence. Even 0.5 seconds of dead space makes the video feel slower. Especially important for new creators." },
+  "vc.editing.tip3.title": { de: "B-Roll Philosophie", en: "B-Roll Philosophy" },
+  "vc.editing.tip3.detail": { de: "Plan eine Shot-Liste vom Skript BEVOR du B-Roll filmst. Jeder Satz = ein spezifisches Visual. Was macht diesen Satz EINFACHER zu verstehen? Screen Recordings für App-Demos. Jeder Clip: 1-2 Sekunden max.", en: "Plan a shot list from the script BEFORE filming B-Roll. Every sentence = a specific visual. What makes this sentence EASIER to understand? Screen recordings for app demos. Each clip: 1-2 seconds max." },
+  "vc.editing.tip4.title": { de: "5% Intentionality Principle", en: "5% Intentionality Principle" },
+  "vc.editing.tip4.detail": { de: "5% mehr Intention pro Satz = potenziell 10x mehr Views. Kleine Unterschiede in Retention kompoundieren massiv. Denk bei JEDEM Visual darüber nach warum es da ist.", en: "5% more intention per sentence = potentially 10x more views. Small differences in retention compound massively. Think about WHY every visual is there." },
+  "vc.editing.tip5.title": { de: "Social Proof früh zeigen", en: "Show social proof early" },
+  "vc.editing.tip5.detail": { de: "Screenshots von View-Zahlen in den ersten Sekunden. Auf die Zahlen zuschneiden — kein Clutter. Beweist dass es sich lohnt dir zuzuhören.", en: "Screenshots of view counts in the first seconds. Crop to the numbers — no clutter. Proves it's worth listening to you." },
+  "vc.editing.tip6.title": { de: "Captions & Musik", en: "Captions & Music" },
+  "vc.editing.tip6.detail": { de: "TikTok Classic Font. Augen müssen sichtbar bleiben. Gelbe Captions wenn der Hintergrund Kontrast braucht. Return drücken: 2 Wörter pro Zeile. Musik: nur instrumental, keine Lyrics.", en: "TikTok Classic Font. Eyes must stay visible. Yellow captions when background needs contrast. Hit return: 2 words per line. Music: instrumental only, no lyrics." },
+  "vc.editing.tip7.title": { de: "Export-Settings", en: "Export Settings" },
+  "vc.editing.tip7.detail": { de: "4K Auflösung. KEIN AI Ultra HD. 30 fps. Empfohlene Bitrate. Caption/Beschreibung ist nicht so wichtig — keine Hashtags oder Posting-Zeiten nötig.", en: "4K resolution. NO AI Ultra HD. 30 fps. Recommended bitrate. Caption/description isn't that important — no hashtags or posting times needed." },
+  "vc.editing.tip8.title": { de: "Speed = Value Perception", en: "Speed = Value Perception" },
+  "vc.editing.tip8.detail": { de: "Langweilige Teile (Tippen, Scrollen) 3-5x beschleunigen. Schnell wechselnde Visuals lassen Content wertvoller und speichernswert erscheinen. Visuelle Einfachheit — EIN Fokuspunkt pro Frame.", en: "Speed up boring parts (typing, scrolling) 3-5x. Fast-changing visuals make content feel more valuable and save-worthy. Visual simplicity — ONE focal point per frame." },
+
+  // Research Checklist
+  "vc.research.cl1": { de: "Instagram/TikTok Explore/FYP öffnen", en: "Open Instagram/TikTok Explore/FYP" },
+  "vc.research.cl2": { de: "Videos mit 5.000-10.000+ Likes finden", en: "Find videos with 5,000-10,000+ likes" },
+  "vc.research.cl3": { de: "Check: Ist es ein Outlier für diesen Creator?", en: "Check: Is it an outlier for this creator?" },
+  "vc.research.cl4": { de: "Passt es zu deiner Nische UND deinem Format?", en: "Does it match your niche AND format?" },
+  "vc.research.cl5": { de: "3-5 virale Referenz-Videos gesammelt", en: "Collected 3-5 viral reference videos" },
+
+  // Scripting Checklist
+  "vc.scripting.cl1": { de: "Google Doc öffnen", en: "Open Google Doc" },
+  "vc.scripting.cl2": { de: "Original-Sätze Zeile für Zeile abschreiben", en: "Copy original sentences line by line" },
+  "vc.scripting.cl3": { de: "Eigene Version in eigener Nische darunter schreiben", en: "Write your own version in your niche below" },
+  "vc.scripting.cl4": { de: "Hook = erster Satz der Aufmerksamkeit catcht", en: "Hook = first sentence that catches attention" },
+  "vc.scripting.cl5": { de: "Jeder Satz führt zurück zum Hook", en: "Every sentence leads back to the hook" },
+  "vc.scripting.cl6": { de: "5-Jährigen-Test bestanden (kein Fachjargon)", en: "Passed 5-year-old test (no jargon)" },
+  "vc.scripting.cl7": { de: "Skript laut vorgelesen", en: "Read script out loud" },
+  "vc.scripting.cl8": { de: "Kein Punkt wo man wegwischen würde", en: "No point where you'd swipe away" },
+  "vc.scripting.cl9": { de: "Dopamin-Hits eingebaut", en: "Dopamine hits built in" },
+
+  // Filming Checklist
+  "vc.filming.cl1": { de: "High-Energy-State aufgebaut", en: "Built up high-energy state" },
+  "vc.filming.cl2": { de: "Teleprompter in CapCut eingerichtet", en: "Set up teleprompter in CapCut" },
+  "vc.filming.cl3": { de: "Kamera-Setup bereit (iPhone + Bücher-Stack)", en: "Camera setup ready (iPhone + book stack)" },
+  "vc.filming.cl4": { de: "Focus-Musik an, Noise-Cancelling Kopfhörer auf", en: "Focus music on, noise-cancelling headphones on" },
+  "vc.filming.cl5": { de: "Natürliche Energie — nicht übertrieben", en: "Natural energy — not over the top" },
+  "vc.filming.cl6": { de: "Gefilmt (Fehler sind okay — wird geschnitten)", en: "Filmed (mistakes are okay — will be cut)" },
+
+  // Editing Checklist
+  "vc.editing.cl1": { de: "Rough Cut — alle Fehler und Stille entfernt", en: "Rough cut — all mistakes and silence removed" },
+  "vc.editing.cl2": { de: "Keine Dead Space (0,5s Pausen = weg)", en: "No dead space (0.5s pauses = gone)" },
+  "vc.editing.cl3": { de: "B-Roll geplant und eingefügt (1-2s pro Clip)", en: "B-Roll planned and inserted (1-2s per clip)" },
+  "vc.editing.cl4": { de: "Screen Recordings für App/Process Shots", en: "Screen recordings for app/process shots" },
+  "vc.editing.cl5": { de: "Auto Captions — TikTok Classic, 2 Wörter/Zeile", en: "Auto captions — TikTok Classic, 2 words/line" },
+  "vc.editing.cl6": { de: "Augen nicht von Text verdeckt", en: "Eyes not covered by text" },
+  "vc.editing.cl7": { de: "Musik hinzugefügt (instrumental, keine Lyrics)", en: "Music added (instrumental, no lyrics)" },
+  "vc.editing.cl8": { de: "Social Proof in den ersten Sekunden", en: "Social proof in the first seconds" },
+  "vc.editing.cl9": { de: "Langweilige Teile 3-5x beschleunigt", en: "Boring parts sped up 3-5x" },
+  "vc.editing.cl10": { de: "Export: 4K, 30fps, kein AI Ultra HD", en: "Export: 4K, 30fps, no AI Ultra HD" },
+
+  // Reminder Boxes
+  "vc.reminder.scripting.title": { de: "Reminder", en: "Reminder" },
+  "vc.reminder.scripting.text": { de: "Nicht originell sein wollen. Bewährte virale Strukturen kopieren und in deiner Nische anpassen. Besonders als Anfänger. Das Rad nicht neu erfinden.", en: "Don't try to be original. Copy proven viral structures and adapt them to your niche. Especially as a beginner. Don't reinvent the wheel." },
+  "vc.reminder.editing.title": { de: "Key Insight", en: "Key Insight" },
+  "vc.reminder.editing.text": { de: "5% mehr Intention pro Satz = potenziell 10x mehr Views. Kleine Retention-Unterschiede kompoundieren massiv. Jedes Visual muss einen Grund haben.", en: "5% more intention per sentence = potentially 10x more views. Small retention differences compound massively. Every visual must have a reason." },
+  "vc.reminder.research.title": { de: "Worauf achten", en: "What to look for" },
+  "vc.reminder.research.text": { de: "Nicht einfach scrollen. Intentional scrollen. Du suchst Outlier — Videos die für DIESEN Creator überdurchschnittlich performen. 5K+ Likes = Signal.", en: "Don't just scroll. Scroll with intent. You're looking for outliers — videos that overperform for THIS creator. 5K+ likes = signal." },
+  "vc.reminder.filming.title": { de: "Wichtig", en: "Important" },
+  "vc.reminder.filming.text": { de: "Du brauchst KEIN fancy Equipment. iPhone reicht. Die Energie die du mitbringst ist 100x wichtiger als die Kameraqualität. Authentisch > Perfekt.", en: "You don't need fancy equipment. iPhone is enough. The energy you bring is 100x more important than camera quality. Authentic > Perfect." },
+
+  // Principles
+  "vc.p1.title": { de: "Algorithmus = Watch Time", en: "Algorithm = Watch Time" },
+  "vc.p1.desc": { de: "Nicht Hashtags, nicht Posting-Zeiten. Nur welche Videos die meiste Watch Time bekommen.", en: "Not hashtags, not posting times. Only which videos get the most watch time." },
+  "vc.p2.title": { de: "Proven > Original", en: "Proven > Original" },
+  "vc.p2.desc": { de: "Kopiere bewährte virale Strukturen. Versuch nicht als Anfänger originell zu sein.", en: "Copy proven viral structures. Don't try to be original as a beginner." },
+  "vc.p3.title": { de: "Empathize with Viewer", en: "Empathize with Viewer" },
+  "vc.p3.desc": { de: "Denk durch ihre Brille. Was würde SIE zum Wegwischen bringen?", en: "Think through their lens. What would make THEM swipe away?" },
+  "vc.p4.title": { de: "Visual Simplicity", en: "Visual Simplicity" },
+  "vc.p4.desc": { de: "Jeder Frame hat EINEN Fokuspunkt. Kein Clutter.", en: "Every frame has ONE focal point. No clutter." },
+  "vc.p5.title": { de: "Progressive Value", en: "Progressive Value" },
+  "vc.p5.desc": { de: "Jeder Satz liefert neue Info. Es wird besser, nicht schlechter.", en: "Every sentence delivers new info. It gets better, not worse." },
+  "vc.p6.title": { de: "Dopamin-Hits", en: "Dopamine Hits" },
+  "vc.p6.desc": { de: "Der Zuschauer fühlt sich als würde er gewinnen — nur durch Zuschauen.", en: "The viewer feels like they're winning — just by watching." },
+  "vc.p7.title": { de: "Speed = Value", en: "Speed = Value" },
+  "vc.p7.desc": { de: "Schnell wechselnde Visuals = Content fühlt sich wertvoller an.", en: "Fast-changing visuals = content feels more valuable." },
+  "vc.p8.title": { de: "Social Proof", en: "Social Proof" },
+  "vc.p8.desc": { de: "Ergebnisse früh zeigen um Glaubwürdigkeit aufzubauen.", en: "Show results early to build credibility." },
+  "vc.p9.title": { de: "One Quick Win", en: "One Quick Win" },
+  "vc.p9.desc": { de: "Short Form = EIN Gefühl von Verständnis. Nicht Deep Education.", en: "Short form = ONE feeling of understanding. Not deep education." },
+  "vc.p10.title": { de: "5% Intentionality", en: "5% Intentionality" },
+  "vc.p10.desc": { de: "Kleine Verbesserungen pro Satz = 10x mehr Views.", en: "Small improvements per sentence = 10x more views." },
 };
 
 interface I18nContextType {

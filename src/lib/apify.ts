@@ -119,6 +119,32 @@ async function fetchProfileWithRetry(token: string, username: string, retries = 
   throw new Error(`Instagram-Profil @${username} wurde nicht gefunden. Bitte prüfe ob der Handle existiert und das Profil öffentlich ist.`);
 }
 
+/**
+ * Scrape a single Instagram Reel by direct URL.
+ * Returns the post data including videoUrl, views, likes, etc.
+ */
+export async function scrapeSinglePost(reelUrl: string): Promise<ApifyReel> {
+  const token = getToken();
+  const res = await fetchApify(token, {
+    directUrls: [reelUrl],
+    resultsType: "posts",
+    resultsLimit: 1,
+    addParentData: false,
+  }, 120000);
+
+  if (!res.ok) {
+    const text = await res.text();
+    if (res.status === 402 || res.status === 403 || text.includes("usage") || text.includes("limit")) {
+      throw new Error("Apify-Monatslimit erreicht. Bitte erhöhe dein Limit unter console.apify.com/billing.");
+    }
+    throw new Error(`Apify-Fehler ${res.status}: ${text.slice(0, 200)}`);
+  }
+
+  const data = await res.json() as ApifyReel[];
+  if (!data[0]) throw new Error("Video konnte nicht gefunden werden. Bitte prüfe die URL.");
+  return data[0];
+}
+
 export async function scrapeCreatorStats(username: string): Promise<CreatorStatsWithReels> {
   const token = getToken();
   const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)

@@ -33,8 +33,6 @@ import {
   Zap,
   PenTool,
   Shield,
-  Maximize2,
-  Minimize2,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 
@@ -55,12 +53,12 @@ function fmtDuration(s: number): string {
 }
 
 function baseTitle(title: string): string {
-  return title.replace(/\s*\((Kurz|Lang)\)\s*$/, "").trim();
+  return title.replace(/\s*(?:\(Kurz\)|\(Lang\)|—\s*Kurz|—\s*Lang)\s*$/, "").trim();
 }
 
 function scriptVariant(title: string): "kurz" | "lang" | null {
-  if (/\(Kurz\)\s*$/.test(title)) return "kurz";
-  if (/\(Lang\)\s*$/.test(title)) return "lang";
+  if (/(?:\(Kurz\)|—\s*Kurz)\s*$/.test(title)) return "kurz";
+  if (/(?:\(Lang\)|—\s*Lang)\s*$/.test(title)) return "lang";
   return null;
 }
 
@@ -324,30 +322,18 @@ function GeneratedScriptCard({
   );
 }
 
-// ── Saved Script Card (with Kurz/Lang toggle) ──────────────────────────────
+// ── Script Cell (renders script content inside a table cell) ────────────────
 
-function SavedScriptCard({
-  group,
-  onEdit,
-  onDelete,
-  onStatusChange,
-}: {
-  group: ScriptGroup;
-  onEdit: (script: Script) => void;
-  onDelete: (scriptId: string) => void;
-  onStatusChange: (scriptId: string, newStatus: string) => void;
-}) {
-  const hasBoth = !!(group.kurz && group.lang);
-  const [variant, setVariant] = useState<"kurz" | "lang">(hasBoth ? "lang" : group.kurz ? "kurz" : "lang");
-  const [expanded, setExpanded] = useState(false);
+function ScriptCell({ script }: { script?: Script }) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  const active: Script | undefined = group.single || (variant === "kurz" ? group.kurz : group.lang) || group.kurz || group.lang;
-  if (!active) return null;
+  if (!script) {
+    return <td className="px-4 py-4 align-top text-xs text-ocean/25 italic">—</td>;
+  }
 
-  const fullText = [active.hook, active.body, active.cta].filter(Boolean).join("\n\n");
-  const words = wordCount(fullText);
-  const dur = words > 0 ? fmtDuration(Math.round((words / 125) * 60)) : null;
+  const fullText = [script.hook, script.body, script.cta].filter(Boolean).join("\n\n");
+  const isLong = (script.body || "").length > 200;
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -356,109 +342,35 @@ function SavedScriptCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const cycleStatus = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const order = STATUS_OPTIONS.map(o => o.value);
-    const idx = order.indexOf(active.status);
-    const next = order[(idx + 1) % order.length];
-    onStatusChange(active.id, next);
-  };
-
   return (
-    <div className="rounded-xl border border-ocean/[0.06] overflow-hidden group transition-all hover:border-ocean/[0.1]">
+    <td className="px-4 py-4 align-top">
       <div
-        role="button"
-        tabIndex={0}
+        className="space-y-2 max-w-md cursor-pointer"
         onClick={() => setExpanded(!expanded)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(!expanded); } }}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-warm-white transition-colors cursor-pointer"
       >
-        <ChevronDown className={`h-3 w-3 text-ocean/50 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
-        <span className="flex-1 text-sm font-medium truncate">{group.base || active.title || "Ohne Titel"}</span>
-
-        {/* Kurz/Lang toggle */}
-        {hasBoth && (
-          <div className="flex shrink-0 rounded-lg border border-ocean/[0.08] overflow-hidden" onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => setVariant("kurz")}
-              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                variant === "kurz"
-                  ? "bg-blush/25 text-blush-dark"
-                  : "text-ocean/40 hover:text-ocean/60 hover:bg-ocean/[0.02]"
-              }`}
-            >
-              <Minimize2 className="h-2.5 w-2.5" />
-              Kurz
-            </button>
-            <button
-              onClick={() => setVariant("lang")}
-              className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium transition-colors border-l border-ocean/[0.08] ${
-                variant === "lang"
-                  ? "bg-blush/25 text-blush-dark"
-                  : "text-ocean/40 hover:text-ocean/60 hover:bg-ocean/[0.02]"
-              }`}
-            >
-              <Maximize2 className="h-2.5 w-2.5" />
-              Lang
-            </button>
-          </div>
+        {script.hook && (
+          <p className="text-[13px] text-ocean/90 leading-relaxed font-semibold">{script.hook}</p>
         )}
-
-        <div className="hidden md:flex items-center gap-2 shrink-0">
-          {active.contentType && <span className="text-[10px] text-ocean/60 bg-ocean/[0.02] border border-ocean/[0.06] rounded px-1.5 py-0.5">{active.contentType}</span>}
-          {dur && <span className="text-[10px] text-ocean/50 flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{dur}</span>}
-          <button onClick={cycleStatus} className="cursor-pointer">
-            <Badge className={`rounded-md text-[10px] border ${statusColor(active.status)} hover:opacity-80 transition-opacity`}>
-              {STATUS_OPTIONS.find(o => o.value === active.status)?.label || active.status}
-            </Badge>
-          </button>
-        </div>
-        <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-          <button onClick={handleCopy} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-warm-white transition-colors">
-            {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onEdit(active); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-warm-white transition-colors">
-            <Pencil className="h-3 w-3" />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(active.id); }} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/50 hover:text-red-500 hover:bg-red-50 transition-colors">
-            <Trash2 className="h-3 w-3" />
-          </button>
-        </div>
+        {script.body && (
+          <p className={`text-[13px] text-ocean/65 leading-relaxed whitespace-pre-wrap ${!expanded && isLong ? "line-clamp-4" : ""}`}>{script.body}</p>
+        )}
+        {!script.hook && !script.cta && script.body && (
+          <p className={`text-[13px] text-ocean/65 leading-relaxed whitespace-pre-wrap ${!expanded && isLong ? "line-clamp-4" : ""}`}>{script.body}</p>
+        )}
+        {script.cta && (
+          <p className="text-[13px] text-green-700/70 leading-relaxed italic">{script.cta}</p>
+        )}
+        {isLong && !expanded && (
+          <span className="text-[11px] text-blush-dark/60 hover:text-blush-dark">... mehr anzeigen</span>
+        )}
+        <button
+          onClick={handleCopy}
+          className="inline-flex items-center gap-1 text-[10px] text-ocean/40 hover:text-ocean transition-colors"
+        >
+          {copied ? <><Check className="h-2.5 w-2.5 text-green-600" /> Kopiert</> : <><Copy className="h-2.5 w-2.5" /> Kopieren</>}
+        </button>
       </div>
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-ocean/5">
-          {active.hook ? (
-            <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 overflow-hidden">
-              <div className="px-4 py-3 border-b border-ocean/5">
-                <p className="text-[9px] uppercase tracking-wider text-blush-dark/60 font-medium mb-1.5">Hook</p>
-                <p className="text-sm text-ocean/90 leading-relaxed font-medium">{active.hook}</p>
-              </div>
-              {active.body && (
-                <div className="px-4 py-3 border-b border-ocean/5">
-                  <p className="text-[9px] uppercase tracking-wider text-ocean/40 font-medium mb-1.5">Skript</p>
-                  <p className="text-sm text-ocean/75 leading-relaxed whitespace-pre-wrap">{active.body}</p>
-                </div>
-              )}
-              {active.cta && (
-                <div className="px-4 py-3">
-                  <p className="text-[9px] uppercase tracking-wider text-green-600/60 font-medium mb-1.5">CTA</p>
-                  <p className="text-sm text-ocean/75 leading-relaxed">{active.cta}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-4 py-3">
-              <p className="text-sm text-ocean/80 leading-relaxed whitespace-pre-wrap">{fullText}</p>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            {active.pillar && <span className="text-[10px] text-blush-dark/60 rounded bg-blush/20 border border-blush/30 px-2 py-0.5">{active.pillar}</span>}
-            {active.format && <span className="text-[10px] text-ocean/50">{active.format}</span>}
-            {hasBoth && <span className="text-[10px] text-ocean/40">· {variant === "kurz" ? "~30s" : "Vollversion"}</span>}
-          </div>
-        </div>
-      )}
-    </div>
+    </td>
   );
 }
 
@@ -496,9 +408,13 @@ export default function ClientScriptsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Script | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const loadScripts = useCallback(() =>
-    fetch(`/api/scripts?clientId=${id}`).then(r => r.json()).then(setScripts),
+    fetch(`/api/scripts?clientId=${id}`).then(r => r.json()).then((data: Script[]) => {
+      setScripts(data);
+      setSelectedIds(new Set()); // clear selection after reload
+    }),
   [id]);
 
   useEffect(() => {
@@ -656,10 +572,22 @@ export default function ClientScriptsPage() {
     loadScripts();
   };
 
+  const deleteScriptIds = async (ids: string[]) => {
+    // Optimistic: remove from UI immediately
+    setScripts(prev => prev.filter(s => !ids.includes(s.id)));
+    setSelectedIds(new Set());
+    // Single request — all IDs comma-separated
+    await fetch(`/api/scripts?id=${ids.join(",")}`, { method: "DELETE" });
+  };
+
   const handleDelete = async (scriptId: string) => {
-    if (!confirm("Skript löschen?")) return;
-    await fetch(`/api/scripts?id=${scriptId}`, { method: "DELETE" });
-    loadScripts();
+    await deleteScriptIds([scriptId]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size} Skript(e) löschen?`)) return;
+    await deleteScriptIds(Array.from(selectedIds));
   };
 
   const handleStatusChange = async (scriptId: string, newStatus: string) => {
@@ -671,8 +599,20 @@ export default function ClientScriptsPage() {
     loadScripts();
   };
 
+  const toggleSelect = (ids: string[]) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      const allSelected = ids.every(id => next.has(id));
+      if (allSelected) ids.forEach(id => next.delete(id));
+      else ids.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
   const filtered = filterStatus === "all" ? scripts : scripts.filter(s => s.status === filterStatus);
   const grouped = groupScripts(filtered);
+  const allScriptIds = filtered.map(s => s.id);
+  const allSelected = allScriptIds.length > 0 && allScriptIds.every(id => selectedIds.has(id));
   const isPipelineActive = pipelineStep !== "idle" && pipelineStep !== "done" && pipelineStep !== "error";
 
   return (
@@ -791,7 +731,7 @@ export default function ClientScriptsPage() {
         )}
       </div>
 
-      {/* ── Saved Scripts ─────────────────────────────────────────────────── */}
+      {/* ── Saved Scripts — Table Layout ────────────────────────────────── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
@@ -807,24 +747,138 @@ export default function ClientScriptsPage() {
             ))}
             <span className="ml-1 text-[11px] text-ocean/50">{grouped.length} Skripte</span>
           </div>
-          <Button variant="ghost" onClick={openNew}
-            className="rounded-xl h-9 gap-1.5 border border-ocean/[0.06] text-xs text-ocean/60">
-            <Plus className="h-3.5 w-3.5" /> Manuell
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button variant="ghost" onClick={handleBulkDelete}
+                className="rounded-xl h-9 gap-1.5 border border-red-200 text-xs text-red-500 hover:bg-red-50 hover:text-red-600">
+                <Trash2 className="h-3.5 w-3.5" /> {selectedIds.size} löschen
+              </Button>
+            )}
+            <Button variant="ghost" onClick={openNew}
+              className="rounded-xl h-9 gap-1.5 border border-ocean/[0.06] text-xs text-ocean/60">
+              <Plus className="h-3.5 w-3.5" /> Manuell
+            </Button>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          {grouped.map(g => (
-            <SavedScriptCard key={g.base} group={g} onEdit={openEdit} onDelete={handleDelete} onStatusChange={handleStatusChange} />
-          ))}
-          {grouped.length === 0 && (
-            <div className="rounded-2xl border border-ocean/5 bg-ocean/[0.01] p-12 text-center">
-              <FileText className="mx-auto h-8 w-8 text-ocean/15 mb-3" />
-              <p className="text-sm text-ocean/50">Noch keine gespeicherten Skripte.</p>
-              <p className="text-xs text-ocean/40 mt-1">Generiere eine Woche um loszulegen.</p>
-            </div>
-          )}
-        </div>
+        {grouped.length > 0 ? (
+          <div className="rounded-xl border border-ocean/[0.06] overflow-hidden bg-white/50">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-ocean/[0.08] bg-ocean/[0.02]">
+                  <th className="pl-4 pr-1 py-3 w-[40px]">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={() => toggleSelect(allScriptIds)}
+                      className="h-3.5 w-3.5 rounded border-ocean/20 text-ocean accent-ocean cursor-pointer"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[200px]">Titel</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Short</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Long</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[100px]">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[100px]">Datum</th>
+                  <th className="px-4 py-3 w-[80px]"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ocean/[0.05]">
+                {grouped.map((g) => {
+                  const primary = g.single || g.lang || g.kurz;
+                  if (!primary) return null;
+
+                  const cycleStatus = () => {
+                    const order = STATUS_OPTIONS.map(o => o.value);
+                    const idx = order.indexOf(primary.status);
+                    const next = order[(idx + 1) % order.length];
+                    handleStatusChange(primary.id, next);
+                  };
+
+                  const groupIds = [g.kurz?.id, g.lang?.id, g.single?.id].filter(Boolean) as string[];
+                  const isGroupSelected = groupIds.some(gid => selectedIds.has(gid));
+
+                  const handleDeleteGroup = async () => {
+                    if (!confirm("Skript löschen?")) return;
+                    await deleteScriptIds(groupIds);
+                  };
+
+                  const dateStr = primary.createdAt
+                    ? new Date(primary.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                    : "—";
+
+                  return (
+                    <tr key={g.base} className={`group/row hover:bg-ocean/[0.01] transition-colors ${isGroupSelected ? "bg-blush/[0.04]" : ""}`}>
+                      {/* Checkbox */}
+                      <td className="pl-4 pr-1 py-4 align-top">
+                        <input
+                          type="checkbox"
+                          checked={isGroupSelected}
+                          onChange={() => toggleSelect(groupIds)}
+                          className="h-3.5 w-3.5 rounded border-ocean/20 text-ocean accent-ocean cursor-pointer"
+                        />
+                      </td>
+                      {/* Title + meta */}
+                      <td className="px-4 py-4 align-top">
+                        <div className="space-y-1.5">
+                          <p className="text-sm font-medium text-ocean/90 leading-snug">{g.base || primary.title || "Ohne Titel"}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {primary.source === "viral-script" && (
+                              <span className="text-[9px] text-purple-600 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.5 font-medium">Viral Script</span>
+                            )}
+                            {primary.pillar && (
+                              <span className="text-[9px] text-blush-dark/60 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5">{primary.pillar}</span>
+                            )}
+                            {primary.contentType && (
+                              <span className="text-[9px] text-ocean/45">{primary.contentType}</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Post Short */}
+                      <ScriptCell script={g.kurz || (g.single ? g.single : undefined)} />
+
+                      {/* Post Long */}
+                      <ScriptCell script={g.lang} />
+
+                      {/* Status */}
+                      <td className="px-4 py-4 align-top">
+                        <button onClick={cycleStatus} className="cursor-pointer">
+                          <Badge className={`rounded-md text-[10px] border ${statusColor(primary.status)} hover:opacity-80 transition-opacity`}>
+                            {STATUS_OPTIONS.find(o => o.value === primary.status)?.label || primary.status}
+                          </Badge>
+                        </button>
+                      </td>
+
+                      {/* Date */}
+                      <td className="px-4 py-4 align-top">
+                        <span className="text-xs text-ocean/45">{dateStr}</span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-4 align-top">
+                        <div className="flex gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                          <button onClick={() => openEdit(primary)} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-ocean/5 transition-colors">
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button onClick={handleDeleteGroup} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-ocean/5 bg-ocean/[0.01] p-12 text-center">
+            <FileText className="mx-auto h-8 w-8 text-ocean/15 mb-3" />
+            <p className="text-sm text-ocean/50">Noch keine gespeicherten Skripte.</p>
+            <p className="text-xs text-ocean/40 mt-1">Generiere eine Woche um loszulegen.</p>
+          </div>
+        )}
       </div>
 
       {/* ── Edit Dialog ───────────────────────────────────────────────────── */}

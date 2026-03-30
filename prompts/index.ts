@@ -18,10 +18,13 @@ export {
   STRATEGY_ANALYSIS_TOOL,
   STRATEGY_CREATION_TOOL,
   STRATEGY_REVIEW_TOOL,
+  VIRAL_STRUCTURE_TOOL,
+  VIRAL_ADAPT_TOOL,
+  VIRAL_PRODUCTION_TOOL,
 } from "./tools";
 
 // Types
 export type { StrategyPromptContext, StrategyOutput } from "./tools";
 
 // Video analysis pipeline (Gemini — separate, unchanged)
-export { ANALYSIS_PROMPT, buildConceptsPrompt } from "./analysis";
+export { ANALYSIS_PROMPT, VIRAL_SCRIPT_ANALYSIS_PROMPT, buildConceptsPrompt } from "./analysis";

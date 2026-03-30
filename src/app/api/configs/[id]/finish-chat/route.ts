@@ -144,9 +144,12 @@ REGELN:
     format: s.format || "",
     hook: s.hook || "",
     hookPattern: s.hookPattern || "",
+    textHook: "",
     body: s.body || "",
     cta: s.cta || "",
     status: "entwurf",
+    source: "",
+    shotList: "",
     createdAt: now,
   }));
 

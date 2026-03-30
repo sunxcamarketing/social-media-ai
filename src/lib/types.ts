@@ -96,9 +96,12 @@ export interface Script {
   format: string;
   hook: string;
   hookPattern: string;
+  textHook: string;
   body: string;
   cta: string;
   status: string;
+  source: string;
+  shotList: string;
   createdAt: string;
 }
 

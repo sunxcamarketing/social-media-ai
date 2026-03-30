@@ -578,3 +578,100 @@ export const STRATEGY_REVIEW_TOOL = (activeDays: string[]) => ({
     required: ["issues", "revisedPillars", "revisedWeekly", "overallAssessment"],
   },
 });
+
+// ── Viral Script: Structure Extraction ───────────────────────────────────
+
+export const VIRAL_STRUCTURE_TOOL = {
+  name: "submit_structure",
+  description: "Die Satz-für-Satz-Struktur des Referenz-Videos einreichen",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      sentences: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            text: { type: "string", description: "Der Original-Satz (oder Paraphrase wenn nicht verfügbar)" },
+            role: {
+              type: "string",
+              enum: ["HOOK", "SOCIAL_PROOF", "PROBLEM", "AGITATION", "BRIDGE", "VALUE", "DOPAMINE_HIT", "ESCALATION", "CTA"],
+              description: "Strukturelle Funktion dieses Satzes",
+            },
+            technique: { type: "string", description: "Welche psychologische Technik wird genutzt (z.B. Kontrasteffekt, Social Proof, Open Loop)" },
+          },
+          required: ["text", "role", "technique"],
+        },
+        description: "Alle Sätze des Referenz-Videos in Reihenfolge",
+      },
+      pattern: {
+        type: "string",
+        description: "Das übergeordnete Strukturmuster (z.B. 'Hook → Proof → 3 Steps → CTA')",
+      },
+      hookType: {
+        type: "string",
+        description: "Art des Hooks (z.B. 'Provokative Behauptung', 'Kontrast', 'Versprechen', 'Neugier-Lücke')",
+      },
+      hookAnalysis: {
+        type: "string",
+        description: "Warum funktioniert dieser Hook? Was macht ihn stark? 1-2 Sätze.",
+      },
+    },
+    required: ["sentences", "pattern", "hookType", "hookAnalysis"],
+  },
+};
+
+// ── Viral Script: Adapted Script ─────────────────────────────────────────
+
+export const VIRAL_ADAPT_TOOL = {
+  name: "submit_adapted_script",
+  description: "Das adaptierte Skript in kurzer und langer Version einreichen",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      textHookShort: { type: "string", description: "Text-Hook der kurzen Version — der Text der AUF DEM VIDEO eingeblendet wird (max 8 Wörter, groß, knackig). Dieser Text wird als erstes gelesen und muss zum Stoppen zwingen." },
+      textHookLong: { type: "string", description: "Text-Hook der langen Version — der Text der AUF DEM VIDEO eingeblendet wird (max 8 Wörter). Kann gleich oder leicht anders als Short sein." },
+      hookShort: { type: "string", description: "Gesprochener Hook der kurzen Version (1-2 Sätze, max 20 Wörter)" },
+      bodyShort: { type: "string", description: "Body der kurzen Version. Nutze echte Zeilenumbrüche für Absätze." },
+      ctaShort: { type: "string", description: "CTA der kurzen Version (1-2 Sätze)" },
+      hookLong: { type: "string", description: "Gesprochener Hook der langen Version (1-2 Sätze)" },
+      bodyLong: { type: "string", description: "Body der langen Version. Nutze echte Zeilenumbrüche für Absätze." },
+      ctaLong: { type: "string", description: "CTA der langen Version (1-2 Sätze)" },
+      title: { type: "string", description: "Arbeitstitel für das Skript (max 10 Wörter)" },
+      reasoning: { type: "string", description: "Welche Elemente des Originals wurden übernommen und warum (1-2 Sätze)" },
+    },
+    required: ["textHookShort", "textHookLong", "hookShort", "bodyShort", "ctaShort", "hookLong", "bodyLong", "ctaLong", "title", "reasoning"],
+  },
+};
+
+// ── Viral Script: Production Notes ───────────────────────────────────────
+
+export const VIRAL_PRODUCTION_TOOL = {
+  name: "submit_production_notes",
+  description: "Einfache Shot-Liste: welche Shots müssen aufgenommen werden",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      shots: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            nr: { type: "number", description: "Shot-Nummer (1, 2, 3...)" },
+            text: { type: "string", description: "Was wird gesagt in diesem Shot (der gesprochene Text)" },
+            action: { type: "string", description: "Was tun? Konkretes Visual — z.B. 'Face to Camera, energisch', 'B-Roll: Laptop zeigen', 'Screenshot von App einblenden'" },
+            onScreen: { type: "string", description: "Text der auf dem Video eingeblendet wird (Caption/Overlay). Leer wenn keiner." },
+            duration: { type: "string", description: "Empfohlene Dauer (z.B. '2s', '3-4s')" },
+          },
+          required: ["nr", "text", "action", "duration"],
+        },
+        description: "Alle Shots die aufgenommen werden müssen, in Reihenfolge",
+      },
+      musicMood: {
+        type: "string",
+        description: "Empfohlene Musik-Stimmung (z.B. 'locker und motivierend', 'ruhig und ernst')",
+      },
+    },
+    required: ["shots", "musicMood"],
+  },
+};

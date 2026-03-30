@@ -151,9 +151,12 @@ export async function readScripts(): Promise<Script[]> {
     format: (r.format as string) || "",
     hook: (r.hook as string) || "",
     hookPattern: (r.hook_pattern as string) || "",
+    textHook: (r.text_hook as string) || "",
     body: (r.body as string) || "",
     cta: (r.cta as string) || "",
     status: (r.status as string) || "entwurf",
+    source: (r.source as string) || "",
+    shotList: (r.shot_list as string) || "",
     createdAt: (r.created_at as string) || "",
   }));
 }
@@ -168,9 +171,12 @@ export async function writeScripts(scripts: Script[]) {
     format: s.format,
     hook: s.hook,
     hook_pattern: s.hookPattern || "",
+    text_hook: s.textHook || "",
     body: s.body,
     cta: s.cta,
     status: s.status,
+    source: s.source || "",
+    shot_list: s.shotList || "",
     created_at: s.createdAt || null,
   }));
   const { error } = await supabase.from("scripts").upsert(rows, { onConflict: "id" });

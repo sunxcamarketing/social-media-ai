@@ -48,6 +48,57 @@ If it can be said in fewer words, it should be.
 Clarity > cleverness.
 Retention > information.`;
 
+// ── Detailed analysis for Viral Script Builder ──────────────────────────────
+// This prompt forces Gemini to transcribe sentence by sentence with all three layers.
+
+export const VIRAL_SCRIPT_ANALYSIS_PROMPT = `Du analysierst ein virales Video. Deine Aufgabe ist eine VOLLSTÄNDIGE Satz-für-Satz-Dokumentation.
+
+# CONCEPT
+Was ist die Kernidee des Videos? (1-2 Sätze)
+
+# TEXT HOOK (ON-SCREEN)
+GANZ WICHTIG: Analysiere ob zu Beginn des Videos ein TEXT-HOOK auf dem Bildschirm eingeblendet wird.
+- Text-Hooks sind große, auffällige Texte die AUF dem Video liegen (nicht Captions/Untertitel)
+- Sie erscheinen meist in den ersten 1-3 Sekunden
+- Sie sind kurz (3-8 Wörter) und provokant, neugierig machend oder schockierend
+- Beispiele: "Das hat ALLES verändert", "3 Fehler die dich arm halten", "Niemand sagt dir das"
+- Schreibe den EXAKTEN Text ab, genau wie er auf dem Video steht
+- Wenn KEIN Text-Hook vorhanden: schreibe "KEINER"
+
+# FULL TRANSCRIPT
+Transkribiere das KOMPLETTE Video Satz für Satz. Für JEDEN Satz dokumentiere alle drei Ebenen:
+
+Format pro Satz:
+SATZ [Nummer]: "[Exakter gesprochener Text — so wörtlich wie möglich]"
+- VISUAL: [Was sieht man? Talking Head, B-Roll, Screen Recording, Zoom, Schnitt, Gestik, Mimik]
+- TEXT: [Was steht auf dem Bildschirm? Captions, Overlay-Text, Zahlen, Grafiken. "Keiner" wenn nichts]
+
+REGELN:
+- JEDEN Satz einzeln dokumentieren. Keinen überspringen.
+- Gesprochenen Text so wörtlich wie möglich transkribieren
+- Auch kurze Sätze ("Und das Beste?") als eigenen Eintrag
+- Pausen, Betonungen, Tonwechsel in VISUAL notieren
+- On-Screen-Text EXAKT abschreiben, nicht zusammenfassen
+- Wenn der Creator etwas zeigt (Screenshot, App, Zahlen) → genau beschreiben WAS zu sehen ist
+- TEXT-OVERLAYS die über längere Zeit sichtbar bleiben → bei JEDEM Satz dokumentieren wo sie sichtbar sind
+
+# HOOK ANALYSE
+- Was genau passiert in den ersten 1-3 Sekunden?
+- TEXT HOOK: Was ist der Text-Overlay auf dem Screen? (Der große Text der zum Stoppen zwingt)
+- VISUAL: Was sieht man? (Gesicht, Bewegung, Setting)
+- AUDIO: Was sind die ersten gesprochenen Worte?
+- Warum stoppt das den Scroll?
+- Wie arbeiten Text-Hook, Visual und Audio zusammen?
+
+# RETENTION
+Wie hält das Video die Aufmerksamkeit? (2-4 Sätze)
+- Open Loops, Pattern Interrupts, Schnitt-Rhythmus, Energie-Wechsel
+
+# REWARD
+Was bekommt der Zuschauer am Ende? (1-2 Sätze)
+
+WICHTIG: Die Vollständigkeit des Transkripts ist das WICHTIGSTE. Lieber zu detailliert als etwas auslassen. Jeder Satz zählt — die Struktur des Videos ist der Beweis für seinen Erfolg. Der TEXT HOOK ist besonders wichtig — er ist das erste was der Zuschauer liest und entscheidet ob er stoppt oder weiterscrollt.`;
+
 export function buildConceptsPrompt(config: Pick<Config, "configName" | "name" | "company" | "role" | "location" | "businessContext" | "professionalBackground" | "keyAchievements" | "creatorsCategory">): string {
   const clientName = config.name || config.configName;
   const identity = [config.role, config.company, config.location].filter(Boolean).join(", ");

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -204,6 +204,28 @@ export function AppSidebar() {
               >
                 <Mic className="h-3.5 w-3.5 shrink-0" />
                 <span>{t("nav.transcribe")}</span>
+              </Link>
+              <Link
+                href="/viral-script"
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                  pathname.startsWith("/viral-script")
+                    ? "bg-blush-light/60 text-ocean font-medium"
+                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span>Viral Script</span>
+              </Link>
+              <Link
+                href="/viral-builder"
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                  pathname.startsWith("/viral-builder")
+                    ? "bg-blush-light/60 text-ocean font-medium"
+                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span>{t("nav.viralityChecklist")}</span>
               </Link>
               <Link
                 href="/analyse"
