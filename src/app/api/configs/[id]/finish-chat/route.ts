@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readScripts, writeScripts, readTrainingScripts } from "@/lib/csv";
+import { readConfig, readScripts, writeScripts, readTrainingScripts } from "@/lib/csv";
 import { v4 as uuid } from "uuid";
 
 export const maxDuration = 120;
@@ -9,8 +9,7 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

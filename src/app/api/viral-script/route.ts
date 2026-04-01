@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos } from "@/lib/csv";
+import { readConfig, readVideos } from "@/lib/csv";
 import { scrapeSinglePost } from "@/lib/apify";
 import { uploadVideo, analyzeVideo } from "@/lib/gemini";
 import {
@@ -55,8 +55,7 @@ export async function POST(request: Request) {
   if (!clientId) return new Response(JSON.stringify({ error: "clientId required" }), { status: 400 });
   if (!videoId && !videoUrl) return new Response(JSON.stringify({ error: "videoId or videoUrl required" }), { status: 400 });
 
-  const configs = await readConfigs();
-  const config = configs.find(c => c.id === clientId);
+  const config = await readConfig(clientId);
   if (!config) return new Response(JSON.stringify({ error: "Client not found" }), { status: 404 });
 
   const stream = new ReadableStream({

@@ -33,8 +33,14 @@ import {
   Shield,
   CheckCircle2,
   Circle,
+  Search,
+  Users,
+  Film,
+  ChevronDown,
 } from "lucide-react";
-import type { Config } from "@/lib/types";
+import type { Config, Analysis } from "@/lib/types";
+import { AuditReport, type ProfileData } from "@/components/audit-report";
+import { useAudit } from "@/context/audit-context";
 import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
@@ -89,6 +95,7 @@ function fmt(n: number) {
 }
 
 function VideoInsightCard({ video }: { video: VideoInsight }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="glass rounded-2xl overflow-hidden border border-ocean/[0.06]">
@@ -133,25 +140,25 @@ function VideoInsightCard({ video }: { video: VideoInsight }) {
       </div>
       <button onClick={() => setExpanded(!expanded)}
         className="w-full px-4 pb-1 text-left text-[11px] text-ocean/60 hover:text-ocean transition-colors">
-        {expanded ? "Hide analysis ↑" : "Show analysis ↓"}
+        {expanded ? t("strategy.hideAnalysis") : t("strategy.showAnalysis")}
       </button>
       {expanded && (
         <div className="px-4 pb-4 pt-1 space-y-3 border-t border-ocean/[0.06]">
           {video.scriptSummary && (
             <div>
-              <p className="text-[10px] font-medium text-ocean uppercase tracking-wider mb-1">Script</p>
+              <p className="text-[10px] font-medium text-ocean uppercase tracking-wider mb-1">{t("strategy.scriptSummary")}</p>
               <p className="text-xs text-ocean leading-relaxed">{video.scriptSummary}</p>
             </div>
           )}
           {video.whyItWorked && (
             <div>
-              <p className="text-[10px] font-medium text-green-600 uppercase tracking-wider mb-1">Why it worked</p>
+              <p className="text-[10px] font-medium text-green-600 uppercase tracking-wider mb-1">{t("strategy.whyItWorked")}</p>
               <p className="text-xs text-ocean leading-relaxed">{video.whyItWorked}</p>
             </div>
           )}
           {video.howToReplicate && (
             <div>
-              <p className="text-[10px] font-medium text-blue-400 uppercase tracking-wider mb-1">How to replicate</p>
+              <p className="text-[10px] font-medium text-blue-400 uppercase tracking-wider mb-1">{t("strategy.howToReplicate")}</p>
               <p className="text-xs text-ocean leading-relaxed">{video.howToReplicate}</p>
             </div>
           )}
@@ -414,6 +421,19 @@ export default function ClientStrategyPage() {
     allFormats: BUILT_IN_FORMATS,
   });
 
+  // Audit state
+  const { audit, startAudit, clearAudit } = useAudit(`client-${id}`);
+  const [analyses, setAnalyses] = useState<Analysis[]>([]);
+  const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
+  const [auditSaved, setAuditSaved] = useState(false);
+  const [auditLang, setAuditLang] = useState<"de" | "en">("de");
+
+  const auditRunning = audit?.running ?? false;
+  const auditPhase = audit?.phase ?? "";
+  const auditProfile = audit?.profile ?? null;
+  const auditReport = audit?.report ?? "";
+  const auditError = audit?.error ?? "";
+
   const { analysisGen, startAnalysis, clearAnalysisGen } = useGeneration();
   const analysisState = analysisGen.get(id);
   const analyzing = analysisState?.status === "running";
@@ -433,7 +453,7 @@ export default function ClientStrategyPage() {
   const loadClient = () =>
     fetch(`/api/configs/${id}`).then((r) => r.json() as Promise<Config>);
 
-  useEffect(() => { loadClient().then(setClient); }, [id]);
+  useEffect(() => { loadClient().then(setClient); loadAnalyses(); }, [id]);
 
   // Reload client data when background tasks complete
   useEffect(() => {
@@ -460,6 +480,81 @@ export default function ClientStrategyPage() {
       });
     });
   }, []);
+
+  // Audit helpers
+  function loadAnalyses() {
+    fetch("/api/analyses")
+      .then((r) => r.json())
+      .then((data: Analysis[]) => {
+        setAnalyses(
+          data.filter((a) => a.clientId === id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        );
+      })
+      .catch(() => {});
+  }
+
+  function getHandle(): string {
+    const raw = client?.instagram || "";
+    return raw.replace(/^@/, "").replace(/.*instagram\.com\/([^/?]+).*/, "$1").replace(/\/$/, "").trim();
+  }
+
+  function handleStartAudit() {
+    const handle = getHandle();
+    if (!handle) return;
+    setAuditSaved(false);
+    setExpandedAuditId(null);
+    startAudit(handle, auditLang);
+  }
+
+  async function saveAudit() {
+    if (!auditReport || !auditProfile) return;
+    const handle = getHandle();
+    const res = await fetch("/api/analyses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: id,
+        instagramHandle: handle,
+        lang: auditLang,
+        report: auditReport,
+        profileFollowers: auditProfile.followers,
+        profileReels30d: auditProfile.reelsCount30d,
+        profileAvgViews30d: auditProfile.avgViews30d,
+        profilePicUrl: auditProfile.profilePicUrl || "",
+      }),
+    });
+    if (res.ok) {
+      setAuditSaved(true);
+      clearAudit();
+      loadAnalyses();
+    }
+  }
+
+  async function deleteAnalysis(analysisId: string) {
+    if (!confirm("Audit wirklich löschen?")) return;
+    await fetch(`/api/analyses?id=${analysisId}`, { method: "DELETE" });
+    if (expandedAuditId === analysisId) setExpandedAuditId(null);
+    loadAnalyses();
+  }
+
+  function toggleAnalysis(analysisId: string) {
+    setExpandedAuditId((prev) => (prev === analysisId ? null : analysisId));
+  }
+
+  // Auto-save when audit completes
+  useEffect(() => {
+    if (auditReport && !auditRunning && !auditSaved && auditProfile) {
+      saveAudit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auditReport, auditRunning]);
+
+  const auditPhaseLabels: Record<string, string> = {
+    scraping: "Profil wird geladen…",
+    reels: "Videos werden analysiert…",
+    analyzing: "Audit wird erstellt…",
+    done: "Fertig!",
+  };
 
   const runAnalysis = () => { startAnalysis(id); };
 
@@ -653,6 +748,176 @@ export default function ClientStrategyPage() {
           <span className="text-ocean/65">=</span>
           <span className="text-ocean font-medium">CONTENT</span>
         </div>
+      </div>
+
+      {/* Instagram Audit */}
+      <div className="glass rounded-2xl p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Search className="h-4 w-4 text-blush-dark" /> Instagram Audit
+          </h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={auditLang}
+              onChange={(e) => setAuditLang(e.target.value as "de" | "en")}
+              className="h-8 rounded-xl border border-ocean/10 bg-warm-white px-3 text-xs text-ocean focus:outline-none focus:border-blush"
+            >
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
+            </select>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleStartAudit}
+              disabled={auditRunning || !getHandle()}
+              className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean hover:text-ocean"
+            >
+              {auditRunning ? (
+                <><Loader2 className="h-3 w-3 animate-spin" /> Audit läuft…</>
+              ) : (
+                <><Search className="h-3 w-3" /> {analyses.length > 0 ? "Neuer Audit" : "Audit starten"}</>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {!getHandle() && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+            Kein Instagram-Handle hinterlegt. Bitte zuerst unter &quot;Informationen&quot; den Instagram-Handle eintragen.
+          </div>
+        )}
+
+        {/* Audit Progress */}
+        {auditRunning && (
+          <div className="rounded-xl bg-gradient-to-r from-ocean to-ocean-light p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">{auditPhaseLabels[auditPhase] || auditPhase}</p>
+                <p className="text-xs text-white/50">Du kannst in der Zwischenzeit andere Tabs nutzen</p>
+              </div>
+            </div>
+            {auditProfile && (
+              <div className="flex items-center gap-4 rounded-xl bg-white/10 px-4 py-3">
+                {auditProfile.profilePicUrl && (
+                  <img src={`/api/proxy-image?url=${encodeURIComponent(auditProfile.profilePicUrl)}`} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
+                )}
+                <div className="flex items-center gap-4 text-xs text-white/70">
+                  <span className="font-medium text-white">@{auditProfile.username}</span>
+                  <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(auditProfile.followers)}</span>
+                  <span className="flex items-center gap-1"><Film className="h-3 w-3" />{auditProfile.reelsCount30d} Reels</span>
+                  <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{fmt(auditProfile.avgViews30d)} Ø</span>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-xs text-white/40">
+              <span className={auditPhase === "scraping" || auditPhase === "reels" || auditPhase === "analyzing" ? "text-white" : ""}>Scraping</span>
+              <span>→</span>
+              <span className={auditPhase === "reels" || auditPhase === "analyzing" ? "text-white" : ""}>Videos</span>
+              <span>→</span>
+              <span className={auditPhase === "analyzing" ? "text-white" : ""}>Audit erstellen</span>
+            </div>
+          </div>
+        )}
+
+        {/* Audit Error */}
+        {auditError && !auditRunning && (
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">{auditError}</div>
+        )}
+
+        {/* Just-completed report (auto-saved) */}
+        {auditReport && !auditRunning && (
+          <div className="space-y-3">
+            {auditSaved && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                Audit automatisch gespeichert
+              </div>
+            )}
+            <AuditReport report={auditReport} profile={auditProfile} saved />
+          </div>
+        )}
+
+        {/* Saved Audits (accordion) */}
+        {!auditRunning && (
+          <div className="space-y-3">
+            {analyses.length > 0 ? (
+              <>
+                <p className="text-[11px] font-medium text-ocean uppercase tracking-wider">Gespeicherte Audits</p>
+                <div className="space-y-2">
+                  {analyses.map((a) => {
+                    const isOpen = expandedAuditId === a.id;
+                    return (
+                      <div key={a.id} className="rounded-xl border border-ocean/[0.06] overflow-hidden transition-all">
+                        <div
+                          className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-ocean/[0.02] transition-colors"
+                          onClick={() => toggleAnalysis(a.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            {a.profilePicUrl && (
+                              <img
+                                src={`/api/proxy-image?url=${encodeURIComponent(a.profilePicUrl)}`}
+                                alt=""
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            )}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <CalendarDays className="h-3 w-3 text-ocean/40" />
+                                <span className="text-xs font-semibold text-ocean">
+                                  {new Date(a.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-[10px] text-ocean/50 mt-0.5">
+                                <span>@{a.instagramHandle}</span>
+                                <span>{fmt(a.profileFollowers)} Follower</span>
+                                <span>{a.profileReels30d} Reels</span>
+                                <span>{fmt(a.profileAvgViews30d)} Ø Views</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteAnalysis(a.id); }}
+                              className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 transition-all"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                            <ChevronDown className={`h-4 w-4 text-ocean/40 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                          </div>
+                        </div>
+
+                        {isOpen && (
+                          <div className="border-t border-ocean/[0.06] px-4 py-4">
+                            <AuditReport
+                              report={a.report}
+                              profile={{
+                                username: a.instagramHandle,
+                                followers: a.profileFollowers,
+                                reelsCount30d: a.profileReels30d,
+                                avgViews30d: a.profileAvgViews30d,
+                                profilePicUrl: a.profilePicUrl,
+                              }}
+                              saved
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : !auditReport && getHandle() ? (
+              <div className="text-center py-6">
+                <Search className="mx-auto h-7 w-7 text-ocean/20 mb-2" />
+                <p className="text-sm text-ocean/70">Noch kein Audit vorhanden.</p>
+                <p className="text-xs text-ocean/50 mt-1">Starte einen Audit um einen detaillierten Report zu erhalten.</p>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Performance Analysis */}

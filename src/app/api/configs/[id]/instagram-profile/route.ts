@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { readConfigs, updateConfig } from "@/lib/csv";
+import { readConfig, updateConfig } from "@/lib/csv";
+import { persistImage } from "@/lib/persist-image";
 
 export interface InstagramProfileData {
   username: string;
@@ -19,8 +20,7 @@ export const maxDuration = 30;
 // GET — return cached profile from CSV (no Apify call)
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!config.instagram) return NextResponse.json({ error: "No Instagram handle" }, { status: 400 });
   if (!config.igLastUpdated) return NextResponse.json({ error: "No cached profile" }, { status: 404 });
@@ -42,8 +42,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // POST — fetch fresh data from Apify and save to DB
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!config.instagram) return NextResponse.json({ error: "No Instagram handle" }, { status: 400 });
 
@@ -78,6 +77,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     if (!p) return NextResponse.json({ error: `@${username} wurde auf Instagram nicht gefunden. Bitte Handle prüfen.` }, { status: 404 });
 
     const lastUpdated = new Date().toISOString();
+    const rawPicUrl = p.profilePicUrl || p.profilePicUrlHD || "";
+    const permanentPicUrl = await persistImage(rawPicUrl, "profiles", id);
 
     const igFields = {
       igFullName: p.fullName || "",
@@ -85,7 +86,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       igFollowers: String(p.followersCount || 0),
       igFollowing: String(p.followsCount || 0),
       igPostsCount: String(p.mediaCount || p.postsCount || 0),
-      igProfilePicUrl: p.profilePicUrl || p.profilePicUrlHD || "",
+      igProfilePicUrl: permanentPicUrl,
       igCategory: p.businessCategoryName || "",
       igVerified: String(p.verified || false),
       igLastUpdated: lastUpdated,
@@ -100,7 +101,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       followers: p.followersCount || 0,
       following: p.followsCount || 0,
       postsCount: p.mediaCount || p.postsCount || 0,
-      profilePicUrl: p.profilePicUrl || p.profilePicUrlHD || "",
+      profilePicUrl: permanentPicUrl,
       category: p.businessCategoryName || "",
       verified: p.verified || false,
       lastUpdated,

@@ -41,6 +41,11 @@ type GenContextType = {
   creatorResearchGen: Map<string, CreatorResearchState>;
   startCreatorResearch: (clientId: string, focus: string) => void;
   clearCreatorResearch: (clientId: string) => void;
+
+  // Voice profile generation
+  voiceProfileGen: Map<string, TaskState>;
+  startVoiceProfileGen: (clientId: string) => void;
+  clearVoiceProfileGen: (clientId: string) => void;
 };
 
 async function safeJson(r: Response) {
@@ -58,6 +63,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   const [analysisGen, setAnalysisGen] = useState<Map<string, TaskState>>(new Map());
   const [enrichGen, setEnrichGen] = useState<Map<string, TaskState>>(new Map());
   const [creatorResearchGen, setCreatorResearchGen] = useState<Map<string, CreatorResearchState>>(new Map());
+  const [voiceProfileGen, setVoiceProfileGen] = useState<Map<string, TaskState>>(new Map());
 
   // ── Chat → scripts ──────────────────────────────────────────────────────
   const startChatGeneration = useCallback((clientId: string, messages: { role: string; content: string }[]) => {
@@ -157,6 +163,24 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     setCreatorResearchGen((prev) => { const n = new Map(prev); n.delete(clientId); return n; });
   }, []);
 
+  // ── Voice profile generation ──────────────────────────────────────────────
+  const startVoiceProfileGen = useCallback((clientId: string) => {
+    setVoiceProfileGen((prev) => new Map(prev).set(clientId, { status: "running" }));
+    fetch(`/api/configs/${clientId}/generate-voice-profile`, { method: "POST" })
+      .then(safeJson)
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setVoiceProfileGen((prev) => new Map(prev).set(clientId, { status: "done" }));
+      })
+      .catch((e: Error) => {
+        setVoiceProfileGen((prev) => new Map(prev).set(clientId, { status: "error", error: e.message }));
+      });
+  }, []);
+
+  const clearVoiceProfileGen = useCallback((clientId: string) => {
+    setVoiceProfileGen((prev) => { const n = new Map(prev); n.delete(clientId); return n; });
+  }, []);
+
   return (
     <GenerationContext.Provider value={{
       generations, startChatGeneration, clearGeneration,
@@ -164,6 +188,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       analysisGen, startAnalysis, clearAnalysisGen,
       enrichGen, startEnrich, clearEnrichGen,
       creatorResearchGen, startCreatorResearch, clearCreatorResearch,
+      voiceProfileGen, startVoiceProfileGen, clearVoiceProfileGen,
     }}>
       {children}
     </GenerationContext.Provider>

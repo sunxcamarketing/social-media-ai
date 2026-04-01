@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, updateConfig } from "@/lib/csv";
+import { readConfig, updateConfig } from "@/lib/csv";
 
 export const maxDuration = 60;
 
@@ -9,11 +9,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { text } = await request.json();
   if (!text?.trim()) return NextResponse.json({ error: "No text provided" }, { status: 400 });
 
-  const configs = await readConfigs();
-  const index = configs.findIndex((c) => c.id === id);
-  if (index === -1) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const config = configs[index];
+  const config = await readConfig(id);
+  if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
 

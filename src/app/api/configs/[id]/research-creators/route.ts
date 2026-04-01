@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs } from "@/lib/csv";
+import { readConfig } from "@/lib/csv";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
@@ -63,8 +63,7 @@ function tierFromFollowers(n: number): "mega" | "macro" | "mid" | "micro" {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

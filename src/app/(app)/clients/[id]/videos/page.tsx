@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,17 +63,21 @@ function ClientVideosContent() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
 
+  const loadVideos = useCallback(() => {
+    if (!client?.configName) return;
+    fetch(`/api/videos?configName=${encodeURIComponent(client.configName)}`).then((r) => r.json()).then(setVideos);
+  }, [client?.configName]);
+
   useEffect(() => {
     fetch(`/api/configs/${id}`).then((r) => r.json()).then(setClient);
-    fetch("/api/videos").then((r) => r.json()).then(setVideos);
   }, [id]);
+
+  useEffect(() => { loadVideos(); }, [loadVideos]);
 
   // Re-fetch videos when pipeline completes
   useEffect(() => {
-    if (progress?.status === "completed") {
-      fetch("/api/videos").then((r) => r.json()).then(setVideos);
-    }
-  }, [progress?.status]);
+    if (progress?.status === "completed") loadVideos();
+  }, [progress?.status, loadVideos]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -84,28 +88,39 @@ function ClientVideosContent() {
     runPipeline({ configName: client.configName, maxVideos, topK, nDays });
   };
 
-  const clientVideos = client
-    ? videos.filter((v) => v.configName === client.configName)
-    : [];
+  const uniqueCreators = useMemo(() => [...new Set(videos.map((v) => v.creator))].sort(), [videos]);
 
-  const uniqueCreators = [...new Set(clientVideos.map((v) => v.creator))].sort();
+  const filtered = useMemo(() =>
+    videos
+      .filter((v) => filterCreator === "all" || v.creator === filterCreator)
+      .sort((a, b) => {
+        if (sortBy === "starred") {
+          if (a.starred !== b.starred) return a.starred ? -1 : 1;
+          return b.views - a.views;
+        }
+        if (sortBy === "views") return b.views - a.views;
+        if (sortBy === "date-posted") return (b.datePosted || "").localeCompare(a.datePosted || "");
+        if (sortBy === "date-added") return (b.dateAdded || "").localeCompare(a.dateAdded || "");
+        return 0;
+      }),
+    [videos, filterCreator, sortBy]);
 
-  const filtered = clientVideos
-    .filter((v) => filterCreator === "all" || v.creator === filterCreator)
-    .sort((a, b) => {
-      if (sortBy === "starred") {
-        if (a.starred !== b.starred) return a.starred ? -1 : 1;
-        return b.views - a.views;
-      }
-      if (sortBy === "views") return b.views - a.views;
-      if (sortBy === "date-posted") return (b.datePosted || "").localeCompare(a.datePosted || "");
-      if (sortBy === "date-added") return (b.dateAdded || "").localeCompare(a.dateAdded || "");
-      return 0;
-    });
-
-  const openModal = (video: Video, section: "analysis" | "concepts") => {
-    setModalVideo(video);
+  const openModal = async (video: Video, section: "analysis" | "concepts") => {
     setModalSection(section);
+    // If analysis/newConcepts not loaded yet, fetch detail
+    if (!video.analysis && !video.newConcepts) {
+      setModalVideo(video); // Show modal immediately with loading state
+      try {
+        const detail = await fetch(`/api/videos/${video.id}`).then(r => r.json());
+        setModalVideo(detail);
+        // Update local state so subsequent opens are instant
+        setVideos(prev => prev.map(v => v.id === video.id ? { ...v, analysis: detail.analysis, newConcepts: detail.newConcepts } : v));
+      } catch {
+        setModalVideo(video);
+      }
+    } else {
+      setModalVideo(video);
+    }
   };
 
   const toggleStar = async (videoId: string, currentStarred: boolean) => {

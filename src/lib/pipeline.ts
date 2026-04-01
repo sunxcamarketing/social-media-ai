@@ -4,6 +4,7 @@ import { scrapeReels } from "./apify";
 import { uploadVideo, analyzeVideo } from "./gemini";
 import { generateNewConcepts } from "./claude";
 import { ANALYSIS_PROMPT, buildConceptsPrompt } from "@prompts";
+import { persistImage } from "./persist-image";
 import type { PipelineParams, PipelineProgress, Video, ActiveTask } from "./types";
 
 const VIDEO_CONCURRENCY = 3;
@@ -191,10 +192,14 @@ export async function runPipeline(
 
         const newConcepts = await generateNewConcepts(analysis, buildConceptsPrompt(config));
 
+        updateTask(taskId, "Saving thumbnail");
+        const videoId = uuid();
+        const permanentThumbnail = await persistImage(video.thumbnail, "thumbnails", videoId);
+
         const videoRecord: Video = {
-          id: uuid(),
+          id: videoId,
           link: video.postUrl,
-          thumbnail: video.thumbnail,
+          thumbnail: permanentThumbnail,
           creator: video.username,
           views: video.views,
           likes: video.likes,

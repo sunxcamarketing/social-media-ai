@@ -1,18 +1,43 @@
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
-import { readConfigs } from "@/lib/csv";
+import { readConfig } from "@/lib/csv";
 import { supabase } from "@/lib/supabase";
 import { parseFolderIdFromUrl, fetchAllDocsFromFolder } from "@/lib/google-drive";
 import { generateVoiceProfile, generateScriptStructure } from "@/lib/voice-profile";
 
 export const maxDuration = 300;
 
+/**
+ * Detect whether a document is a video-editing correction sheet rather than
+ * an actual Reel script.  Correction docs are characterised by many lines
+ * containing timestamps (e.g. "00:16", "0:34") paired with editing instructions
+ * like "instead of", "cut", "delete", "needs to be corrected", etc.
+ */
+function isCorrectionDoc(text: string): boolean {
+  if (!text || text.trim().length < 30) return true; // too short / empty
+
+  const lines = text.split("\n").filter((l) => l.trim());
+  if (lines.length === 0) return true;
+
+  const timestampLines = lines.filter((l) => /\d{1,2}:\d{2}/.test(l));
+  const ratio = timestampLines.length / lines.length;
+
+  // Heavy timestamp content + correction keywords → editing sheet
+  const correctionKw =
+    /instead of|not |needs to be|corrected|delete|cut |cutting|broll|b-roll|react\d|version \d|missing|remove /i;
+  if (ratio > 0.3 && correctionKw.test(text)) return true;
+
+  // Very heavy timestamp content regardless of keywords
+  if (ratio > 0.5) return true;
+
+  return false;
+}
+
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   try {
-    const configs = await readConfigs();
-    const config = configs.find((c) => c.id === id);
+    const config = await readConfig(id);
     if (!config) {
       return NextResponse.json({ error: "Config not found" }, { status: 404 });
     }
@@ -36,8 +61,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     }
 
     let imported = 0;
+    let skipped = 0;
 
     for (const doc of docs) {
+      // Skip video-editing correction sheets — they are not real scripts
+      if (isCorrectionDoc(doc.content)) {
+        skipped++;
+        continue;
+      }
+
       const sourceId = `gdrive:${doc.fileId}`;
 
       try {
@@ -103,7 +135,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       console.error("Script structure generation failed:", structureResult.reason);
     }
 
-    return NextResponse.json({ imported, voiceProfileGenerated, scriptStructureGenerated });
+    return NextResponse.json({ imported, skipped, voiceProfileGenerated, scriptStructureGenerated });
   } catch (e) {
     console.error("sync-drive error:", e);
     return NextResponse.json(

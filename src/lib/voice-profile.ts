@@ -6,7 +6,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { supabase } from "./supabase";
-import { readTrainingScripts, readConfigs } from "./csv";
+import { readTrainingScripts, readConfig } from "./csv";
 import { buildPrompt, VOICE_PROFILE_TOOL, SCRIPT_STRUCTURE_TOOL } from "@prompts";
 import type { VoiceProfile, ScriptStructureProfile } from "./types";
 
@@ -38,11 +38,10 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
  * Read cached voice profile from config, or null if none exists.
  */
 export async function getVoiceProfile(clientId: string): Promise<VoiceProfile | null> {
-  const configs = await readConfigs();
-  const config = configs.find(c => c.id === clientId);
+  const config = await readConfig(clientId);
   if (!config) return null;
 
-  const raw = config.voiceProfile || (config as unknown as Record<string, unknown>).voice_profile;
+  const raw = config.voiceProfile;
   if (!raw) return null;
 
   try {
@@ -76,15 +75,18 @@ export async function generateVoiceProfile(
     return profile;
   }
 
-  // Multiple batches — extract partial profiles, then merge
+  // Multiple batches — extract partial profiles in parallel, then merge
   const chunks = chunkArray(trainingScripts, BATCH_SIZE);
-  const partialProfiles: VoiceProfile[] = [];
-
-  for (const chunk of chunks) {
-    const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const partial = await extractVoiceProfileSingle(client, clientName, transcriptBlock);
-    if (partial) partialProfiles.push(partial);
-  }
+  const batchResults = await Promise.allSettled(
+    chunks.map((chunk) => {
+      const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
+      return extractVoiceProfileSingle(client, clientName, transcriptBlock);
+    })
+  );
+  const partialProfiles: VoiceProfile[] = batchResults
+    .filter((r): r is PromiseFulfilledResult<VoiceProfile | null> => r.status === "fulfilled")
+    .map((r) => r.value)
+    .filter((v): v is VoiceProfile => v !== null);
 
   if (partialProfiles.length === 0) return null;
   if (partialProfiles.length === 1) {
@@ -160,7 +162,7 @@ ZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches
 async function saveVoiceProfile(clientId: string, profile: VoiceProfile) {
   await supabase
     .from("configs")
-    .update({ voice_profile: JSON.stringify(profile) })
+    .update({ voiceProfile: JSON.stringify(profile) })
     .eq("id", clientId);
 }
 
@@ -170,11 +172,10 @@ async function saveVoiceProfile(clientId: string, profile: VoiceProfile) {
  * Read cached script structure from config, or null if none exists.
  */
 export async function getScriptStructure(clientId: string): Promise<ScriptStructureProfile | null> {
-  const configs = await readConfigs();
-  const config = configs.find(c => c.id === clientId);
+  const config = await readConfig(clientId);
   if (!config) return null;
 
-  const raw = config.scriptStructure || (config as unknown as Record<string, unknown>).script_structure;
+  const raw = config.scriptStructure;
   if (!raw) return null;
 
   try {
@@ -207,15 +208,18 @@ export async function generateScriptStructure(
     return structure;
   }
 
-  // Multiple batches
+  // Multiple batches — extract in parallel, then merge
   const chunks = chunkArray(trainingScripts, BATCH_SIZE);
-  const partials: ScriptStructureProfile[] = [];
-
-  for (const chunk of chunks) {
-    const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const partial = await extractScriptStructureSingle(client, clientName, transcriptBlock);
-    if (partial) partials.push(partial);
-  }
+  const batchResults = await Promise.allSettled(
+    chunks.map((chunk) => {
+      const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
+      return extractScriptStructureSingle(client, clientName, transcriptBlock);
+    })
+  );
+  const partials: ScriptStructureProfile[] = batchResults
+    .filter((r): r is PromiseFulfilledResult<ScriptStructureProfile | null> => r.status === "fulfilled")
+    .map((r) => r.value)
+    .filter((v): v is ScriptStructureProfile => v !== null);
 
   if (partials.length === 0) return null;
   if (partials.length === 1) {
@@ -289,7 +293,7 @@ ZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches
 async function saveScriptStructure(clientId: string, structure: ScriptStructureProfile) {
   await supabase
     .from("configs")
-    .update({ script_structure: JSON.stringify(structure) })
+    .update({ scriptStructure: JSON.stringify(structure) })
     .eq("id", clientId);
 }
 

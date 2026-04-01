@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-import { readConfigs, updateConfig } from "@/lib/csv";
+import { readConfig, updateConfig } from "@/lib/csv";
 import { scrapeReels } from "@/lib/apify";
 import { uploadVideo, analyzeVideo } from "@/lib/gemini";
+import { persistImage } from "@/lib/persist-image";
 
 export const maxDuration = 300; // 5 min
 
-const PERFORMANCE_PROMPT = `Analyze this Instagram Reel carefully. It is one of the creator's top-performing videos.
+const PERFORMANCE_PROMPT = `Analysiere dieses Instagram Reel sorgfältig. Es ist eines der erfolgreichsten Videos dieses Creators.
 
-Answer EXACTLY in this format (keep every label on its own line):
+Antworte AUF DEUTSCH und EXAKT in diesem Format (jedes Label auf einer eigenen Zeile):
 
-TOPIC: [What is this video about? 1 concise sentence]
-AUDIO HOOK: [The exact first spoken words — quote them verbatim. If no speech, write "none"]
-TEXT HOOK: [Any text shown on screen in the first 2 seconds — quote exactly. If none, write "none"]
-SCRIPT SUMMARY: [Summarize the full script/narrative in 3–5 sentences]
-WHY IT WORKED: [Why did this video perform well? Analyze: hook strength, topic resonance, emotional trigger, retention mechanics. 2–4 sentences]
-HOW TO REPLICATE: [2–3 specific, actionable ways to create a similar high-performing video for this creator's audience. 2–4 sentences]`;
+THEMA: [Worum geht es in diesem Video? 1 prägnanter Satz]
+AUDIO HOOK: [Die exakten ersten gesprochenen Worte — wörtlich zitieren. Falls keine Sprache, schreibe "keine"]
+TEXT HOOK: [Text, der in den ersten 2 Sekunden auf dem Bildschirm erscheint — exakt zitieren. Falls keiner, schreibe "keine"]
+SKRIPT-ZUSAMMENFASSUNG: [Fasse das gesamte Skript/die Erzählung in 3–5 Sätzen zusammen]
+WARUM ERFOLGREICH: [Warum hat dieses Video so gut performt? Analysiere: Hook-Stärke, Themen-Resonanz, emotionaler Trigger, Retention-Mechaniken. 2–4 Sätze]
+WIE REPLIZIEREN: [2–3 konkrete, umsetzbare Wege, ein ähnlich erfolgreiches Video für die Zielgruppe dieses Creators zu erstellen. 2–4 Sätze]`;
 
 export interface VideoInsight {
   url: string;
@@ -45,12 +46,12 @@ function parseAnalysis(raw: string): Pick<VideoInsight, "topic" | "audioHook" | 
     return m ? m[1].trim() : "";
   };
   return {
-    topic: get("TOPIC"),
+    topic: get("THEMA"),
     audioHook: get("AUDIO HOOK"),
     textHook: get("TEXT HOOK"),
-    scriptSummary: get("SCRIPT SUMMARY"),
-    whyItWorked: get("WHY IT WORKED"),
-    howToReplicate: get("HOW TO REPLICATE"),
+    scriptSummary: get("SKRIPT-ZUSAMMENFASSUNG"),
+    whyItWorked: get("WARUM ERFOLGREICH"),
+    howToReplicate: get("WIE REPLIZIEREN"),
   };
 }
 
@@ -59,8 +60,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const rawHandle = config.instagram || "";
@@ -108,7 +108,8 @@ export async function POST(
       const mime = resp.headers.get("content-type") || "video/mp4";
       const fileData = await uploadVideo(buf, mime);
       const raw = await analyzeVideo(fileData.uri, fileData.mimeType, PERFORMANCE_PROMPT);
-      return { url: video.url, thumbnail: video.thumbnail, views: video.views, likes: video.likes, datePosted: video.datePosted, durationSeconds: 0, ...parseAnalysis(raw) };
+      const permanentThumb = await persistImage(video.thumbnail, "performance");
+      return { url: video.url, thumbnail: permanentThumb, views: video.views, likes: video.likes, datePosted: video.datePosted, durationSeconds: 0, ...parseAnalysis(raw) };
     } catch (err) {
       console.error(`Failed to analyze video ${video.url}:`, err instanceof Error ? err.message : err);
       return null;

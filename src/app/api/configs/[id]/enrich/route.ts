@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readConfigs, updateConfig } from "@/lib/csv";
+import { readConfig, updateConfig } from "@/lib/csv";
 import { enrichFromLinks } from "@/lib/enrich";
 
 export const maxDuration = 120;
@@ -7,8 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   try {

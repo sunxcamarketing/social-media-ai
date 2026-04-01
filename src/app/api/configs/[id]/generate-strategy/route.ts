@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, updateConfig, readVideos, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { readConfig, updateConfig, readVideosByConfig, readAnalysesByClient, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS, type ContentType, type ContentFormat } from "@/lib/strategy";
 import { buildPrompt, STRATEGY_ANALYSIS_TOOL, STRATEGY_CREATION_TOOL, STRATEGY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
@@ -112,15 +112,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         // ════════════════════════════════════════════════════════════════════
         sendEvent(controller, { step: "context", status: "loading" });
 
-        const configs = await readConfigs();
-        const configIndex = configs.findIndex((c) => c.id === id);
-        if (configIndex === -1) {
+        const config = await readConfig(id);
+        if (!config) {
           sendEvent(controller, { step: "error", message: "Config not found" });
           controller.close();
           return;
         }
 
-        const config = configs[configIndex];
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
           sendEvent(controller, { step: "error", message: "ANTHROPIC_API_KEY not set" });
@@ -142,12 +140,18 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           }
         } catch { /* no data */ }
 
+        // Parallel DB reads — all independent after config is loaded
+        const configName = config.configName || config.name || "";
+        const [analyses, configVideos, strategyConfig] = await Promise.all([
+          readAnalysesByClient(id).catch(() => []),
+          readVideosByConfig(configName).catch(() => []),
+          readStrategyConfig().catch(() => ({ customContentTypes: [], customFormats: [] })),
+        ]);
+
         // Audit report — FULL, no truncation
         let auditBlock = "";
         try {
-          const analyses = await readAnalyses();
           const latest = analyses
-            .filter((a) => a.clientId === id)
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
           if (latest?.report) {
             auditBlock = buildFullAuditBlock(latest.report);
@@ -157,10 +161,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         // Competitor videos — FULL, no truncation
         let competitorBlock = "";
         try {
-          const allVideos = await readVideos();
-          const configName = config.configName || config.name || "";
-          const competitorVideos = allVideos
-            .filter((v) => v.configName === configName && v.analysis)
+          const competitorVideos = configVideos
+            .filter((v) => v.analysis)
             .sort((a, b) => b.views - a.views);
           if (competitorVideos.length > 0) {
             competitorBlock = buildFullCompetitorBlock(competitorVideos);
@@ -170,11 +172,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         // Content types & formats
         let allTypes: ContentType[] = [...BUILT_IN_CONTENT_TYPES];
         let allFormats: ContentFormat[] = [...BUILT_IN_FORMATS];
-        try {
-          const strategyConfig = await readStrategyConfig();
-          if (strategyConfig.customContentTypes?.length) allTypes = [...allTypes, ...strategyConfig.customContentTypes];
-          if (strategyConfig.customFormats?.length) allFormats = [...allFormats, ...strategyConfig.customFormats];
-        } catch { /* use defaults */ }
+        if (strategyConfig.customContentTypes?.length) allTypes = [...allTypes, ...strategyConfig.customContentTypes];
+        if (strategyConfig.customFormats?.length) allFormats = [...allFormats, ...strategyConfig.customFormats];
 
         const contentTypeNames = allTypes.map(t => t.name);
         const formatNames = allFormats.map(f => f.name);

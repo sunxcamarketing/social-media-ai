@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { readConfigs } from "@/lib/csv";
+import { readConfig } from "@/lib/csv";
 import { generateVoiceProfile, getVoiceProfile, generateScriptStructure, getScriptStructure } from "@/lib/voice-profile";
 
 export const maxDuration = 120;
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find(c => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Config not found" }, { status: 404 });
 
   const clientName = config.name || config.configName || "Kunde";

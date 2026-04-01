@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { readConfig, readVideos, readScriptsByClient, readAnalysesByClient, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt, TOPIC_SELECTION_TOOL, TREND_RESEARCH_TOOL, HOOK_GENERATION_TOOL, BODY_WRITING_TOOL, QUALITY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, generateScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
@@ -45,8 +45,7 @@ export function extractAuditContext(report: string): {
 }
 
 export async function getAuditBlock(clientId: string): Promise<string> {
-  const analyses = (await readAnalyses())
-    .filter(a => a.clientId === clientId)
+  const analyses = (await readAnalysesByClient(clientId))
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
   if (analyses.length === 0) return "";
@@ -112,8 +111,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         // ════════════════════════════════════════════════════════════════════
         sendEvent(controller, { step: "context", status: "loading" });
 
-        const configs = await readConfigs();
-        const config = configs.find((c) => c.id === id);
+        const config = await readConfig(id);
         if (!config) {
           sendEvent(controller, { step: "error", message: "Config not found" });
           controller.close();
@@ -161,7 +159,16 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
         })();
 
-        const strategyJson = await readStrategyConfig();
+        // Parallel DB reads — all independent, only need config.id and config.configName
+        const configName = config.configName || config.name || "";
+        const [allVideos, existingScripts, auditBlock, strategyJson] = await Promise.all([
+          readVideos(),
+          readScriptsByClient(id),
+          getAuditBlock(id),
+          readStrategyConfig(),
+        ]);
+        const configVideos = allVideos.filter(v => v.configName === configName);
+
         const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
         const allFormats = [...BUILT_IN_FORMATS, ...(strategyJson.customFormats || [])];
 
@@ -197,9 +204,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           return line;
         }).join("\n");
 
-        // Audit report
-        const auditBlock = await getAuditBlock(id);
-
         // Performance data
         const insights = parseInsights(config.performanceInsights || "");
         const ownTopVideos: VideoInsight[] = [
@@ -207,9 +211,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           ...(insights?.topAllTime || []),
         ];
 
-        const allVideos = await readVideos();
-        const creatorVideos = allVideos
-          .filter(v => v.configName === config.configName && v.views > 0)
+        const creatorVideos = configVideos
+          .filter(v => v.views > 0)
           .sort((a, b) => b.views - a.views)
           .slice(0, 6);
 
@@ -219,7 +222,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
         // Cross-niche inspiration: top videos from OTHER configs
         const crossNicheVideos = allVideos
-          .filter(v => v.configName !== config.configName && v.views > 0 && v.analysis)
+          .filter(v => v.configName !== configName && v.views > 0 && v.analysis)
           .sort((a, b) => b.views - a.views)
           .slice(0, 5);
 
@@ -250,16 +253,16 @@ ${crossNicheVideos.map((v, i) => {
             }).join("\n\n")
           : "";
 
-        // Existing scripts (avoid repetition) — include ALL with pillar + hook pattern
-        const existingScripts = (await readScripts()).filter(s => s.clientId === id);
+        // Existing scripts (avoid repetition) — include ALL with pillar + hook + actual hook text
         const recentScriptsInfo = existingScripts.slice(-40).map(s => {
-          const parts = [`- ${s.title}`];
-          if (s.pillar) parts[0] += ` [${s.pillar}]`;
-          if (s.hookPattern) parts[0] += ` (Hook: ${s.hookPattern})`;
-          return parts[0];
+          let line = `- ${s.title}`;
+          if (s.pillar) line += ` [${s.pillar}]`;
+          if (s.hookPattern) line += ` (Muster: ${s.hookPattern})`;
+          if (s.hook) line += `\n  Hook: "${s.hook.slice(0, 120)}"`;
+          return line;
         }).filter(Boolean);
         const recentBlock = recentScriptsInfo.length > 0
-          ? `\nBEREITS BEHANDELT (vermeide diese Themen UND Winkel):\n${recentScriptsInfo.join("\n")}`
+          ? `\n⚠️ BEREITS GESCHRIEBEN — DIESE THEMEN, HOOKS UND WINKEL SIND GESPERRT. Wähle komplett andere Themen und Perspektiven:\n${recentScriptsInfo.join("\n")}`
           : "";
 
         // Hook pattern tracking
@@ -337,12 +340,13 @@ ${crossNicheVideos.map((v, i) => {
           const trendPromise = claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 1500,
+            temperature: 1,
             system: trendSystem,
             tools: [TREND_RESEARCH_TOOL],
             tool_choice: { type: "tool", name: "submit_trends" },
             messages: [{
               role: "user",
-              content: `Nische: ${config.creatorsCategory || "Social Media"}\nKunde: ${clientName}${config.businessContext ? `\nBusiness: ${config.businessContext}` : ""}\n\n${recentBlock}\n\nIdentifiziere 5-8 aktuelle Trend-Themen für diese Nische.`,
+              content: `Nische: ${config.creatorsCategory || "Social Media"}\nKunde: ${clientName}${config.businessContext ? `\nBusiness: ${config.businessContext}` : ""}\n\n${recentBlock}\n\nIdentifiziere 5-8 aktuelle Trend-Themen für diese Nische. Sei KREATIV und überraschend — keine offensichtlichen Standard-Themen.`,
             }],
           });
 
@@ -410,11 +414,14 @@ ${clientContext}
 Nische: ${config.creatorsCategory || ""}
 </client>
 
-AUFTRAG: Wähle ${activeDays.length} strategisch optimale Themen für diese Woche. Eines pro Tag. Nutze die Trend-Themen und Cross-Nische-Inspiration als frische Ideen — mindestens 1-2 Themen sollten aktuelle Trends aufgreifen.`;
+AUFTRAG: Wähle ${activeDays.length} strategisch optimale Themen für diese Woche. Eines pro Tag. Nutze die Trend-Themen und Cross-Nische-Inspiration als frische Ideen — mindestens 1-2 Themen sollten aktuelle Trends aufgreifen.
+
+WICHTIG: Die gesperrten Themen oben sind TABU — wähle komplett neue Winkel, Perspektiven und Unterthemen. Wiederhole NICHTS was schon geschrieben wurde, auch nicht in leichter Abwandlung. Überrasche mit unerwarteten Themen.`;
 
         const topicMessage = await claude.messages.create({
           model: "claude-sonnet-4-6",
           max_tokens: 2000,
+          temperature: 1,
           system: topicSystemPrompt,
           tools: [topicTool],
           tool_choice: { type: "tool", name: "submit_topics" },
@@ -480,6 +487,7 @@ Erstelle 3 Hook-Optionen für dieses Thema. Nutze Hook-Muster die NOCH NICHT oft
             const msg = await claude.messages.create({
               model: "claude-sonnet-4-6",
               max_tokens: 500,
+              temperature: 1,
               system: buildPrompt("hook-generation"),
               tools: [HOOK_GENERATION_TOOL],
               tool_choice: { type: "tool", name: "submit_hooks" },
@@ -550,6 +558,7 @@ Schreibe jetzt Body und CTA. Der Hook steht — baue darauf auf. Folge den Struk
             const msg = await claude.messages.create({
               model: "claude-sonnet-4-6",
               max_tokens: 1500,
+              temperature: 0.8,
               system: bodySystemPrompt,
               tools: [BODY_WRITING_TOOL(maxWords)],
               tool_choice: { type: "tool", name: "submit_body" },

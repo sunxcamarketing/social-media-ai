@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { supabase } from "@/lib/supabase";
-import { readScripts, writeScripts } from "@/lib/csv";
+import { readScripts, readScriptsByClient } from "@/lib/csv";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
-  const scripts = await readScripts();
-  return NextResponse.json(clientId ? scripts.filter(s => s.clientId === clientId) : scripts);
+  const scripts = clientId ? await readScriptsByClient(clientId) : await readScripts();
+  return NextResponse.json(scripts);
 }
 
 export async function POST(request: Request) {

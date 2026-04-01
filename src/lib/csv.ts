@@ -1,12 +1,105 @@
 import { supabase } from "./supabase";
 import type { Config, Creator, Video, Script, TrainingScript, Analysis } from "./types";
 
+// ── Row → Model mappers ──────────────────────────────────────────────────────
+
+function mapVideo(r: Record<string, unknown>): Video {
+  return {
+    id: (r.id as string) || "",
+    link: (r.link as string) || "",
+    thumbnail: (r.thumbnail as string) || "",
+    creator: (r.creator as string) || "",
+    views: (r.views as number) || 0,
+    likes: (r.likes as number) || 0,
+    comments: (r.comments as number) || 0,
+    durationSeconds: (r.duration_seconds as number) || 0,
+    analysis: (r.analysis as string) || "",
+    newConcepts: (r.new_concepts as string) || "",
+    datePosted: (r.date_posted as string) || "",
+    dateAdded: (r.date_added as string) || "",
+    configName: (r.config_name as string) || "",
+    starred: (r.starred as boolean) || false,
+  };
+}
+
+function mapScript(r: Record<string, unknown>): Script {
+  return {
+    id: (r.id as string) || "",
+    clientId: (r.client_id as string) || "",
+    title: (r.title as string) || "",
+    pillar: (r.pillar as string) || "",
+    contentType: (r.content_type as string) || "",
+    format: (r.format as string) || "",
+    hook: (r.hook as string) || "",
+    hookPattern: (r.hook_pattern as string) || "",
+    textHook: (r.text_hook as string) || "",
+    body: (r.body as string) || "",
+    cta: (r.cta as string) || "",
+    status: (r.status as string) || "entwurf",
+    source: (r.source as string) || "",
+    shotList: (r.shot_list as string) || "",
+    createdAt: (r.created_at as string) || "",
+  };
+}
+
+function mapAnalysis(r: Record<string, unknown>): Analysis {
+  return {
+    id: (r.id as string) || "",
+    clientId: (r.client_id as string) || "",
+    instagramHandle: (r.instagram_handle as string) || "",
+    lang: (r.lang as string) || "",
+    report: (r.report as string) || "",
+    profileFollowers: (r.profile_followers as number) || 0,
+    profileReels30d: (r.profile_reels_30d as number) || 0,
+    profileAvgViews30d: (r.profile_avg_views_30d as number) || 0,
+    profilePicUrl: (r.profile_pic_url as string) || "",
+    createdAt: (r.created_at as string) || "",
+  };
+}
+
 // ── Configs ─────────────────────────────────────────────────────────────────
+
+/** Frontend-safe config fields (excludes large backend-only blobs) */
+const CONFIG_LIGHT_COLUMNS = [
+  "id", "configName", "creatorsCategory", "postsPerWeek",
+  "strategyGoal", "strategyPillars", "strategyWeekly", "performanceInsights",
+  "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements",
+  "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation",
+  "dreamCustomer", "customerProblems", "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone",
+  "website", "instagram", "tiktok", "youtube", "linkedin", "twitter",
+  "igFullName", "igBio", "igFollowers", "igFollowing", "igPostsCount",
+  "igProfilePicUrl", "igCategory", "igVerified", "igLastUpdated",
+  "googleDriveFolder",
+].join(",");
 
 export async function readConfigs(): Promise<Config[]> {
   const { data, error } = await supabase.from("configs").select("*");
   if (error) throw error;
   return (data || []) as Config[];
+}
+
+/** Read a single config by ID — full data for backend pipelines */
+export async function readConfig(id: string): Promise<Config | null> {
+  const { data, error } = await supabase
+    .from("configs")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error && error.code === "PGRST116") return null;
+  if (error) throw error;
+  return data as Config;
+}
+
+/** Read a single config with only frontend-needed fields */
+export async function readConfigLight(id: string): Promise<Config | null> {
+  const { data, error } = await supabase
+    .from("configs")
+    .select(CONFIG_LIGHT_COLUMNS)
+    .eq("id", id)
+    .single();
+  if (error && error.code === "PGRST116") return null;
+  if (error) throw error;
+  return data as unknown as Config;
 }
 
 export async function writeConfigs(configs: Config[]) {
@@ -20,7 +113,6 @@ export async function insertConfig(config: Config) {
 }
 
 export async function updateConfig(id: string, fields: Record<string, unknown>): Promise<Record<string, unknown> | null> {
-  // Remove unknown/null fields to avoid Supabase column errors
   const { id: _id, ...rest } = fields;
   const cleanFields = Object.fromEntries(
     Object.entries(rest).filter(([, v]) => v !== undefined)
@@ -57,6 +149,23 @@ export async function readCreators(): Promise<Creator[]> {
   }));
 }
 
+/** Update a single creator by ID */
+export async function updateCreator(id: string, fields: Record<string, unknown>) {
+  const { error } = await supabase.from("creators").update(fields).eq("id", id);
+  if (error) throw error;
+}
+
+export async function insertCreator(creator: Record<string, unknown>) {
+  const { error } = await supabase.from("creators").insert(creator);
+  if (error) throw error;
+}
+
+export async function deleteCreator(id: string) {
+  const { error } = await supabase.from("creators").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Legacy — still used by refresh route (batch)
 export async function writeCreators(creators: Creator[]) {
   const rows = creators.map((c) => ({
     id: c.id,
@@ -74,45 +183,51 @@ export async function writeCreators(creators: Creator[]) {
 
 // ── Videos ───────────────────────────────────────────────────────────────────
 
-export async function readVideos(): Promise<Video[]> {
-  const { data, error } = await supabase.from("videos").select("*");
+/** List columns for video list view (excludes large analysis/newConcepts) */
+const VIDEO_LIST_COLUMNS = "id,link,thumbnail,creator,views,likes,comments,duration_seconds,date_posted,date_added,config_name,starred";
+
+/** Read videos for list view — lightweight, no analysis blobs */
+export async function readVideosList(configName?: string): Promise<Video[]> {
+  let query = supabase.from("videos").select(VIDEO_LIST_COLUMNS).order("date_added", { ascending: false });
+  if (configName) query = query.eq("config_name", configName);
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []).map((r: Record<string, unknown>) => ({
-    id: (r.id as string) || "",
-    link: (r.link as string) || "",
-    thumbnail: (r.thumbnail as string) || "",
-    creator: (r.creator as string) || "",
-    views: (r.views as number) || 0,
-    likes: (r.likes as number) || 0,
-    comments: (r.comments as number) || 0,
-    durationSeconds: (r.duration_seconds as number) || 0,
-    analysis: (r.analysis as string) || "",
-    newConcepts: (r.new_concepts as string) || "",
-    datePosted: (r.date_posted as string) || "",
-    dateAdded: (r.date_added as string) || "",
-    configName: (r.config_name as string) || "",
-    starred: (r.starred as boolean) || false,
+    ...mapVideo(r),
+    analysis: "",
+    newConcepts: "",
   }));
 }
 
-export async function writeVideos(videos: Video[]) {
-  const rows = videos.map((v) => ({
-    id: v.id,
-    link: v.link,
-    thumbnail: v.thumbnail,
-    creator: v.creator,
-    views: v.views,
-    likes: v.likes,
-    comments: v.comments,
-    duration_seconds: v.durationSeconds,
-    analysis: v.analysis,
-    new_concepts: v.newConcepts,
-    date_posted: v.datePosted || null,
-    date_added: v.dateAdded || null,
-    config_name: v.configName,
-    starred: v.starred,
-  }));
-  const { error } = await supabase.from("videos").upsert(rows, { onConflict: "id" });
+/** Read a single video with full detail (including analysis) */
+export async function readVideo(id: string): Promise<Video | null> {
+  const { data, error } = await supabase.from("videos").select("*").eq("id", id).single();
+  if (error && error.code === "PGRST116") return null;
+  if (error) throw error;
+  return data ? mapVideo(data) : null;
+}
+
+/** Read all videos — full data, for backend pipeline use */
+export async function readVideos(): Promise<Video[]> {
+  const { data, error } = await supabase.from("videos").select("*");
+  if (error) throw error;
+  return (data || []).map(mapVideo);
+}
+
+/** Read videos filtered by configName — full data, for pipeline use */
+export async function readVideosByConfig(configName: string): Promise<Video[]> {
+  const { data, error } = await supabase
+    .from("videos")
+    .select("*")
+    .eq("config_name", configName)
+    .order("views", { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapVideo);
+}
+
+/** Update a single video field (e.g. starred) */
+export async function updateVideo(id: string, fields: Record<string, unknown>) {
+  const { error } = await supabase.from("videos").update(fields).eq("id", id);
   if (error) throw error;
 }
 
@@ -137,28 +252,45 @@ export async function appendVideo(video: Video) {
   if (error) throw error;
 }
 
+// Legacy — kept for pipeline bulk writes
+export async function writeVideos(videos: Video[]) {
+  const rows = videos.map((v) => ({
+    id: v.id,
+    link: v.link,
+    thumbnail: v.thumbnail,
+    creator: v.creator,
+    views: v.views,
+    likes: v.likes,
+    comments: v.comments,
+    duration_seconds: v.durationSeconds,
+    analysis: v.analysis,
+    new_concepts: v.newConcepts,
+    date_posted: v.datePosted || null,
+    date_added: v.dateAdded || null,
+    config_name: v.configName,
+    starred: v.starred,
+  }));
+  const { error } = await supabase.from("videos").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
+}
+
 // ── Scripts ──────────────────────────────────────────────────────────────────
 
 export async function readScripts(): Promise<Script[]> {
   const { data, error } = await supabase.from("scripts").select("*");
   if (error) throw error;
-  return (data || []).map((r: Record<string, unknown>) => ({
-    id: (r.id as string) || "",
-    clientId: (r.client_id as string) || "",
-    title: (r.title as string) || "",
-    pillar: (r.pillar as string) || "",
-    contentType: (r.content_type as string) || "",
-    format: (r.format as string) || "",
-    hook: (r.hook as string) || "",
-    hookPattern: (r.hook_pattern as string) || "",
-    textHook: (r.text_hook as string) || "",
-    body: (r.body as string) || "",
-    cta: (r.cta as string) || "",
-    status: (r.status as string) || "entwurf",
-    source: (r.source as string) || "",
-    shotList: (r.shot_list as string) || "",
-    createdAt: (r.created_at as string) || "",
-  }));
+  return (data || []).map(mapScript);
+}
+
+/** Read scripts for a specific client */
+export async function readScriptsByClient(clientId: string): Promise<Script[]> {
+  const { data, error } = await supabase
+    .from("scripts")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapScript);
 }
 
 export async function writeScripts(scripts: Script[]) {
@@ -232,6 +364,27 @@ export async function readTrainingScripts(): Promise<TrainingScript[]> {
   }));
 }
 
+/** Read training scripts for a specific client */
+export async function readTrainingScriptsByClient(clientId: string): Promise<TrainingScript[]> {
+  const { data, error } = await supabase
+    .from("training_scripts")
+    .select("*")
+    .eq("client_id", clientId);
+  if (error) throw error;
+  return (data || []).map((r: Record<string, unknown>) => ({
+    id: (r.id as string) || "",
+    clientId: (r.client_id as string) || "",
+    format: (r.format as string) || "",
+    textHook: (r.text_hook as string) || "",
+    visualHook: (r.visual_hook as string) || "",
+    audioHook: (r.audio_hook as string) || "",
+    script: (r.script as string) || "",
+    cta: (r.cta as string) || "",
+    sourceId: (r.source_id as string) || "",
+    createdAt: (r.created_at as string) || "",
+  }));
+}
+
 export async function writeTrainingScripts(scripts: TrainingScript[]) {
   const rows = scripts.map((s) => ({
     id: s.id,
@@ -254,18 +407,18 @@ export async function writeTrainingScripts(scripts: TrainingScript[]) {
 export async function readAnalyses(): Promise<Analysis[]> {
   const { data, error } = await supabase.from("analyses").select("*");
   if (error) throw error;
-  return (data || []).map((r: Record<string, unknown>) => ({
-    id: (r.id as string) || "",
-    clientId: (r.client_id as string) || "",
-    instagramHandle: (r.instagram_handle as string) || "",
-    lang: (r.lang as string) || "",
-    report: (r.report as string) || "",
-    profileFollowers: (r.profile_followers as number) || 0,
-    profileReels30d: (r.profile_reels_30d as number) || 0,
-    profileAvgViews30d: (r.profile_avg_views_30d as number) || 0,
-    profilePicUrl: (r.profile_pic_url as string) || "",
-    createdAt: (r.created_at as string) || "",
-  }));
+  return (data || []).map(mapAnalysis);
+}
+
+/** Read analyses for a specific client */
+export async function readAnalysesByClient(clientId: string): Promise<Analysis[]> {
+  const { data, error } = await supabase
+    .from("analyses")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapAnalysis);
 }
 
 export async function writeAnalyses(analyses: Analysis[]) {
@@ -293,7 +446,7 @@ export async function readStrategyConfig() {
     .select("*")
     .eq("id", "global")
     .single();
-  if (error && error.code !== "PGRST116") throw error; // PGRST116 = not found
+  if (error && error.code !== "PGRST116") throw error;
   return data?.config || { customContentTypes: [], customFormats: [], trainingExamples: [] };
 }
 

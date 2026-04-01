@@ -54,15 +54,14 @@ export function AppSidebar() {
     { title: t("nav.strategy"),  href: "strategy",    icon: BarChart2 },
     { title: "Audit",             href: "analyse",     icon: Search    },
     { title: t("nav.posts"),     href: "scripts",     icon: FileText  },
-    { title: t("nav.videos"),    href: "videos",      icon: Video     },
-    { title: t("nav.creators"),  href: "creators",    icon: Users     },
+    { title: "Research",          href: "research",    icon: Search    },
   ];
 
   const clientMatch = pathname.match(/^\/clients\/([^/]+)/);
   const activeClientId = clientMatch?.[1] ?? null;
   const activeTab = pathname.split("/")[3] ?? "information";
 
-  const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen } = useGeneration();
+  const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen, voiceProfileGen } = useGeneration();
   const { running: pipelineRunning, progress: pipelineProgress } = usePipeline();
   const globalAuditStatus = useAuditStatus("global");
   const clientAuditStatus = useAuditStatus(activeClientId ? `client-${activeClientId}` : "");
@@ -124,9 +123,11 @@ export function AppSidebar() {
       <Sidebar className="border-r border-ocean/[0.06]">
         {/* Logo */}
         <SidebarHeader className="px-5 py-5 shrink-0">
-          <h1 className="text-xl font-light tracking-[0.3em] uppercase text-ocean">
-            SUN<span className="text-ivory">X</span>CA
-          </h1>
+          <Link href="/">
+            <h1 className="text-xl font-light tracking-[0.3em] uppercase text-ocean hover:text-ocean-light transition-colors cursor-pointer">
+              SUN<span className="text-ivory">X</span>CA
+            </h1>
+          </Link>
         </SidebarHeader>
 
         <SidebarContent className="flex flex-col overflow-hidden">
@@ -184,17 +185,6 @@ export function AppSidebar() {
             <span className="block px-2 mb-2 text-[10px] font-medium uppercase tracking-widest text-ocean/60">{t("nav.tools")}</span>
             <div className="space-y-0.5">
               <Link
-                href="/training"
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
-                  pathname.startsWith("/training")
-                    ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
-                }`}
-              >
-                <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                <span>{t("nav.training")}</span>
-              </Link>
-              <Link
                 href="/transcribe"
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
                   pathname.startsWith("/transcribe")
@@ -227,23 +217,6 @@ export function AppSidebar() {
                 <Sparkles className="h-3.5 w-3.5 shrink-0" />
                 <span>{t("nav.viralityChecklist")}</span>
               </Link>
-              <Link
-                href="/analyse"
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
-                  pathname.startsWith("/analyse")
-                    ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
-                }`}
-              >
-                <Search className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1">Audit</span>
-                {globalAuditStatus.running && (
-                  <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
-                )}
-                {globalAuditStatus.done && !globalAuditStatus.running && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
-                )}
-              </Link>
             </div>
           </div>
 
@@ -272,16 +245,10 @@ export function AppSidebar() {
                       >
                         <tab.icon className="h-3.5 w-3.5 shrink-0" />
                         <span className="flex-1">{tab.title}</span>
-                        {tab.href === "scripts" && activeClientId && generations.get(activeClientId)?.status === "generating" && (
+                        {tab.href === "scripts" && activeClientId && (generations.get(activeClientId)?.status === "generating" || voiceProfileGen.get(activeClientId)?.status === "running") && (
                           <Loader2 className="h-3 w-3 animate-spin text-ivory shrink-0" />
                         )}
                         {tab.href === "scripts" && activeClientId && generations.get(activeClientId)?.status === "done" && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
-                        )}
-                        {tab.href === "videos" && pipelineRunning && (
-                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
-                        )}
-                        {tab.href === "videos" && !pipelineRunning && pipelineProgress?.status === "completed" && (
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "strategy" && activeClientId && (strategyGen.get(activeClientId)?.status === "running" || analysisGen.get(activeClientId)?.status === "running") && (
@@ -293,16 +260,16 @@ export function AppSidebar() {
                         {tab.href === "information" && activeClientId && enrichGen.get(activeClientId)?.status === "running" && (
                           <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
                         )}
-                        {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "running" && (
-                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
-                        )}
-                        {tab.href === "creators" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "done" && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
-                        )}
                         {tab.href === "analyse" && clientAuditStatus.running && (
                           <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
                         )}
                         {tab.href === "analyse" && clientAuditStatus.done && !clientAuditStatus.running && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                        )}
+                        {tab.href === "research" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "running" && (
+                          <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
+                        )}
+                        {tab.href === "research" && activeClientId && creatorResearchGen.get(activeClientId)?.status === "done" && (
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                       </Link>

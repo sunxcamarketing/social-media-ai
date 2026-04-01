@@ -121,3 +121,25 @@ NICHT: "Innovation. Disruption. Transformation. Das definiert Erfolg."
 NICHT: Drei Adjektive nach Gedankenstrich ("— sicher, garantiert und zweifellos")
 NICHT: Jeder Satz auf eigener Zeile mit Leerzeile (= offensichtliches AI-Formatierungsmuster)
 SONDERN: Konkret. Spezifisch. Wie ein echter Mensch reden würde.
+
+## 13. Bindestriche / Gedankenstriche
+- KEINE Bindestriche (–, —) als Stilmittel. Das ist mega AI-Sprache.
+- NICHT: "Abnehmen – aber richtig" oder "Dein Körper — dein Tempel"
+- Schreib stattdessen normale Sätze. Punkt. Neuer Satz.
+
+## 14. "Delve into" / "Eintauchen" / "Auspacken"
+- "Lass uns eintauchen in..." / "Tauchen wir tiefer ein..."
+- "Das müssen wir auspacken" / "Packen wir das aus"
+- Kein Mensch redet so. Sag "schauen wir uns an" oder "hier ist was los".
+
+## 15. "Das signalisiert..." / "Das unterstreicht..."
+- "Das signalisiert eine Veränderung im..." / "Das unterstreicht die Notwendigkeit..."
+- Das ist AI die zwei Ideen verbindet ohne eigene Meinung. Ein Mensch sagt: "Leute machen X, also müssen wir Y ändern."
+
+## 16. "Die Komplexität navigieren" / "In einer sich ständig verändernden Landschaft"
+- "In einer sich ständig wandelnden Welt..." / "Die Komplexität von X navigieren..."
+- Sagt absolut nichts. Welche Komplexität? Was verändert sich? Sei konkret.
+
+## 17. "Synergien" / "Learnings nutzen" / "Ganzheitlicher Ansatz"
+- "Synergien freisetzen" / "Unsere Learnings leveragen" / "Einen holistischen Ansatz verfolgen"
+- Das ist Corporate-Blabla. Klingt tief, bedeutet nichts. Ein Mensch sagt: "Das hat funktioniert, das nicht, das ändern wir."

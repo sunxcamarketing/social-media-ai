@@ -334,7 +334,8 @@ function ClientInformationContent() {
       const res = await fetch(`/api/configs/${id}/sync-drive`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Import failed");
-      const parts: string[] = [`${data.imported} Dokument(e) importiert.`];
+      const parts: string[] = [`${data.imported} Skript(e) importiert.`];
+      if (data.skipped) parts.push(`${data.skipped} Korrektur-Dokument(e) übersprungen.`);
       if (data.voiceProfileGenerated) parts.push("Voice Profile generiert.");
       if (data.scriptStructureGenerated) parts.push("Skript-Struktur gelernt.");
       setDriveResult(parts.join(" "));
