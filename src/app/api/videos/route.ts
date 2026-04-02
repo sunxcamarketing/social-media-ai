@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readVideosList, updateVideo } from "@/lib/csv";
+import { readVideosList, updateVideo, deleteVideo } from "@/lib/csv";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -25,5 +25,21 @@ export async function PATCH(request: Request) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   await updateVideo(id, { starred });
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  const ids = searchParams.get("ids"); // comma-separated for bulk delete
+
+  if (ids) {
+    const idList = ids.split(",").filter(Boolean);
+    await Promise.all(idList.map((i) => deleteVideo(i)));
+    return NextResponse.json({ success: true, deleted: idList.length });
+  }
+
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  await deleteVideo(id);
   return NextResponse.json({ success: true });
 }

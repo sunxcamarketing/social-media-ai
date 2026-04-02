@@ -10,6 +10,7 @@ interface PipelineContextValue {
   progress: PipelineProgress | null;
   eta: string | null;
   runPipeline: (params: { configName: string; maxVideos: number; topK: number; nDays: number }) => void;
+  clearProgress: () => void;
 }
 
 const PipelineContext = createContext<PipelineContextValue | null>(null);
@@ -23,15 +24,17 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
   const startTimeRef = useRef<number>(0);
   const scrapeStartRef = useRef<number>(0);
   const analyzeStartRef = useRef<number>(0);
+  const lastUpdateRef = useRef<number>(0);
 
   const tokenFetcher = useCallback(async () => {
-    if (!eventId) throw new Error("No event ID");
+    if (!eventId) return null;
     return fetchPipelineToken(eventId);
   }, [eventId]);
 
+  const subscriptionEnabled = !!eventId && running;
   const { data: realtimeMessages } = useInngestSubscription({
-    enabled: !!eventId && running,
-    refreshToken: tokenFetcher,
+    enabled: subscriptionEnabled,
+    refreshToken: subscriptionEnabled ? tokenFetcher : undefined,
   });
 
   // Process realtime messages into progress state
@@ -41,6 +44,9 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
     const latest = realtimeMessages[realtimeMessages.length - 1];
     const d = latest?.data as Record<string, unknown> | undefined;
     if (!d) return;
+
+    // Track last update time for staleness detection
+    lastUpdateRef.current = Date.now();
 
     // Add message to log
     const msg = d.message as string;
@@ -83,9 +89,14 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
     }
     setEta(etaStr);
 
+    // If all videos are analyzed, treat as completed even if server hasn't sent final message
+    const effectiveStatus = (phase === "analyzing" && videosTotal > 0 && videosAnalyzed >= videosTotal && status === "running")
+      ? "completed"
+      : status;
+
     setProgress({
-      status: status as PipelineProgress["status"],
-      phase: phase as PipelineProgress["phase"],
+      status: effectiveStatus as PipelineProgress["status"],
+      phase: effectiveStatus === "completed" ? "done" : phase as PipelineProgress["phase"],
       activeTasks: d.activeVideo
         ? [{
             id: "current",
@@ -103,7 +114,11 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
       log: [...logRef.current],
     });
 
-    if (status === "completed" || status === "failed") {
+    // Detect completion: either explicit status or all videos analyzed
+    const isComplete = status === "completed" || status === "failed"
+      || (phase === "analyzing" && videosTotal > 0 && videosAnalyzed >= videosTotal);
+
+    if (isComplete) {
       setRunning(false);
       setEventId(null);
       setEta(null);
@@ -163,8 +178,16 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
     }
   }, [running]);
 
+  const clearProgress = useCallback(() => {
+    setRunning(false);
+    setProgress(null);
+    setEta(null);
+    setEventId(null);
+    logRef.current = [];
+  }, []);
+
   return (
-    <PipelineContext.Provider value={{ running, progress, eta, runPipeline }}>
+    <PipelineContext.Provider value={{ running, progress, eta, runPipeline, clearProgress }}>
       {children}
     </PipelineContext.Provider>
   );

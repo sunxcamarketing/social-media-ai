@@ -131,7 +131,7 @@ type SortOption = "views" | "date-posted" | "date-added" | "starred";
 
 export default function ResearchPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="flex items-center justify-center h-64 text-ocean/50 text-sm">Laden…</div>}>
       <ResearchContent />
     </Suspense>
   );
@@ -157,10 +157,19 @@ function ResearchContent() {
   const [sortBy, setSortBy] = useState<SortOption>("views");
   const [modalVideo, setModalVideo] = useState<VideoType | null>(null);
   const [modalSection, setModalSection] = useState<"analysis" | "concepts">("analysis");
+  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
 
   // Pipeline state
-  const { running, progress, runPipeline } = usePipeline();
+  const { running, progress, runPipeline, clearProgress } = usePipeline();
   const [pipelineOpen, setPipelineOpen] = useState(false);
+
+  // Clear stale pipeline state (e.g. from interrupted previous run)
+  useEffect(() => {
+    if (!running && progress && progress.status === "running") {
+      clearProgress();
+    }
+  }, [running, progress, clearProgress]);
   const [maxVideos, setMaxVideos] = useState(20);
   const [topK, setTopK] = useState(3);
   const [nDays, setNDays] = useState(30);
@@ -174,9 +183,12 @@ function ResearchContent() {
 
   useEffect(() => { loadVideos(); }, [loadVideos]);
 
+  // Reload videos whenever a new video is analyzed (videosAnalyzed changes)
   useEffect(() => {
-    if (progress?.status === "completed") loadVideos();
-  }, [progress?.status, loadVideos]);
+    if (progress?.status === "completed" || (progress?.videosAnalyzed && progress.videosAnalyzed > 0)) {
+      loadVideos();
+    }
+  }, [progress?.status, progress?.videosAnalyzed, loadVideos]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -230,6 +242,39 @@ function ResearchContent() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: videoId, starred: newStarred }),
     });
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm("Video wirklich löschen?")) return;
+    setVideos((prev) => prev.filter((v) => v.id !== videoId));
+    setSelectedVideos((prev) => { const n = new Set(prev); n.delete(videoId); return n; });
+    await fetch(`/api/videos?id=${videoId}`, { method: "DELETE" });
+  };
+
+  const toggleSelect = (videoId: string) => {
+    setSelectedVideos((prev) => {
+      const n = new Set(prev);
+      if (n.has(videoId)) n.delete(videoId); else n.add(videoId);
+      return n;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVideos.size === 0) return;
+    if (!confirm(`${selectedVideos.size} Videos wirklich löschen?`)) return;
+    const ids = [...selectedVideos];
+    setVideos((prev) => prev.filter((v) => !selectedVideos.has(v.id)));
+    setSelectedVideos(new Set());
+    setSelectMode(false);
+    await fetch(`/api/videos?ids=${ids.join(",")}`, { method: "DELETE" });
+  };
+
+  const selectAll = () => {
+    if (selectedVideos.size === filtered.length) {
+      setSelectedVideos(new Set());
+    } else {
+      setSelectedVideos(new Set(filtered.map((v) => v.id)));
+    }
   };
 
   const totalProgress = progress
@@ -495,15 +540,25 @@ function ResearchContent() {
                     </Badge>
                   )}
                 </div>
-                {!running && (
-                  <button
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="flex items-center gap-1 text-xs text-ocean/60 hover:text-ocean transition-colors"
-                  >
-                    <ChevronDown className={`h-3 w-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-                    Advanced
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {running && (
+                    <button
+                      onClick={clearProgress}
+                      className="flex items-center gap-1 text-xs text-red-500/70 hover:text-red-500 transition-colors"
+                    >
+                      <XCircle className="h-3 w-3" /> Cancel
+                    </button>
+                  )}
+                  {!running && (
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center gap-1 text-xs text-ocean/60 hover:text-ocean transition-colors"
+                    >
+                      <ChevronDown className={`h-3 w-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+                      Advanced
+                    </button>
+                  )}
+                </div>
               </div>
 
               {showAdvanced && !running && (
@@ -555,6 +610,9 @@ function ResearchContent() {
                         <span className="inline-flex items-center gap-1 text-red-500">
                           <AlertTriangle className="h-3 w-3" />{progress.errors.length}
                         </span>
+                      )}
+                      {(progress.status === "completed" || progress.status === "error") && (
+                        <button onClick={clearProgress} className="text-ocean/40 hover:text-ocean transition-colors">Dismiss</button>
                       )}
                     </div>
                   </div>
@@ -650,6 +708,25 @@ function ResearchContent() {
             <Badge variant="secondary" className="rounded-lg px-3 py-1.5 text-xs bg-ocean/[0.02] border border-ocean/[0.06]">
               {filtered.length} videos
             </Badge>
+
+            <div className="ml-auto flex items-center gap-2">
+              {selectMode && selectedVideos.size > 0 && (
+                <Button variant="ghost" size="sm" onClick={handleBulkDelete}
+                  className="rounded-xl text-xs h-8 gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50">
+                  <Trash2 className="h-3.5 w-3.5" /> {selectedVideos.size} löschen
+                </Button>
+              )}
+              {selectMode && (
+                <Button variant="ghost" size="sm" onClick={selectAll}
+                  className="rounded-xl text-xs h-8 gap-1.5 text-ocean/60 hover:text-ocean">
+                  {selectedVideos.size === filtered.length ? "Keine" : "Alle"}
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => { setSelectMode(!selectMode); setSelectedVideos(new Set()); }}
+                className="rounded-xl text-xs h-8 gap-1.5 text-ocean/60 hover:text-ocean">
+                {selectMode ? "Fertig" : "Auswählen"}
+              </Button>
+            </div>
           </div>
 
           {/* Video Grid */}
@@ -657,10 +734,21 @@ function ResearchContent() {
             {filtered.map((video) => {
               const vid = video.id || video.link;
               return (
-                <div key={vid} className="group">
-                  <div className="glass rounded-2xl overflow-hidden transition-all duration-300 hover:border-ocean/[0.12]">
-                    <a href={video.link} target="_blank" rel="noopener noreferrer"
-                      className="relative block aspect-[9/16] w-full bg-ocean/[0.02] overflow-hidden">
+                <div key={vid} className="group relative">
+                  {selectMode && (
+                    <button onClick={() => toggleSelect(vid)}
+                      className={`absolute top-2 left-2 z-10 h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                        selectedVideos.has(vid) ? "bg-ocean border-ocean text-white" : "bg-white/80 border-ocean/30 hover:border-ocean"
+                      }`}>
+                      {selectedVideos.has(vid) && <CheckCircle2 className="h-4 w-4" />}
+                    </button>
+                  )}
+                  <div className={`glass rounded-2xl overflow-hidden transition-all duration-300 hover:border-ocean/[0.12] ${
+                    selectMode && selectedVideos.has(vid) ? "ring-2 ring-ocean" : ""
+                  }`}>
+                    <a href={selectMode ? undefined : video.link} target="_blank" rel="noopener noreferrer"
+                      onClick={selectMode ? (e) => { e.preventDefault(); toggleSelect(vid); } : undefined}
+                      className="relative block aspect-[9/16] w-full bg-ocean/[0.02] overflow-hidden cursor-pointer">
                       {video.thumbnail ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -684,9 +772,14 @@ function ResearchContent() {
                     <div className="p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold truncate">@{video.creator}</p>
-                        <button onClick={() => toggleStar(vid, video.starred)} className="shrink-0 ml-1.5 transition-colors">
-                          <Star className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-ocean/65 hover:text-yellow-400/60"}`} />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                          <button onClick={() => toggleStar(vid, video.starred)} className="transition-colors">
+                            <Star className={`h-4 w-4 ${video.starred ? "fill-yellow-400 text-yellow-400" : "text-ocean/65 hover:text-yellow-400/60"}`} />
+                          </button>
+                          <button onClick={() => handleDeleteVideo(vid)} className="transition-colors text-ocean/30 hover:text-red-500">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-3 text-[11px] text-ocean/60">

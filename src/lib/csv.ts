@@ -1,6 +1,40 @@
 import { supabase } from "./supabase";
 import type { Config, Creator, Video, Script, TrainingScript, Analysis } from "./types";
 
+// ── In-Memory Cache ─────────────────────────────────────────────────────────
+
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+const cache = new Map<string, CacheEntry<unknown>>();
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache<T>(key: string, data: T, ttlMs: number): T {
+  cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  return data;
+}
+
+function invalidate(...prefixes: string[]) {
+  for (const key of cache.keys()) {
+    if (prefixes.some((p) => key.startsWith(p))) cache.delete(key);
+  }
+}
+
+const TTL_5M = 5 * 60 * 1000;
+const TTL_10M = 10 * 60 * 1000;
+const TTL_30M = 30 * 60 * 1000;
+
 // ── Row → Model mappers ──────────────────────────────────────────────────────
 
 function mapVideo(r: Record<string, unknown>): Video {
@@ -73,13 +107,17 @@ const CONFIG_LIGHT_COLUMNS = [
 ].join(",");
 
 export async function readConfigs(): Promise<Config[]> {
+  const cached = getCached<Config[]>("configs");
+  if (cached) return cached;
   const { data, error } = await supabase.from("configs").select("*");
   if (error) throw error;
-  return (data || []) as Config[];
+  return setCache("configs", (data || []) as Config[], TTL_5M);
 }
 
 /** Read a single config by ID — full data for backend pipelines */
 export async function readConfig(id: string): Promise<Config | null> {
+  const cached = getCached<Config | null>(`config:${id}`);
+  if (cached !== null) return cached;
   const { data, error } = await supabase
     .from("configs")
     .select("*")
@@ -87,7 +125,7 @@ export async function readConfig(id: string): Promise<Config | null> {
     .single();
   if (error && error.code === "PGRST116") return null;
   if (error) throw error;
-  return data as Config;
+  return setCache(`config:${id}`, data as Config, TTL_5M);
 }
 
 /** Read a single config with only frontend-needed fields */
@@ -110,6 +148,7 @@ export async function writeConfigs(configs: Config[]) {
 export async function insertConfig(config: Config) {
   const { error } = await supabase.from("configs").insert(config);
   if (error) throw error;
+  invalidate("configs", "config:");
 }
 
 export async function updateConfig(id: string, fields: Record<string, unknown>): Promise<Record<string, unknown> | null> {
@@ -124,20 +163,24 @@ export async function updateConfig(id: string, fields: Record<string, unknown>):
     .select()
     .single();
   if (error) throw error;
+  invalidate("configs", "config:");
   return data;
 }
 
 export async function deleteConfig(id: string) {
   const { error } = await supabase.from("configs").delete().eq("id", id);
   if (error) throw error;
+  invalidate("configs", "config:");
 }
 
 // ── Creators ────────────────────────────────────────────────────────────────
 
 export async function readCreators(): Promise<Creator[]> {
+  const cached = getCached<Creator[]>("creators");
+  if (cached) return cached;
   const { data, error } = await supabase.from("creators").select("*");
   if (error) throw error;
-  return (data || []).map((r: Record<string, unknown>) => ({
+  const result = (data || []).map((r: Record<string, unknown>) => ({
     id: (r.id as string) || "",
     username: (r.username as string) || "",
     category: (r.category as string) || "",
@@ -147,22 +190,26 @@ export async function readCreators(): Promise<Creator[]> {
     avgViews30d: (r.avg_views_30d as number) || 0,
     lastScrapedAt: (r.last_scraped_at as string) || "",
   }));
+  return setCache("creators", result, TTL_5M);
 }
 
 /** Update a single creator by ID */
 export async function updateCreator(id: string, fields: Record<string, unknown>) {
   const { error } = await supabase.from("creators").update(fields).eq("id", id);
   if (error) throw error;
+  invalidate("creators");
 }
 
 export async function insertCreator(creator: Record<string, unknown>) {
   const { error } = await supabase.from("creators").insert(creator);
   if (error) throw error;
+  invalidate("creators");
 }
 
 export async function deleteCreator(id: string) {
   const { error } = await supabase.from("creators").delete().eq("id", id);
   if (error) throw error;
+  invalidate("creators");
 }
 
 // Legacy — still used by refresh route (batch)
@@ -179,6 +226,7 @@ export async function writeCreators(creators: Creator[]) {
   }));
   const { error } = await supabase.from("creators").upsert(rows, { onConflict: "id" });
   if (error) throw error;
+  invalidate("creators");
 }
 
 // ── Videos ───────────────────────────────────────────────────────────────────
@@ -188,15 +236,19 @@ const VIDEO_LIST_COLUMNS = "id,link,thumbnail,creator,views,likes,comments,durat
 
 /** Read videos for list view — lightweight, no analysis blobs */
 export async function readVideosList(configName?: string): Promise<Video[]> {
+  const key = configName ? `videos:list:${configName}` : "videos:list";
+  const cached = getCached<Video[]>(key);
+  if (cached) return cached;
   let query = supabase.from("videos").select(VIDEO_LIST_COLUMNS).order("date_added", { ascending: false });
   if (configName) query = query.eq("config_name", configName);
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map((r: Record<string, unknown>) => ({
+  const result = (data || []).map((r: Record<string, unknown>) => ({
     ...mapVideo(r),
     analysis: "",
     newConcepts: "",
   }));
+  return setCache(key, result, TTL_10M);
 }
 
 /** Read a single video with full detail (including analysis) */
@@ -229,6 +281,14 @@ export async function readVideosByConfig(configName: string): Promise<Video[]> {
 export async function updateVideo(id: string, fields: Record<string, unknown>) {
   const { error } = await supabase.from("videos").update(fields).eq("id", id);
   if (error) throw error;
+  invalidate("videos:");
+}
+
+/** Delete a video by ID */
+export async function deleteVideo(id: string) {
+  const { error } = await supabase.from("videos").delete().eq("id", id);
+  if (error) throw error;
+  invalidate("videos:");
 }
 
 export async function appendVideo(video: Video) {
@@ -250,6 +310,7 @@ export async function appendVideo(video: Video) {
   };
   const { error } = await supabase.from("videos").insert(row);
   if (error) throw error;
+  invalidate("videos:");
 }
 
 // Legacy — kept for pipeline bulk writes
@@ -262,7 +323,7 @@ export async function writeVideos(videos: Video[]) {
     views: v.views,
     likes: v.likes,
     comments: v.comments,
-    duration_seconds: v.durationSeconds,
+    duration_seconds: Math.round(v.durationSeconds || 0),
     analysis: v.analysis,
     new_concepts: v.newConcepts,
     date_posted: v.datePosted || null,
@@ -272,14 +333,17 @@ export async function writeVideos(videos: Video[]) {
   }));
   const { error } = await supabase.from("videos").upsert(rows, { onConflict: "id" });
   if (error) throw error;
+  invalidate("videos:");
 }
 
 // ── Scripts ──────────────────────────────────────────────────────────────────
 
 export async function readScripts(): Promise<Script[]> {
+  const cached = getCached<Script[]>("scripts");
+  if (cached) return cached;
   const { data, error } = await supabase.from("scripts").select("*");
   if (error) throw error;
-  return (data || []).map(mapScript);
+  return setCache("scripts", (data || []).map(mapScript), TTL_10M);
 }
 
 /** Read scripts for a specific client */
@@ -313,6 +377,7 @@ export async function writeScripts(scripts: Script[]) {
   }));
   const { error } = await supabase.from("scripts").upsert(rows, { onConflict: "id" });
   if (error) throw error;
+  invalidate("scripts");
 }
 
 // ── Ideas ────────────────────────────────────────────────────────────────────
@@ -348,9 +413,11 @@ export async function writeIdeas(ideas: Record<string, string>[]) {
 // ── Training Scripts ─────────────────────────────────────────────────────────
 
 export async function readTrainingScripts(): Promise<TrainingScript[]> {
+  const cached = getCached<TrainingScript[]>("training");
+  if (cached) return cached;
   const { data, error } = await supabase.from("training_scripts").select("*");
   if (error) throw error;
-  return (data || []).map((r: Record<string, unknown>) => ({
+  const result = (data || []).map((r: Record<string, unknown>) => ({
     id: (r.id as string) || "",
     clientId: (r.client_id as string) || "",
     format: (r.format as string) || "",
@@ -362,6 +429,7 @@ export async function readTrainingScripts(): Promise<TrainingScript[]> {
     sourceId: (r.source_id as string) || "",
     createdAt: (r.created_at as string) || "",
   }));
+  return setCache("training", result, TTL_10M);
 }
 
 /** Read training scripts for a specific client */
@@ -400,14 +468,17 @@ export async function writeTrainingScripts(scripts: TrainingScript[]) {
   }));
   const { error } = await supabase.from("training_scripts").upsert(rows, { onConflict: "id" });
   if (error) throw error;
+  invalidate("training");
 }
 
 // ── Analyses ─────────────────────────────────────────────────────────────────
 
 export async function readAnalyses(): Promise<Analysis[]> {
+  const cached = getCached<Analysis[]>("analyses");
+  if (cached) return cached;
   const { data, error } = await supabase.from("analyses").select("*");
   if (error) throw error;
-  return (data || []).map(mapAnalysis);
+  return setCache("analyses", (data || []).map(mapAnalysis), TTL_10M);
 }
 
 /** Read analyses for a specific client */
@@ -436,18 +507,22 @@ export async function writeAnalyses(analyses: Analysis[]) {
   }));
   const { error } = await supabase.from("analyses").upsert(rows, { onConflict: "id" });
   if (error) throw error;
+  invalidate("analyses");
 }
 
 // ── Strategy Config ──────────────────────────────────────────────────────────
 
 export async function readStrategyConfig() {
+  const cached = getCached<unknown>("strategy_config");
+  if (cached) return cached;
   const { data, error } = await supabase
     .from("strategy_config")
     .select("*")
     .eq("id", "global")
     .single();
   if (error && error.code !== "PGRST116") throw error;
-  return data?.config || { customContentTypes: [], customFormats: [], trainingExamples: [] };
+  const result = data?.config || { customContentTypes: [], customFormats: [], trainingExamples: [] };
+  return setCache("strategy_config", result, TTL_30M);
 }
 
 export async function writeStrategyConfig(config: unknown) {
@@ -455,4 +530,5 @@ export async function writeStrategyConfig(config: unknown) {
     .from("strategy_config")
     .upsert({ id: "global", config }, { onConflict: "id" });
   if (error) throw error;
+  invalidate("strategy_config");
 }

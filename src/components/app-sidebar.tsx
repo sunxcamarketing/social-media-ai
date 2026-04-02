@@ -217,6 +217,23 @@ export function AppSidebar() {
                 <Sparkles className="h-3.5 w-3.5 shrink-0" />
                 <span>{t("nav.viralityChecklist")}</span>
               </Link>
+              <Link
+                href="/analyse"
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                  pathname.startsWith("/analyse")
+                    ? "bg-blush-light/60 text-ocean font-medium"
+                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                }`}
+              >
+                <Search className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1">Audit</span>
+                {globalAuditStatus.running && (
+                  <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />
+                )}
+                {globalAuditStatus.done && !globalAuditStatus.running && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                )}
+              </Link>
             </div>
           </div>
 

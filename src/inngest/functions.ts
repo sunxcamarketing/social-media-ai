@@ -1,6 +1,6 @@
 import { inngest } from "./client";
 import { v4 as uuid } from "uuid";
-import { readConfigs, readCreators, readVideos, writeVideos } from "@/lib/csv";
+import { readConfigs, readCreators, appendVideo } from "@/lib/csv";
 import { scrapeReels } from "@/lib/apify";
 import { uploadVideo, analyzeVideo } from "@/lib/gemini";
 import { generateNewConcepts } from "@/lib/claude";
@@ -82,18 +82,29 @@ export const runPipelineFunction = inngest.createFunction(
 
         const videos = reels
           .filter((r) => r.videoUrl && r.timestamp)
-          .map((r) => ({
-            videoUrl: r.videoUrl,
-            postUrl: r.url,
-            views: r.videoPlayCount || 0,
-            likes: r.likesCount || 0,
-            comments: r.commentsCount || 0,
-            durationSeconds: r.videoDuration || 0,
-            username: r.ownerUsername || username,
-            thumbnail: r.images?.[0] || "",
-            datePosted: r.timestamp?.split("T")[0] || "",
-            timestamp: new Date(r.timestamp).getTime(),
-          }))
+          .map((r) => {
+            // Cast to any to access all Apify fields (API returns more than typed interface)
+            const raw = r as unknown as Record<string, unknown>;
+            const thumb = r.images?.[0]
+              || r.displayUrl
+              || r.thumbnailSrc
+              || (raw.thumbnail_src as string)
+              || (raw.display_url as string)
+              || (raw.imageUrl as string)
+              || "";
+            return {
+              videoUrl: r.videoUrl,
+              postUrl: r.url,
+              views: r.videoPlayCount || 0,
+              likes: r.likesCount || 0,
+              comments: r.commentsCount || 0,
+              durationSeconds: Math.round(r.videoDuration || 0),
+              username: r.ownerUsername || username,
+              thumbnail: thumb,
+              datePosted: r.timestamp?.split("T")[0] || "",
+              timestamp: new Date(r.timestamp).getTime(),
+            };
+          })
           .filter((v) => v.timestamp >= cutoffDate.getTime());
 
         videos.sort((a, b) => b.views - a.views);
@@ -157,7 +168,7 @@ export const runPipelineFunction = inngest.createFunction(
         // Generate concepts with Claude
         const newConcepts = await generateNewConcepts(analysis, buildConceptsPrompt(config));
 
-        return {
+        const videoRecord = {
           id: uuid(),
           link: video.postUrl,
           thumbnail: video.thumbnail,
@@ -173,6 +184,11 @@ export const runPipelineFunction = inngest.createFunction(
           configName,
           starred: false,
         };
+
+        // Save immediately so it shows up in the UI right away
+        await appendVideo(videoRecord);
+
+        return videoRecord;
       });
 
       newVideos.push(result);
@@ -187,14 +203,6 @@ export const runPipelineFunction = inngest.createFunction(
         status: "running",
       });
     }
-
-    // Step 4: Save all results
-    await step.run("save-results", async () => {
-      if (newVideos.length > 0) {
-        const existing = await readVideos();
-        await writeVideos([...existing, ...newVideos]);
-      }
-    });
 
     await log(`Pipeline complete! ${videosAnalyzed}/${allTopVideos.length} videos analyzed.`, {
       phase: "done",

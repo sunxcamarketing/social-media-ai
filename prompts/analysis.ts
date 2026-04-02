@@ -4,49 +4,41 @@
 
 import type { Config } from "../src/lib/types";
 
-export const ANALYSIS_PROMPT = `# CONCEPT
-Overall description of the concept of this video, and what makes it valuable and interesting (1-3 sentences).
--> Clarify the core tension: what belief is challenged, what mistake is exposed, or what outcome is promised.
--> One clear idea only. No subtopics.
+export const ANALYSIS_PROMPT = `WICHTIG: Schreibe die gesamte Analyse auf DEUTSCH.
+
+# KONZEPT
+Beschreibung des Konzepts dieses Videos und was es wertvoll und interessant macht (1-3 Sätze).
+Was wird in Frage gestellt, welcher Fehler aufgedeckt, welches Ergebnis versprochen?
+Eine klare Idee. Keine Unterthemen.
 
 # HOOK
-Detailed description of the first 5 seconds of the video, what makes it scroll-stopping and attention-grabbing, why a viewer needs to stop to watch it (1-3 sentences).
--> Break it down into:
-- VISUAL (what is seen in the first 1-2 seconds: movement, facial expression, contrast, pattern break)
-- TEXT (short on-screen statement: danger, promise, or contradiction, max 6-8 words)
-- AUDIO (first spoken words: confident, direct, no intro, no context)
--> The hook must create either fear of loss, strong curiosity, or identity relevance.
+Detaillierte Beschreibung der ersten 5 Sekunden. Was macht sie scroll-stoppend? Warum muss der Zuschauer anhalten? (1-3 Sätze)
+Aufschlüsseln in:
+VISUAL: Was sieht man in den ersten 1-2 Sekunden (Bewegung, Gesichtsausdruck, Kontrast, Pattern Break)
+TEXT: Kurzer On-Screen-Text (Gefahr, Versprechen oder Widerspruch, max 6-8 Wörter)
+AUDIO: Erste gesprochene Worte (selbstbewusst, direkt, kein Intro)
+Der Hook muss Verlustangst, starke Neugier oder Identitätsrelevanz erzeugen.
 
-# RETENTION MECHANISMS
-Detailed description of how the creator manages to retain viewers throughout the video (1-7 sentences).
--> Open loops ("in a second I'll show you why...", "most people miss this part...")
--> Delayed payoff (main insight is intentionally held back)
--> Micro-escalations every 3-5 seconds (new angle, sharper wording, visual or tonal shift)
--> Pattern interrupts (pauses, emphasis, cut, zoom, gesture)
--> Clear forward momentum: the viewer feels the video is going somewhere.
+# RETENTION-MECHANISMEN
+Wie hält der Creator die Zuschauer durch das ganze Video? (1-7 Sätze)
+Open Loops, verzögerter Payoff, Micro-Eskalationen alle 3-5 Sekunden, Pattern Interrupts, klarer Vorwärtsmomentum.
 
 # REWARD
-Describe the ultimate value that the viewer gets by watching this video (1-3 sentences).
--> Be explicit: what does the viewer now understand, feel, or see differently?
--> Define whether the reward is Education (clarity), Entertainment (emotional release), or Inspiration (self-belief / action).
--> The reward should feel proportional to the time invested.
+Was bekommt der Zuschauer am Ende? (1-3 Sätze)
+Was versteht, fühlt oder sieht er jetzt anders?
+Education (Klarheit), Entertainment (emotionale Lösung) oder Inspiration (Selbstvertrauen/Handlung)?
 
-# SCRIPT
-Describe the full script of the video (1-20 sentences, as many as needed).
--> Structure:
-1. Immediate hook (no greeting)
-2. Problem framing / tension escalation
-3. Why this matters (stakes)
-4. Main insight or shift in perspective (this comes AFTER retention is established)
-5. Clean close (no rambling; optional CTA only if natural)
--> Include: scenes, actions, voiceover, exact wording if possible.
--> Keep sentences short. Spoken language only.
+# SKRIPT
+Vollständiges Skript des Videos (1-20 Sätze, so viele wie nötig).
+Struktur: Sofortiger Hook (kein Gruß), Problem-Framing, warum es wichtig ist, Hauptinsight, sauberer Abschluss.
+Szenen, Aktionen, Voiceover, exakter Wortlaut wenn möglich.
+Kurze Sätze. Gesprochene Sprache.
 
-OVERALL RULE:
-THE SHORTER THE ANALYSIS - THE BETTER.
-If it can be said in fewer words, it should be.
-Clarity > cleverness.
-Retention > information.`;
+GRUNDREGEL:
+JE KÜRZER DIE ANALYSE, DESTO BESSER.
+Wenn es in weniger Worten gesagt werden kann, dann tu das.
+Klarheit > Cleverness.
+Retention > Information.`;
 
 // ── Detailed analysis for Viral Script Builder ──────────────────────────────
 // This prompt forces Gemini to transcribe sentence by sentence with all three layers.
@@ -110,45 +102,42 @@ export function buildConceptsPrompt(config: Pick<Config, "configName" | "name" |
     config.keyAchievements && `Achievements: ${config.keyAchievements}`,
   ].filter(Boolean).join("\n");
 
-  return `Adapt this video for the following client:
+  return `Adaptiere dieses Video für folgenden Client:
 
 ${clientBlock}
 
-Task:
-Give us 3 NEW video concepts inspired by the ORIGINAL reference.
-Do not copy the original.
-Translate the core idea into this client's niche and audience context.
-MAINLY iterate and sharpen the HOOKS.
+Aufgabe:
+Erstelle 3 NEUE Video-Konzepte, inspiriert vom ORIGINAL-Referenzvideo.
+Nicht das Original kopieren.
+Übertrage die Kernidee in die Nische und den Kontext dieses Clients.
+Fokus auf die HOOKS — die müssen sitzen.
 
-Focus:
-- First 3 seconds must stop this client's ideal audience from scrolling
-- Hooks should challenge a belief, fear, or misconception relevant to their niche
-- Match the client's voice, authority level, and positioning
-- Calm authority > hype
+WICHTIG: Schreibe ALLES auf Deutsch. Skripte, Hooks, Beschreibungen — alles Deutsch.
 
-The output should have this format:
+Fokus:
+Die ersten 3 Sekunden müssen die Zielgruppe dieses Clients zum Stoppen bringen.
+Hooks sollen eine Überzeugung, Angst oder ein Missverständnis der Nische herausfordern.
+Stimme und Positionierung des Clients matchen.
+Ruhige Autorität statt Hype.
 
-# CONCEPT 1
-Text description (1-3 sentences)
+Format:
+
+# KONZEPT 1
+Beschreibung (1-3 Sätze)
 
 ## HOOK
-Detailed hook description (1-3 sentences)
-Describe:
-- What is seen in the first 2 seconds
-- What is said in the first line
-- Why this hook works for this client's specific audience
+Detaillierte Hook-Beschreibung (1-3 Sätze)
+Was sieht man in den ersten 2 Sekunden?
+Was wird als erstes gesagt?
+Warum funktioniert dieser Hook für die Zielgruppe dieses Clients?
 
-## SCRIPT
-Detailed script description (1-20 sentences, as many as needed)
-Include:
-- Scene flow
-- Spoken text / voiceover
-- Clear but understated payoff
-- Subtle authority, not selling
+## SKRIPT
+Detailliertes Skript (1-20 Sätze, so viele wie nötig)
+Szenenablauf, gesprochener Text, klarer Payoff, subtile Autorität.
 
-# CONCEPT 2
+# KONZEPT 2
 ...
 
-# CONCEPT 3
+# KONZEPT 3
 ...`;
 }
