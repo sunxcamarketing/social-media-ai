@@ -135,6 +135,22 @@ CREATE TABLE strategy_config (
   config JSONB DEFAULT '{}'::jsonb
 );
 
+-- Client-User Zuordnung & Rollen
+-- Admins: client_id ist NULL (haben Zugriff auf alles)
+-- Clients: client_id ist gesetzt (haben nur Zugriff auf diesen Client)
+CREATE TABLE IF NOT EXISTS client_users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  client_id TEXT REFERENCES configs(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('admin', 'client')) DEFAULT 'client',
+  invited_at TIMESTAMPTZ DEFAULT now(),
+  accepted_at TIMESTAMPTZ,
+  UNIQUE(user_id, client_id)
+);
+
+-- Aysun als Admin eintragen (nach dem ersten Login manuell):
+-- INSERT INTO client_users (user_id, role, client_id) VALUES ('<aysun-auth-id>', 'admin', NULL);
+
 -- Enable RLS and allow service role full access
 ALTER TABLE configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE creators ENABLE ROW LEVEL SECURITY;
@@ -153,3 +169,6 @@ CREATE POLICY "Service role full access" ON ideas FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON training_scripts FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON analyses FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON strategy_config FOR ALL USING (true);
+
+ALTER TABLE client_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON client_users FOR ALL USING (true);

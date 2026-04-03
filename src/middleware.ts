@@ -8,6 +8,7 @@ export async function middleware(request: NextRequest) {
   // Allow public routes
   if (
     pathname === "/login" ||
+    pathname === "/no-access" ||
     pathname.startsWith("/viral-guide") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
@@ -16,7 +17,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: { headers: request.headers },
   });
 
@@ -44,6 +45,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // No DB query here — role routing happens client-side
   return response;
 }
 

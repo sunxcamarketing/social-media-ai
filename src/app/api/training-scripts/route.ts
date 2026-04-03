@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
-import { readTrainingScripts, writeTrainingScripts } from "@/lib/csv";
+import { readTrainingScripts, readTrainingScriptsByClient, writeTrainingScripts } from "@/lib/csv";
 import type { TrainingScript } from "@/lib/types";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
-  const clientId = searchParams.get("clientId");
-  let scripts = await readTrainingScripts();
-  if (clientId) {
-    scripts = scripts.filter((s) => s.clientId === clientId);
+  let clientId = searchParams.get("clientId");
+
+  if (user.role === "client") {
+    clientId = user.clientId;
   }
+
+  const scripts = clientId ? await readTrainingScriptsByClient(clientId) : await readTrainingScripts();
   return NextResponse.json(scripts);
 }
 

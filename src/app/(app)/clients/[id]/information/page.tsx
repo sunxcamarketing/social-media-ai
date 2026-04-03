@@ -38,7 +38,127 @@ import {
 } from "lucide-react";
 import type { Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
+import { useClientData } from "@/context/client-data-context";
 import { useI18n } from "@/lib/i18n";
+import { Mail, Trash2, Shield } from "lucide-react";
+
+function ClientAccessSection({ clientId }: { clientId: string }) {
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [users, setUsers] = useState<{ id: string; userId: string; email: string; invitedAt: string; acceptedAt: string | null }[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/auth/invite?clientId=${clientId}`)
+      .then(r => r.json())
+      .then(setUsers)
+      .catch(() => {})
+      .finally(() => setLoadingUsers(false));
+  }, [clientId]);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    setInviteResult(null);
+    setInviteError(null);
+    try {
+      const res = await fetch("/api/auth/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail.trim(), clientId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Fehler");
+      setInviteResult(data.message);
+      setInviteEmail("");
+      // Refresh list
+      const listRes = await fetch(`/api/auth/invite?clientId=${clientId}`);
+      setUsers(await listRes.json());
+    } catch (e) {
+      setInviteError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const revokeAccess = async (id: string) => {
+    if (!confirm("Zugang wirklich entziehen?")) return;
+    await fetch(`/api/auth/invite?id=${id}`, { method: "DELETE" });
+    setUsers(prev => prev.filter(u => u.id !== id));
+  };
+
+  return (
+    <div className="glass rounded-2xl p-6 space-y-4">
+      <h2 className="text-sm font-semibold flex items-center gap-2">
+        <Shield className="h-4 w-4 text-ocean/60" /> Kundenzugang
+      </h2>
+
+      {/* Invite form */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/40" />
+          <Input
+            type="email"
+            placeholder="kunde@email.de"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleInvite(); }}
+            className="pl-9 h-9 rounded-xl bg-warm-white border-ocean/10 text-sm"
+          />
+        </div>
+        <Button
+          onClick={handleInvite}
+          disabled={inviting || !inviteEmail.trim()}
+          size="sm"
+          className="h-9 rounded-xl bg-ocean hover:bg-ocean-light text-white border-0 px-4 text-xs"
+        >
+          {inviting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Einladen"}
+        </Button>
+      </div>
+
+      {inviteResult && (
+        <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">{inviteResult}</p>
+      )}
+      {inviteError && (
+        <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{inviteError}</p>
+      )}
+
+      {/* User list */}
+      {loadingUsers ? (
+        <div className="flex items-center gap-2 text-xs text-ocean/50">
+          <Loader2 className="h-3 w-3 animate-spin" /> Lade...
+        </div>
+      ) : users.length > 0 ? (
+        <div className="space-y-1.5">
+          {users.map(u => (
+            <div key={u.id} className="flex items-center justify-between rounded-xl bg-warm-white px-3 py-2 text-xs group">
+              <div className="flex items-center gap-2">
+                <Mail className="h-3 w-3 text-ocean/40" />
+                <span className="text-ocean/80">{u.email}</span>
+                {u.acceptedAt ? (
+                  <span className="text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Aktiv</span>
+                ) : (
+                  <span className="text-[10px] text-ocean/50 bg-ocean/5 px-1.5 py-0.5 rounded">Eingeladen</span>
+                )}
+              </div>
+              <button
+                onClick={() => revokeAccess(u.id)}
+                className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                title="Zugang entziehen"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-ocean/50">Noch keine Kunden eingeladen.</p>
+      )}
+    </div>
+  );
+}
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -248,12 +368,13 @@ function ClientInformationContent() {
     humanDifferentiation: "",
   });
 
-  const loadClient = () =>
-    fetch(`/api/configs/${id}`).then((r) => r.json() as Promise<Config>);
+  const { loadClient: loadClientCached, invalidateClient } = useClientData();
+
+  const loadClient = () => loadClientCached(id, true);
 
   useEffect(() => {
     const isSetup = searchParams.get("setup") === "1";
-    loadClient().then((c) => {
+    loadClientCached(id).then((c) => {
       setClient(c);
       if (c.instagram) loadIgProfile();
       if (isSetup && (c.instagram || c.website || c.linkedin || c.tiktok)) {
@@ -742,6 +863,9 @@ function ClientInformationContent() {
           <InfoRow label={t("label.humanDifferentiation")} value={client.humanDifferentiation} />
         </div>
       </SectionCard>
+
+      {/* Kundenzugang */}
+      <ClientAccessSection clientId={id} />
 
       {/* -- FOLLOW-UP DIALOG -- */}
       {followupOpen && missingFields.length > 0 && (() => {

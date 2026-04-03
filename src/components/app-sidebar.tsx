@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles, Eye } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -61,7 +61,7 @@ export function AppSidebar() {
   const activeClientId = clientMatch?.[1] ?? null;
   const activeTab = pathname.split("/")[3] ?? "information";
 
-  const { generations, strategyGen, analysisGen, enrichGen, creatorResearchGen, voiceProfileGen } = useGeneration();
+  const { strategyGen, analysisGen, enrichGen, creatorResearchGen, voiceProfileGen } = useGeneration();
   const { running: pipelineRunning, progress: pipelineProgress } = usePipeline();
   const globalAuditStatus = useAuditStatus("global");
   const clientAuditStatus = useAuditStatus(activeClientId ? `client-${activeClientId}` : "");
@@ -161,13 +161,32 @@ export function AppSidebar() {
                       <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
                       <span className="truncate">{displayName}</span>
                     </Link>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteClient(client.id, displayName); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                      title="Löschen"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          await fetch("/api/auth/impersonate", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ clientId: client.id }),
+                          });
+                          router.push("/portal");
+                          router.refresh();
+                        }}
+                        className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-ocean hover:bg-ocean/10 transition-all"
+                        title="Als Kunde ansehen"
+                      >
+                        <Eye className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteClient(client.id, displayName); }}
+                        className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 transition-all"
+                        title="Löschen"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -262,11 +281,8 @@ export function AppSidebar() {
                       >
                         <tab.icon className="h-3.5 w-3.5 shrink-0" />
                         <span className="flex-1">{tab.title}</span>
-                        {tab.href === "scripts" && activeClientId && (generations.get(activeClientId)?.status === "generating" || voiceProfileGen.get(activeClientId)?.status === "running") && (
+                        {tab.href === "scripts" && activeClientId && voiceProfileGen.get(activeClientId)?.status === "running" && (
                           <Loader2 className="h-3 w-3 animate-spin text-ivory shrink-0" />
-                        )}
-                        {tab.href === "scripts" && activeClientId && generations.get(activeClientId)?.status === "done" && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
                         )}
                         {tab.href === "strategy" && activeClientId && (strategyGen.get(activeClientId)?.status === "running" || analysisGen.get(activeClientId)?.status === "running") && (
                           <Loader2 className="h-3 w-3 animate-spin text-ocean/70 shrink-0" />

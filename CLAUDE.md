@@ -197,14 +197,25 @@ To change how scripts are generated:
 ├── .env                                   # API keys (not committed)
 ├── src/
 │   ├── app/                               # Pages and API routes
-│   │   ├── (app)/                         # App route group (sidebar, topbar)
+│   │   ├── (app)/                         # Admin route group (sidebar, topbar)
 │   │   │   ├── page.tsx                   # Dashboard
 │   │   │   ├── clients/                   # Client management pages
 │   │   │   ├── configs/                   # Config management
 │   │   │   ├── strategy/                  # Strategy page
 │   │   │   ├── training/                  # Training page
 │   │   │   └── transcribe/               # Transcribe page
+│   │   ├── portal/                        # Client portal (read-only)
+│   │   │   ├── layout.tsx                # Portal layout with client-nav
+│   │   │   ├── page.tsx                  # Client dashboard
+│   │   │   ├── scripts/                  # Client scripts (read-only)
+│   │   │   ├── strategy/                 # Client strategy (read-only)
+│   │   │   ├── analyse/                  # Client audit (read-only)
+│   │   │   ├── videos/                   # Client videos (read-only)
+│   │   │   └── chat/                     # Client chat (scoped context)
+│   │   ├── login/                         # Login page (password + magic link)
+│   │   ├── no-access/                     # No access page
 │   │   └── api/                           # API routes
+│   │       ├── auth/                      # Auth routes (invite, me, impersonate)
 │   │       └── configs/[id]/
 │   │           ├── generate-week-scripts/ # Weekly script pipeline (SSE)
 │   │           ├── generate-script/       # Single script generation
@@ -213,6 +224,7 @@ To change how scripts are generated:
 │   │           ├── generate-voice-profile/# Voice profile extraction
 │   │           └── performance/           # Performance data
 │   ├── lib/                               # Core logic
+│   │   ├── auth.ts                       # Auth helpers (getCurrentUser, requireAdmin, etc.)
 │   │   ├── pipeline.ts                   # Video analysis pipeline orchestration
 │   │   ├── voice-profile.ts              # Voice + script structure extraction
 │   │   ├── apify.ts                      # Apify scraper client
@@ -274,13 +286,50 @@ To change how scripts are generated:
 
 ## App Pages
 
-| Page | Path | Route Group | Description |
-|------|------|-------------|-------------|
-| Dashboard | `/` | (app) | Summary stats, recent videos |
-| Videos | `/videos` | (app) | Browse results with thumbnails, expandable analysis & concepts |
-| Run Pipeline | `/run` | (app) | Select config, set params, run with live progress streaming |
-| Configs | `/configs` | (app) | CRUD for pipeline configs (prompts, categories) |
-| Creators | `/creators` | (app) | CRUD for competitor Instagram accounts |
+### Admin Pages (Route Group: `(app)`)
+
+| Page | Path | Description |
+|------|------|-------------|
+| Dashboard | `/` | Summary stats, recent videos |
+| Videos | `/videos` | Browse results with thumbnails, expandable analysis & concepts |
+| Run Pipeline | `/run` | Select config, set params, run with live progress streaming |
+| Configs | `/configs` | CRUD for pipeline configs (prompts, categories) |
+| Creators | `/creators` | CRUD for competitor Instagram accounts |
+
+### Client Portal Pages (`/portal/*`)
+
+| Page | Path | Description |
+|------|------|-------------|
+| Dashboard | `/portal` | Welcome + quick stats |
+| Skripte | `/portal/scripts` | Read-only scripts with expandable hook/body/CTA |
+| Strategie | `/portal/strategy` | Content pillars + weekly plan (read-only) |
+| Audit | `/portal/analyse` | Latest audit report with stats |
+| Videos | `/portal/videos` | Analyzed videos with thumbnails |
+| Chat | `/portal/chat` | AI assistant scoped to client's own data |
+
+---
+
+## Authentication & Rollen
+
+### How It Works
+
+- **`client_users` table** maps Supabase Auth users to clients with roles (`admin` | `client`)
+- **Admins** (Aysun): access all clients, all tools, full sidebar — login via email/password
+- **Clients**: access only their own data via `/portal/*` — login via Magic Link (no password)
+- **Middleware** (`src/middleware.ts`): checks role, routes clients to `/portal`, blocks unauthorized access
+- **Auth helpers** (`src/lib/auth.ts`): `getCurrentUser()`, `requireAdmin()`, `requireClientAccess()`, `getEffectiveClientId()`
+- **API-level auth**: every API route checks the user's role and filters data accordingly
+
+### Admin Impersonate
+
+Admins can click the Eye icon per client in the sidebar to "view as client". This sets an `impersonate_client_id` cookie and opens the `/portal` view with a banner showing "Du siehst den Bereich von [Client] als Admin". The "Zurück zum Admin-Bereich" button clears the cookie.
+
+### Invitation Flow
+
+1. Admin opens client's Information page → "Kundenzugang" section
+2. Enters client's email → clicks "Einladen"
+3. `POST /api/auth/invite` creates Supabase Auth user + `client_users` mapping
+4. Client receives Magic Link email → clicks → lands on `/portal`
 
 ---
 

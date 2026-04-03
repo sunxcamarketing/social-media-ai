@@ -2,10 +2,22 @@ import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { supabase } from "@/lib/supabase";
 import { readScripts, readScriptsByClient } from "@/lib/csv";
+import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
-  const clientId = searchParams.get("clientId");
+  let clientId = searchParams.get("clientId");
+
+  // Clients can only see their own scripts
+  if (user.role === "client") {
+    clientId = user.clientId;
+  } else if (user.impersonatingClientId && !clientId) {
+    clientId = user.impersonatingClientId;
+  }
+
   const scripts = clientId ? await readScriptsByClient(clientId) : await readScripts();
   return NextResponse.json(scripts);
 }

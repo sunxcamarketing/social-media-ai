@@ -2,8 +2,17 @@ import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { readConfigs } from "@/lib/csv";
 import type { Config } from "@/lib/types";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Clients shouldn't list all configs — redirect to their own via /api/configs/[id]
+  if (user.role === "client") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const configs = await readConfigs();
   return NextResponse.json(configs);
 }

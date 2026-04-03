@@ -1,15 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
   readConfigs,
+  readConfig,
   readScripts,
+  readScriptsByClient,
   readAnalyses,
+  readAnalysesByClient,
   readCreators,
   readVideosList,
   readTrainingScripts,
+  readTrainingScriptsByClient,
 } from "@/lib/csv";
 import { buildPrompt } from "@prompts";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 
 export const maxDuration = 120;
 
@@ -24,6 +29,48 @@ function loadContextFile(name: string): string {
   const p = join(process.cwd(), "context", name);
   if (!existsSync(p)) return "";
   return readFileSync(p, "utf-8");
+}
+
+/** Client-scoped context — only this client's data */
+async function getClientContext(clientId: string): Promise<string> {
+  const sections: string[] = [];
+
+  try {
+    const config = await readConfig(clientId);
+    if (config) {
+      const parts: string[] = [`# DEIN PROFIL: ${config.configName || config.name || "Client"}`];
+      if (config.instagram) parts.push(`**Instagram:** @${config.instagram.replace(/^@/, "")}`);
+      if (config.company) parts.push(`**Unternehmen:** ${config.company}`);
+      if (config.businessContext) parts.push(`**Business-Kontext:** ${config.businessContext}`);
+      if (config.strategyGoal) parts.push(`**Strategie-Ziel:** ${config.strategyGoal}`);
+      if (config.strategyPillars) {
+        try { parts.push(`**Content-Pillars:**\n${JSON.stringify(JSON.parse(config.strategyPillars), null, 2)}`); } catch {}
+      }
+      sections.push(parts.join("\n"));
+    }
+  } catch {}
+
+  try {
+    const scripts = await readScriptsByClient(clientId);
+    if (scripts.length > 0) {
+      const scriptBlocks = scripts.slice(0, 30).map(s => {
+        const p = [`- **${s.title || "Ohne Titel"}** (${s.createdAt?.slice(0, 10) || "?"})`];
+        if (s.hook) p.push(`  Hook: ${s.hook.slice(0, 150)}`);
+        return p.join("\n");
+      });
+      sections.push(`# DEINE SKRIPTE (${scripts.length} gesamt)\n\n${scriptBlocks.join("\n\n")}`);
+    }
+  } catch {}
+
+  try {
+    const analyses = await readAnalysesByClient(clientId);
+    if (analyses.length > 0) {
+      const a = analyses[0];
+      sections.push(`# DEIN AUDIT\n\nFollower: ${a.profileFollowers}\nReels (30d): ${a.profileReels30d}\nØ Views: ${a.profileAvgViews30d}\n\n${a.report?.slice(0, 3000) || ""}`);
+    }
+  } catch {}
+
+  return sections.join("\n\n---\n\n");
 }
 
 async function getFullProjectContext(): Promise<string> {
@@ -208,6 +255,11 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not set" }), { status: 500 });
   }
 
+  const user = await getCurrentUser();
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  }
+
   const body = await request.json();
   const messages: ChatMessage[] = body.messages || [];
 
@@ -215,7 +267,20 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "No messages" }), { status: 400 });
   }
 
-  const projectContext = await getFullProjectContext();
+  // Build context based on role
+  const effectiveClientId = getEffectiveClientId(user);
+  let projectContext: string;
+  if (user.role === "client" && effectiveClientId) {
+    // Client: only their own data
+    projectContext = await getClientContext(effectiveClientId);
+  } else if (effectiveClientId) {
+    // Admin impersonating: client-scoped context
+    projectContext = await getClientContext(effectiveClientId);
+  } else {
+    // Admin: full context
+    projectContext = await getFullProjectContext();
+  }
+
   const systemPrompt = buildPrompt("chat-assistant", { client_context: projectContext });
 
   const client = new Anthropic({ apiKey });
@@ -225,6 +290,7 @@ export async function POST(request: Request) {
     max_tokens: 8192,
     system: systemPrompt,
     messages: messages.map(m => ({ role: m.role, content: m.content })),
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
   });
 
   const encoder = new TextEncoder();
