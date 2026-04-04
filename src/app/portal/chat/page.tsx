@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Loader2, Check } from "lucide-react";
+import { MessageSquare, Loader2, Check } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { usePortalClient } from "../use-portal-client";
+import { ChatInput } from "@/components/ui/chat-input";
 
 interface Message {
   role: "user" | "assistant";
@@ -22,7 +24,16 @@ const TOOL_LABELS: Record<string, string> = {
   load_audit: "Lade Audit",
   generate_script: "Generiere Skript",
   check_competitors: "Analysiere Wettbewerber",
+  save_idea: "Speichere Idee",
+  update_profile: "Aktualisiere Profil",
 };
+
+const SUGGESTIONS = [
+  "Schreib mir ein Skript",
+  "Was sagt mein Audit?",
+  "Welche Hooks performen gut?",
+  "Was machen meine Konkurrenten?",
+];
 
 export default function PortalChat() {
   const { effectiveClientId, loading: authLoading } = usePortalClient();
@@ -30,10 +41,10 @@ export default function PortalChat() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, toolStatuses]);
 
   const handleSend = async () => {
@@ -59,7 +70,6 @@ export default function PortalChat() {
         throw new Error(err.error || "Fehler");
       }
 
-      // Check if it's a simple JSON response (opening message)
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const data = await res.json();
@@ -84,7 +94,6 @@ export default function PortalChat() {
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
-        // Keep the last potentially incomplete line in the buffer
         buffer = lines.pop() || "";
 
         for (const line of lines) {
@@ -105,15 +114,11 @@ export default function PortalChat() {
                 }
                 return [...prev, { tool: data.tool, status: data.status }];
               });
-            } else if (data.type === "done") {
-              // Stream complete
             } else if (data.type === "error") {
               assistantText += `\n\nFehler: ${data.error}`;
               setMessages([...newMessages, { role: "assistant", content: assistantText }]);
             }
-          } catch {
-            // Skip malformed SSE lines -- partial chunks are expected during streaming
-          }
+          } catch { /* skip */ }
         }
       }
     } catch (err) {
@@ -128,95 +133,121 @@ export default function PortalChat() {
     return <div className="text-center py-20 text-ocean/50">Laden...</div>;
   }
 
+  const hasMessages = messages.length > 0;
+
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)]">
-      <div className="mb-4">
-        <h1 className="text-xl font-light text-ocean flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" /> Content Agent
-        </h1>
-        <p className="text-xs text-ocean/50 mt-1">Frag mich alles zu deinem Content, lass Skripte generieren oder check deine Performance</p>
-      </div>
+      {/* Messages area */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {!hasMessages ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center mb-8"
+            >
+              <div className="h-14 w-14 rounded-2xl bg-ocean/[0.04] flex items-center justify-center mb-4 mx-auto">
+                <MessageSquare className="h-7 w-7 text-ocean/15" />
+              </div>
+              <p className="text-lg font-medium text-ocean mb-1">Content Agent</p>
+              <p className="text-sm text-ocean/45 max-w-sm">
+                Frag mich alles zu deinem Content, lass Skripte generieren oder check deine Performance.
+              </p>
+            </motion.div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4">
-        {messages.length === 0 && (
-          <div className="text-center py-16 space-y-3">
-            <p className="text-ocean/30 text-sm">Stell deine erste Frage...</p>
-            <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
-              {[
-                "Schreib mir ein Skript",
-                "Was sagt mein Audit?",
-                "Welche Hooks performen gut?",
-                "Was machen meine Konkurrenten?",
-              ].map(suggestion => (
-                <button
-                  key={suggestion}
-                  onClick={() => setInput(suggestion)}
-                  className="text-xs px-3 py-1.5 rounded-full border border-ocean/10 text-ocean/50 hover:text-ocean hover:border-ocean/20 transition-colors"
+            <div className="w-full max-w-xl">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={handleSend}
+                isStreaming={streaming}
+                placeholder="Stell deine Frage..."
+                suggestions={SUGGESTIONS}
+                onSuggestionClick={(s) => setInput(s)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5 pb-4 px-1">
+            <AnimatePresence initial={false}>
+              {messages.map((msg, i) => (
+                <motion.div
+                  key={`${msg.role}-${i}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {suggestion}
-                </button>
+                  <div className={`max-w-[80%] text-sm leading-relaxed whitespace-pre-wrap ${
+                    msg.role === "user"
+                      ? "rounded-3xl rounded-br-lg bg-ocean text-white px-5 py-3 shadow-sm"
+                      : "rounded-3xl rounded-bl-lg bg-white border border-ocean/[0.06] text-ocean px-5 py-3 shadow-[0_1px_8px_rgba(32,35,69,0.04)]"
+                  }`}>
+                    {msg.content || (streaming && i === messages.length - 1 ? (
+                      <div className="flex items-center gap-1.5 py-1">
+                        {[0, 1, 2].map(j => (
+                          <motion.div
+                            key={j}
+                            className="h-1.5 w-1.5 rounded-full bg-ocean/25"
+                            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 1.2, repeat: Infinity, delay: j * 0.2 }}
+                          />
+                        ))}
+                      </div>
+                    ) : "")}
+                  </div>
+                </motion.div>
               ))}
-            </div>
+            </AnimatePresence>
+
+            {/* Tool statuses */}
+            <AnimatePresence>
+              {toolStatuses.length > 0 && streaming && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex justify-start"
+                >
+                  <div className="flex flex-col gap-1.5 rounded-2xl bg-ocean/[0.02] border border-ocean/[0.04] px-4 py-3">
+                    {toolStatuses.map((ts) => (
+                      <motion.div
+                        key={ts.tool}
+                        initial={{ opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-2 text-xs text-ocean/50"
+                      >
+                        {ts.status === "running" ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-blush-dark" />
+                        ) : (
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                            <Check className="h-3 w-3 text-green-500" />
+                          </motion.div>
+                        )}
+                        <span>{TOOL_LABELS[ts.tool] || ts.tool}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
-
-        {messages.map((msg, i) => (
-          <div key={`${msg.role}-${i}`} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-              msg.role === "user"
-                ? "bg-ocean text-white"
-                : "glass text-ocean"
-            }`}>
-              {msg.content || (streaming && i === messages.length - 1 ? "..." : "")}
-            </div>
-          </div>
-        ))}
-
-        {/* Tool statuses */}
-        {toolStatuses.length > 0 && streaming && (
-          <div className="flex justify-start">
-            <div className="flex flex-col gap-1.5 px-4 py-2">
-              {toolStatuses.map((ts) => (
-                <div key={ts.tool} className="flex items-center gap-2 text-xs text-ocean/50">
-                  {ts.status === "running" ? (
-                    <Loader2 className="h-3 w-3 animate-spin text-ocean/40" />
-                  ) : (
-                    <Check className="h-3 w-3 text-green-500" />
-                  )}
-                  <span>{TOOL_LABELS[ts.tool] || ts.tool}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="flex gap-2 pt-4 border-t border-ocean/[0.06]">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          placeholder="Deine Frage..."
-          rows={1}
-          className="flex-1 rounded-xl border border-ocean/10 bg-warm-white px-4 py-3 text-sm text-ocean placeholder:text-ocean/25 focus:outline-none focus:border-blush transition-colors resize-none"
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || streaming}
-          className="rounded-xl bg-ocean px-4 py-3 text-white hover:bg-ocean-light transition-colors disabled:opacity-40 self-end"
-        >
-          {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </button>
-      </div>
+      {/* Input - only when messages exist */}
+      {hasMessages && (
+        <div className="shrink-0 pt-3">
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSubmit={handleSend}
+            isStreaming={streaming}
+            placeholder="Deine Frage..."
+          />
+        </div>
+      )}
     </div>
   );
 }

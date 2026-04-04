@@ -43,7 +43,7 @@ export default function PortalDashboard() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in-up">
       <div>
         <h1 className="text-2xl font-light text-ocean">
           Willkommen{clientName ? `, ${clientName}` : ""}
@@ -51,14 +51,16 @@ export default function PortalDashboard() {
         <p className="text-sm text-ocean/50 mt-1">Dein Content-Dashboard</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 stagger">
         {cards.map(card => (
           <Link
             key={card.href}
             href={card.href}
-            className="glass rounded-2xl p-6 hover:shadow-md transition-all group"
+            className="glass rounded-2xl p-6 card-hover group"
           >
-            <card.icon className={`h-8 w-8 ${card.color} mb-3 group-hover:scale-110 transition-transform`} />
+            <div className="h-10 w-10 rounded-xl bg-ocean/[0.04] flex items-center justify-center mb-3 group-hover:bg-ocean/[0.07] transition-colors">
+              <card.icon className={`h-5 w-5 ${card.color} group-hover:scale-110 transition-transform`} />
+            </div>
             <h3 className="text-sm font-medium text-ocean">{card.title}</h3>
             <p className="text-xs text-ocean/50 mt-1">{card.description}</p>
           </Link>

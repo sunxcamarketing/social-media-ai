@@ -3,13 +3,13 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Sparkles,
-  Send,
-  Square,
   Trash2,
   Loader2,
   Check,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { MarkdownContent } from "@/components/markdown-content";
+import { ChatInput } from "@/components/ui/chat-input";
 
 interface ChatMessage {
   id: string;
@@ -31,7 +31,16 @@ const TOOL_LABELS: Record<string, string> = {
   load_audit: "Lade Audit",
   generate_script: "Generiere Skript",
   check_competitors: "Analysiere Wettbewerber",
+  save_idea: "Speichere Idee",
+  update_profile: "Aktualisiere Profil",
 };
+
+const SUGGESTIONS = [
+  "Zeig mir alle Clients",
+  "Was sagt Elliotts Audit?",
+  "Schreib ein Skript für Elliott über Trading-Fehler",
+  "Welche Hooks performen am besten?",
+];
 
 let msgCounter = 0;
 function msgId() { return `msg-${Date.now()}-${++msgCounter}`; }
@@ -42,7 +51,6 @@ export default function DashboardPage() {
   const [streaming, setStreaming] = useState(false);
   const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -50,13 +58,6 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [messages, toolStatuses, scrollToBottom]);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
-    }
-  }, [input]);
 
   async function handleSend() {
     const text = input.trim();
@@ -118,7 +119,6 @@ export default function DashboardPage() {
                 return [...prev, { tool: data.tool, status: data.status }];
               });
             } else if (data.text) {
-              // Legacy format compatibility
               fullText += data.text;
               setMessages(prev => {
                 const updated = [...prev];
@@ -156,9 +156,6 @@ export default function DashboardPage() {
 
   function handleStop() { abortRef.current?.abort(); }
   function handleClear() { if (streaming) handleStop(); setMessages([]); setToolStatuses([]); }
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  }
 
   const hasMessages = messages.length > 0;
 
@@ -170,104 +167,142 @@ export default function DashboardPage() {
           <Sparkles className="h-4 w-4 text-ivory" />
           <span className="text-sm font-medium text-ocean">Content Agent</span>
         </div>
-        {hasMessages && (
-          <button onClick={handleClear} className="flex items-center gap-1 text-[11px] text-ocean/30 hover:text-ocean/60 transition-colors">
-            <Trash2 className="h-3 w-3" /> Chat leeren
-          </button>
-        )}
+        <AnimatePresence>
+          {hasMessages && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              onClick={handleClear}
+              className="flex items-center gap-1 text-[11px] text-ocean/30 hover:text-ocean/60 transition-colors"
+            >
+              <Trash2 className="h-3 w-3" /> Chat leeren
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
-        {!hasMessages && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="h-14 w-14 rounded-2xl bg-ocean/[0.04] flex items-center justify-center mb-5">
-              <Sparkles className="h-7 w-7 text-ocean/15" />
-            </div>
-            <p className="text-base font-medium text-ocean mb-1">Wie kann ich dir helfen?</p>
-            <p className="text-sm text-ocean/50 max-w-md mb-6">
-              Ich habe Zugriff auf alle Clients, Strategien, Skripte, Audits und Performance-Daten.
-            </p>
-            <div className="flex flex-wrap gap-2 justify-center max-w-lg">
-              {[
-                "Zeig mir alle Clients",
-                "Was sagt Elliotts Audit?",
-                "Schreib ein Skript für Elliott über Trading-Fehler",
-                "Welche Hooks performen am besten?",
-              ].map(s => (
-                <button key={s} onClick={() => { setInput(s); textareaRef.current?.focus(); }}
-                  className="rounded-xl border border-ocean/[0.06] bg-ocean/[0.02] px-3 py-2 text-xs text-ocean/50 hover:text-ocean hover:border-ocean/[0.12] hover:bg-ocean/[0.04] transition-all"
-                >{s}</button>
-              ))}
+      {/* Messages area */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {!hasMessages ? (
+          /* Empty state - centered with input */
+          <div className="flex flex-col items-center justify-center h-full px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center mb-8"
+            >
+              <div className="h-16 w-16 rounded-2xl bg-ocean/[0.04] flex items-center justify-center mb-5 mx-auto">
+                <Sparkles className="h-8 w-8 text-ocean/15" />
+              </div>
+              <p className="text-lg font-medium text-ocean mb-1">Wie kann ich dir helfen?</p>
+              <p className="text-sm text-ocean/45 max-w-md">
+                Ich habe Zugriff auf alle Clients, Strategien, Skripte, Audits und Performance-Daten.
+              </p>
+            </motion.div>
+
+            <div className="w-full max-w-2xl">
+              <ChatInput
+                value={input}
+                onChange={setInput}
+                onSubmit={handleSend}
+                onStop={handleStop}
+                isStreaming={streaming}
+                placeholder="Frag mich etwas..."
+                suggestions={SUGGESTIONS}
+                onSuggestionClick={(s) => setInput(s)}
+              />
             </div>
           </div>
-        )}
-
-        {hasMessages && (
-          <div className="max-w-3xl mx-auto space-y-4">
-            {messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                  msg.role === "user"
-                    ? "bg-ocean text-white text-sm"
-                    : "glass border border-ocean/[0.06]"
-                }`}>
-                  {msg.role === "user" ? (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  ) : msg.content ? (
-                    <MarkdownContent content={msg.content} />
-                  ) : (
-                    <div className="flex items-center gap-2 py-1">
-                      <div className="h-1.5 w-1.5 rounded-full bg-ocean/30 animate-pulse" />
-                      <div className="h-1.5 w-1.5 rounded-full bg-ocean/30 animate-pulse" style={{ animationDelay: "0.2s" }} />
-                      <div className="h-1.5 w-1.5 rounded-full bg-ocean/30 animate-pulse" style={{ animationDelay: "0.4s" }} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+        ) : (
+          /* Messages */
+          <div className="max-w-3xl mx-auto px-6 py-6 space-y-5">
+            <AnimatePresence initial={false}>
+              {messages.map(msg => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div className={`max-w-[85%] ${
+                    msg.role === "user"
+                      ? "rounded-3xl rounded-br-lg bg-ocean text-white text-sm px-5 py-3 shadow-sm"
+                      : "rounded-3xl rounded-bl-lg bg-white border border-ocean/[0.06] px-5 py-3 shadow-[0_1px_8px_rgba(32,35,69,0.04)]"
+                  }`}>
+                    {msg.role === "user" ? (
+                      <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    ) : msg.content ? (
+                      <MarkdownContent content={msg.content} />
+                    ) : (
+                      <div className="flex items-center gap-1.5 py-1 px-1">
+                        {[0, 1, 2].map(i => (
+                          <motion.div
+                            key={i}
+                            className="h-1.5 w-1.5 rounded-full bg-ocean/25"
+                            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
             {/* Tool statuses */}
-            {toolStatuses.length > 0 && streaming && (
-              <div className="flex justify-start">
-                <div className="flex flex-col gap-1.5 px-4 py-2">
-                  {toolStatuses.map((ts) => (
-                    <div key={ts.tool} className="flex items-center gap-2 text-xs text-ocean/50">
-                      {ts.status === "running" ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-ocean/40" />
-                      ) : (
-                        <Check className="h-3 w-3 text-green-500" />
-                      )}
-                      <span>{TOOL_LABELS[ts.tool] || ts.tool}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <AnimatePresence>
+              {toolStatuses.length > 0 && streaming && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="flex justify-start"
+                >
+                  <div className="flex flex-col gap-1.5 rounded-2xl bg-ocean/[0.02] border border-ocean/[0.04] px-4 py-3">
+                    {toolStatuses.map((ts) => (
+                      <motion.div
+                        key={ts.tool}
+                        initial={{ opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-2 text-xs text-ocean/50"
+                      >
+                        {ts.status === "running" ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-blush-dark" />
+                        ) : (
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                            <Check className="h-3 w-3 text-green-500" />
+                          </motion.div>
+                        )}
+                        <span>{TOOL_LABELS[ts.tool] || ts.tool}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
 
-      {/* Input */}
-      <div className="shrink-0 border-t border-ocean/[0.06] px-6 pt-4 pb-10 bg-white">
-        <div className="max-w-3xl mx-auto flex items-end gap-3">
-          <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
-            placeholder="Nachricht schreiben..." disabled={streaming} rows={1}
-            className="flex-1 resize-none rounded-xl border border-ocean/[0.08] bg-warm-white px-4 py-2.5 text-sm text-ocean placeholder:text-ocean/25 focus:outline-none focus:border-blush disabled:opacity-50 transition-colors"
-          />
-          {streaming ? (
-            <button onClick={handleStop} className="shrink-0 h-10 w-10 rounded-xl bg-ocean/10 hover:bg-ocean/20 flex items-center justify-center transition-colors">
-              <Square className="h-4 w-4 text-ocean fill-ocean" />
-            </button>
-          ) : (
-            <button onClick={handleSend} disabled={!input.trim()}
-              className="shrink-0 h-10 w-10 rounded-xl bg-ocean hover:bg-ocean-light disabled:opacity-30 flex items-center justify-center transition-colors"
-            >
-              <Send className="h-4 w-4 text-white" />
-            </button>
-          )}
+      {/* Input - only shown when there are messages (empty state has its own input) */}
+      {hasMessages && (
+        <div className="shrink-0 px-6 pt-3 pb-6 bg-gradient-to-t from-white via-white to-white/80">
+          <div className="max-w-3xl mx-auto">
+            <ChatInput
+              value={input}
+              onChange={setInput}
+              onSubmit={handleSend}
+              onStop={handleStop}
+              isStreaming={streaming}
+              placeholder="Nachricht schreiben..."
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

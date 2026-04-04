@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--project-ref", "jtkcitvfopwgvjjkzwub"],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      }
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    },
+    "google-drive": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-gdrive"],
+      "env": {
+        "GOOGLE_SERVICE_ACCOUNT_KEY": "${GOOGLE_SERVICE_ACCOUNT_KEY}"
+      }
+    }
+  }
+}

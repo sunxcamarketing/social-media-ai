@@ -45,8 +45,9 @@ export const TOPIC_SELECTION_TOOL = (days: string[], pillarNames: string[], cont
             title: { type: "string", description: "Konkreter Arbeitstitel (max 10 Wörter). SPEZIFISCH, nicht generisch." },
             description: { type: "string", description: "Kernaussage in 1 Satz — was lernt/fühlt der Zuschauer?" },
             reasoning: { type: "string", description: "Welche konkreten Daten aus Audit/Performance stützen diese Wahl? 1-2 Sätze." },
+            trendRef: { type: "string", description: "Welcher Trend aus den Trend-Daten war die Basis? (Trend-Topic zitieren)" },
           },
-          required: ["day", "pillar", "contentType", "format", "title", "description", "reasoning"],
+          required: ["day", "pillar", "contentType", "format", "title", "description", "reasoning", "trendRef"],
         },
         minItems: days.length,
         maxItems: days.length,
@@ -295,7 +296,7 @@ export const SCRIPT_STRUCTURE_TOOL = {
 
 export const TREND_RESEARCH_TOOL = {
   name: "submit_trends",
-  description: "Die identifizierten Trend-Themen einreichen",
+  description: "Die aus echten Suchergebnissen synthetisierten Trend-Themen einreichen",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -306,13 +307,24 @@ export const TREND_RESEARCH_TOOL = {
           properties: {
             topic: { type: "string", description: "Konkretes Thema (max 10 Wörter)" },
             angle: { type: "string", description: "Spezifischer Winkel/Perspektive für ein Video" },
-            whyNow: { type: "string", description: "Warum ist das JETZT relevant? (1 Satz)" },
+            whyNow: { type: "string", description: "Warum ist das JETZT relevant? Referenziere konkrete Suchergebnisse. (1-2 Sätze)" },
             hookIdea: { type: "string", description: "Beispiel-Hook der dazu passen würde (1 Satz)" },
+            sourceUrls: {
+              type: "array" as const,
+              items: { type: "string" },
+              minItems: 1,
+              description: "URLs aus den Suchergebnissen die diesen Trend belegen (mindestens 1)",
+            },
+            category: {
+              type: "string" as const,
+              enum: ["search_intent", "viral", "news", "pain_point", "pillar", "seasonal"],
+              description: "Art des Trends",
+            },
           },
-          required: ["topic", "angle", "whyNow", "hookIdea"],
+          required: ["topic", "angle", "whyNow", "hookIdea", "sourceUrls", "category"],
         },
-        minItems: 5,
-        maxItems: 8,
+        minItems: 6,
+        maxItems: 12,
       },
     },
     required: ["trends"],
@@ -764,7 +776,7 @@ const CLIENT_NAME_PROP = {
 
 export const AGENT_LIST_CLIENTS_TOOL = {
   name: "list_clients",
-  description: "Liste alle Clients mit Name, Nische und Instagram. Nur für Admins.",
+  description: "Liste alle Clients mit Name, Nische und Social-Media-Profilen. Nur für Admins.",
   input_schema: { type: "object" as const, properties: {}, required: [] },
 };
 
@@ -825,7 +837,7 @@ export const AGENT_LOAD_AUDIT_TOOL = {
 
 export const AGENT_GENERATE_SCRIPT_TOOL = {
   name: "generate_script",
-  description: "Generiere ein neues Skript (kurz + lang) basierend auf einem Thema. IMMER vorher load_voice_profile aufrufen.",
+  description: "Generiere ein neues Skript (kurz + lang) mit dem Script Agent. Der Agent denkt über den besten Winkel nach, craftet Hooks, schreibt und reviewt das Skript selbst. Übergib conversation_context wenn du im Chat kreative Ideen oder Winkel erarbeitet hast.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -836,6 +848,7 @@ export const AGENT_GENERATE_SCRIPT_TOOL = {
       contentType: { type: "string" as const, description: "Content-Typ (z.B. Edutainment, Storytelling)" },
       format: { type: "string" as const, description: "Format (z.B. Talking Head, Listicle)" },
       tone: { type: "string" as const, description: "Optional: Gewünschte Tonalität (provokant, ruhig, motivierend)" },
+      conversation_context: { type: "string" as const, description: "Kreative Ideen, Winkel oder Analysen aus dem bisherigen Chat-Gespräch. Der Script Agent nutzt diese als Ausgangspunkt." },
     },
     required: ["title", "description"] as string[],
   },
@@ -851,5 +864,79 @@ export const AGENT_CHECK_COMPETITORS_TOOL = {
       limit: { type: "number" as const, description: "Maximale Anzahl Videos (default 10)" },
     },
     required: [] as string[],
+  },
+};
+
+export const AGENT_CHECK_LEARNINGS_TOOL = {
+  name: "check_learnings",
+  description: "Lade datengestützte Erkenntnisse: welche Hook-Patterns, Formate und Pillars performen gut oder schlecht. Nur statistisch verifizierte Insights.",
+  input_schema: {
+    type: "object" as const,
+    properties: { client_name: CLIENT_NAME_PROP },
+    required: [] as string[],
+  },
+};
+
+export const AGENT_SEARCH_WEB_TOOL = {
+  name: "search_web",
+  description: "Durchsuche das Web nach aktuellen Informationen. Nutze dies für: aktuelle Trends, News, saisonale Events, Branchenentwicklungen, Wettbewerber-News.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      query: { type: "string" as const, description: "Suchbegriff — spezifisch und auf Deutsch" },
+      market: { type: "string" as const, description: "Markt: de-DE (default), de-AT, de-CH" },
+    },
+    required: ["query"] as string[],
+  },
+};
+
+export const AGENT_RESEARCH_TRENDS_TOOL = {
+  name: "research_trends",
+  description: "Recherchiere aktuelle Nischen-Trends aus dem Web. Liefert Ergebnisse aus mehreren Suchanfragen. Nutze dies wenn der Client nach Content-Ideen, aktuellen Themen oder Trends fragt.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      niche: { type: "string" as const, description: "Nische (z.B. 'Trading', 'Fitness', 'Business Coaching'). Wird automatisch aus dem Client-Profil geladen wenn nicht angegeben." },
+    },
+    required: [] as string[],
+  },
+};
+
+export const AGENT_SAVE_IDEA_TOOL = {
+  name: "save_idea",
+  description: "Speichere eine Video-Idee in die Ideen-Liste des Clients. Nutze das wenn der User eine gute Idee bestätigt oder explizit sagt 'speicher das'.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      title: { type: "string" as const, description: "Titel der Video-Idee (kurz, max 10 Wörter)" },
+      description: { type: "string" as const, description: "Beschreibung: Was soll das Video behandeln, welcher Angle?" },
+      content_type: { type: "string" as const, description: "Optional: Content-Typ (z.B. Education, Storytelling, Authority)" },
+    },
+    required: ["title", "description"] as string[],
+  },
+};
+
+export const AGENT_UPDATE_PROFILE_TOOL = {
+  name: "update_profile",
+  description: "Aktualisiere ein bestimmtes Feld im Client-Profil. Nutze das wenn der Client neue Infos über sich teilt und will dass du sie im Profil ergänzt.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      field_name: {
+        type: "string" as const,
+        description: "Welches Feld aktualisiert werden soll",
+        enum: [
+          "businessContext", "professionalBackground", "keyAchievements",
+          "brandFeeling", "brandProblem", "brandingStatement",
+          "humanDifferentiation", "providerRole", "providerBeliefs",
+          "providerStrengths", "authenticityZone",
+        ],
+      },
+      value: { type: "string" as const, description: "Neuer Wert für das Feld" },
+    },
+    required: ["field_name", "value"] as string[],
   },
 };

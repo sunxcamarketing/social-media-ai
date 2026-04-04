@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles, Lightbulb } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -50,11 +50,12 @@ export function AppSidebar() {
   });
 
   const clientTabs = [
-    { title: t("nav.context"),   href: "information", icon: BookOpen  },
-    { title: t("nav.strategy"),  href: "strategy",    icon: BarChart2 },
-    { title: "Audit",             href: "analyse",     icon: Search    },
-    { title: t("nav.posts"),     href: "scripts",     icon: FileText  },
-    { title: "Research",          href: "research",    icon: Search    },
+    { title: t("nav.context"),   href: "information", icon: BookOpen   },
+    { title: t("nav.strategy"),  href: "strategy",    icon: BarChart2  },
+    { title: "Ideen",             href: "ideas",       icon: Lightbulb  },
+    { title: "Audit",             href: "analyse",     icon: Search     },
+    { title: t("nav.posts"),     href: "scripts",     icon: FileText   },
+    { title: "Research",          href: "research",    icon: Search     },
   ];
 
   const clientMatch = pathname.match(/^\/clients\/([^/]+)/);
@@ -138,7 +139,7 @@ export function AppSidebar() {
               <span className="text-[10px] font-medium uppercase tracking-widest text-ocean/60">{t("nav.clients")}</span>
               <button
                 onClick={() => setNewOpen(true)}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-ocean/65 hover:text-ocean hover:bg-blush-light/50 transition-colors"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-ocean/55 hover:text-ocean hover:bg-ocean/[0.04] transition-all duration-200 btn-press"
               >
                 <Plus className="h-3 w-3" /> {t("nav.new")}
               </button>
@@ -152,13 +153,13 @@ export function AppSidebar() {
                   <div key={client.id} className="group relative">
                     <Link
                       href={`/clients/${client.id}/information`}
-                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ${
                         isActive
-                          ? "bg-blush-light/60 text-ocean font-medium"
-                          : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                          ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                          : "text-ocean/65 hover:text-ocean hover:bg-ocean/[0.03]"
                       }`}
                     >
-                      <div className={`h-2 w-2 rounded-full shrink-0 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
+                      <div className={`h-2 w-2 rounded-full shrink-0 transition-colors duration-200 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
                       <span className="truncate">{displayName}</span>
                     </Link>
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
@@ -188,10 +189,10 @@ export function AppSidebar() {
             <div className="space-y-0.5">
               <Link
                 href="/transcribe"
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ${
                   pathname.startsWith("/transcribe")
-                    ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                    ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                    : "text-ocean/65 hover:text-ocean hover:bg-ocean/[0.03]"
                 }`}
               >
                 <Mic className="h-3.5 w-3.5 shrink-0" />
@@ -199,10 +200,10 @@ export function AppSidebar() {
               </Link>
               <Link
                 href="/viral-script"
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ${
                   pathname.startsWith("/viral-script")
-                    ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                    ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                    : "text-ocean/65 hover:text-ocean hover:bg-ocean/[0.03]"
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -210,10 +211,10 @@ export function AppSidebar() {
               </Link>
               <Link
                 href="/viral-builder"
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ${
                   pathname.startsWith("/viral-builder")
-                    ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                    ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                    : "text-ocean/65 hover:text-ocean hover:bg-ocean/[0.03]"
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -221,10 +222,10 @@ export function AppSidebar() {
               </Link>
               <Link
                 href="/analyse"
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ${
                   pathname.startsWith("/analyse")
-                    ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                    ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                    : "text-ocean/65 hover:text-ocean hover:bg-ocean/[0.03]"
                 }`}
               >
                 <Search className="h-3.5 w-3.5 shrink-0" />
@@ -256,10 +257,10 @@ export function AppSidebar() {
                       <Link
                         key={tab.href}
                         href={`/clients/${activeClientId}/${tab.href}`}
-                        className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-colors ${
+                        className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ${
                           isActive
-                            ? "bg-blush-light/60 text-ocean font-medium"
-                            : "text-ocean/70 hover:text-ocean hover:bg-warm-white"
+                            ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                            : "text-ocean/65 hover:text-ocean hover:bg-ocean/[0.03]"
                         }`}
                       >
                         <tab.icon className="h-3.5 w-3.5 shrink-0" />
@@ -334,7 +335,7 @@ export function AppSidebar() {
                 placeholder={t("newClient.namePlaceholder")}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="h-10 rounded-xl bg-warm-white border-ocean/10 text-ocean placeholder:text-ocean/25 focus:border-blush"
+                className="h-10 rounded-xl bg-warm-white border-ocean/10 text-ocean placeholder:text-ocean/25 input-glow focus:outline-none transition-all duration-200"
               />
             </div>
 
@@ -346,7 +347,7 @@ export function AppSidebar() {
                   placeholder={t("newClient.igPlaceholder")}
                   value={form.instagram}
                   onChange={(e) => setForm({ ...form, instagram: e.target.value })}
-                  className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
+                  className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 input-glow focus:outline-none transition-all duration-200"
                 />
               </div>
             </div>
@@ -359,7 +360,7 @@ export function AppSidebar() {
                   placeholder="www.example.com"
                   value={form.website}
                   onChange={(e) => setForm({ ...form, website: e.target.value })}
-                  className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
+                  className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 input-glow focus:outline-none transition-all duration-200"
                 />
               </div>
             </div>
@@ -373,7 +374,7 @@ export function AppSidebar() {
                     placeholder="@handle"
                     value={form.tiktok}
                     onChange={(e) => setForm({ ...form, tiktok: e.target.value })}
-                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 input-glow focus:outline-none transition-all duration-200"
                   />
                 </div>
               </div>
@@ -385,7 +386,7 @@ export function AppSidebar() {
                     placeholder="@channel"
                     value={form.youtube}
                     onChange={(e) => setForm({ ...form, youtube: e.target.value })}
-                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 input-glow focus:outline-none transition-all duration-200"
                   />
                 </div>
               </div>
@@ -397,7 +398,7 @@ export function AppSidebar() {
                     placeholder="linkedin.com/in/..."
                     value={form.linkedin}
                     onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
-                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 input-glow focus:outline-none transition-all duration-200"
                   />
                 </div>
               </div>
@@ -409,7 +410,7 @@ export function AppSidebar() {
                     placeholder="@handle"
                     value={form.twitter}
                     onChange={(e) => setForm({ ...form, twitter: e.target.value })}
-                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 focus:border-blush"
+                    className="h-10 rounded-xl bg-warm-white border-ocean/10 pl-9 text-ocean placeholder:text-ocean/25 input-glow focus:outline-none transition-all duration-200"
                   />
                 </div>
               </div>
@@ -424,7 +425,7 @@ export function AppSidebar() {
             <Button
               onClick={createClient}
               disabled={!form.name.trim() || creating}
-              className="w-full rounded-full h-10 bg-ocean hover:bg-ocean-light text-white font-medium tracking-wide border-0 mt-1 transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20"
+              className="w-full rounded-full h-10 bg-ocean hover:bg-ocean-light text-white font-medium tracking-wide border-0 mt-1 transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20 btn-press"
             >
               {creating ? t("newClient.creating") : hasLinks ? t("newClient.createAndAnalyze") : t("newClient.create")}
             </Button>

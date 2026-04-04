@@ -22,6 +22,9 @@ npm run dev
 - `APIFY_API_TOKEN` — Apify Instagram scraper
 - `GEMINI_API_KEY` — Google Gemini video analysis
 - `ANTHROPIC_API_KEY` — Claude concept generation
+- `BRAVE_API_KEY` — Brave Search API for live trend research
+- `JOB_SECRET` — Auth token for background research jobs
+- `GOOGLE_SERVICE_ACCOUNT_KEY` — Google Drive integration (base64 JSON)
 
 ---
 
@@ -59,30 +62,50 @@ Key endpoint: `POST /api/configs/[id]/generate-strategy` (SSE stream)
 
 ### Script Generation Pipeline (Weekly) — Multi-Step SSE Pipeline
 
-1. **Load Context** — Client profile, brand positioning, strategy, audit, performance, competitors
+1. **Load Context** — Client profile, brand positioning, strategy, audit, performance, competitors, platform config
 2. **Voice Profile** — Extract/cache structured voice profile from training transcripts
-3. **Trend Research** — Identify fresh niche-specific trends to prevent closed-loop recycling
-4. **Topic Selection** — Select N strategic topics based on audit + performance + trends
+3. **Research** — Load pre-computed trend snapshots + client learnings; live Brave Search as primary, snapshot as fallback
+4. **Topic Selection** — Select N strategic topics based on audit + performance + trends + learnings
 5. **Hook Generation** — N parallel calls, each producing 3 hook options and selecting the best
 6. **Body Writing** — N parallel calls, each writing body + CTA with voice matching
 7. **Quality Review** — Single call reviewing all scripts for AI language, voice match, week coherence
+8. **Background Trigger** — Fire-and-forget research cycle for next run
+
+Pipeline steps extracted into `src/lib/pipelines/weekly-steps.ts` — route is a ~95-line orchestrator.
 
 Key endpoint: `POST /api/configs/[id]/generate-week-scripts` (SSE stream)
 Voice profile: `POST /api/configs/[id]/generate-voice-profile`
+
+### Viral Script Builder — Psychology-First Pipeline
+
+Adapts viral reference videos by extracting PSYCHOLOGICAL MECHANICS (not structure). Produces original-feeling scripts that use the same triggers.
+
+1. **Load Context** — Voice profile, script structure, audit
+2. **Reference Video** — Scrape via Apify + analyze with Gemini (or use existing DB video)
+3. **Psychology Extraction** — Extract hook-trigger, retention-mechanic, share-trigger, opinion-angle, reward-mechanic
+4. **Hook Generation** — 3 hook variants using same psychological trigger (not word-swapping)
+5. **Script Adaptation** — New script using same psychology, different content (short + long versions)
+6. **Critic Agent Loop** — Up to 3 rounds: critic evaluates creative quality + psychological equivalence → writer revises
+7. **Production Notes** — Shot list for filming
+
+Key endpoint: `POST /api/viral-script` (SSE stream)
 
 ### Content Agent (Portal Chat)
 
 AI-Agent im Client-Portal mit Tool-Zugriff. Nutzt Claude's native `tool_use` für autonome Datenabfragen und Skript-Generierung. Der Agent entscheidet selbstständig welche Tools er aufruft basierend auf der Nachricht.
 
-**Tools:** `load_client_context`, `load_voice_profile`, `search_scripts`, `check_performance`, `load_audit`, `generate_script`, `check_competitors`
+**Tools (12):** `load_client_context`, `load_voice_profile`, `search_scripts`, `check_performance`, `load_audit`, `generate_script`, `check_competitors`, `check_learnings`, `search_web`, `research_trends`, `save_idea`, `update_profile` (+ admin-only: `list_clients`)
 
 - Agent-Loop: Non-streaming tool iterations + SSE text streaming for final response
 - Tool implementations: `src/lib/agent-tools.ts`
 - Agent prompt: `prompts/agents/content-agent.md`
 - Max 10 tool-call iterations per turn (safety limit)
 - Scripts always generated in short (30-40s) + long (60+s) versions
+- `search_web` uses Brave Search API for live web data
+- `research_trends` runs multi-query niche trend search
+- `check_learnings` returns confidence-scored performance insights (N≥8 minimum)
 
-Key endpoint: `POST /api/configs/[id]/chat` (SSE stream with agent loop)
+Key endpoint: `POST /api/chat` (SSE stream with agent loop)
 
 ---
 
@@ -121,9 +144,9 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 
 | Agent | Pipeline Step | Key Placeholders |
 |-------|---------------|------------------|
-| `topic-selection.md` | Weekly: Topic Selection | `{{num_days}}`, auto: themen-spezifizitaet, audit-nutzung, anti-muster |
-| `trend-research.md` | Weekly: Trend Research | `{{niche}}`, `{{current_date}}`, `{{month_label}}` |
-| `hook-generation.md` | Weekly: Hook Generation | auto: hook-regeln, hook-muster, hook-framework, verboten-ai-sprache, natuerliche-satzstruktur |
+| `topic-selection.md` | Weekly: Topic Selection | `{{num_days}}`, `{{platform_context}}`, auto: themen-spezifizitaet, audit-nutzung, anti-muster |
+| `trend-research.md` | Weekly: Trend Research | `{{niche}}`, `{{current_date}}`, `{{month_label}}`, `{{platform_context}}` |
+| `hook-generation.md` | Weekly: Hook Generation | `{{platform_context}}`, auto: hook-regeln, hook-muster, hook-framework, verboten-ai-sprache, natuerliche-satzstruktur |
 | `body-writing.md` | Weekly: Body Writing | `{{laenge_regeln}}`, `{{stimm_matching}}`, `{{skript_struktur}}`, `{{skript_beispiele}}`, auto: rolle-skriptschreiber, hook-framework, body-regeln, cta-regeln, konkretion-regeln, sprach-stil, verboten-ai-sprache, anti-ai-checkliste, anti-monotone-formatierung, natuerliche-satzstruktur |
 | `quality-review.md` | Weekly: Quality Review | auto: verboten-ai-sprache, anti-ai-checkliste, anti-monotone-formatierung, natuerliche-satzstruktur |
 | `voice-profile.md` | Voice Profile Extraction | (no placeholders — standalone) |
@@ -131,10 +154,13 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 | `strategy-analysis.md` | Strategy: Data Analysis | auto: audit-nutzung |
 | `strategy-creation.md` | Strategy: Pillar Creation | `{{posts_per_week}}`, `{{active_days}}`, `{{content_types}}`, `{{formats}}`, auto: themen-spezifizitaet, konkretion-regeln |
 | `strategy-review.md` | Strategy: Review | (no placeholders — standalone) |
-| `single-script.md` | Single Script (main flow) | `{{laenge_regeln}}`, auto: rolle-skriptschreiber, titel-regeln, hook-regeln, body-regeln, cta-regeln, konkretion-regeln, abwechslung-regeln, sprach-stil, verboten-ai-sprache, anti-ai-checkliste, hook-muster, anti-muster, anti-monotone-formatierung, natuerliche-satzstruktur |
-| `topic-script.md` | Single Script (topic override) | `{{laenge_regeln}}`, auto: sprach-stil, verboten-ai-sprache, konkretion-regeln, anti-monotone-formatierung, natuerliche-satzstruktur |
-| `topic-plan.md` | Topic Plan Generation | auto: audit-nutzung, anti-muster |
-| `content-agent.md` | Content Agent (Portal Chat) | auto: hook-regeln, hook-muster, body-regeln, cta-regeln, konkretion-regeln, storytelling-formel, verboten-ai-sprache, sprach-stil, natuerliche-satzstruktur, anti-monotone-formatierung |
+| `content-agent.md` | Content Agent (Portal Chat) | `{{platform_context}}`, auto: hook-regeln, hook-muster, body-regeln, cta-regeln, konkretion-regeln, storytelling-formel, verboten-ai-sprache, sprach-stil, natuerliche-satzstruktur, anti-monotone-formatierung |
+| `script-agent.md` | Script Agent (nested in chat) | auto: rolle-skriptschreiber, hook-regeln, body-regeln, cta-regeln, konkretion-regeln, verboten-ai-sprache, sprach-stil, natuerliche-satzstruktur, anti-monotone-formatierung |
+| `viral-script-structure.md` | Viral: Psychology Extraction | (standalone) |
+| `viral-hook-generation.md` | Viral: Hook Generation | `{{platform_context}}` |
+| `viral-script-adapt.md` | Viral: Script Adaptation | auto: rolle-skriptschreiber, verboten-ai-sprache, natuerliche-satzstruktur, anti-monotone-formatierung, stimm-matching |
+| `viral-script-critic.md` | Viral: Quality Critique | `{{platform_context}}`, auto: verboten-ai-sprache |
+| `viral-script-production.md` | Viral: Production Notes | `{{platform_context}}` |
 
 ### Foundational Sub-Prompts (`prompts/foundational/`)
 
@@ -231,31 +257,41 @@ To change how scripts are generated:
 │   │   ├── no-access/                     # No access page
 │   │   └── api/                           # API routes
 │   │       ├── auth/                      # Auth routes (invite, me, impersonate)
-│   │       └── configs/[id]/
-│   │           ├── generate-week-scripts/ # Weekly script pipeline (SSE)
-│   │           ├── generate-script/       # Single script generation
-│   │           ├── generate-strategy/     # Strategy pipeline (SSE)
-│   │           ├── generate-topic-plan/   # Topic plan generation
-│   │           ├── generate-voice-profile/# Voice profile extraction
-│   │           └── performance/           # Performance data
+│   │       ├── chat/                      # Content Agent chat (SSE)
+│   │       ├── configs/[id]/
+│   │       │   ├── generate-week-scripts/ # Weekly script pipeline (SSE)
+│   │       │   ├── generate-strategy/     # Strategy pipeline (SSE)
+│   │       │   ├── generate-voice-profile/# Voice profile extraction
+│   │       │   └── performance/           # Performance data
+│   │       ├── viral-script/              # Viral script builder (SSE)
+│   │       └── jobs/
+│   │           └── research-cycle/        # Background research orchestrator
 │   ├── lib/                               # Core logic
 │   │   ├── auth.ts                       # Auth helpers (getCurrentUser, requireAdmin, etc.)
 │   │   ├── pipeline.ts                   # Video analysis pipeline orchestration
+│   │   ├── pipelines/weekly-steps.ts     # Weekly pipeline steps (extracted)
 │   │   ├── voice-profile.ts              # Voice + script structure extraction
-│   │   ├── agent-tools.ts               # Content Agent tool implementations (7 tools)
+│   │   ├── agent-tools.ts               # Content Agent tool implementations (12 tools)
+│   │   ├── platforms.ts                  # Platform abstraction (IG, TikTok, LinkedIn)
+│   │   ├── intelligence.ts              # Intelligence snapshots CRUD + freshness
+│   │   ├── client-learnings.ts          # Client learnings with confidence scoring
+│   │   ├── brave-search.ts             # Brave Search API client
 │   │   ├── apify.ts                      # Apify scraper client
 │   │   ├── gemini.ts                     # Gemini video analysis client
 │   │   ├── claude.ts                     # Claude concept generation client
-│   │   ├── csv.ts                        # CSV read/write utilities
-│   │   │   (prompts moved to root — see prompts/ below)
+│   │   ├── csv.ts                        # Supabase CRUD utilities
+│   │   ├── jobs/                         # Background research jobs
+│   │   │   ├── competitor-refresh.ts    # Apify competitor scraping
+│   │   │   ├── trend-refresh.ts         # Brave Search trend research
+│   │   │   └── performance-feedback.ts  # Performance analysis + learning extraction
 │   │   └── types.ts                      # TypeScript interfaces
 │   └── components/                        # UI components (shadcn + custom)
 ├── prompts/                               # ── MODULAR PROMPT SYSTEM (top-level!) ──
 │   ├── index.ts                          # Re-exports: buildPrompt, tools, analysis
 │   ├── loader.ts                         # buildPrompt() — loads agent + resolves {{placeholders}}
-│   ├── tools.ts                          # All 10 Anthropic tool schemas
+│   ├── tools.ts                          # All Anthropic tool schemas (pipeline + agent)
 │   ├── analysis.ts                       # Gemini video analysis prompts
-│   ├── agents/                           # 13 agent templates (mother prompts)
+│   ├── agents/                           # Agent templates (mother prompts)
 │   │   ├── topic-selection.md
 │   │   ├── trend-research.md
 │   │   ├── hook-generation.md
@@ -263,13 +299,16 @@ To change how scripts are generated:
 │   │   ├── quality-review.md
 │   │   ├── voice-profile.md
 │   │   ├── script-structure.md
-│   │   ├── single-script.md
-│   │   ├── topic-script.md
-│   │   ├── topic-plan.md
 │   │   ├── strategy-analysis.md
 │   │   ├── strategy-creation.md
 │   │   ├── strategy-review.md
-│   │   └── content-agent.md              # Content Agent system prompt (tool instructions + rules)
+│   │   ├── content-agent.md              # Content Agent system prompt (12 tools + rules)
+│   │   ├── script-agent.md              # Script Agent (nested in chat generate_script tool)
+│   │   ├── viral-script-structure.md    # Viral: Psychology extraction
+│   │   ├── viral-hook-generation.md     # Viral: Hook generation
+│   │   ├── viral-script-adapt.md        # Viral: Script adaptation (psychology-first)
+│   │   ├── viral-script-critic.md       # Viral: Quality critique
+│   │   └── viral-script-production.md   # Viral: Production notes
 │   └── foundational/                     # 21 sub-prompts (single-concern .md)
 │       ├── rolle-skriptschreiber.md
 │       ├── hook-regeln.md

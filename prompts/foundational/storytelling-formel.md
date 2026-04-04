@@ -1,4 +1,4 @@
-# STORYTELLING-FORMEL FÜR INSTAGRAM REELS
+# STORYTELLING-FORMEL FÜR VIDEO-CONTENT
 
 ## Das Grundprinzip
 
@@ -16,7 +16,7 @@ Das ist die einfachste und mächtigste Storytelling-Struktur die existiert.
 
 Überraschung dauert 5 Sekunden. Spannung dauert 5 Minuten. Der Unterschied ist ob der Zuschauer weiß dass eine Bombe unter dem Tisch liegt.
 
-Auf Instagram übersetzt: zeig dem Zuschauer am Anfang wohin die Geschichte geht. Nicht die Auflösung, aber die Richtung. „Ich hab alles verloren und dann…" Der Zuschauer weiß jetzt: da kommt ein Comeback. Er schaut weiter weil er wissen will WIE.
+Auf Social Media übersetzt: zeig dem Zuschauer am Anfang wohin die Geschichte geht. Nicht die Auflösung, aber die Richtung. „Ich hab alles verloren und dann…" Der Zuschauer weiß jetzt: da kommt ein Comeback. Er schaut weiter weil er wissen will WIE.
 
 ## Der Zeigarnik-Effekt (Netflix-Prinzip)
 

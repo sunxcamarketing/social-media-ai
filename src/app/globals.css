@@ -126,4 +126,61 @@
   .section-label {
     @apply text-sm tracking-[0.2em] uppercase text-blush-dark font-medium;
   }
+
+}
+
+/* ── Premium Polish ─────────────────────────────────────── */
+/* Outside @layer so Tailwind v4 doesn't purge them         */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-in-up {
+  animation: fadeInUp 0.4s ease-out both;
+}
+
+.animate-in-up-sm {
+  animation: fadeInUp 0.3s ease-out both;
+}
+
+.animate-fade {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+.stagger > * { opacity: 0; animation: fadeInUp 0.35s ease-out forwards; }
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.09s; }
+.stagger > *:nth-child(4) { animation-delay: 0.12s; }
+.stagger > *:nth-child(5) { animation-delay: 0.15s; }
+.stagger > *:nth-child(6) { animation-delay: 0.18s; }
+.stagger > *:nth-child(7) { animation-delay: 0.21s; }
+.stagger > *:nth-child(8) { animation-delay: 0.24s; }
+
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(32, 35, 69, 0.08), 0 4px 10px -4px rgba(32, 35, 69, 0.04);
+}
+
+.btn-press {
+  transition: transform 0.15s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+.input-glow:focus {
+  border-color: #F2C8D2 !important;
+  box-shadow: 0 0 0 3px rgba(242, 200, 210, 0.15);
+  outline: none;
 }

@@ -19,7 +19,7 @@ export function ClientNav({ clientName }: { clientName?: string }) {
   const router = useRouter();
 
   return (
-    <div className="border-b border-ocean/[0.06] bg-white">
+    <div className="border-b border-ocean/[0.06] bg-white/80 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
         {/* Logo + Client Name */}
         <div className="flex items-center gap-4">
@@ -29,13 +29,13 @@ export function ClientNav({ clientName }: { clientName?: string }) {
           {clientName && (
             <>
               <div className="h-5 w-px bg-ocean/10" />
-              <span className="text-sm text-ocean/70 font-light">{clientName}</span>
+              <span className="text-sm text-ocean/60 font-light">{clientName}</span>
             </>
           )}
         </div>
 
         {/* Tabs */}
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-0.5">
           {tabs.map((tab) => {
             const isActive = tab.exact
               ? pathname === tab.href
@@ -44,13 +44,13 @@ export function ClientNav({ clientName }: { clientName?: string }) {
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 ${
                   isActive
-                    ? "bg-blush-light/60 text-ocean font-medium"
-                    : "text-ocean/50 hover:text-ocean hover:bg-warm-white"
+                    ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                    : "text-ocean/45 hover:text-ocean hover:bg-ocean/[0.03]"
                 }`}
               >
-                <tab.icon className="h-3.5 w-3.5" />
+                <tab.icon className={`h-3.5 w-3.5 transition-transform duration-200 ${isActive ? "" : "group-hover:scale-105"}`} />
                 {tab.title}
               </Link>
             );
@@ -64,7 +64,7 @@ export function ClientNav({ clientName }: { clientName?: string }) {
             router.push("/login");
             router.refresh();
           }}
-          className="flex items-center gap-1.5 text-xs text-ocean/50 hover:text-ocean transition-colors"
+          className="flex items-center gap-1.5 text-xs text-ocean/40 hover:text-ocean/70 transition-all duration-200 btn-press"
         >
           <LogOut className="h-3.5 w-3.5" />
           Abmelden

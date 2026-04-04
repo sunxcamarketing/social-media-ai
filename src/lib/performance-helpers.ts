@@ -1,6 +1,5 @@
 /**
- * Performance insight helpers — shared by generate-week-scripts, generate-script, generate-week, generate-topic-plan.
- * Replaces 6x duplicated parseInsights and 3x duplicated videoInsightBlock.
+ * Performance insight helpers — shared by generate-week-scripts, generate-strategy, and agent-tools.
  */
 
 import { safeJsonParse } from "./safe-json";

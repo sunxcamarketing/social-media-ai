@@ -61,7 +61,7 @@ export default function LoginPage() {
       <div className="absolute top-[-200px] right-[-100px] w-[500px] h-[500px] rounded-full bg-blush/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-150px] left-[-100px] w-[400px] h-[400px] rounded-full bg-wind/10 blur-[100px] pointer-events-none" />
 
-      <div className="w-full max-w-md relative">
+      <div className="w-full max-w-md relative animate-in-up">
         {/* Logo */}
         <div className="text-center mb-12">
           <h1 className="text-2xl font-light tracking-[0.3em] uppercase text-ocean">
@@ -73,12 +73,12 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl border border-ocean/5 p-8 md:p-10 shadow-sm">
+        <div className="bg-white rounded-2xl border border-ocean/5 p-8 md:p-10 shadow-[0_4px_24px_-4px_rgba(32,35,69,0.06)]">
           {/* Mode Tabs */}
           <div className="flex mb-6 bg-warm-white rounded-xl p-1">
             <button
               onClick={() => { setMode("password"); setError(""); setMagicSent(false); }}
-              className={`flex-1 py-2 text-sm rounded-lg transition-colors ${
+              className={`flex-1 py-2 text-sm rounded-lg transition-all duration-200 ${
                 mode === "password"
                   ? "bg-white text-ocean font-medium shadow-sm"
                   : "text-ocean/50 hover:text-ocean/70"
@@ -88,7 +88,7 @@ export default function LoginPage() {
             </button>
             <button
               onClick={() => { setMode("magic"); setError(""); setMagicSent(false); }}
-              className={`flex-1 py-2 text-sm rounded-lg transition-colors ${
+              className={`flex-1 py-2 text-sm rounded-lg transition-all duration-200 ${
                 mode === "magic"
                   ? "bg-white text-ocean font-medium shadow-sm"
                   : "text-ocean/50 hover:text-ocean/70"
@@ -132,7 +132,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="w-full rounded-xl border border-ocean/10 bg-warm-white px-5 py-3.5 text-ocean placeholder:text-ocean/25 focus:outline-none focus:border-blush transition-colors font-light"
+                  className="w-full rounded-xl border border-ocean/10 bg-warm-white px-5 py-3.5 text-ocean placeholder:text-ocean/25 focus:outline-none transition-all duration-200 input-glow font-light"
                   placeholder="deine@email.de"
                 />
               </div>
@@ -151,7 +151,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="w-full rounded-xl border border-ocean/10 bg-warm-white px-5 py-3.5 text-ocean placeholder:text-ocean/25 focus:outline-none focus:border-blush transition-colors font-light"
+                  className="w-full rounded-xl border border-ocean/10 bg-warm-white px-5 py-3.5 text-ocean placeholder:text-ocean/25 focus:outline-none transition-all duration-200 input-glow font-light"
                   placeholder="••••••••"
                 />
               </div>
@@ -163,7 +163,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-full bg-ocean px-8 py-4 text-white font-medium tracking-wide hover:bg-ocean-light transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-full bg-ocean px-8 py-4 text-white font-medium tracking-wide hover:bg-ocean-light transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20 disabled:opacity-50 disabled:cursor-not-allowed btn-press"
               >
                 {loading ? "Anmelden..." : "Anmelden"}
               </button>
@@ -184,7 +184,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="w-full rounded-xl border border-ocean/10 bg-warm-white px-5 py-3.5 text-ocean placeholder:text-ocean/25 focus:outline-none focus:border-blush transition-colors font-light"
+                  className="w-full rounded-xl border border-ocean/10 bg-warm-white px-5 py-3.5 text-ocean placeholder:text-ocean/25 focus:outline-none transition-all duration-200 input-glow font-light"
                   placeholder="deine@email.de"
                 />
               </div>
@@ -196,7 +196,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-full bg-ocean px-8 py-4 text-white font-medium tracking-wide hover:bg-ocean-light transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-full bg-ocean px-8 py-4 text-white font-medium tracking-wide hover:bg-ocean-light transition-all duration-300 hover:shadow-lg hover:shadow-ocean/20 disabled:opacity-50 disabled:cursor-not-allowed btn-press"
               >
                 {loading ? "Link wird gesendet..." : "Magic Link senden"}
               </button>

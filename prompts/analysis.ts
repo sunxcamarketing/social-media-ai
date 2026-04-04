@@ -7,38 +7,51 @@ import type { Config } from "../src/lib/types";
 export const ANALYSIS_PROMPT = `WICHTIG: Schreibe die gesamte Analyse auf DEUTSCH.
 
 # KONZEPT
-Beschreibung des Konzepts dieses Videos und was es wertvoll und interessant macht (1-3 Sätze).
-Was wird in Frage gestellt, welcher Fehler aufgedeckt, welches Ergebnis versprochen?
-Eine klare Idee. Keine Unterthemen.
+Was ist die eine Kernidee? Was wird in Frage gestellt, welcher Fehler aufgedeckt, welches Ergebnis versprochen? (1-3 Sätze)
 
-# HOOK
-Detaillierte Beschreibung der ersten 5 Sekunden. Was macht sie scroll-stoppend? Warum muss der Zuschauer anhalten? (1-3 Sätze)
-Aufschlüsseln in:
-VISUAL: Was sieht man in den ersten 1-2 Sekunden (Bewegung, Gesichtsausdruck, Kontrast, Pattern Break)
-TEXT: Kurzer On-Screen-Text (Gefahr, Versprechen oder Widerspruch, max 6-8 Wörter)
-AUDIO: Erste gesprochene Worte (selbstbewusst, direkt, kein Intro)
-Der Hook muss Verlustangst, starke Neugier oder Identitätsrelevanz erzeugen.
+# HOOK-STRUKTUR
+Analysiere die ersten 3 Sekunden — das ist der wichtigste Teil:
+VISUAL: Was sieht man bevor ein Wort gesagt wird? (Bewegung, Gesichtsausdruck, Setting, Pattern Break)
+TEXT: On-Screen-Text der zum Stoppen zwingt (exakt abschreiben, max 6-8 Wörter)
+AUDIO: Erste gesprochene Worte (Tonfall, Energie, Tempo)
+HOOK-TYP: Welcher der 6 Typen? (Kontra-intuitiv, Identitäts-Trigger, Schock-Zahl, Geheimnis, Direkte Provokation, Ergebnis-first)
+WARUM ES STOPPT: Welcher psychologische Trigger zwingt zum Stoppen? (Verlustangst, Neugier, Identifikation, Widerspruch)
+
+# PACING-MUSTER
+Wo sind die Energie-Spikes im Video? (Sekundenangaben wenn möglich)
+Gibt es einen RE-HOOK (Rückbezug zum Anfang)?
+Wo sind die Micro-Pattern-Interrupts? (Schnitte, Tonwechsel, rhetorische Fragen)
+Wie oft wechselt die Energie? (monoton vs. dynamisch)
+
+# MEINUNGS-WINKEL
+Welche Aussage in diesem Video polarisiert?
+Gibt es eine implizite "böse" Gegenposition? (Wer wird angegriffen oder in Frage gestellt?)
+Ist die Meinung KLAR oder abgesichert/neutral?
+
+# SHARE-MECHANISMUS
+Warum würde jemand dieses Video teilen?
+Welche Emotion löst es aus? (Identifikation, Empörung, "das muss mein Freund sehen", Inspiration)
+An wen würde man es weiterleiten?
+
+# REPLIKIERBARE ELEMENTE
+Was davon kann auf ANDERE Themen übertragen werden? (2-4 Punkte)
+Nicht das Thema kopieren — die psychologische STRUKTUR identifizieren.
+Welches Element macht dieses Video viral, unabhängig vom Inhalt?
 
 # RETENTION-MECHANISMEN
-Wie hält der Creator die Zuschauer durch das ganze Video? (1-7 Sätze)
-Open Loops, verzögerter Payoff, Micro-Eskalationen alle 3-5 Sekunden, Pattern Interrupts, klarer Vorwärtsmomentum.
+Open Loops, verzögerter Payoff, Micro-Eskalationen, Pattern Interrupts, Vorwärtsmomentum. (1-5 Sätze)
 
 # REWARD
-Was bekommt der Zuschauer am Ende? (1-3 Sätze)
-Was versteht, fühlt oder sieht er jetzt anders?
-Education (Klarheit), Entertainment (emotionale Lösung) oder Inspiration (Selbstvertrauen/Handlung)?
+Was bekommt der Zuschauer am Ende? Was versteht, fühlt oder sieht er jetzt anders? (1-3 Sätze)
 
 # SKRIPT
-Vollständiges Skript des Videos (1-20 Sätze, so viele wie nötig).
-Struktur: Sofortiger Hook (kein Gruß), Problem-Framing, warum es wichtig ist, Hauptinsight, sauberer Abschluss.
-Szenen, Aktionen, Voiceover, exakter Wortlaut wenn möglich.
-Kurze Sätze. Gesprochene Sprache.
+Vollständiges Skript mit Sekunden-Angaben:
+[Sek. 0-3] Hook (Visual + Text + Audio)
+[Sek. 3-X] Body (Satz für Satz, mit Szenen/Aktionen)
+[Sek. X-Ende] Payoff + CTA
+Exakter Wortlaut wenn möglich. Kurze Sätze. Gesprochene Sprache.
 
-GRUNDREGEL:
-JE KÜRZER DIE ANALYSE, DESTO BESSER.
-Wenn es in weniger Worten gesagt werden kann, dann tu das.
-Klarheit > Cleverness.
-Retention > Information.`;
+GRUNDREGEL: Klarheit > Cleverness. Die STRUKTUR ist wichtiger als der Inhalt — sie ist der Beweis für den Erfolg.`;
 
 // ── Detailed analysis for Viral Script Builder ──────────────────────────────
 // This prompt forces Gemini to transcribe sentence by sentence with all three layers.
@@ -106,34 +119,37 @@ export function buildConceptsPrompt(config: Pick<Config, "configName" | "name" |
 
 ${clientBlock}
 
-Aufgabe:
-Erstelle 3 NEUE Video-Konzepte, inspiriert vom ORIGINAL-Referenzvideo.
-Nicht das Original kopieren.
-Übertrage die Kernidee in die Nische und den Kontext dieses Clients.
-Fokus auf die HOOKS — die müssen sitzen.
+AUFGABE:
+Du kopierst NICHT das Thema. Du kopierst die PSYCHOLOGISCHE STRUKTUR die dieses Video viral gemacht hat.
+Erstelle 3 NEUE Video-Konzepte die die gleiche Mechanik nutzen — aber auf die Nische und Zielgruppe dieses Clients übertragen.
 
-WICHTIG: Schreibe ALLES auf Deutsch. Skripte, Hooks, Beschreibungen — alles Deutsch.
+WICHTIG: Schreibe ALLES auf Deutsch.
 
-Fokus:
-Die ersten 3 Sekunden müssen die Zielgruppe dieses Clients zum Stoppen bringen.
-Hooks sollen eine Überzeugung, Angst oder ein Missverständnis der Nische herausfordern.
-Stimme und Positionierung des Clients matchen.
-Ruhige Autorität statt Hype.
+ADAPTIONS-PROZESS:
+1. Identifiziere die replikierbaren Elemente aus der Analyse (Hook-Typ, Pacing, Meinungs-Winkel, Share-Trigger).
+2. Finde das Äquivalent in der Nische des Clients: Welche Überzeugung kann angegriffen werden? Welche Zahl schockiert? Welche Identität wird getriggert?
+3. Behalte die TIMING-STRUKTUR bei (wann kommt der Open Loop? Wann der Re-Hook? Wann der Payoff?)
+4. Schreibe jedes Konzept als Sekunden-Regie.
 
 Format:
 
 # KONZEPT 1
-Beschreibung (1-3 Sätze)
+Beschreibung (1-3 Sätze). MEINUNGS-WINKEL klar benennen.
 
 ## HOOK
-Detaillierte Hook-Beschreibung (1-3 Sätze)
-Was sieht man in den ersten 2 Sekunden?
-Was wird als erstes gesagt?
-Warum funktioniert dieser Hook für die Zielgruppe dieses Clients?
+[Sek. 0-3] VISUAL: Was sieht man?
+[Sek. 0-3] TEXT: On-Screen-Text (max 8 Wörter)
+[Sek. 0-3] AUDIO: Erste gesprochene Worte
+HOOK-TYP: (Kontra-intuitiv / Identitäts-Trigger / Schock-Zahl / Geheimnis / Provokation / Ergebnis-first)
+WARUM ES STOPPT: (1 Satz — welcher psychologische Trigger?)
 
 ## SKRIPT
-Detailliertes Skript (1-20 Sätze, so viele wie nötig)
-Szenenablauf, gesprochener Text, klarer Payoff, subtile Autorität.
+Sekunden-basiertes Skript:
+[Sek. 0-3] Hook
+[Sek. 3-8] Open Loop
+[Sek. 8-X] Body mit Micro-Pattern-Interrupts
+[Sek. X-Y] Re-Hook
+[Sek. Y-Ende] Payoff + CTA
 
 # KONZEPT 2
 ...

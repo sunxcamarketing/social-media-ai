@@ -8,6 +8,7 @@ import { safeJsonParse } from "@/lib/safe-json";
 import { buildClientProfile, buildBrandContext } from "@/lib/client-context";
 import type { VoiceProfile } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "@/lib/performance-helpers";
+import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
@@ -140,6 +141,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
         const hasData = !!performanceBlock || !!auditBlock || !!competitorBlock;
 
+        // Platform context
+        const platforms = parseTargetPlatforms(config.targetPlatforms);
+        const primaryPlatform = platforms[0] || DEFAULT_PLATFORM;
+        const platformContext = buildPlatformContext(primaryPlatform);
+
         sendEvent(controller, { step: "context", status: "done" });
 
         // ════════════════════════════════════════════════════════════════════
@@ -173,7 +179,7 @@ Analysiere ALLE Daten und bestimme das strategische Ziel.`;
           const analysisMsg = await claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 3000,
-            system: buildPrompt("strategy-analysis"),
+            system: buildPrompt("strategy-analysis", { platform_context: platformContext }),
             tools: [STRATEGY_ANALYSIS_TOOL],
             tool_choice: { type: "tool", name: "submit_analysis" },
             messages: [{ role: "user", content: analysisUserPrompt }],
@@ -229,6 +235,7 @@ ${analysisResult.nichePatterns ? `Nischen-Muster: ${analysisResult.nichePatterns
           active_days: activeDays.join(", "),
           content_types: contentTypeNames.join(", "),
           formats: formatNames.join(", "),
+          platform_context: platformContext,
         });
 
         const creationTool = STRATEGY_CREATION_TOOL(activeDays, contentTypeNames, formatNames);
@@ -318,7 +325,7 @@ Prüfe diese Strategie.`;
           const reviewMsg = await claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 3000,
-            system: buildPrompt("strategy-review"),
+            system: buildPrompt("strategy-review", { platform_context: platformContext }),
             tools: [STRATEGY_REVIEW_TOOL(activeDays)],
             tool_choice: { type: "tool", name: "submit_strategy_review" },
             messages: [{ role: "user", content: reviewUserPrompt }],

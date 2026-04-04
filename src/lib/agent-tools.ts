@@ -2,16 +2,16 @@
 // Each function takes a clientId + optional tool input, queries Supabase,
 // and returns a formatted string result for the agent's tool_result message.
 
-import Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "./anthropic";
+import { v4 as uuid } from "uuid";
 import {
   readConfig,
   readConfigs,
   readScriptsByClient,
   readAnalysesByClient,
   readVideosList,
-  readVideos,
-  readTrainingScripts,
+  readIdeas,
+  writeIdeas,
+  updateConfig,
 } from "./csv";
 import {
   getVoiceProfile,
@@ -19,10 +19,10 @@ import {
   voiceProfileToPromptBlock,
   scriptStructureToPromptBlock,
 } from "./voice-profile";
-import { getAuditBlock } from "./audit";
-import { buildPrompt } from "@prompts";
 import { safeJsonParse } from "./safe-json";
-import { fmt, fmtDuration, secondsToWords } from "./format";
+import { fmt, fmtDuration } from "./format";
+import { searchWeb, searchTrends } from "./brave-search";
+import { getHighConfidenceLearnings } from "./client-learnings";
 import type { Config } from "./types";
 import type { PerformanceInsights, VideoInsight } from "./performance-helpers";
 
@@ -265,171 +265,37 @@ export async function toolLoadAudit(clientId: string): Promise<string> {
 }
 
 // ── generate_script ────────────────────────────────────────────────────────
+// Uses the Script Agent — a multi-step agent loop that thinks about the
+// angle, crafts hooks, writes the script, and self-reviews before submitting.
 
-interface ScriptGenerationInput {
-  title: string;
-  description: string;
-  pillar?: string;
-  contentType?: string;
-  format?: string;
-  tone?: string;
-}
-
-const SCRIPT_TOOL = {
-  name: "submit_script",
-  description: "Das fertige gesprochene Skript einreichen",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      script: {
-        type: "string" as const,
-        description: "Das KOMPLETTE gesprochene Skript. Absätze mit \\n trennen.",
-      },
-    },
-    required: ["script"],
-  },
-};
-
-const SHORT_DURATION_SECONDS = 35;
-const DEFAULT_LONG_DURATION_SECONDS = 60;
-
-async function buildVoiceBlock(clientId: string, clientName: string): Promise<string> {
-  const voiceProfile = await getVoiceProfile(clientId);
-  if (voiceProfile) {
-    return "\n" + voiceProfileToPromptBlock(voiceProfile, clientName);
-  }
-
-  const trainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
-  if (trainingScripts.length === 0) return "";
-
-  const MAX_EXAMPLES = 6;
-  const MAX_SCRIPT_LENGTH = 2000;
-  const examples = trainingScripts.slice(0, MAX_EXAMPLES)
-    .map((ts, i) => `--- ${i + 1} ---\n${(ts.script || "").slice(0, MAX_SCRIPT_LENGTH)}`)
-    .join("\n\n");
-
-  return `\n<voice_examples>\nSo spricht ${clientName} wirklich:\n${examples}\n</voice_examples>`;
-}
-
-async function buildScriptContext(clientId: string, config: Config) {
-  const dreamCustomer = safeJsonParse(config.dreamCustomer);
-  const clientContext = [
-    config.name && `Name: ${config.name}`,
-    config.role && `Rolle: ${config.role}`,
-    config.company && `Unternehmen: ${config.company}`,
-    config.creatorsCategory && `Nische: ${config.creatorsCategory}`,
-    config.businessContext && `Business-Kontext: ${config.businessContext}`,
-    config.brandProblem && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.providerRole && `Anbieter-Rolle: ${config.providerRole}`,
-    config.authenticityZone && `Authentizitätszone: ${config.authenticityZone}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-  ].filter(Boolean).join("\n");
-
-  const clientName = config.name || "der Kunde";
-  const voiceBlock = await buildVoiceBlock(clientId, clientName);
-
-  const scriptStructure = await getScriptStructure(clientId);
-  const structureBlock = scriptStructure ? "\n" + scriptStructureToPromptBlock(scriptStructure) : "";
-  const auditBlock = await getAuditBlock(clientId);
-
-  return { clientContext, voiceBlock, structureBlock, auditBlock };
-}
-
-function computeAvgDuration(config: Config, creatorVideos: { durationSeconds: number }[]): number {
-  const insights = safeJsonParse<PerformanceInsights | null>(config.performanceInsights || "", null);
-  const ownTopVideos: VideoInsight[] = [...(insights?.top30Days || []), ...(insights?.topAllTime || [])];
-
-  const allDurations = [
-    ...ownTopVideos.filter(v => v.durationSeconds > 0).map(v => v.durationSeconds),
-    ...creatorVideos.filter(v => v.durationSeconds > 0).map(v => v.durationSeconds),
-  ];
-
-  return allDurations.length > 0
-    ? Math.round(allDurations.reduce((a, b) => a + b, 0) / allDurations.length)
-    : 0;
-}
-
-async function generateSingleVersion(
-  client: Anthropic,
-  label: string,
-  maxWords: number,
-  userPrompt: string,
-): Promise<string> {
-  const durationLabel = fmtDuration(Math.round(maxWords / 2));
-  const laengeRegeln = `- LÄNGE: Max ${maxWords} Wörter gesamt. Das entspricht ca. ${durationLabel} Sprechzeit. Kürzer ist besser.`;
-  const systemPrompt = buildPrompt("topic-script", { laenge_regeln: laengeRegeln });
-
-  try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1200,
-      system: systemPrompt,
-      tools: [SCRIPT_TOOL],
-      tool_choice: { type: "tool", name: "submit_script" },
-      messages: [{ role: "user", content: userPrompt }],
-    });
-
-    const toolUse = message.content.find(b => b.type === "tool_use");
-    if (toolUse && toolUse.type === "tool_use") {
-      const scriptText = (toolUse.input as { script: string }).script || "";
-      return `── ${label} ──\n${scriptText}`;
-    }
-    return `── ${label} ──\n(Konnte nicht generiert werden)`;
-  } catch (err) {
-    return `── ${label} ──\n(Fehler: ${err instanceof Error ? err.message : "Unbekannt"})`;
-  }
-}
+import { runScriptAgent } from "./script-agent";
+import type { ScriptAgentInput } from "./script-agent";
 
 export async function toolGenerateScript(
   clientId: string,
-  input: ScriptGenerationInput,
+  input: ScriptAgentInput,
 ): Promise<string> {
+  try {
+    const result = await runScriptAgent(clientId, input);
 
-  const config = await readConfig(clientId);
-  if (!config) return "Client nicht gefunden.";
+    const header = [
+      `SKRIPT: "${input.title}"`,
+      input.pillar && `Pillar: ${input.pillar}`,
+      input.contentType && `Typ: ${input.contentType}`,
+      result.angle && `Winkel: ${result.angle}`,
+      result.whyItWorks && `Warum es funktioniert: ${result.whyItWorks}`,
+    ].filter(Boolean).join("\n");
 
-  const { clientContext, voiceBlock, structureBlock, auditBlock } = await buildScriptContext(clientId, config);
+    const textHookLine = result.textHook ? `[TEXT-HOOK auf Screen]: "${result.textHook}"` : "";
+    const hookPatternLine = result.hookPattern ? `Hook-Muster: ${result.hookPattern}` : "";
 
-  const creatorVideos = (await readVideos())
-    .filter(v => v.configName === config.configName && v.views > 0)
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 6);
-  const avgDuration = computeAvgDuration(config, creatorVideos);
+    const shortSection = `── KURZ (30-40 Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.shortScript}`;
+    const longSection = `── LANG (60+ Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.longScript}`;
 
-  const shortMaxWords = secondsToWords(SHORT_DURATION_SECONDS);
-  const longMaxWords = avgDuration > 0 ? secondsToWords(avgDuration) : secondsToWords(DEFAULT_LONG_DURATION_SECONDS);
-
-  const toneHint = input.tone ? `\nTONALITÄT: ${input.tone}` : "";
-  const metaLine = [
-    input.contentType && `Content-Type: ${input.contentType}`,
-    input.format && `Format: ${input.format}`,
-    input.pillar && `Pillar: ${input.pillar}`,
-  ].filter(Boolean).join(" | ");
-
-  const userPrompt = `<client>\n${clientContext}\n</client>\n${auditBlock}${voiceBlock}${structureBlock}${toneHint}
-
-THEMA: ${input.title}
-BESCHREIBUNG: ${input.description}
-${metaLine}
-
-Schreibe jetzt das Skript zu genau diesem Thema.`;
-
-  const client = getAnthropicClient();
-
-  const results = await Promise.all([
-    generateSingleVersion(client, "KURZ (30-40 Sek)", shortMaxWords, userPrompt),
-    generateSingleVersion(client, "LANG (60+ Sek)", longMaxWords, userPrompt),
-  ]);
-
-  const header = [
-    `SKRIPT: "${input.title}"`,
-    input.pillar && `Pillar: ${input.pillar}`,
-    input.contentType && `Typ: ${input.contentType}`,
-    input.format && `Format: ${input.format}`,
-  ].filter(Boolean).join("\n");
-
-  return `${header}\n\n${results.join("\n\n")}`;
+    return [header, hookPatternLine, shortSection, longSection].filter(Boolean).join("\n\n");
+  } catch (err) {
+    return `Skript-Generierung fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`;
+  }
 }
 
 // ── check_competitors ──────────────────────────────────────────────────────
@@ -462,6 +328,81 @@ export async function toolCheckCompetitors(
     if (v.newConcepts) parts.push(`Adaptierte Ideen: ${v.newConcepts.slice(0, 200)}`);
     return parts.join("\n");
   }).join("\n\n")}`;
+}
+
+// ── search_web ────────────────────────────────────────────────────────────
+
+export async function toolSearchWeb(
+  input: { query: string; market?: string },
+): Promise<string> {
+  try {
+    const results = await searchWeb(input.query, { market: input.market });
+    if (results.length === 0) return `Keine Ergebnisse für "${input.query}".`;
+
+    return `Web-Ergebnisse für "${input.query}":\n\n${results.map((r, i) => {
+      const parts = [`[${i + 1}] ${r.title}`];
+      if (r.age) parts.push(`(${r.age})`);
+      parts.push(r.description);
+      return parts.join("\n");
+    }).join("\n\n")}`;
+  } catch (err) {
+    return `Web-Suche fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`;
+  }
+}
+
+// ── research_trends ───────────────────────────────────────────────────────
+
+export async function toolResearchTrends(
+  clientId: string | null,
+  input: { niche?: string },
+): Promise<string> {
+  let niche = input.niche;
+
+  // Try to get niche from client config if not provided
+  if (!niche && clientId) {
+    const config = await readConfig(clientId);
+    niche = config?.creatorsCategory || undefined;
+  }
+
+  if (!niche) return "Bitte gib eine Nische an (z.B. 'Trading', 'Fitness').";
+
+  try {
+    const trendResults = await searchTrends(niche);
+    const allResults = trendResults.flatMap(tr =>
+      tr.results.map(r => ({ ...r, query: tr.query }))
+    );
+
+    if (allResults.length === 0) return `Keine Trend-Ergebnisse für "${niche}".`;
+
+    return `Live-Trends für "${niche}":\n\n${trendResults.map(tr => {
+      if (tr.results.length === 0) return "";
+      return `Suche: "${tr.query}"\n${tr.results.map((r, i) => {
+        const parts = [`  [${i + 1}] ${r.title}`];
+        if (r.age) parts.push(`  (${r.age})`);
+        parts.push(`  ${r.description}`);
+        return parts.join("\n");
+      }).join("\n\n")}`;
+    }).filter(Boolean).join("\n\n---\n\n")}`;
+  } catch (err) {
+    return `Trend-Recherche fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`;
+  }
+}
+
+// ── check_learnings ───────────────────────────────────────────────────────
+
+export async function toolCheckLearnings(clientId: string): Promise<string> {
+  try {
+    const learnings = await getHighConfidenceLearnings(clientId);
+    if (learnings.length === 0) return "Noch keine statistisch gesicherten Erkenntnisse. Es braucht mindestens 8 Skripte mit Performance-Daten.";
+
+    return `${learnings.length} verifizierte Erkenntnisse:\n\n${learnings.map((l, i) => {
+      const conf = Math.round(l.confidence * 100);
+      const arrow = l.direction === "positive" ? "\u2191" : "\u2193";
+      return `[${i + 1}] ${arrow} ${l.insight}\n    Confidence: ${conf}% | Datenpunkte: ${l.dataPoints} | Kategorie: ${l.category}`;
+    }).join("\n\n")}`;
+  } catch {
+    return "Learnings konnten nicht geladen werden.";
+  }
 }
 
 // ── list_clients (Admin only) ──────────────────────────────────────────────
@@ -515,6 +456,48 @@ async function resolveClientId(
   return null;
 }
 
+// ── Save Idea Tool ────────────────────────────────────────────────────────
+
+async function toolSaveIdea(
+  clientId: string,
+  input: { title: string; description: string; content_type?: string },
+): Promise<string> {
+  const ideas = await readIdeas();
+  const newIdea = {
+    id: uuid(),
+    clientId,
+    title: input.title,
+    description: input.description,
+    contentType: input.content_type || "",
+    status: "idea",
+    createdAt: new Date().toISOString().split("T")[0],
+  };
+  ideas.push(newIdea);
+  await writeIdeas(ideas);
+  return `Video-Idee gespeichert: "${input.title}". Du findest sie im Ideen-Tab des Clients.`;
+}
+
+// ── Update Profile Tool ───────────────────────────────────────────────────
+
+const SAFE_PROFILE_FIELDS = new Set([
+  "businessContext", "professionalBackground", "keyAchievements",
+  "brandFeeling", "brandProblem", "brandingStatement",
+  "humanDifferentiation", "providerRole", "providerBeliefs",
+  "providerStrengths", "authenticityZone",
+]);
+
+async function toolUpdateProfile(
+  clientId: string,
+  input: { field_name: string; value: string },
+): Promise<string> {
+  if (!SAFE_PROFILE_FIELDS.has(input.field_name)) {
+    return `Feld "${input.field_name}" darf nicht über den Chat geändert werden.`;
+  }
+  await updateConfig(clientId, { [input.field_name]: input.value });
+  const preview = input.value.length > 120 ? input.value.slice(0, 120) + "..." : input.value;
+  return `Profil aktualisiert: ${input.field_name} → "${preview}"`;
+}
+
 // ── Tool Router ────────────────────────────────────────────────────────────
 
 /**
@@ -528,10 +511,14 @@ export async function executeAgentTool(
   toolName: string,
   toolInput: Record<string, unknown>,
 ): Promise<string> {
-  // list_clients doesn't need a clientId
+  // Tools that don't need a clientId
   if (toolName === "list_clients") {
     if (scopedClientId) return "Du hast nur Zugriff auf deine eigenen Daten.";
     return toolListClients();
+  }
+
+  if (toolName === "search_web") {
+    return toolSearchWeb(toolInput as { query: string; market?: string });
   }
 
   // Resolve clientId from scoped ID or client_name
@@ -556,10 +543,28 @@ export async function executeAgentTool(
       return toolCheckPerformance(clientId);
     case "load_audit":
       return toolLoadAudit(clientId);
-    case "generate_script":
-      return toolGenerateScript(clientId, toolInput as unknown as ScriptGenerationInput);
+    case "generate_script": {
+      const scriptInput: ScriptAgentInput = {
+        title: toolInput.title as string,
+        description: toolInput.description as string,
+        pillar: toolInput.pillar as string | undefined,
+        contentType: toolInput.contentType as string | undefined,
+        format: toolInput.format as string | undefined,
+        tone: toolInput.tone as string | undefined,
+        conversationContext: toolInput.conversation_context as string | undefined,
+      };
+      return toolGenerateScript(clientId, scriptInput);
+    }
     case "check_competitors":
       return toolCheckCompetitors(clientId, toolInput as { limit?: number });
+    case "research_trends":
+      return toolResearchTrends(clientId, toolInput as { niche?: string });
+    case "check_learnings":
+      return toolCheckLearnings(clientId);
+    case "save_idea":
+      return toolSaveIdea(clientId, toolInput as { title: string; description: string; content_type?: string });
+    case "update_profile":
+      return toolUpdateProfile(clientId, toolInput as { field_name: string; value: string });
     default:
       return `Unbekanntes Tool: ${toolName}`;
   }

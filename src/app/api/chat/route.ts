@@ -11,17 +11,23 @@ import {
   AGENT_LOAD_AUDIT_TOOL,
   AGENT_GENERATE_SCRIPT_TOOL,
   AGENT_CHECK_COMPETITORS_TOOL,
+  AGENT_CHECK_LEARNINGS_TOOL,
+  AGENT_SEARCH_WEB_TOOL,
+  AGENT_RESEARCH_TRENDS_TOOL,
+  AGENT_SAVE_IDEA_TOOL,
+  AGENT_UPDATE_PROFILE_TOOL,
 } from "@prompts";
 import { executeAgentTool, toolLoadClientContext } from "@/lib/agent-tools";
 import { sendEvent, sseResponse } from "@/lib/sse";
+import { readConfig } from "@/lib/csv";
+import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 
 export const maxDuration = 120;
 
 const MAX_ITERATIONS = 10;
 
-// Admin gets list_clients; clients don't
-const ADMIN_TOOLS = [
-  AGENT_LIST_CLIENTS_TOOL,
+// Shared tools available to both admins and clients
+const SHARED_TOOLS = [
   AGENT_LOAD_CONTEXT_TOOL,
   AGENT_LOAD_VOICE_TOOL,
   AGENT_SEARCH_SCRIPTS_TOOL,
@@ -29,17 +35,15 @@ const ADMIN_TOOLS = [
   AGENT_LOAD_AUDIT_TOOL,
   AGENT_GENERATE_SCRIPT_TOOL,
   AGENT_CHECK_COMPETITORS_TOOL,
+  AGENT_CHECK_LEARNINGS_TOOL,
+  AGENT_SEARCH_WEB_TOOL,
+  AGENT_RESEARCH_TRENDS_TOOL,
+  AGENT_SAVE_IDEA_TOOL,
+  AGENT_UPDATE_PROFILE_TOOL,
 ];
 
-const CLIENT_TOOLS = [
-  AGENT_LOAD_CONTEXT_TOOL,
-  AGENT_LOAD_VOICE_TOOL,
-  AGENT_SEARCH_SCRIPTS_TOOL,
-  AGENT_CHECK_PERFORMANCE_TOOL,
-  AGENT_LOAD_AUDIT_TOOL,
-  AGENT_GENERATE_SCRIPT_TOOL,
-  AGENT_CHECK_COMPETITORS_TOOL,
-];
+// Admin gets list_clients in addition to shared tools
+const ADMIN_TOOLS = [AGENT_LIST_CLIENTS_TOOL, ...SHARED_TOOLS];
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -64,7 +68,18 @@ export async function POST(request: Request) {
 
   // Build system prompt based on role
   const isFirstMessage = messages.length === 1;
-  let systemPrompt = buildPrompt("content-agent");
+
+  // Load platform context for this client
+  let platformContext = buildPlatformContext(DEFAULT_PLATFORM);
+  if (scopedClientId) {
+    const clientConfig = await readConfig(scopedClientId);
+    if (clientConfig) {
+      const platforms = parseTargetPlatforms(clientConfig.targetPlatforms);
+      platformContext = buildPlatformContext(platforms[0] || DEFAULT_PLATFORM);
+    }
+  }
+
+  let systemPrompt = buildPrompt("content-agent", { platform_context: platformContext });
 
   if (isAdmin) {
     systemPrompt += `\n\n# ADMIN-MODUS
@@ -77,7 +92,7 @@ Wenn Aysun keinen Client-Namen nennt, frag kurz nach.`;
     systemPrompt += `\n\n# DEIN CLIENT-KONTEXT (vorgeladen)\n${context}`;
   }
 
-  const tools = isAdmin ? ADMIN_TOOLS : CLIENT_TOOLS;
+  const tools = isAdmin ? ADMIN_TOOLS : SHARED_TOOLS;
   const client = getAnthropicClient();
 
   const anthropicMessages: Anthropic.MessageParam[] = messages.map(m => ({

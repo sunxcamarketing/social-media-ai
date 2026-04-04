@@ -47,6 +47,7 @@ export interface Config {
   voiceProfile: string; // JSON: VoiceProfile
   scriptStructure: string; // JSON: ScriptStructureProfile
   googleDriveFolder: string;
+  targetPlatforms?: string; // JSON: PlatformId[] e.g. '["instagram","tiktok"]'
 }
 
 export interface Creator {
@@ -57,6 +58,7 @@ export interface Creator {
   followers: number;
   reelsCount30d: number;
   avgViews30d: number;
+  platform?: string;
   lastScrapedAt: string;
 }
 
@@ -74,6 +76,7 @@ export interface Video {
   datePosted: string;
   dateAdded: string;
   configName: string;
+  platform?: string;
   starred: boolean;
 }
 
@@ -102,6 +105,7 @@ export interface Script {
   status: string;
   source: string;
   shotList: string;
+  platform?: string;
   createdAt: string;
 }
 

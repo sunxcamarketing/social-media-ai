@@ -42,7 +42,8 @@ CREATE TABLE configs (
   "igLastUpdated" TEXT DEFAULT '',
   "voiceProfile" TEXT DEFAULT '',
   "scriptStructure" TEXT DEFAULT '',
-  "googleDriveFolder" TEXT DEFAULT ''
+  "googleDriveFolder" TEXT DEFAULT '',
+  "targetPlatforms" TEXT DEFAULT '["instagram"]'
 );
 
 -- Creators
@@ -54,6 +55,7 @@ CREATE TABLE creators (
   followers INTEGER DEFAULT 0,
   reels_count_30d INTEGER DEFAULT 0,
   avg_views_30d INTEGER DEFAULT 0,
+  platform TEXT DEFAULT 'instagram',
   last_scraped_at TEXT
 );
 
@@ -72,6 +74,7 @@ CREATE TABLE videos (
   date_posted TEXT,
   date_added TEXT,
   config_name TEXT DEFAULT '',
+  platform TEXT DEFAULT 'instagram',
   starred BOOLEAN DEFAULT FALSE
 );
 
@@ -91,6 +94,7 @@ CREATE TABLE scripts (
   status TEXT DEFAULT 'entwurf',
   source TEXT DEFAULT '',
   shot_list TEXT DEFAULT '',
+  platform TEXT DEFAULT 'instagram',
   created_at TEXT
 );
 
@@ -176,3 +180,47 @@ CREATE POLICY "Service role full access" ON strategy_config FOR ALL USING (true)
 
 ALTER TABLE client_users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role full access" ON client_users FOR ALL USING (true);
+
+-- Intelligence Snapshots (background research results)
+CREATE TABLE intelligence_snapshots (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('competitor_refresh', 'web_trends', 'performance_feedback')),
+  platform TEXT DEFAULT 'instagram',
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_snapshots_lookup
+  ON intelligence_snapshots(client_id, type, platform, created_at DESC);
+
+ALTER TABLE intelligence_snapshots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON intelligence_snapshots FOR ALL USING (true);
+
+-- Client Learnings (confidence-scored insights from performance data)
+CREATE TABLE client_learnings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN (
+    'hook_pattern', 'content_type', 'format', 'pillar', 'duration', 'topic_angle'
+  )),
+  value TEXT NOT NULL,
+  insight TEXT NOT NULL,
+  direction TEXT NOT NULL CHECK (direction IN ('positive', 'negative')),
+  data_points INTEGER NOT NULL DEFAULT 0,
+  supporting_points INTEGER NOT NULL DEFAULT 0,
+  metric_name TEXT NOT NULL DEFAULT 'views',
+  metric_avg NUMERIC,
+  metric_baseline NUMERIC,
+  confidence NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  last_data_at TIMESTAMPTZ,
+  UNIQUE(client_id, category, value, metric_name)
+);
+
+CREATE INDEX idx_learnings_client ON client_learnings(client_id, confidence DESC);
+
+ALTER TABLE client_learnings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON client_learnings FOR ALL USING (true);
