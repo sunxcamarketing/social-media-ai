@@ -130,6 +130,8 @@ export async function readConfig(id: string): Promise<Config | null> {
 
 /** Read a single config with only frontend-needed fields */
 export async function readConfigLight(id: string): Promise<Config | null> {
+  const cached = getCached<Config | null>(`configLight:${id}`);
+  if (cached !== null) return cached;
   const { data, error } = await supabase
     .from("configs")
     .select(CONFIG_LIGHT_COLUMNS)
@@ -137,7 +139,7 @@ export async function readConfigLight(id: string): Promise<Config | null> {
     .single();
   if (error && error.code === "PGRST116") return null;
   if (error) throw error;
-  return data as unknown as Config;
+  return setCache(`configLight:${id}`, data as unknown as Config, TTL_5M);
 }
 
 export async function writeConfigs(configs: Config[]) {
@@ -148,7 +150,7 @@ export async function writeConfigs(configs: Config[]) {
 export async function insertConfig(config: Config) {
   const { error } = await supabase.from("configs").insert(config);
   if (error) throw error;
-  invalidate("configs", "config:");
+  invalidate("configs", "config:", "configLight:");
 }
 
 export async function updateConfig(id: string, fields: Record<string, unknown>): Promise<Record<string, unknown> | null> {
@@ -163,14 +165,14 @@ export async function updateConfig(id: string, fields: Record<string, unknown>):
     .select()
     .single();
   if (error) throw error;
-  invalidate("configs", "config:");
+  invalidate("configs", "config:", "configLight:");
   return data;
 }
 
 export async function deleteConfig(id: string) {
   const { error } = await supabase.from("configs").delete().eq("id", id);
   if (error) throw error;
-  invalidate("configs", "config:");
+  invalidate("configs", "config:", "configLight:");
 }
 
 // ── Creators ────────────────────────────────────────────────────────────────
@@ -434,12 +436,14 @@ export async function readTrainingScripts(): Promise<TrainingScript[]> {
 
 /** Read training scripts for a specific client */
 export async function readTrainingScriptsByClient(clientId: string): Promise<TrainingScript[]> {
+  const cached = getCached<TrainingScript[]>(`training:${clientId}`);
+  if (cached) return cached;
   const { data, error } = await supabase
     .from("training_scripts")
     .select("*")
     .eq("client_id", clientId);
   if (error) throw error;
-  return (data || []).map((r: Record<string, unknown>) => ({
+  const result = (data || []).map((r: Record<string, unknown>) => ({
     id: (r.id as string) || "",
     clientId: (r.client_id as string) || "",
     format: (r.format as string) || "",
@@ -451,6 +455,7 @@ export async function readTrainingScriptsByClient(clientId: string): Promise<Tra
     sourceId: (r.source_id as string) || "",
     createdAt: (r.created_at as string) || "",
   }));
+  return setCache(`training:${clientId}`, result, TTL_10M);
 }
 
 export async function writeTrainingScripts(scripts: TrainingScript[]) {
@@ -468,7 +473,7 @@ export async function writeTrainingScripts(scripts: TrainingScript[]) {
   }));
   const { error } = await supabase.from("training_scripts").upsert(rows, { onConflict: "id" });
   if (error) throw error;
-  invalidate("training");
+  invalidate("training", "training:");
 }
 
 // ── Analyses ─────────────────────────────────────────────────────────────────
@@ -483,13 +488,19 @@ export async function readAnalyses(): Promise<Analysis[]> {
 
 /** Read analyses for a specific client */
 export async function readAnalysesByClient(clientId: string): Promise<Analysis[]> {
+  const cached = getCached<Analysis[]>(`analyses:${clientId}`);
+  if (cached) return cached;
   const { data, error } = await supabase
     .from("analyses")
     .select("*")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map(mapAnalysis);
+  return setCache(`analyses:${clientId}`, (data || []).map(mapAnalysis), TTL_10M);
+}
+
+export function invalidateAnalysesCache() {
+  invalidate("analyses", "analyses:");
 }
 
 export async function writeAnalyses(analyses: Analysis[]) {
@@ -507,7 +518,7 @@ export async function writeAnalyses(analyses: Analysis[]) {
   }));
   const { error } = await supabase.from("analyses").upsert(rows, { onConflict: "id" });
   if (error) throw error;
-  invalidate("analyses");
+  invalidate("analyses", "analyses:");
 }
 
 // ── Strategy Config ──────────────────────────────────────────────────────────

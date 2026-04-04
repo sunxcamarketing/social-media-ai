@@ -40,6 +40,7 @@ CREATE TABLE configs (
   "igCategory" TEXT DEFAULT '',
   "igVerified" TEXT DEFAULT '',
   "igLastUpdated" TEXT DEFAULT '',
+  "voiceProfile" TEXT DEFAULT '',
   "scriptStructure" TEXT DEFAULT '',
   "googleDriveFolder" TEXT DEFAULT ''
 );
@@ -84,9 +85,12 @@ CREATE TABLE scripts (
   format TEXT DEFAULT '',
   hook TEXT DEFAULT '',
   hook_pattern TEXT DEFAULT '',
+  text_hook TEXT DEFAULT '',
   body TEXT DEFAULT '',
   cta TEXT DEFAULT '',
   status TEXT DEFAULT 'entwurf',
+  source TEXT DEFAULT '',
+  shot_list TEXT DEFAULT '',
   created_at TEXT
 );
 
