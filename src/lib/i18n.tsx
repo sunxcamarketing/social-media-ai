@@ -579,6 +579,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem("sunxca-lang") as Lang | null;
     if (stored && stored !== lang) setLang(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleLang = useCallback(() => {

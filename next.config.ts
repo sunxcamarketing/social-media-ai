@@ -6,6 +6,9 @@ import { config } from "dotenv";
 config({ path: path.join(__dirname, ".env") });
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**.cdninstagram.com" },

@@ -82,7 +82,6 @@ async function resolveRoleRedirect(
   // No client_users entry — no access
   if (!clientUser) return "/no-access";
 
-  const isAdmin = clientUser.role === "admin";
   const isClient = clientUser.role === "client";
   const isPortalRoute = pathname.startsWith("/portal");
 
