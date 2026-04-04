@@ -5,6 +5,7 @@
 // Both use ALL training documents. Batched analysis for large document sets.
 
 import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "./anthropic";
 import { supabase } from "./supabase";
 import { readTrainingScripts, readConfig } from "./csv";
 import { buildPrompt, VOICE_PROFILE_TOOL, SCRIPT_STRUCTURE_TOOL } from "@prompts";
@@ -59,13 +60,10 @@ export async function generateVoiceProfile(
   clientId: string,
   clientName: string,
 ): Promise<VoiceProfile | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-
   const trainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
   if (trainingScripts.length === 0) return null;
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   // Single batch — fits in one call
   if (trainingScripts.length <= BATCH_SIZE) {
@@ -193,13 +191,10 @@ export async function generateScriptStructure(
   clientId: string,
   clientName: string,
 ): Promise<ScriptStructureProfile | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-
   const trainingScripts = (await readTrainingScripts()).filter(ts => ts.clientId === clientId);
   if (trainingScripts.length === 0) return null;
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   if (trainingScripts.length <= BATCH_SIZE) {
     const transcriptBlock = trainingScripts.map((ts, i) => formatTranscript(ts, i)).join("\n\n");

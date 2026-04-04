@@ -23,12 +23,7 @@ import type { Creator, Config } from "@/lib/types";
 import type { CreatorSuggestion } from "@/app/api/configs/[id]/research-creators/route";
 import { useGeneration } from "@/context/generation-context";
 import { useI18n } from "@/lib/i18n";
-
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
-  return n.toString();
-}
+import { fmt } from "@/lib/format";
 
 const TIER_STYLES: Record<string, { label: string; color: string }> = {
   mega:  { label: "Mega",  color: "bg-amber-500/10 text-ivory border-amber-500/20" },
@@ -532,7 +527,7 @@ export default function ClientCreatorsPage() {
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
                     <UserCheck className="mx-auto h-3.5 w-3.5 text-ocean/60 mb-1" />
-                    <p className="text-sm font-bold">{formatNumber(creator.followers)}</p>
+                    <p className="text-sm font-bold">{fmt(creator.followers)}</p>
                     <p className="text-[9px] text-ocean/60 uppercase tracking-wider">Follower</p>
                   </div>
                   <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
@@ -542,7 +537,7 @@ export default function ClientCreatorsPage() {
                   </div>
                   <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
                     <Eye className="mx-auto h-3.5 w-3.5 text-emerald-400 mb-1" />
-                    <p className="text-sm font-bold">{formatNumber(creator.avgViews30d)}</p>
+                    <p className="text-sm font-bold">{fmt(creator.avgViews30d)}</p>
                     <p className="text-[9px] text-ocean/60 uppercase tracking-wider">Ø Views</p>
                   </div>
                 </div>

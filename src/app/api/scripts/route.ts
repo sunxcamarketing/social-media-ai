@@ -14,8 +14,6 @@ export async function GET(request: Request) {
   // Clients can only see their own scripts
   if (user.role === "client") {
     clientId = user.clientId;
-  } else if (user.impersonatingClientId && !clientId) {
-    clientId = user.impersonatingClientId;
   }
 
   const scripts = clientId ? await readScriptsByClient(clientId) : await readScripts();

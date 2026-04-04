@@ -11,12 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Play, Loader2, CheckCircle2, XCircle, Terminal, Zap, ChevronDown, ArrowRight, Film, AlertTriangle } from "lucide-react";
 import { usePipeline } from "@/context/pipeline-context";
 import type { Config } from "@/lib/types";
-
-function formatViews(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
-  return n.toString();
-}
+import { fmt } from "@/lib/format";
 
 export default function ClientRunPage() {
   const { id } = useParams<{ id: string }>();
@@ -205,7 +200,7 @@ export default function ClientRunPage() {
                     <span className="text-[11px] text-ocean/60">{task.step}</span>
                     {task.views && (
                       <span className="ml-auto text-[11px] text-ocean/60">
-                        {formatViews(task.views)} views
+                        {fmt(task.views)} views
                       </span>
                     )}
                   </div>

@@ -2,7 +2,7 @@
 CREATE TABLE configs (
   id TEXT PRIMARY KEY,
   "configName" TEXT DEFAULT '',
-  "creatorsCategory" TEXT DEFAULT '',
+  "creatorsCategory" TEXT DEFAULT '',t
   name TEXT DEFAULT '',
   company TEXT DEFAULT '',
   role TEXT DEFAULT '',

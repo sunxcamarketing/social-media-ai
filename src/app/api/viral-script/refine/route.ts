@@ -1,13 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 
 export const maxDuration = 60;
 
 const MODEL = "claude-sonnet-4-6";
 
 export async function POST(request: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not set" }), { status: 500 });
-
   const body = await request.json().catch(() => ({}));
   const { instruction, hook, body: scriptBody, cta } = body as {
     instruction?: string;
@@ -19,7 +16,7 @@ export async function POST(request: Request) {
   if (!instruction) return new Response(JSON.stringify({ error: "instruction required" }), { status: 400 });
   if (!hook && !scriptBody && !cta) return new Response(JSON.stringify({ error: "script content required" }), { status: 400 });
 
-  const claude = new Anthropic({ apiKey });
+  const claude = getAnthropicClient();
 
   const msg = await claude.messages.create({
     model: MODEL,

@@ -17,6 +17,7 @@ import {
   Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fmt } from "@/lib/format";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -153,11 +154,6 @@ const TITLE_MAP: Record<string, string> = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
 
 function parseSections(markdown: string): Section[] {
   const lines = markdown.split("\n");

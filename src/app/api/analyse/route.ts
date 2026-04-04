@@ -1,11 +1,8 @@
 import { NextRequest } from "next/server";
 import { scrapeCreatorStats } from "@/lib/apify";
 import type { ApifyReel } from "@/lib/apify";
-import Anthropic from "@anthropic-ai/sdk";
-
-function sendEvent(controller: ReadableStreamDefaultController, data: Record<string, unknown>) {
-  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
-}
+import { getAnthropicClient } from "@/lib/anthropic";
+import { sendEvent, sseResponse } from "@/lib/sse";
 
 function buildFullReportPrompt(profile: {
   username: string;
@@ -184,14 +181,7 @@ export async function POST(req: NextRequest) {
         // Phase 2: Full detailed Claude analysis
         sendEvent(controller, { phase: "analyzing" });
 
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!apiKey) {
-          sendEvent(controller, { phase: "error", message: "ANTHROPIC_API_KEY not configured" });
-          controller.close();
-          return;
-        }
-
-        const client = new Anthropic({ apiKey });
+        const client = getAnthropicClient();
         const prompt = buildFullReportPrompt(
           { username, followers: profile.followers, reelsCount30d: profile.reelsCount30d, avgViews30d: profile.avgViews30d },
           reels,
@@ -224,11 +214,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return sseResponse(stream);
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles, Eye } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -162,23 +162,6 @@ export function AppSidebar() {
                       <span className="truncate">{displayName}</span>
                     </Link>
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          await fetch("/api/auth/impersonate", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ clientId: client.id }),
-                          });
-                          router.push("/portal");
-                          router.refresh();
-                        }}
-                        className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-ocean hover:bg-ocean/10 transition-all"
-                        title="Als Kunde ansehen"
-                      >
-                        <Eye className="h-3 w-3" />
-                      </button>
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteClient(client.id, displayName); }}
                         className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 transition-all"

@@ -17,12 +17,7 @@ import {
 } from "lucide-react";
 import type { Analysis } from "@/lib/types";
 import { useAudit } from "@/context/audit-context";
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
+import { fmt } from "@/lib/format";
 
 export default function AuditPage() {
   return (

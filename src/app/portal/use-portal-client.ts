@@ -7,7 +7,6 @@ interface PortalUser {
   email: string;
   role: "admin" | "client";
   clientId: string | null;
-  impersonatingClientId: string | null;
 }
 
 export function usePortalClient() {
@@ -28,10 +27,7 @@ export function usePortalClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Effective client ID: for clients it's their clientId, for impersonating admins it's the impersonated one
-  const effectiveClientId = user?.role === "client"
-    ? user.clientId
-    : user?.impersonatingClientId || null;
+  const effectiveClientId = user?.clientId || null;
 
   return { user, loading, effectiveClientId };
 }

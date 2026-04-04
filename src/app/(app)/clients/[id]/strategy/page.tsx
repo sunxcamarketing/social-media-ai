@@ -41,13 +41,15 @@ import {
 import type { Config, Analysis } from "@/lib/types";
 import { AuditReport, type ProfileData } from "@/components/audit-report";
 import { useAudit } from "@/context/audit-context";
-import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
+import type { PerformanceInsights, VideoInsight } from "@/lib/performance-helpers";
+import { parseInsights } from "@/lib/performance-helpers";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
 import { FormatPicker } from "@/components/format-picker";
 import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
 import { useI18n } from "@/lib/i18n";
+import { fmt } from "@/lib/format";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -85,16 +87,6 @@ function parsePillars(raw: string): Pillar[] {
 function parseWeekly(raw: string): WeeklyStructure {
   try { return JSON.parse(raw) || {}; } catch { return {}; }
 }
-function parseInsights(raw: string): PerformanceInsights | null {
-  try { return JSON.parse(raw) || null; } catch { return null; }
-}
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
-}
-
 function VideoInsightCard({ video }: { video: VideoInsight }) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);

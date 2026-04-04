@@ -1,49 +1,22 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { getAnthropicClient } from "@/lib/anthropic";
+import { readConfig, readVideos, readTrainingScripts, readScripts, readStrategyConfig } from "@/lib/csv";
 import { getVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
-import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
+import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt } from "@prompts";
-import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
+import { safeJsonParse } from "@/lib/safe-json";
+import { buildFullClientContext } from "@/lib/client-context";
+import { fmt, fmtDuration, secondsToWords } from "@/lib/format";
+import { parseInsights, videoInsightBlock } from "@/lib/performance-helpers";
+import type { VideoInsight } from "@/lib/performance-helpers";
+import type { Config } from "@/lib/types";
 
 export const maxDuration = 90;
-
-function parseInsights(raw: string): PerformanceInsights | null {
-  try { return JSON.parse(raw) || null; } catch { return null; }
-}
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
-}
-
-export function fmtDuration(s: number): string {
-  if (!s) return "?s";
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m${s % 60 > 0 ? `${s % 60}s` : ""}`;
-}
-
-function secondsToWords(s: number): number {
-  return Math.round(s * 2);
-}
 
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
-
-function videoInsightBlock(v: VideoInsight, index: number): string {
-  return [
-    `[${index + 1}] ${fmt(v.views)} Views · ${fmt(v.likes)} Likes · ${v.datePosted}${v.durationSeconds ? ` · ${fmtDuration(v.durationSeconds)}` : ""}`,
-    v.topic         && `Thema: ${v.topic}`,
-    v.audioHook && v.audioHook !== "none" && `Audio-Hook: "${v.audioHook}"`,
-    v.textHook  && v.textHook  !== "none" && `Text-Hook: "${v.textHook}"`,
-    v.scriptSummary  && `Zusammenfassung: ${v.scriptSummary}`,
-    v.whyItWorked    && `Warum erfolgreich: ${v.whyItWorked}`,
-  ].filter(Boolean).join("\n");
-}
-
 
 function buildScriptTool(opts: {
   withTypeFields: boolean;
@@ -107,12 +80,8 @@ function buildScriptTool(opts: {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
 
   const body = await request.json().catch(() => ({}));
   const hint: string = body.hint || "";
@@ -126,35 +95,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Returns a single "script" field — the complete spoken text.
   // ══════════════════════════════════════════════════════════════════════════
   if (topicOverride) {
-    return handleTopicScript(id, config, topicOverride, hint, apiKey);
+    return handleTopicScript(id, config, topicOverride, hint);
   }
 
   // ── Client brand context ──────────────────────────────────────────────────
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  const clientContext = [
-    config.name              && `Name: ${config.name}`,
-    config.role              && `Rolle: ${config.role}`,
-    config.company           && `Unternehmen: ${config.company}`,
-    config.creatorsCategory  && `Nische: ${config.creatorsCategory}`,
-    config.businessContext   && `Business-Kontext: ${config.businessContext}`,
-    config.brandFeeling      && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem      && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.providerRole      && `Anbieter-Rolle: ${config.providerRole}`,
-    config.providerBeliefs   && `Überzeugungen: ${config.providerBeliefs}`,
-    config.authenticityZone  && `Authentizitätszone: ${config.authenticityZone}`,
-    config.humanDifferentiation && `Einzigartigkeit: ${config.humanDifferentiation}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-    dreamCustomer.profession  && `Traumkunden-Beruf: ${dreamCustomer.profession}`,
-  ].filter(Boolean).join("\n");
+  const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
   // ── Strategy ──────────────────────────────────────────────────────────────
-  const pillars: { name: string; subTopics?: string; description?: string }[] = (() => {
-    try { return JSON.parse(config.strategyPillars || "[]") || []; } catch { return []; }
-  })();
-  const weekly: Record<string, { type: string; format: string }> = (() => {
-    try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
-  })();
+  const pillars: { name: string; subTopics?: string; description?: string }[] = safeJsonParse(config.strategyPillars, []);
+  const weekly: Record<string, { type: string; format: string }> = safeJsonParse(config.strategyWeekly);
 
   const strategyJson = await readStrategyConfig();
   const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
@@ -252,7 +201,7 @@ ${creatorVideos.map((v, i) => {
 }).join("\n\n")}
 </competitor_videos>` : "";
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   // ── Build tool with enum constraints ────────────────────────────────────
   const withTypeFields = !dayOverride;
@@ -385,25 +334,11 @@ ${dayOverrideBlock}`;
 
 async function handleTopicScript(
   clientId: string,
-  config: Awaited<ReturnType<typeof readConfigs>>[0],
+  config: Config,
   topic: { day: string; pillar: string; contentType: string; format: string; title: string; description: string },
   hint: string,
-  apiKey: string,
 ) {
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  const clientContext = [
-    config.name              && `Name: ${config.name}`,
-    config.role              && `Rolle: ${config.role}`,
-    config.company           && `Unternehmen: ${config.company}`,
-    config.creatorsCategory  && `Nische: ${config.creatorsCategory}`,
-    config.businessContext   && `Business-Kontext: ${config.businessContext}`,
-    config.brandFeeling      && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem      && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.providerRole      && `Anbieter-Rolle: ${config.providerRole}`,
-    config.authenticityZone  && `Authentizitätszone: ${config.authenticityZone}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-  ].filter(Boolean).join("\n");
+  const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
   // Voice + Structure: prefer cached profiles
   const topicVoiceProfile = await getVoiceProfile(clientId);
@@ -473,7 +408,7 @@ Content-Type: ${topic.contentType} | Format: ${topic.format} | Pillar: ${topic.p
 
 Schreibe jetzt das Skript zu genau diesem Thema.`;
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",

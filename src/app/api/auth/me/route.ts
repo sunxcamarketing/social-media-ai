@@ -12,6 +12,5 @@ export async function GET() {
     email: user.email,
     role: user.role,
     clientId: user.clientId,
-    impersonatingClientId: user.impersonatingClientId,
   });
 }

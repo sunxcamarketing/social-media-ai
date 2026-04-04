@@ -35,13 +35,7 @@ import { useI18n } from "@/lib/i18n";
 import type { Video as VideoType, Config, Creator } from "@/lib/types";
 import type { CreatorSuggestion } from "@/app/api/configs/[id]/research-creators/route";
 
-/* ─── Shared helpers ─── */
-
-function formatViews(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
-  return n.toString();
-}
+import { fmt } from "@/lib/format";
 
 const TIER_STYLES: Record<string, { label: string; color: string }> = {
   mega:  { label: "Mega",  color: "bg-amber-500/10 text-ivory border-amber-500/20" },
@@ -635,7 +629,7 @@ function ResearchContent() {
                           <Loader2 className="h-3 w-3 text-blush-dark animate-spin shrink-0" />
                           <span className="text-xs font-medium">@{task.creator}</span>
                           <span className="text-[11px] text-ocean/60">{task.step}</span>
-                          {task.views && <span className="ml-auto text-[11px] text-ocean/65">{formatViews(task.views)} views</span>}
+                          {task.views && <span className="ml-auto text-[11px] text-ocean/65">{fmt(task.views)} views</span>}
                         </div>
                       ))}
                     </div>
@@ -764,7 +758,7 @@ function ResearchContent() {
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pt-8 pb-2.5 px-3">
                         <div className="flex items-center gap-1.5">
                           <Play className="h-4 w-4 text-white fill-white" />
-                          <span className="text-[15px] font-bold text-white">{formatViews(video.views)}</span>
+                          <span className="text-[15px] font-bold text-white">{fmt(video.views)}</span>
                         </div>
                       </div>
                     </a>
@@ -783,8 +777,8 @@ function ResearchContent() {
                       </div>
 
                       <div className="flex items-center gap-3 text-[11px] text-ocean/60">
-                        <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{formatViews(video.likes)}</span>
-                        <span className="inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" />{formatViews(video.comments)}</span>
+                        <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{fmt(video.likes)}</span>
+                        <span className="inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" />{fmt(video.comments)}</span>
                         <span className="ml-auto text-[10px]">{video.datePosted}</span>
                       </div>
 
@@ -843,9 +837,9 @@ function ResearchContent() {
                         </a>
                       </div>
                       <div className="mt-1 flex items-center gap-3 text-xs text-ocean/60">
-                        <span className="inline-flex items-center gap-1"><Play className="h-3 w-3 fill-current" />{formatViews(modalVideo.views)}</span>
-                        <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{formatViews(modalVideo.likes)}</span>
-                        <span className="inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" />{formatViews(modalVideo.comments)}</span>
+                        <span className="inline-flex items-center gap-1"><Play className="h-3 w-3 fill-current" />{fmt(modalVideo.views)}</span>
+                        <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{fmt(modalVideo.likes)}</span>
+                        <span className="inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" />{fmt(modalVideo.comments)}</span>
                       </div>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
@@ -1082,7 +1076,7 @@ function ResearchContent() {
                     <div className="mt-4 grid grid-cols-3 gap-2">
                       <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
                         <UserCheck className="mx-auto h-3.5 w-3.5 text-ocean/60 mb-1" />
-                        <p className="text-sm font-bold">{formatViews(creator.followers)}</p>
+                        <p className="text-sm font-bold">{fmt(creator.followers)}</p>
                         <p className="text-[9px] text-ocean/60 uppercase tracking-wider">Follower</p>
                       </div>
                       <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
@@ -1092,7 +1086,7 @@ function ResearchContent() {
                       </div>
                       <div className="rounded-xl bg-black/20 border border-ocean/[0.06] p-2.5 text-center">
                         <Eye className="mx-auto h-3.5 w-3.5 text-emerald-400 mb-1" />
-                        <p className="text-sm font-bold">{formatViews(creator.avgViews30d)}</p>
+                        <p className="text-sm font-bold">{fmt(creator.avgViews30d)}</p>
                         <p className="text-[9px] text-ocean/60 uppercase tracking-wider">O Views</p>
                       </div>
                     </div>

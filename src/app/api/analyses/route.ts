@@ -14,8 +14,6 @@ export async function GET(request: Request) {
   // Clients can only see their own analyses
   if (user.role === "client") {
     clientId = user.clientId;
-  } else if (user.impersonatingClientId && !clientId) {
-    clientId = user.impersonatingClientId;
   }
 
   const analyses = clientId ? await readAnalysesByClient(clientId) : await readAnalyses();

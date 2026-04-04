@@ -1,56 +1,29 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readScripts, readTrainingScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
-import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
+import { getAnthropicClient } from "@/lib/anthropic";
+import { readConfig, readVideos, readScripts, readStrategyConfig } from "@/lib/csv";
+import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt } from "@prompts";
-import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
+import { safeJsonParse } from "@/lib/safe-json";
+import { buildFullClientContext } from "@/lib/client-context";
+import { fmt } from "@/lib/format";
+import { parseInsights } from "@/lib/performance-helpers";
+import type { VideoInsight } from "@/lib/performance-helpers";
 import type { TopicPlanItem } from "@/lib/types";
 
 export const maxDuration = 60;
 
-function parseInsights(raw: string): PerformanceInsights | null {
-  try { return JSON.parse(raw) || null; } catch { return null; }
-}
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
-}
-
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
-
   // ── Client context ────────────────────────────────────────────────────────
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  const clientContext = [
-    config.name              && `Name: ${config.name}`,
-    config.role              && `Rolle: ${config.role}`,
-    config.company           && `Unternehmen: ${config.company}`,
-    config.creatorsCategory  && `Nische: ${config.creatorsCategory}`,
-    config.businessContext   && `Business-Kontext: ${config.businessContext}`,
-    config.brandFeeling      && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem      && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.providerRole      && `Anbieter-Rolle: ${config.providerRole}`,
-    config.authenticityZone  && `Authentizitätszone: ${config.authenticityZone}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-  ].filter(Boolean).join("\n");
+  const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
   // ── Strategy ──────────────────────────────────────────────────────────────
-  const pillars: { name: string; subTopics?: string }[] = (() => {
-    try { return JSON.parse(config.strategyPillars || "[]") || []; } catch { return []; }
-  })();
-  const weekly: Record<string, { type: string; format: string }> = (() => {
-    try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
-  })();
+  const pillars: { name: string; subTopics?: string }[] = safeJsonParse(config.strategyPillars, []);
+  const weekly: Record<string, { type: string; format: string }> = safeJsonParse(config.strategyWeekly);
 
   const strategyJson = await readStrategyConfig();
   const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
@@ -145,7 +118,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     },
   };
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   const systemPrompt = buildPrompt("topic-plan");
 

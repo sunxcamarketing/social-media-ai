@@ -40,6 +40,7 @@ import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
 import { BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentFormat } from "@/lib/strategy";
+import { fmtDuration } from "@/lib/format";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -50,12 +51,6 @@ const DAY_LABELS: Record<string, string> = {
 const DAY_SHORT: Record<string, string> = {
   Mon: "Mo", Tue: "Di", Wed: "Mi", Thu: "Do", Fri: "Fr", Sat: "Sa", Sun: "So",
 };
-
-function fmtDuration(s: number): string {
-  if (!s) return "?s";
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m${s % 60 > 0 ? `${s % 60}s` : ""}`;
-}
 
 function baseTitle(title: string): string {
   return title.replace(/\s*(?:\(Kurz\)|\(Lang\)|—\s*Kurz|—\s*Lang)\s*$/, "").trim();

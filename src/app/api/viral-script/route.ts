@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { readConfig, readVideos } from "@/lib/csv";
 import { scrapeSinglePost } from "@/lib/apify";
 import { uploadVideo, analyzeVideo } from "@/lib/gemini";
@@ -6,48 +6,20 @@ import {
   getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock,
   getScriptStructure, generateScriptStructure, scriptStructureToPromptBlock,
 } from "@/lib/voice-profile";
-import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
+import { getAuditBlock } from "@/lib/audit";
 import {
   buildPrompt, HOOK_GENERATION_TOOL, VIRAL_STRUCTURE_TOOL, VIRAL_ADAPT_TOOL, VIRAL_PRODUCTION_TOOL, VIRAL_CRITIC_TOOL, VIRAL_REVISE_TOOL, VIRAL_SCRIPT_ANALYSIS_PROMPT,
 } from "@prompts";
+import { sendEvent, sseResponse } from "@/lib/sse";
+import { buildFullClientContext } from "@/lib/client-context";
 
 export const maxDuration = 300;
 
 const MODEL = "claude-sonnet-4-6";
 
-// ── SSE helper ──────────────────────────────────────────────────────────────
-
-function sendEvent(controller: ReadableStreamDefaultController, data: Record<string, unknown>) {
-  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
-}
-
-// ── Build client context ────────────────────────────────────────────────────
-
-function buildClientContext(config: Record<string, string>): string {
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  return [
-    config.name              && `Name: ${config.name}`,
-    config.role              && `Rolle: ${config.role}`,
-    config.company           && `Unternehmen: ${config.company}`,
-    config.creatorsCategory  && `Nische: ${config.creatorsCategory}`,
-    config.businessContext   && `Business-Kontext: ${config.businessContext}`,
-    config.brandFeeling      && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem      && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.providerRole      && `Anbieter-Rolle: ${config.providerRole}`,
-    config.providerBeliefs   && `Überzeugungen: ${config.providerBeliefs}`,
-    config.authenticityZone  && `Authentizitätszone: ${config.authenticityZone}`,
-    config.humanDifferentiation && `Einzigartigkeit: ${config.humanDifferentiation}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-    dreamCustomer.profession  && `Traumkunden-Beruf: ${dreamCustomer.profession}`,
-  ].filter(Boolean).join("\n");
-}
-
 // ── Main endpoint ───────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not set" }), { status: 500 });
 
   const body = await request.json().catch(() => ({}));
   const { clientId, videoId, videoUrl } = body as { clientId?: string; videoId?: string; videoUrl?: string };
@@ -61,9 +33,9 @@ export async function POST(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const claude = new Anthropic({ apiKey });
+        const claude = getAnthropicClient();
         const clientName = config.name || config.configName || "der Kunde";
-        const clientContext = buildClientContext(config as unknown as Record<string, string>);
+        const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
         // ── Step 0: Load context ────────────────────────────────────────
         sendEvent(controller, { step: "context", status: "loading" });
@@ -405,11 +377,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return sseResponse(stream);
 }

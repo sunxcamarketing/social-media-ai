@@ -751,3 +751,105 @@ export const VIRAL_REVISE_TOOL = {
     required: ["textHookShort", "textHookLong", "hookShort", "bodyShort", "ctaShort", "hookLong", "bodyLong", "ctaLong", "changesApplied"],
   },
 };
+
+// ── Agent Tools (Unified Chat Agent) ──────────────────────────────────────
+// All tools accept an optional client_name parameter.
+// For clients: auto-scoped, client_name is ignored.
+// For admins: client_name identifies which client's data to access.
+
+const CLIENT_NAME_PROP = {
+  type: "string" as const,
+  description: "Name des Clients (z.B. 'Elliott', 'Max'). Für Admins: PFLICHT. Für Clients: wird ignoriert.",
+} as const;
+
+export const AGENT_LIST_CLIENTS_TOOL = {
+  name: "list_clients",
+  description: "Liste alle Clients mit Name, Nische und Instagram. Nur für Admins.",
+  input_schema: { type: "object" as const, properties: {}, required: [] },
+};
+
+export const AGENT_LOAD_CONTEXT_TOOL = {
+  name: "load_client_context",
+  description: "Lade das vollständige Profil, Branding, Strategie und Zielgruppe eines Clients",
+  input_schema: {
+    type: "object" as const,
+    properties: { client_name: CLIENT_NAME_PROP },
+    required: [] as string[],
+  },
+};
+
+export const AGENT_LOAD_VOICE_TOOL = {
+  name: "load_voice_profile",
+  description: "Lade das Voice Profile und die Skript-Struktur eines Clients",
+  input_schema: {
+    type: "object" as const,
+    properties: { client_name: CLIENT_NAME_PROP },
+    required: [] as string[],
+  },
+};
+
+export const AGENT_SEARCH_SCRIPTS_TOOL = {
+  name: "search_scripts",
+  description: "Suche in den bisherigen Skripten eines Clients",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      query: { type: "string" as const, description: "Suchbegriff (Titel, Pillar, Hook)" },
+      pillar: { type: "string" as const, description: "Optional: Filter nach Content-Pillar" },
+      limit: { type: "number" as const, description: "Maximale Anzahl Ergebnisse (default 10)" },
+    },
+    required: [] as string[],
+  },
+};
+
+export const AGENT_CHECK_PERFORMANCE_TOOL = {
+  name: "check_performance",
+  description: "Lade Performance-Daten: Top-Videos, Ø Views, beste Hooks, Hook-Pattern-Verteilung",
+  input_schema: {
+    type: "object" as const,
+    properties: { client_name: CLIENT_NAME_PROP },
+    required: [] as string[],
+  },
+};
+
+export const AGENT_LOAD_AUDIT_TOOL = {
+  name: "load_audit",
+  description: "Lade den neuesten Audit-Report mit Stärken, Schwächen und Empfehlungen",
+  input_schema: {
+    type: "object" as const,
+    properties: { client_name: CLIENT_NAME_PROP },
+    required: [] as string[],
+  },
+};
+
+export const AGENT_GENERATE_SCRIPT_TOOL = {
+  name: "generate_script",
+  description: "Generiere ein neues Skript (kurz + lang) basierend auf einem Thema. IMMER vorher load_voice_profile aufrufen.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      title: { type: "string" as const, description: "Skript-Titel (max 10 Wörter)" },
+      description: { type: "string" as const, description: "Kurzbeschreibung was das Skript behandelt" },
+      pillar: { type: "string" as const, description: "Content-Pillar (z.B. aus der Strategie)" },
+      contentType: { type: "string" as const, description: "Content-Typ (z.B. Edutainment, Storytelling)" },
+      format: { type: "string" as const, description: "Format (z.B. Talking Head, Listicle)" },
+      tone: { type: "string" as const, description: "Optional: Gewünschte Tonalität (provokant, ruhig, motivierend)" },
+    },
+    required: ["title", "description"] as string[],
+  },
+};
+
+export const AGENT_CHECK_COMPETITORS_TOOL = {
+  name: "check_competitors",
+  description: "Lade analysierte Competitor-Videos mit Hooks, Views und Konzepten",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      limit: { type: "number" as const, description: "Maximale Anzahl Videos (default 10)" },
+    },
+    required: [] as string[],
+  },
+};

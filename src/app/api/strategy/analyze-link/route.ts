@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 
 export const maxDuration = 30;
@@ -72,9 +72,6 @@ export async function POST(request: Request) {
   const { url } = await request.json();
   if (!url?.trim()) return NextResponse.json({ error: "URL required" }, { status: 400 });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
-
   // Fetch content based on platform
   let pageText = "";
   if (url.includes("instagram.com")) {
@@ -86,7 +83,7 @@ export async function POST(request: Request) {
   const contentTypeNames = BUILT_IN_CONTENT_TYPES.map(t => t.name).join(", ");
   const formatNames = BUILT_IN_FORMATS.map(f => f.name).join(", ");
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
   const message = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 512,

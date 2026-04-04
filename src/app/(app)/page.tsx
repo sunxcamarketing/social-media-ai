@@ -6,10 +6,10 @@ import {
   Send,
   Square,
   Trash2,
+  Loader2,
+  Check,
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown-content";
-
-// ── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
   id: string;
@@ -17,15 +17,30 @@ interface ChatMessage {
   content: string;
 }
 
+interface ToolStatus {
+  tool: string;
+  status: "running" | "done";
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  list_clients: "Lade Client-Liste",
+  load_client_context: "Lade Client-Profil",
+  load_voice_profile: "Lade Voice Profile",
+  search_scripts: "Suche Skripte",
+  check_performance: "Prüfe Performance",
+  load_audit: "Lade Audit",
+  generate_script: "Generiere Skript",
+  check_competitors: "Analysiere Wettbewerber",
+};
+
 let msgCounter = 0;
 function msgId() { return `msg-${Date.now()}-${++msgCounter}`; }
-
-// ── Main Page (Chat Only) ────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -34,7 +49,7 @@ export default function DashboardPage() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, []);
 
-  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+  useEffect(() => { scrollToBottom(); }, [messages, toolStatuses, scrollToBottom]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -53,6 +68,7 @@ export default function DashboardPage() {
     setMessages([...newMessages, assistantMsg]);
     setInput("");
     setStreaming(true);
+    setToolStatuses([]);
 
     const abort = new AbortController();
     abortRef.current = abort;
@@ -76,14 +92,33 @@ export default function DashboardPage() {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
+        const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.text) {
+            if (data.type === "text" && data.text) {
+              fullText += data.text;
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last?.role === "assistant") updated[updated.length - 1] = { ...last, content: fullText };
+                return updated;
+              });
+            } else if (data.type === "tool_status") {
+              setToolStatuses(prev => {
+                const existing = prev.findIndex(t => t.tool === data.tool);
+                if (existing >= 0) {
+                  const updated = [...prev];
+                  updated[existing] = { tool: data.tool, status: data.status };
+                  return updated;
+                }
+                return [...prev, { tool: data.tool, status: data.status }];
+              });
+            } else if (data.text) {
+              // Legacy format compatibility
               fullText += data.text;
               setMessages(prev => {
                 const updated = [...prev];
@@ -120,7 +155,7 @@ export default function DashboardPage() {
   }
 
   function handleStop() { abortRef.current?.abort(); }
-  function handleClear() { if (streaming) handleStop(); setMessages([]); }
+  function handleClear() { if (streaming) handleStop(); setMessages([]); setToolStatuses([]); }
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
@@ -133,7 +168,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between px-6 py-3 border-b border-ocean/[0.06] shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-ivory" />
-          <span className="text-sm font-medium text-ocean">SUNXCA Assistent</span>
+          <span className="text-sm font-medium text-ocean">Content Agent</span>
         </div>
         {hasMessages && (
           <button onClick={handleClear} className="flex items-center gap-1 text-[11px] text-ocean/30 hover:text-ocean/60 transition-colors">
@@ -155,11 +190,10 @@ export default function DashboardPage() {
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-lg">
               {[
-                "Zeig mir eine Zusammenfassung aller Clients",
+                "Zeig mir alle Clients",
+                "Was sagt Elliotts Audit?",
+                "Schreib ein Skript für Elliott über Trading-Fehler",
                 "Welche Hooks performen am besten?",
-                "Schreib mir 3 Hook-Ideen für Elliott",
-                "Was sagt der Audit über die Performance?",
-                "Erstelle einen Wochenplan für nächste Woche",
               ].map(s => (
                 <button key={s} onClick={() => { setInput(s); textareaRef.current?.focus(); }}
                   className="rounded-xl border border-ocean/[0.06] bg-ocean/[0.02] px-3 py-2 text-xs text-ocean/50 hover:text-ocean hover:border-ocean/[0.12] hover:bg-ocean/[0.04] transition-all"
@@ -192,6 +226,24 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+
+            {/* Tool statuses */}
+            {toolStatuses.length > 0 && streaming && (
+              <div className="flex justify-start">
+                <div className="flex flex-col gap-1.5 px-4 py-2">
+                  {toolStatuses.map((ts) => (
+                    <div key={ts.tool} className="flex items-center gap-2 text-xs text-ocean/50">
+                      {ts.status === "running" ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-ocean/40" />
+                      ) : (
+                        <Check className="h-3 w-3 text-green-500" />
+                      )}
+                      <span>{TOOL_LABELS[ts.tool] || ts.tool}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

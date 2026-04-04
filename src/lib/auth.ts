@@ -1,14 +1,16 @@
 import { createSupabaseServer } from "./supabase-server";
 import { supabase } from "./supabase";
-import { cookies } from "next/headers";
+
+type UserRole = "admin" | "client";
 
 export interface AppUser {
   id: string;
   email: string;
-  role: "admin" | "client";
-  clientId: string | null; // null for admins
-  impersonatingClientId: string | null; // set when admin views as client
+  role: UserRole;
+  clientId: string | null;
 }
+
+const NO_ROWS_FOUND = "PGRST116";
 
 /**
  * Get the current authenticated user with role and client mapping.
@@ -16,73 +18,48 @@ export interface AppUser {
  */
 export async function getCurrentUser(): Promise<AppUser | null> {
   const serverSupabase = await createSupabaseServer();
-  const { data: { user } } = await serverSupabase.auth.getUser();
+  const {
+    data: { user },
+  } = await serverSupabase.auth.getUser();
 
   if (!user) return null;
 
-  // Look up role in client_users (using service role for reliable access)
-  let clientUser: { role: string; client_id: string | null } | null = null;
-  try {
-    const { data, error } = await supabase
-      .from("client_users")
-      .select("role, client_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .single();
+  const { data: clientUser, error } = await supabase
+    .from("client_users")
+    .select("role, client_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .single();
 
-    if (error || !data) {
-      // No entry or table doesn't exist — treat as admin fallback for initial setup
-      return {
-        id: user.id,
-        email: user.email || "",
-        role: "admin" as const,
-        clientId: null,
-        impersonatingClientId: null,
-      };
-    }
-    clientUser = data;
-  } catch {
-    // Table doesn't exist yet — fallback to admin
-    return {
-      id: user.id,
-      email: user.email || "",
-      role: "admin" as const,
-      clientId: null,
-      impersonatingClientId: null,
-    };
+  // Table missing or unexpected error — treat as admin (setup mode)
+  if (!clientUser && error?.code !== NO_ROWS_FOUND) {
+    return buildAppUser(user.id, user.email, "admin", null);
   }
 
-  const role = clientUser.role as "admin" | "client";
-  const clientId = clientUser.client_id as string | null;
+  // No entry found — no access
+  if (!clientUser) return null;
 
-  // Check for admin impersonate cookie
-  let impersonatingClientId: string | null = null;
-  if (role === "admin") {
-    const cookieStore = await cookies();
-    const impersonateCookie = cookieStore.get("impersonate_client_id");
-    if (impersonateCookie?.value) {
-      impersonatingClientId = impersonateCookie.value;
-    }
-  }
+  const role = clientUser.role as UserRole;
 
-  return {
-    id: user.id,
-    email: user.email || "",
-    role,
-    clientId,
-    impersonatingClientId,
-  };
+  return buildAppUser(user.id, user.email, role, clientUser.client_id);
+}
+
+function buildAppUser(
+  id: string,
+  email: string | undefined,
+  role: UserRole,
+  clientId: string | null,
+): AppUser {
+  return { id, email: email || "", role, clientId };
 }
 
 /**
  * Get the effective client ID for the current user.
  * For clients: their own client_id.
- * For admins impersonating: the impersonated client_id.
- * For admins not impersonating: null (has access to all).
+ * For admins: null (has access to all).
  */
 export function getEffectiveClientId(user: AppUser): string | null {
   if (user.role === "client") return user.clientId;
-  if (user.impersonatingClientId) return user.impersonatingClientId;
   return null;
 }
 

@@ -1,61 +1,18 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { readConfig, updateConfig, readVideosByConfig, readAnalysesByClient, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS, type ContentType, type ContentFormat } from "@/lib/strategy";
 import { buildPrompt, STRATEGY_ANALYSIS_TOOL, STRATEGY_CREATION_TOOL, STRATEGY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
+import { sendEvent, sseResponse } from "@/lib/sse";
+import { safeJsonParse } from "@/lib/safe-json";
+import { buildClientProfile, buildBrandContext } from "@/lib/client-context";
 import type { VoiceProfile } from "@/lib/types";
-import type { PerformanceInsights, VideoInsight } from "../performance/route";
+import type { PerformanceInsights, VideoInsight } from "@/lib/performance-helpers";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
-// ── SSE helper ──────────────────────────────────────────────────────────────
-
-function sendEvent(controller: ReadableStreamDefaultController, data: Record<string, unknown>) {
-  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
-}
-
 // ── Data loading helpers (NO truncation) ────────────────────────────────────
-
-function buildClientContext(config: Record<string, string>): string {
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  const customerProblems = (() => { try { return JSON.parse(config.customerProblems || "{}"); } catch { return {}; } })();
-
-  return [
-    config.name && `Name: ${config.name}`,
-    config.role && `Rolle: ${config.role}`,
-    config.company && `Unternehmen: ${config.company}`,
-    config.creatorsCategory && `Nische: ${config.creatorsCategory}`,
-    config.businessContext && `Business-Kontext: ${config.businessContext}`,
-    config.professionalBackground && `Hintergrund: ${config.professionalBackground}`,
-    config.keyAchievements && `Erfolge: ${config.keyAchievements}`,
-    config.igBio && `Instagram Bio: ${config.igBio}`,
-    config.igFollowers && `Instagram Follower: ${config.igFollowers}`,
-    config.igCategory && `Instagram Kategorie: ${config.igCategory}`,
-  ].filter(Boolean).join("\n");
-}
-
-function buildBrandContext(config: Record<string, string>): string {
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  const customerProblems = (() => { try { return JSON.parse(config.customerProblems || "{}"); } catch { return {}; } })();
-
-  return [
-    config.brandFeeling && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.humanDifferentiation && `AND-Faktor: ${config.humanDifferentiation}`,
-    config.providerRole && `Anbieter-Rolle: ${config.providerRole}`,
-    config.providerBeliefs && `Überzeugungen: ${config.providerBeliefs}`,
-    config.providerStrengths && `Stärken: ${config.providerStrengths}`,
-    config.authenticityZone && `Authentizitätszone: ${config.authenticityZone}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-    dreamCustomer.profession && `Traumkunde Beruf: ${dreamCustomer.profession}`,
-    dreamCustomer.values && `Traumkunde Werte: ${dreamCustomer.values}`,
-    customerProblems.mental && `Mentale Probleme: ${customerProblems.mental}`,
-    customerProblems.financial && `Finanzielle Probleme: ${customerProblems.financial}`,
-    customerProblems.social && `Soziale Probleme: ${customerProblems.social}`,
-  ].filter(Boolean).join("\n");
-}
 
 function buildPerformanceBlock(insights: PerformanceInsights): string {
   const formatVideo = (v: VideoInsight, i: number) => [
@@ -119,22 +76,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           return;
         }
 
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!apiKey) {
-          sendEvent(controller, { step: "error", message: "ANTHROPIC_API_KEY not set" });
-          controller.close();
-          return;
-        }
-
-        const claude = new Anthropic({ apiKey });
-        const clientContext = buildClientContext(config as unknown as Record<string, string>);
+        const claude = getAnthropicClient();
+        const clientContext = buildClientProfile(config as unknown as Record<string, string>);
         const brandContext = buildBrandContext(config as unknown as Record<string, string>);
         const clientName = config.name || config.configName || "Kunde";
 
         // Performance data (own top videos)
         let performanceBlock = "";
         try {
-          const insights: PerformanceInsights = JSON.parse(config.performanceInsights || "{}");
+          const insights: PerformanceInsights = safeJsonParse(config.performanceInsights);
           if (insights.top30Days || insights.topAllTime) {
             performanceBlock = buildPerformanceBlock(insights);
           }
@@ -463,11 +413,5 @@ Prüfe diese Strategie.`;
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return sseResponse(stream);
 }

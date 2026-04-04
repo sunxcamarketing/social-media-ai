@@ -1,41 +1,14 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readStrategyConfig } from "@/lib/csv";
+import { getAnthropicClient } from "@/lib/anthropic";
+import { readConfig, readVideos, readStrategyConfig } from "@/lib/csv";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
-import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
+import { safeJsonParse } from "@/lib/safe-json";
+import { buildFullClientContext } from "@/lib/client-context";
+import { fmt, fmtDuration, secondsToWords } from "@/lib/format";
+import { parseInsights, videoInsightBlock } from "@/lib/performance-helpers";
+import type { VideoInsight } from "@/lib/performance-helpers";
 
 export const maxDuration = 120;
-
-function parseInsights(raw: string): PerformanceInsights | null {
-  try { return JSON.parse(raw) || null; } catch { return null; }
-}
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
-}
-
-function fmtDuration(s: number): string {
-  if (!s) return "?s";
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m${s % 60 > 0 ? `${s % 60}s` : ""}`;
-}
-
-function secondsToWords(s: number): number {
-  return Math.round(s * 2);
-}
-
-function videoInsightBlock(v: VideoInsight, index: number): string {
-  return [
-    `  [${index + 1}] ${fmt(v.views)} Views · ${fmt(v.likes)} Likes · ${v.datePosted}${v.durationSeconds ? ` · Länge: ${fmtDuration(v.durationSeconds)}` : ""}`,
-    v.topic         && `  Thema: ${v.topic}`,
-    v.audioHook && v.audioHook !== "none" && `  Audio-Hook: "${v.audioHook}"`,
-    v.textHook  && v.textHook  !== "none" && `  Text-Hook: "${v.textHook}"`,
-    v.whyItWorked    && `  Warum es funktioniert hat: ${v.whyItWorked}`,
-  ].filter(Boolean).join("\n");
-}
-
 
 const WEEK_SCRIPT_TOOL = {
   name: "submit_script",
@@ -68,39 +41,15 @@ export interface WeekScript {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
-
   // ── Client brand context ──────────────────────────────────────────────────
-  const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-  const clientContext = [
-    config.name              && `Name: ${config.name}`,
-    config.role              && `Rolle: ${config.role}`,
-    config.company           && `Unternehmen: ${config.company}`,
-    config.creatorsCategory  && `Nische: ${config.creatorsCategory}`,
-    config.businessContext   && `Business-Kontext: ${config.businessContext}`,
-    config.brandFeeling      && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem      && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.providerRole      && `Rolle als Anbieter: ${config.providerRole}`,
-    config.providerBeliefs   && `Überzeugungen: ${config.providerBeliefs}`,
-    config.authenticityZone  && `Authentizitätszone: ${config.authenticityZone}`,
-    config.humanDifferentiation && `Einzigartigkeit: ${config.humanDifferentiation}`,
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-    dreamCustomer.profession  && `Traumkunden-Beruf: ${dreamCustomer.profession}`,
-  ].filter(Boolean).join("\n");
+  const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
   // ── Strategy ──────────────────────────────────────────────────────────────
-  const pillars: { name: string; description?: string }[] = (() => {
-    try { return JSON.parse(config.strategyPillars || "[]") || []; } catch { return []; }
-  })();
-  const weekly: Record<string, { type: string; format: string; pillar?: string }> = (() => {
-    try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
-  })();
+  const pillars: { name: string; description?: string }[] = safeJsonParse(config.strategyPillars, []);
+  const weekly: Record<string, { type: string; format: string; pillar?: string }> = safeJsonParse(config.strategyWeekly);
 
   const strategyJson = await readStrategyConfig();
   const allContentTypes = [...BUILT_IN_CONTENT_TYPES, ...(strategyJson.customContentTypes || [])];
@@ -189,7 +138,7 @@ ${creatorVideos.map((v, i) => {
     return "Face to Camera";
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   // ── Generate all scripts in parallel ─────────────────────────────────────
   const results = await Promise.allSettled(

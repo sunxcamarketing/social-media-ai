@@ -1,102 +1,18 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { readConfig, readVideos, readScriptsByClient, readAnalysesByClient, readStrategyConfig } from "@/lib/csv";
+import { getAnthropicClient } from "@/lib/anthropic";
+import { readConfig, readVideos, readScriptsByClient, readStrategyConfig } from "@/lib/csv";
+import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt, TOPIC_SELECTION_TOOL, TREND_RESEARCH_TOOL, HOOK_GENERATION_TOOL, BODY_WRITING_TOOL, QUALITY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, generateScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
+import { sendEvent, sseResponse } from "@/lib/sse";
+import { safeJsonParse } from "@/lib/safe-json";
+import { buildClientProfile, buildBrandContext } from "@/lib/client-context";
+import { fmt, fmtDuration } from "@/lib/format";
+import { parseInsights, videoInsightBlock } from "@/lib/performance-helpers";
+import type { VideoInsight } from "@/lib/performance-helpers";
 import type { VoiceProfile, ScriptStructureProfile } from "@/lib/types";
-import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
 
 export const maxDuration = 300;
-
-// ── SSE helper ──────────────────────────────────────────────────────────────
-
-function sendEvent(controller: ReadableStreamDefaultController, data: Record<string, unknown>) {
-  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
-}
-
-// ── Audit report extraction (kept from old version, still used elsewhere) ───
-
-export function extractAuditContext(report: string): {
-  profileOverview: string;
-  strengths: string;
-  improvements: string;
-  contentAnalysis: string;
-  immediateActions: string;
-} {
-  const sections: Record<string, string> = {};
-  const parts = report.split(/^## /m);
-  for (const part of parts) {
-    const newlineIdx = part.indexOf("\n");
-    if (newlineIdx === -1) continue;
-    const heading = part.slice(0, newlineIdx).trim().toLowerCase();
-    const body = part.slice(newlineIdx + 1).trim();
-    sections[heading] = body;
-  }
-
-  const trim = (s: string, max = 800) => s ? s.slice(0, max) : "";
-
-  return {
-    profileOverview: trim(sections["profil-überblick"] || sections["profil-überblick"] || ""),
-    strengths: trim(sections["stärken"] || sections["strengths"] || ""),
-    improvements: trim(sections["verbesserungspotenzial"] || sections["improvements"] || ""),
-    contentAnalysis: trim(sections["content-analyse"] || sections["content analysis"] || "", 1200),
-    immediateActions: trim(sections["sofort-maßnahmen"] || sections["sofort-massnahmen"] || sections["immediate actions"] || "", 1000),
-  };
-}
-
-export async function getAuditBlock(clientId: string): Promise<string> {
-  const analyses = (await readAnalysesByClient(clientId))
-    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-
-  if (analyses.length === 0) return "";
-
-  const latest = analyses[0];
-  const audit = extractAuditContext(latest.report || "");
-
-  const parts: string[] = [];
-
-  if (latest.profileFollowers || latest.profileAvgViews30d) {
-    parts.push(`Profil: ${latest.profileFollowers} Follower, ${latest.profileReels30d} Reels/30d, Ø ${latest.profileAvgViews30d} Views`);
-  }
-  if (audit.profileOverview) parts.push(`ÜBERBLICK:\n${audit.profileOverview}`);
-  if (audit.strengths) parts.push(`STÄRKEN:\n${audit.strengths}`);
-  if (audit.improvements) parts.push(`VERBESSERUNGSPOTENZIAL:\n${audit.improvements}`);
-  if (audit.contentAnalysis) parts.push(`CONTENT-ANALYSE (was funktioniert vs. was nicht):\n${audit.contentAnalysis}`);
-  if (audit.immediateActions) parts.push(`SOFORT-MASSNAHMEN:\n${audit.immediateActions}`);
-
-  return parts.length > 0 ? `<audit_report>\n${parts.join("\n\n")}\n</audit_report>` : "";
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function parseInsights(raw: string): PerformanceInsights | null {
-  try { return JSON.parse(raw) || null; } catch { return null; }
-}
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
-}
-
-function fmtDuration(s: number): string {
-  if (!s) return "?s";
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m${s % 60 > 0 ? `${s % 60}s` : ""}`;
-}
-
-function videoInsightBlock(v: VideoInsight, index: number): string {
-  return [
-    `[${index + 1}] ${fmt(v.views)} Views · ${fmt(v.likes)} Likes · ${v.datePosted}${v.durationSeconds ? ` · ${fmtDuration(v.durationSeconds)}` : ""}`,
-    v.topic && `Thema: ${v.topic}`,
-    v.audioHook && v.audioHook !== "none" && `Audio-Hook: "${v.audioHook}"`,
-    v.textHook && v.textHook !== "none" && `Text-Hook: "${v.textHook}"`,
-    v.scriptSummary && `Zusammenfassung: ${v.scriptSummary}`,
-    v.whyItWorked && `Warum erfolgreich: ${v.whyItWorked}`,
-    v.howToReplicate && `Wie replizieren: ${v.howToReplicate}`,
-  ].filter(Boolean).join("\n");
-}
-
 
 // ── Main endpoint — Multi-Step SSE Pipeline ─────────────────────────────────
 
@@ -118,46 +34,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           return;
         }
 
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!apiKey) {
-          sendEvent(controller, { step: "error", message: "ANTHROPIC_API_KEY not set" });
-          controller.close();
-          return;
-        }
-
-        const claude = new Anthropic({ apiKey });
+        const claude = getAnthropicClient();
 
         // Client context
-        const dreamCustomer = (() => { try { return JSON.parse(config.dreamCustomer || "{}"); } catch { return {}; } })();
-        const customerProblems = (() => { try { return JSON.parse(config.customerProblems || "{}"); } catch { return {}; } })();
-
-        const clientContext = [
-          config.name && `Name: ${config.name}`,
-          config.role && `Rolle: ${config.role}`,
-          config.company && `Unternehmen: ${config.company}`,
-          config.creatorsCategory && `Nische: ${config.creatorsCategory}`,
-          config.businessContext && `Business-Kontext: ${config.businessContext}`,
-          config.professionalBackground && `Hintergrund: ${config.professionalBackground}`,
-        ].filter(Boolean).join("\n");
-
-        const brandContext = [
-          config.brandFeeling && `Marken-Gefühl: ${config.brandFeeling}`,
-          config.brandProblem && `Kernproblem: ${config.brandProblem}`,
-          config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-          config.humanDifferentiation && `Differenzierung: ${config.humanDifferentiation}`,
-          config.providerRole && `Anbieter-Rolle: ${config.providerRole}`,
-          config.authenticityZone && `Authentizitätszone: ${config.authenticityZone}`,
-          dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-          customerProblems.mental && `Mentale Probleme: ${customerProblems.mental}`,
-        ].filter(Boolean).join("\n");
+        const clientContext = buildClientProfile(config as unknown as Record<string, string>);
+        const brandContext = buildBrandContext(config as unknown as Record<string, string>);
 
         // Strategy
-        const pillars: { name: string; subTopics?: string }[] = (() => {
-          try { return JSON.parse(config.strategyPillars || "[]") || []; } catch { return []; }
-        })();
-        const weekly: Record<string, { type: string; format: string }> = (() => {
-          try { return JSON.parse(config.strategyWeekly || "{}") || {}; } catch { return {}; }
-        })();
+        const pillars: { name: string; subTopics?: string }[] = safeJsonParse(config.strategyPillars, []);
+        const weekly: Record<string, { type: string; format: string }> = safeJsonParse(config.strategyWeekly);
 
         // Parallel DB reads — all independent, only need config.id and config.configName
         const configName = config.configName || config.name || "";
@@ -699,11 +584,5 @@ Prüfe alle ${assembledScripts.length} Skripte.`;
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return sseResponse(stream);
 }

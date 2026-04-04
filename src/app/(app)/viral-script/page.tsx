@@ -13,13 +13,9 @@ import { Input } from "@/components/ui/input";
 import type { Config, Video as VideoType } from "@/lib/types";
 import { useViralScript, type PipelineStep, type FinalResult } from "@/context/viral-script-context";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+import { fmt } from "@/lib/format";
 
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
-}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).catch(() => {});

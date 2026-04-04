@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { readConfig, updateConfig } from "@/lib/csv";
+import { safeJsonParse } from "@/lib/safe-json";
 
 export const maxDuration = 60;
 
@@ -11,10 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
-
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   // Build a readable snapshot of current profile
   const currentProfile = JSON.stringify({
@@ -27,8 +25,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     keyAchievements: config.keyAchievements,
     brandFeeling: config.brandFeeling,
     brandProblem: config.brandProblem,
-    dreamCustomer: config.dreamCustomer ? JSON.parse(config.dreamCustomer || "{}") : {},
-    customerProblems: config.customerProblems ? JSON.parse(config.customerProblems || "{}") : {},
+    dreamCustomer: safeJsonParse(config.dreamCustomer),
+    customerProblems: safeJsonParse(config.customerProblems),
     providerRole: config.providerRole,
     providerBeliefs: config.providerBeliefs,
     providerStrengths: config.providerStrengths,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropicClient } from "@/lib/anthropic";
 import { readConfig, readScripts, writeScripts, readTrainingScripts } from "@/lib/csv";
+import { buildFullClientContext } from "@/lib/client-context";
 import { v4 as uuid } from "uuid";
 
 export const maxDuration = 120;
@@ -12,9 +13,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
-
   const body = await request.json().catch(() => ({}));
   const messages: ChatMessage[] = body.messages || [];
 
@@ -25,17 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!transcript) return NextResponse.json({ error: "Kein Gesprächsinhalt" }, { status: 400 });
 
-  const clientContext = [
-    config.name              && `Name: ${config.name}`,
-    config.role              && `Rolle: ${config.role}`,
-    config.creatorsCategory  && `Nische: ${config.creatorsCategory}`,
-    config.businessContext   && `Business: ${config.businessContext}`,
-    config.brandFeeling      && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandingStatement && `Branding: ${config.brandingStatement}`,
-    config.providerRole      && `Rolle als Anbieter: ${config.providerRole}`,
-    config.authenticityZone  && `Authentizitätszone: ${config.authenticityZone}`,
-    config.humanDifferentiation && `Einzigartigkeit: ${config.humanDifferentiation}`,
-  ].filter(Boolean).join("\n");
+  const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
   const pillars: { name: string }[] = (() => {
     try { return JSON.parse(config.strategyPillars || "[]"); } catch { return []; }
@@ -55,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ].filter(Boolean).join("\n")).join("\n\n---\n\n")}`
     : "";
 
-  const client = new Anthropic({ apiKey });
+  const client = getAnthropicClient();
 
   const msg = await client.messages.create({
     model: "claude-sonnet-4-6",

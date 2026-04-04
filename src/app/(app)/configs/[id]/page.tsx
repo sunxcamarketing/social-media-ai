@@ -34,7 +34,9 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { Config } from "@/lib/types";
-import type { PerformanceInsights, VideoInsight } from "@/app/api/configs/[id]/performance/route";
+import type { PerformanceInsights, VideoInsight } from "@/lib/performance-helpers";
+import { parseInsights } from "@/lib/performance-helpers";
+import { fmt } from "@/lib/format";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -68,10 +70,6 @@ function parsePillars(raw: string): Pillar[] {
 function parseWeekly(raw: string): WeeklyStructure {
   try { return JSON.parse(raw) || {}; } catch { return {}; }
 }
-function parseInsights(raw: string): PerformanceInsights | null {
-  try { return JSON.parse(raw) || null; } catch { return null; }
-}
-
 // ─── Small UI pieces ──────────────────────────────────────────────────────────
 
 function SocialLink({ href, icon: Icon, label }: { href: string; icon: React.ElementType; label: string }) {
@@ -102,12 +100,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <p className="text-sm leading-relaxed">{value}</p>
     </div>
   );
-}
-
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
 }
 
 // ─── Video Insight Card ───────────────────────────────────────────────────────

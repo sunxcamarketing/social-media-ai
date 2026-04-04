@@ -40,6 +40,7 @@ import type { Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
 import { useI18n } from "@/lib/i18n";
+import { fmt } from "@/lib/format";
 import { Mail, Trash2, Shield } from "lucide-react";
 
 function ClientAccessSection({ clientId }: { clientId: string }) {
@@ -273,12 +274,6 @@ interface InstagramProfile {
   category: string;
   verified: boolean;
   lastUpdated: string;
-}
-
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
-  return n.toString();
 }
 
 function getFollowupQuestions(t: (key: string) => string): { field: keyof Config; label: string; question: string; rows?: number }[] {
@@ -761,12 +756,12 @@ function ClientInformationContent() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
                     <UserCheck className="mx-auto h-3.5 w-3.5 text-ocean/60 mb-1" />
-                    <p className="text-sm font-bold">{formatNumber(igProfile.followers)}</p>
+                    <p className="text-sm font-bold">{fmt(igProfile.followers)}</p>
                     <p className="text-[9px] text-ocean/70 uppercase tracking-wider">{t("info.follower")}</p>
                   </div>
                   <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">
                     <Users className="mx-auto h-3.5 w-3.5 text-blush-dark mb-1" />
-                    <p className="text-sm font-bold">{formatNumber(igProfile.following)}</p>
+                    <p className="text-sm font-bold">{fmt(igProfile.following)}</p>
                     <p className="text-[9px] text-ocean/70 uppercase tracking-wider">{t("info.following")}</p>
                   </div>
                   <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-2.5 text-center">

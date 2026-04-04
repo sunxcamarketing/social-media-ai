@@ -7,7 +7,6 @@ import { ClientNav } from "@/components/client-nav";
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
-  const [isImpersonating, setIsImpersonating] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -19,20 +18,16 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           return;
         }
 
-        const effectiveClientId = data.role === "client"
-          ? data.clientId
-          : data.impersonatingClientId;
+        const clientId = data.clientId;
 
-        // Client without clientId or admin without impersonate → redirect
-        if (!effectiveClientId) {
+        // Only clients with a clientId can access the portal
+        if (!clientId) {
           router.push("/");
           return;
         }
 
-        setIsImpersonating(data.role === "admin" && !!data.impersonatingClientId);
-
         // Load client name
-        fetch(`/api/configs/${effectiveClientId}`)
+        fetch(`/api/configs/${clientId}`)
           .then(r => r.json())
           .then(cfg => {
             setClientName(cfg.configName || cfg.name || "Client");
@@ -53,7 +48,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-warm-white">
-      <ClientNav clientName={clientName} isImpersonating={isImpersonating} />
+      <ClientNav clientName={clientName} />
       <main className="max-w-6xl mx-auto px-6 py-8">
         {children}
       </main>

@@ -70,6 +70,20 @@ Key endpoint: `POST /api/configs/[id]/generate-strategy` (SSE stream)
 Key endpoint: `POST /api/configs/[id]/generate-week-scripts` (SSE stream)
 Voice profile: `POST /api/configs/[id]/generate-voice-profile`
 
+### Content Agent (Portal Chat)
+
+AI-Agent im Client-Portal mit Tool-Zugriff. Nutzt Claude's native `tool_use` für autonome Datenabfragen und Skript-Generierung. Der Agent entscheidet selbstständig welche Tools er aufruft basierend auf der Nachricht.
+
+**Tools:** `load_client_context`, `load_voice_profile`, `search_scripts`, `check_performance`, `load_audit`, `generate_script`, `check_competitors`
+
+- Agent-Loop: Non-streaming tool iterations + SSE text streaming for final response
+- Tool implementations: `src/lib/agent-tools.ts`
+- Agent prompt: `prompts/agents/content-agent.md`
+- Max 10 tool-call iterations per turn (safety limit)
+- Scripts always generated in short (30-40s) + long (60+s) versions
+
+Key endpoint: `POST /api/configs/[id]/chat` (SSE stream with agent loop)
+
 ---
 
 ## Modular Prompt Architecture
@@ -120,6 +134,7 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 | `single-script.md` | Single Script (main flow) | `{{laenge_regeln}}`, auto: rolle-skriptschreiber, titel-regeln, hook-regeln, body-regeln, cta-regeln, konkretion-regeln, abwechslung-regeln, sprach-stil, verboten-ai-sprache, anti-ai-checkliste, hook-muster, anti-muster, anti-monotone-formatierung, natuerliche-satzstruktur |
 | `topic-script.md` | Single Script (topic override) | `{{laenge_regeln}}`, auto: sprach-stil, verboten-ai-sprache, konkretion-regeln, anti-monotone-formatierung, natuerliche-satzstruktur |
 | `topic-plan.md` | Topic Plan Generation | auto: audit-nutzung, anti-muster |
+| `content-agent.md` | Content Agent (Portal Chat) | auto: hook-regeln, hook-muster, body-regeln, cta-regeln, konkretion-regeln, storytelling-formel, verboten-ai-sprache, sprach-stil, natuerliche-satzstruktur, anti-monotone-formatierung |
 
 ### Foundational Sub-Prompts (`prompts/foundational/`)
 
@@ -227,6 +242,7 @@ To change how scripts are generated:
 │   │   ├── auth.ts                       # Auth helpers (getCurrentUser, requireAdmin, etc.)
 │   │   ├── pipeline.ts                   # Video analysis pipeline orchestration
 │   │   ├── voice-profile.ts              # Voice + script structure extraction
+│   │   ├── agent-tools.ts               # Content Agent tool implementations (7 tools)
 │   │   ├── apify.ts                      # Apify scraper client
 │   │   ├── gemini.ts                     # Gemini video analysis client
 │   │   ├── claude.ts                     # Claude concept generation client
@@ -252,7 +268,8 @@ To change how scripts are generated:
 │   │   ├── topic-plan.md
 │   │   ├── strategy-analysis.md
 │   │   ├── strategy-creation.md
-│   │   └── strategy-review.md
+│   │   ├── strategy-review.md
+│   │   └── content-agent.md              # Content Agent system prompt (tool instructions + rules)
 │   └── foundational/                     # 21 sub-prompts (single-concern .md)
 │       ├── rolle-skriptschreiber.md
 │       ├── hook-regeln.md
