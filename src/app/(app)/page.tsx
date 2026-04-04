@@ -197,7 +197,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Input */}
-      <div className="shrink-0 border-t border-ocean/[0.06] px-6 py-4 bg-white">
+      <div className="shrink-0 border-t border-ocean/[0.06] px-6 pt-4 pb-10 bg-white">
         <div className="max-w-3xl mx-auto flex items-end gap-3">
           <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
             placeholder="Nachricht schreiben..." disabled={streaming} rows={1}

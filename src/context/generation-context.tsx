@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
-type GenState = { status: "generating" | "done" | "error"; count?: number; error?: string };
 type TaskState = { status: "running" | "done" | "error"; error?: string };
 type CreatorSuggestionItem = {
   username: string;
@@ -17,11 +16,6 @@ type CreatorSuggestionItem = {
 type CreatorResearchState = { status: "running" | "done" | "error"; suggestions?: CreatorSuggestionItem[]; error?: string };
 
 type GenContextType = {
-  // Chat → scripts
-  generations: Map<string, GenState>;
-  startChatGeneration: (clientId: string, messages: { role: string; content: string }[]) => void;
-  clearGeneration: (clientId: string) => void;
-
   // Strategy generation
   strategyGen: Map<string, TaskState>;
   startStrategyGeneration: (clientId: string) => void;
@@ -58,34 +52,11 @@ async function safeJson(r: Response) {
 const GenerationContext = createContext<GenContextType | null>(null);
 
 export function GenerationProvider({ children }: { children: ReactNode }) {
-  const [generations, setGenerations] = useState<Map<string, GenState>>(new Map());
   const [strategyGen, setStrategyGen] = useState<Map<string, TaskState>>(new Map());
   const [analysisGen, setAnalysisGen] = useState<Map<string, TaskState>>(new Map());
   const [enrichGen, setEnrichGen] = useState<Map<string, TaskState>>(new Map());
   const [creatorResearchGen, setCreatorResearchGen] = useState<Map<string, CreatorResearchState>>(new Map());
   const [voiceProfileGen, setVoiceProfileGen] = useState<Map<string, TaskState>>(new Map());
-
-  // ── Chat → scripts ──────────────────────────────────────────────────────
-  const startChatGeneration = useCallback((clientId: string, messages: { role: string; content: string }[]) => {
-    setGenerations((prev) => new Map(prev).set(clientId, { status: "generating" }));
-    fetch(`/api/configs/${clientId}/finish-chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages }),
-    })
-      .then(safeJson)
-      .then((data) => {
-        if (data.error) throw new Error(data.error);
-        setGenerations((prev) => new Map(prev).set(clientId, { status: "done", count: data.count }));
-      })
-      .catch((e: Error) => {
-        setGenerations((prev) => new Map(prev).set(clientId, { status: "error", error: e.message }));
-      });
-  }, []);
-
-  const clearGeneration = useCallback((clientId: string) => {
-    setGenerations((prev) => { const n = new Map(prev); n.delete(clientId); return n; });
-  }, []);
 
   // ── Strategy generation ─────────────────────────────────────────────────
   const startStrategyGeneration = useCallback((clientId: string) => {
@@ -183,7 +154,6 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
 
   return (
     <GenerationContext.Provider value={{
-      generations, startChatGeneration, clearGeneration,
       strategyGen, startStrategyGeneration, clearStrategyGen,
       analysisGen, startAnalysis, clearAnalysisGen,
       enrichGen, startEnrich, clearEnrichGen,

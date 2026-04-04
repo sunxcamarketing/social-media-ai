@@ -46,6 +46,7 @@ import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentType, ContentFormat } from "@/lib/strategy";
 import { FormatPicker } from "@/components/format-picker";
 import { useGeneration } from "@/context/generation-context";
+import { useClientData } from "@/context/client-data-context";
 import { useI18n } from "@/lib/i18n";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -450,10 +451,11 @@ export default function ClientStrategyPage() {
   const [reviewIssueCount, setReviewIssueCount] = useState(0);
   const [reviewAssessment, setReviewAssessment] = useState("");
 
-  const loadClient = () =>
-    fetch(`/api/configs/${id}`).then((r) => r.json() as Promise<Config>);
+  const { loadClient: loadClientCached } = useClientData();
 
-  useEffect(() => { loadClient().then(setClient); loadAnalyses(); }, [id]);
+  const loadClient = () => loadClientCached(id, true);
+
+  useEffect(() => { loadClientCached(id).then(setClient); loadAnalyses(); }, [id]);
 
   // Reload client data when background tasks complete
   useEffect(() => {
@@ -483,11 +485,11 @@ export default function ClientStrategyPage() {
 
   // Audit helpers
   function loadAnalyses() {
-    fetch("/api/analyses")
+    fetch(`/api/analyses?clientId=${id}`)
       .then((r) => r.json())
       .then((data: Analysis[]) => {
         setAnalyses(
-          data.filter((a) => a.clientId === id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          data.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         );
       })
       .catch(() => {});

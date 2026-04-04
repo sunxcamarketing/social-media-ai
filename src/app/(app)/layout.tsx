@@ -6,6 +6,7 @@ import { PipelineProvider } from "@/context/pipeline-context";
 import { GenerationProvider } from "@/context/generation-context";
 import { AuditProvider } from "@/context/audit-context";
 import { ViralScriptProvider } from "@/context/viral-script-context";
+import { ClientDataProvider } from "@/context/client-data-context";
 
 export default function AppLayout({
   children,
@@ -18,6 +19,7 @@ export default function AppLayout({
         <GenerationProvider>
           <AuditProvider>
             <ViralScriptProvider>
+              <ClientDataProvider>
               <SidebarProvider>
                 <AppSidebar />
                 <main className="flex-1 overflow-auto min-h-screen">
@@ -25,6 +27,7 @@ export default function AppLayout({
                   <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
                 </main>
               </SidebarProvider>
+              </ClientDataProvider>
             </ViralScriptProvider>
           </AuditProvider>
         </GenerationProvider>

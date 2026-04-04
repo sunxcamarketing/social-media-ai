@@ -37,6 +37,7 @@ import {
 import { BookOpen } from "lucide-react";
 import type { Script, Config, TrainingScript } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
+import { useClientData } from "@/context/client-data-context";
 import { BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentFormat } from "@/lib/strategy";
 
@@ -417,10 +418,10 @@ function ClientTrainingTab({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/training-scripts").then(r => r.json()),
+      fetch(`/api/training-scripts?clientId=${clientId}`).then(r => r.json()),
       fetch("/api/strategy").then(r => r.json()),
-    ]).then(([allScripts, strategy]) => {
-      setScripts((allScripts as TrainingScript[]).filter(s => s.clientId === clientId));
+    ]).then(([clientScripts, strategy]) => {
+      setScripts(clientScripts as TrainingScript[]);
       setAllFormats([...BUILT_IN_FORMATS, ...(strategy.customFormats || [])]);
     }).finally(() => setLoading(false));
   }, [clientId]);
@@ -659,9 +660,11 @@ export default function ClientScriptsPage() {
     }),
   [id]);
 
+  const { loadClient: loadClientCached } = useClientData();
+
   useEffect(() => {
     loadScripts();
-    fetch(`/api/configs/${id}`).then(r => r.json()).then((cfg: Config) => setClient(cfg));
+    loadClientCached(id).then(setClient);
     fetch(`/api/analyses?clientId=${id}`).then(r => r.json()).then((analyses: unknown[]) => setHasAudit(analyses.length > 0));
   }, [id, loadScripts]);
 

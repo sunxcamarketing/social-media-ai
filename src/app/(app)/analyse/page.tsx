@@ -54,8 +54,12 @@ function AuditPageInner() {
     loadAnalyses();
   }, []);
 
+  // Auto-save when audit completes
   useEffect(() => {
-    if (report && !running) setSaved(false);
+    if (report && !running && !saved && profile) {
+      saveAudit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report, running]);
 
   function loadAnalyses() {
