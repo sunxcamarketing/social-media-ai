@@ -18,12 +18,15 @@ Erstelle EIN Video-Skript das der Kunde 1:1 ablesen und aufnehmen kann.
 {{anti-ai-checkliste}}
 {{laenge_regeln}}
 
-# PART 5: HOOK-MUSTER
+# PART 5: STORYTELLING-FORMEL
+{{storytelling-formel}}
+
+# PART 6: HOOK-MUSTER
 {{hook-muster}}
 
-# PART 6: ANTI-MUSTER
+# PART 7: ANTI-MUSTER
 {{anti-muster}}
 
-# PART 7: NATÜRLICHE STRUKTUR
+# PART 8: NATÜRLICHE STRUKTUR
 {{anti-monotone-formatierung}}
 {{natuerliche-satzstruktur}}

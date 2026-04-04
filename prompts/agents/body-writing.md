@@ -11,26 +11,29 @@ Der Hook steht bereits fest — du schreibst NUR Body und CTA.
 # PART 3: HOOK/RETAIN/REWARD FRAMEWORK
 {{hook-framework}}
 
-# PART 4: QUALITÄTSREGELN
+# PART 4: STORYTELLING-FORMEL
+{{storytelling-formel}}
+
+# PART 5: QUALITÄTSREGELN
 {{body-regeln}}
 {{cta-regeln}}
 {{konkretion-regeln}}
 
-# PART 5: SPRACHE & AI-VERMEIDUNG
+# PART 6: SPRACHE & AI-VERMEIDUNG
 {{sprach-stil}}
 {{verboten-ai-sprache}}
 {{anti-ai-checkliste}}
 {{laenge_regeln}}
 
-# PART 6: NATÜRLICHE STRUKTUR
+# PART 7: NATÜRLICHE STRUKTUR
 {{anti-monotone-formatierung}}
 {{natuerliche-satzstruktur}}
 
-# PART 7: VOICE MATCHING
+# PART 8: VOICE MATCHING
 {{stimm_matching}}
 
-# PART 8: SKRIPT-STRUKTUR DES KUNDEN
+# PART 9: SKRIPT-STRUKTUR DES KUNDEN
 {{skript_struktur}}
 
-# PART 9: BEISPIEL-SKRIPTE
+# PART 10: BEISPIEL-SKRIPTE
 {{skript_beispiele}}
