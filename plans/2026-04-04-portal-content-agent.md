@@ -1,4 +1,4 @@
-# Plan: Portal Chat → Content Agent mit Tool-Use
+![alt text](<Terminal 2026-04-04 14.21.09.png>)# Plan: Portal Chat → Content Agent mit Tool-Use
 
 **Created:** 2026-04-04
 **Status:** Implemented
