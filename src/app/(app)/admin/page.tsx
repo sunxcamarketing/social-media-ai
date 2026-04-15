@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Mic,
   Sparkles,
@@ -11,6 +12,9 @@ import {
   Settings,
   BarChart2,
   MessageSquare,
+  FileText,
+  Video,
+  Lightbulb,
 } from "lucide-react";
 
 interface Tool {
@@ -65,27 +69,6 @@ const TOOLS: Tool[] = [
     color: "text-blush-dark",
   },
   {
-    title: "Pipeline Run",
-    description: "Video-Analyse-Pipeline manuell starten",
-    href: "/run",
-    icon: Play,
-    color: "text-ivory",
-  },
-  {
-    title: "Creators",
-    description: "Konkurrenz-Creator verwalten",
-    href: "/creators",
-    icon: Users,
-    color: "text-ocean",
-  },
-  {
-    title: "Configs",
-    description: "Alle Client-Configs im Überblick",
-    href: "/configs",
-    icon: Settings,
-    color: "text-ocean/70",
-  },
-  {
     title: "Strategie-Übersicht",
     description: "Globale Strategie-Einstellungen",
     href: "/strategy",
@@ -94,30 +77,77 @@ const TOOLS: Tool[] = [
   },
 ];
 
-export default function AdminKonsolePage() {
+interface Stats {
+  clients: number;
+  scripts: number;
+  videos: number;
+  ideas: number;
+}
+
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<Stats>({ clients: 0, scripts: 0, videos: 0, ideas: 0 });
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/configs").then((r) => r.json()).catch(() => []),
+      fetch("/api/scripts").then((r) => r.json()).catch(() => []),
+      fetch("/api/videos").then((r) => r.json()).catch(() => []),
+      fetch("/api/ideas").then((r) => r.json()).catch(() => []),
+    ]).then(([configs, scripts, videos, ideas]) => {
+      setStats({
+        clients: Array.isArray(configs) ? configs.length : 0,
+        scripts: Array.isArray(scripts) ? scripts.length : 0,
+        videos: Array.isArray(videos) ? videos.length : 0,
+        ideas: Array.isArray(ideas) ? ideas.length : 0,
+      });
+    });
+  }, []);
+
+  const statCards = [
+    { label: "Clients", value: stats.clients, icon: Users, color: "text-ocean" },
+    { label: "Skripte", value: stats.scripts, icon: FileText, color: "text-blush-dark" },
+    { label: "Videos analysiert", value: stats.videos, icon: Video, color: "text-ivory" },
+    { label: "Ideen gesammelt", value: stats.ideas, icon: Lightbulb, color: "text-blush-dark" },
+  ];
+
   return (
-    <div className="space-y-8 animate-in-up">
+    <div className="space-y-10 animate-in-up">
       <div>
-        <h1 className="text-2xl font-light text-ocean">Admin Konsole</h1>
+        <h1 className="text-2xl font-light text-ocean">Admin Dashboard</h1>
         <p className="text-sm text-ocean/50 mt-1">
-          Tools & Verwaltung — alles was Kunden nicht sehen
+          Überblick & Tools — alles was Kunden nicht sehen
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
-        {TOOLS.map((tool) => (
-          <Link
-            key={tool.href}
-            href={tool.href}
-            className="glass rounded-2xl p-6 card-hover group"
-          >
-            <div className="h-10 w-10 rounded-xl bg-ocean/[0.04] flex items-center justify-center mb-3 group-hover:bg-ocean/[0.07] transition-colors">
-              <tool.icon className={`h-5 w-5 ${tool.color} group-hover:scale-110 transition-transform`} />
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
+        {statCards.map((s) => (
+          <div key={s.label} className="glass rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <s.icon className={`h-4 w-4 ${s.color}`} />
+              <span className="text-xs text-ocean/50 uppercase tracking-wider">{s.label}</span>
             </div>
-            <h3 className="text-sm font-medium text-ocean">{tool.title}</h3>
-            <p className="text-xs text-ocean/50 mt-1 leading-relaxed">{tool.description}</p>
-          </Link>
+            <p className="text-3xl font-light text-ocean tabular-nums">{s.value}</p>
+          </div>
         ))}
+      </div>
+
+      {/* Tools */}
+      <div>
+        <h2 className="text-xs font-medium text-ocean/50 uppercase tracking-wider mb-4">
+          Tools & Verwaltung
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+          {TOOLS.map((tool) => (
+            <Link key={tool.href} href={tool.href} className="glass rounded-2xl p-6 card-hover group">
+              <div className="h-10 w-10 rounded-xl bg-ocean/[0.04] flex items-center justify-center mb-3 group-hover:bg-ocean/[0.07] transition-colors">
+                <tool.icon className={`h-5 w-5 ${tool.color} group-hover:scale-110 transition-transform`} />
+              </div>
+              <h3 className="text-sm font-medium text-ocean">{tool.title}</h3>
+              <p className="text-xs text-ocean/50 mt-1 leading-relaxed">{tool.description}</p>
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

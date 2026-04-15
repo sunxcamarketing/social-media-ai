@@ -172,9 +172,6 @@ function AuditPageInner() {
           </div>
           {profile && (
             <div className="flex items-center gap-4 rounded-xl bg-white/10 px-4 py-3">
-              {profile.profilePicUrl && (
-                <img src={`/api/proxy-image?url=${encodeURIComponent(profile.profilePicUrl)}`} alt="" className="h-10 w-10 rounded-full object-cover border border-white/20" />
-              )}
               <div className="flex items-center gap-4 text-xs text-white/70">
                 <span className="font-medium text-white">@{profile.username}</span>
                 <span className="flex items-center gap-1"><Users className="h-3 w-3" />{fmt(profile.followers)}</span>
@@ -225,13 +222,6 @@ function AuditPageInner() {
                         onClick={() => toggleAnalysis(a.id)}
                       >
                         <div className="flex items-center gap-3">
-                          {a.profilePicUrl && (
-                            <img
-                              src={`/api/proxy-image?url=${encodeURIComponent(a.profilePicUrl)}`}
-                              alt=""
-                              className="h-9 w-9 rounded-full object-cover"
-                            />
-                          )}
                           <div>
                             <div className="flex items-center gap-2">
                               <CalendarDays className="h-3.5 w-3.5 text-ocean/40" />

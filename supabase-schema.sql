@@ -190,3 +190,17 @@ CREATE POLICY "Service role full access" ON voice_sessions FOR ALL USING (true);
 
 ALTER TABLE client_users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role full access" ON client_users FOR ALL USING (true);
+
+-- ── Performance indexes ──────────────────────────────────────────────────────
+-- Run these in the Supabase SQL Editor. Massive speed-up once tables grow
+-- beyond a few hundred rows.
+CREATE INDEX IF NOT EXISTS idx_scripts_client_id       ON scripts        (client_id);
+CREATE INDEX IF NOT EXISTS idx_scripts_client_created  ON scripts        (client_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ideas_client_id         ON ideas          (client_id);
+CREATE INDEX IF NOT EXISTS idx_ideas_client_created    ON ideas          (client_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_videos_config_name      ON videos         (config_name);
+CREATE INDEX IF NOT EXISTS idx_videos_config_added     ON videos         (config_name, date_added DESC);
+CREATE INDEX IF NOT EXISTS idx_analyses_client_id      ON analyses       (client_id);
+CREATE INDEX IF NOT EXISTS idx_training_scripts_client ON training_scripts (client_id);
+CREATE INDEX IF NOT EXISTS idx_voice_sessions_client   ON voice_sessions (client_id);
+CREATE INDEX IF NOT EXISTS idx_client_users_user_id    ON client_users   (user_id);

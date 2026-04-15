@@ -444,13 +444,6 @@ export function AuditReport({ report, profile, onSave, saved }: AuditReportProps
           <div className="relative">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                {profile.profilePicUrl && (
-                  <img
-                    src={`/api/proxy-image?url=${encodeURIComponent(profile.profilePicUrl)}`}
-                    alt=""
-                    className="h-14 w-14 rounded-full object-cover border-2 border-white/20 shadow-lg"
-                  />
-                )}
                 <div>
                   <p className="text-lg font-semibold">@{profile.username}</p>
                   <p className="text-xs text-white/40 mt-0.5 tracking-wide uppercase">Instagram Audit Report</p>

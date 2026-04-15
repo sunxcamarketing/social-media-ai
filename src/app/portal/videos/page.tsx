@@ -22,20 +22,13 @@ export default function PortalVideos() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Custom 2-step fetch: config → name → videos by configName
   useEffect(() => {
     if (!effectiveClientId) return;
-    (async () => {
-      try {
-        const cfg = await fetch(`/api/configs/${effectiveClientId}`).then(r => r.json());
-        const name = cfg?.configName || "";
-        if (name) {
-          const data = await fetch(`/api/videos?configName=${encodeURIComponent(name)}`).then(r => r.json());
-          setVideos(Array.isArray(data) ? data : []);
-        }
-      } catch { /* ignore */ }
-      setLoading(false);
-    })();
+    fetch(`/api/videos?clientId=${effectiveClientId}`)
+      .then((r) => r.json())
+      .then((d) => setVideos(Array.isArray(d) ? d : []))
+      .catch(() => setVideos([]))
+      .finally(() => setLoading(false));
   }, [effectiveClientId]);
 
   return (

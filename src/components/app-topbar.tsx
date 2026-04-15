@@ -17,8 +17,11 @@ import {
   ChevronDown,
   Plus,
   Check,
+  Sparkles,
+  LayoutDashboard,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useClientsCache, addClientToCache } from "@/hooks/use-clients-cache";
 import type { Config } from "@/lib/types";
 
 interface Tab {
@@ -39,17 +42,30 @@ const CLIENT_TABS: Tab[] = [
   { title: "Voice", key: "voice", icon: Mic },
 ];
 
+interface AdminTab {
+  title: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const ADMIN_TABS: AdminTab[] = [
+  { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { title: "Chat", href: "/chat", icon: MessageSquare },
+  { title: "Transkribieren", href: "/transcribe", icon: Mic },
+  { title: "Viral Script", href: "/viral-script", icon: Sparkles },
+  { title: "Viral Builder", href: "/viral-builder", icon: Sparkles },
+  { title: "Audit", href: "/analyse", icon: Search },
+  { title: "Training", href: "/training", icon: BookOpen },
+  { title: "Strategie", href: "/strategy", icon: BarChart2 },
+];
+
 export function AppTopbar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [clients, setClients] = useState<Config[]>([]);
+  const clients = useClientsCache();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetch("/api/configs").then((r) => r.json()).then(setClients).catch(() => {});
-  }, []);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -84,7 +100,7 @@ export function AppTopbar() {
     });
     if (!res.ok) { alert("Fehler beim Erstellen"); return; }
     const created: Config = await res.json();
-    setClients((prev) => [...prev, created]);
+    addClientToCache(created);
     setSwitcherOpen(false);
     router.push(`/clients/${created.id}/information?setup=1`);
   };
@@ -154,42 +170,56 @@ export function AppTopbar() {
 
         {/* Tabs */}
         <nav className="flex items-center gap-0.5 overflow-x-auto no-scrollbar flex-1 justify-center">
-          {CLIENT_TABS.map((tab) => {
-            const href = activeClientId ? `/clients/${activeClientId}/${tab.key}` : "#";
-            const disabled = !activeClientId;
-            const isActive = !isAdminKonsole && activeTabKey === tab.key;
-            return (
+          {activeClientId ? (
+            <>
+              {CLIENT_TABS.map((tab) => {
+                const href = `/clients/${activeClientId}/${tab.key}`;
+                const isActive = !isAdminKonsole && activeTabKey === tab.key;
+                return (
+                  <Link
+                    key={tab.key}
+                    href={href}
+                    className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 shrink-0 ${
+                      isActive
+                        ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                        : "text-ocean/45 hover:text-ocean hover:bg-ocean/[0.03]"
+                    }`}
+                  >
+                    <tab.icon className="h-3.5 w-3.5" />
+                    {tab.title}
+                  </Link>
+                );
+              })}
+
+              <div className="h-5 w-px bg-ocean/10 mx-2 shrink-0" />
+
               <Link
-                key={tab.key}
-                href={href}
-                onClick={(e) => { if (disabled) e.preventDefault(); }}
-                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 shrink-0 ${
-                  disabled
-                    ? "text-ocean/20 cursor-not-allowed"
-                    : isActive
-                    ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
-                    : "text-ocean/45 hover:text-ocean hover:bg-ocean/[0.03]"
-                }`}
+                href="/admin"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-ocean/[0.04] text-ocean/60 hover:bg-ocean/[0.08] hover:text-ocean border border-ocean/10 transition-all duration-200 shrink-0"
               >
-                <tab.icon className="h-3.5 w-3.5" />
-                {tab.title}
+                <Settings className="h-3.5 w-3.5" />
+                Admin Konsole
               </Link>
-            );
-          })}
-
-          <div className="h-5 w-px bg-ocean/10 mx-2 shrink-0" />
-
-          <Link
-            href="/admin"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 shrink-0 ${
-              isAdminKonsole
-                ? "bg-ocean text-white font-medium shadow-sm"
-                : "bg-ocean/[0.04] text-ocean/60 hover:bg-ocean/[0.08] hover:text-ocean border border-ocean/10"
-            }`}
-          >
-            <Settings className="h-3.5 w-3.5" />
-            Admin Konsole
-          </Link>
+            </>
+          ) : (
+            ADMIN_TABS.map((tab) => {
+              const isActive = tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 shrink-0 ${
+                    isActive
+                      ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
+                      : "text-ocean/45 hover:text-ocean hover:bg-ocean/[0.03]"
+                  }`}
+                >
+                  <tab.icon className="h-3.5 w-3.5" />
+                  {tab.title}
+                </Link>
+              );
+            })
+          )}
         </nav>
 
         {/* Logout */}

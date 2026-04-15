@@ -3,14 +3,13 @@
 // and returns a formatted string result for the agent's tool_result message.
 
 import { v4 as uuid } from "uuid";
+import { supabase } from "./supabase";
 import {
   readConfig,
   readConfigs,
   readScriptsByClient,
   readAnalysesByClient,
   readVideosList,
-  readIdeas,
-  writeIdeas,
   updateConfig,
 } from "./csv";
 import {
@@ -389,18 +388,16 @@ async function toolSaveIdea(
   clientId: string,
   input: { title: string; description: string; content_type?: string },
 ): Promise<string> {
-  const ideas = await readIdeas();
-  const newIdea = {
+  const { error } = await supabase.from("ideas").insert({
     id: uuid(),
-    clientId,
+    client_id: clientId,
     title: input.title,
     description: input.description,
-    contentType: input.content_type || "",
+    content_type: input.content_type || "",
     status: "idea",
-    createdAt: new Date().toISOString().split("T")[0],
-  };
-  ideas.push(newIdea);
-  await writeIdeas(ideas);
+    created_at: new Date().toISOString().split("T")[0],
+  });
+  if (error) return `Fehler beim Speichern: ${error.message}`;
   return `Video-Idee gespeichert: "${input.title}". Du findest sie im Ideen-Tab des Clients.`;
 }
 

@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
-import { readVideosList, updateVideo, deleteVideo } from "@/lib/csv";
+import { readVideosList, readConfig, updateVideo, deleteVideo } from "@/lib/csv";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const configName = searchParams.get("configName");
+  let configName = searchParams.get("configName");
+  const clientId = searchParams.get("clientId");
   const creator = searchParams.get("creator");
+
+  // Allow scoping by clientId — resolve to configName in one query instead of
+  // forcing the caller to do a 2-step fetch.
+  if (!configName && clientId) {
+    const cfg = await readConfig(clientId);
+    configName = cfg?.configName || null;
+    if (!configName) return NextResponse.json([]);
+  }
 
   let videos = await readVideosList(configName || undefined);
 

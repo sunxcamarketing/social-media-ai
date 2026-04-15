@@ -268,6 +268,18 @@ export async function readVideos(): Promise<Video[]> {
   return (data || []).map(mapVideo);
 }
 
+/** Read videos for a specific client config — scoped, ordered by views */
+export async function readVideosByClient(configName: string, limit = 100): Promise<Video[]> {
+  const { data, error } = await supabase
+    .from("videos")
+    .select("*")
+    .eq("config_name", configName)
+    .order("views", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).map(mapVideo);
+}
+
 /** Read videos filtered by configName — full data, for pipeline use */
 export async function readVideosByConfig(configName: string): Promise<Video[]> {
   const { data, error } = await supabase
@@ -384,10 +396,8 @@ export async function writeScripts(scripts: Script[]) {
 
 // ── Ideas ────────────────────────────────────────────────────────────────────
 
-export async function readIdeas(): Promise<Record<string, string>[]> {
-  const { data, error } = await supabase.from("ideas").select("*");
-  if (error) throw error;
-  return (data || []).map((r: Record<string, unknown>) => ({
+function mapIdea(r: Record<string, unknown>): Record<string, string> {
+  return {
     id: (r.id as string) || "",
     clientId: (r.client_id as string) || "",
     title: (r.title as string) || "",
@@ -395,7 +405,23 @@ export async function readIdeas(): Promise<Record<string, string>[]> {
     contentType: (r.content_type as string) || "",
     status: (r.status as string) || "",
     createdAt: (r.created_at as string) || "",
-  }));
+  };
+}
+
+export async function readIdeas(): Promise<Record<string, string>[]> {
+  const { data, error } = await supabase.from("ideas").select("*");
+  if (error) throw error;
+  return (data || []).map(mapIdea);
+}
+
+export async function readIdeasByClient(clientId: string): Promise<Record<string, string>[]> {
+  const { data, error } = await supabase
+    .from("ideas")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapIdea);
 }
 
 export async function writeIdeas(ideas: Record<string, string>[]) {

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
-import { readIdeas, writeIdeas } from "@/lib/csv";
+import { readIdeas, readIdeasByClient, writeIdeas } from "@/lib/csv";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
-  const ideas = await readIdeas();
-  return NextResponse.json(clientId ? ideas.filter((i) => i.clientId === clientId) : ideas);
+  const ideas = clientId ? await readIdeasByClient(clientId) : await readIdeas();
+  return NextResponse.json(ideas);
 }
 
 export async function POST(request: Request) {

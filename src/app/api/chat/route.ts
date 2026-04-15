@@ -116,11 +116,22 @@ Wenn Aysun keinen Client-Namen nennt, frag kurz nach.`;
       try {
         let currentMessages = [...anthropicMessages];
 
+        // Enable Anthropic prompt caching on the system prompt — massive speed-up
+        // on multi-turn conversations (cache hit skips re-processing the prompt).
+        // Ephemeral cache lives ~5 min, perfect for a chat session.
+        const cachedSystem: Anthropic.TextBlockParam[] = [
+          {
+            type: "text",
+            text: systemPrompt,
+            cache_control: { type: "ephemeral" },
+          },
+        ];
+
         for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
           const response = await client.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 4096,
-            system: systemPrompt,
+            system: cachedSystem,
             messages: currentMessages,
             tools,
           });
@@ -150,25 +161,28 @@ Wenn Aysun keinen Client-Namen nennt, frag kurz nach.`;
             sendEvent(controller, { type: "text", text: preToolText });
           }
 
-          // Execute tools
-          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          // Execute tools IN PARALLEL — major speed-up when the agent fans out
+          // to multiple data sources in a single turn (e.g. load_audit +
+          // check_performance + search_scripts).
           for (const toolBlock of toolUseBlocks) {
             sendEvent(controller, { type: "tool_status", tool: toolBlock.name, status: "running" });
-
-            const result = await executeAgentTool(
-              scopedClientId,
-              toolBlock.name,
-              toolBlock.input as Record<string, unknown>,
-            );
-
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: toolBlock.id,
-              content: result,
-            });
-
-            sendEvent(controller, { type: "tool_status", tool: toolBlock.name, status: "done" });
           }
+
+          const toolResults = await Promise.all(
+            toolUseBlocks.map(async (toolBlock) => {
+              const result = await executeAgentTool(
+                scopedClientId,
+                toolBlock.name,
+                toolBlock.input as Record<string, unknown>,
+              );
+              sendEvent(controller, { type: "tool_status", tool: toolBlock.name, status: "done" });
+              return {
+                type: "tool_result" as const,
+                tool_use_id: toolBlock.id,
+                content: result,
+              };
+            }),
+          );
 
           currentMessages = [
             ...currentMessages,
