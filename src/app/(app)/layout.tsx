@@ -1,5 +1,6 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppTopbar } from "@/components/app-topbar";
+import { NavProgress } from "@/components/nav-progress";
 import { PipelineProvider } from "@/context/pipeline-context";
 import { GenerationProvider } from "@/context/generation-context";
 import { AuditProvider } from "@/context/audit-context";
@@ -19,6 +20,7 @@ export default function AppLayout({
             <ViralScriptProvider>
               <ClientDataProvider>
                 <div className="min-h-screen bg-warm-white">
+                  <NavProgress />
                   <AppTopbar />
                   <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
                 </div>

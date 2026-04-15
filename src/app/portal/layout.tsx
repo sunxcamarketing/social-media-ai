@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClientNav } from "@/components/client-nav";
 import { ImpersonateBanner } from "@/components/impersonate-banner";
+import { NavProgress } from "@/components/nav-progress";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -51,6 +52,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-warm-white">
+      <NavProgress />
       {impersonating && <ImpersonateBanner clientName={impersonating.clientName} />}
       <ClientNav clientName={clientName} />
       <main className="max-w-6xl mx-auto px-6 py-8">

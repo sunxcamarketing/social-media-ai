@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { getVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
-import { getAuditBlock } from "@/app/api/configs/[id]/generate-week-scripts/route";
+import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt } from "@prompts";
 import { safeJsonParse } from "@/lib/safe-json";
