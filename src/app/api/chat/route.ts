@@ -59,6 +59,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const messages: ChatMessage[] = body.messages || [];
   const requestedClientId: string | undefined = body.clientId;
+  const attachments: Array<{ name: string; mediaType: string; data: string }> =
+    Array.isArray(body.attachments) ? body.attachments : [];
 
   if (messages.length === 0) {
     return Response.json({ error: "No messages" }, { status: 400 });
@@ -106,10 +108,50 @@ Wenn Aysun keinen Client-Namen nennt, frag kurz nach.`;
   const tools = isAdmin && !scopedClientId ? ADMIN_TOOLS : SHARED_TOOLS;
   const client = getAnthropicClient();
 
-  const anthropicMessages: Anthropic.MessageParam[] = messages.map(m => ({
-    role: m.role,
-    content: m.content,
-  }));
+  // Strip the "data:<mediatype>;base64," prefix Anthropic blocks expect raw base64.
+  const stripDataUrl = (url: string): string => {
+    const idx = url.indexOf(",");
+    return idx === -1 ? url : url.slice(idx + 1);
+  };
+
+  const attachmentBlocks: Anthropic.ContentBlockParam[] = attachments
+    .map((a): Anthropic.ContentBlockParam | null => {
+      const base64 = stripDataUrl(a.data);
+      if (a.mediaType.startsWith("image/")) {
+        return {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: a.mediaType as "image/png" | "image/jpeg" | "image/webp" | "image/gif",
+            data: base64,
+          },
+        };
+      }
+      if (a.mediaType === "application/pdf") {
+        return {
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: "application/pdf",
+            data: base64,
+          },
+        };
+      }
+      return null;
+    })
+    .filter((b): b is Anthropic.ContentBlockParam => b !== null);
+
+  // Attachments come with the LAST user message (the one the user just sent).
+  const lastUserIdx = messages.length - 1;
+  const anthropicMessages: Anthropic.MessageParam[] = messages.map((m, i) => {
+    if (i === lastUserIdx && m.role === "user" && attachmentBlocks.length > 0) {
+      const textBlock: Anthropic.TextBlockParam[] = m.content
+        ? [{ type: "text", text: m.content }]
+        : [];
+      return { role: "user", content: [...attachmentBlocks, ...textBlock] };
+    }
+    return { role: m.role, content: m.content };
+  });
 
   const readable = new ReadableStream({
     async start(controller) {
