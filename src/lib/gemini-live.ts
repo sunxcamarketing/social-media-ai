@@ -62,8 +62,8 @@ export class GeminiLiveSession {
           },
           languageCode: "de-DE",
         },
-        outputAudioTranscription: {},
-        inputAudioTranscription: {},
+        outputAudioTranscription: { languageCodes: ["de-DE"] },
+        inputAudioTranscription: { languageCodes: ["de-DE"] },
         systemInstruction: {
           parts: [{ text: config.systemPrompt }],
         },
