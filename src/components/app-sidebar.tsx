@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles, Lightbulb } from "lucide-react";
+import { Plus, BookOpen, BarChart2, FileText, Video, Users, Globe, Instagram, Youtube, Loader2, Mic, Search, Trash2, LogOut, Sparkles, Lightbulb, Eye } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -56,6 +56,7 @@ export function AppSidebar() {
     { title: "Audit",             href: "analyse",     icon: Search     },
     { title: t("nav.posts"),     href: "scripts",     icon: FileText   },
     { title: "Research",          href: "research",    icon: Search     },
+    { title: "Voice",             href: "voice",       icon: Mic        },
   ];
 
   const clientMatch = pathname.match(/^\/clients\/([^/]+)/);
@@ -117,6 +118,20 @@ export function AppSidebar() {
     }
   }
 
+  async function impersonateClient(clientId: string) {
+    const res = await fetch("/api/auth/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId }),
+    });
+    if (!res.ok) {
+      alert("Impersonate fehlgeschlagen");
+      return;
+    }
+    router.push("/portal");
+    router.refresh();
+  }
+
   const hasLinks = form.instagram || form.website || form.tiktok || form.youtube || form.linkedin || form.twitter;
 
   return (
@@ -153,7 +168,7 @@ export function AppSidebar() {
                   <div key={client.id} className="group relative">
                     <Link
                       href={`/clients/${client.id}/information`}
-                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] transition-all duration-200 ${
+                      className={`flex items-center gap-2.5 rounded-xl pl-3 pr-16 py-2 text-[13px] transition-all duration-200 ${
                         isActive
                           ? "bg-blush-light/50 text-ocean font-medium shadow-sm"
                           : "text-ocean/65 hover:text-ocean hover:bg-ocean/[0.03]"
@@ -162,10 +177,17 @@ export function AppSidebar() {
                       <div className={`h-2 w-2 rounded-full shrink-0 transition-colors duration-200 ${isActive ? "bg-ivory" : "bg-ocean/15"}`} />
                       <span className="truncate">{displayName}</span>
                     </Link>
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); impersonateClient(client.id); }}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg bg-blush-light/60 text-blush-dark hover:bg-blush-dark hover:text-white hover:scale-110 transition-all shadow-sm btn-press"
+                        title={`Als ${displayName} ansehen`}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteClient(client.id, displayName); }}
-                        className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 transition-all"
+                        className="h-6 w-6 flex items-center justify-center rounded-lg text-ocean/30 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
                         title="Löschen"
                       >
                         <Trash2 className="h-3 w-3" />

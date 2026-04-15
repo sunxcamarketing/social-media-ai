@@ -196,12 +196,13 @@ Beispiel FALSCHE Adaption:
 {{anti-ai-checkliste}}
 {{anti-monotone-formatierung}}
 {{natuerliche-satzstruktur}}
+{{text-hook-regeln}}
 
 # OUTPUT-FORMAT
 
 Wenn du fertig bist, reiche das Skript über `submit_script` ein. Format:
 
-- `text_hook`: Was auf dem Screen steht (max 6 Wörter, stoppt den Scroll)
+- `text_hook`: Was auf dem Screen steht — MAX 5 WÖRTER (siehe Text-Hook-Regeln oben)
 - `hook_pattern`: Welches Hook-Muster du verwendet hast
 - `short_script`: Kurzversion (30-40 Sek gesprochen)
 - `long_script`: Langversion (60+ Sek gesprochen)

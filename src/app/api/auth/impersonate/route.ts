@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24, // 24h
+    maxAge: 60 * 60 * 24 * 30, // 30 days — persistent until explicitly ended
   });
 
   return Response.json({ success: true });

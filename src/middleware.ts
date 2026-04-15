@@ -45,7 +45,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const roleRedirect = await resolveRoleRedirect(user.id, pathname);
+  const impersonating = Boolean(request.cookies.get("impersonate_client_id")?.value);
+  const roleRedirect = await resolveRoleRedirect(user.id, pathname, impersonating);
   if (roleRedirect) {
     return NextResponse.redirect(new URL(roleRedirect, request.url));
   }
@@ -62,6 +63,7 @@ const NO_ROWS_FOUND = "PGRST116";
 async function resolveRoleRedirect(
   userId: string,
   pathname: string,
+  impersonating: boolean,
 ): Promise<string | null> {
   const serviceClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -76,20 +78,17 @@ async function resolveRoleRedirect(
     .limit(1)
     .single();
 
-  // Table missing or unexpected error — allow through (setup mode)
   if (error && error.code !== NO_ROWS_FOUND) return null;
-
-  // No client_users entry — no access
   if (!clientUser) return "/no-access";
 
   const isClient = clientUser.role === "client";
   const isPortalRoute = pathname.startsWith("/portal");
 
-  // Clients can only access /portal
   if (isClient && !isPortalRoute) return "/portal";
 
-  // Only clients can access /portal — admins use the admin UI
-  if (isPortalRoute && !isClient) return "/";
+  // Admins reach /portal only while impersonating. Without the cookie they
+  // get bounced to the admin UI.
+  if (isPortalRoute && !isClient && !impersonating) return "/";
 
   return null;
 }

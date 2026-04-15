@@ -37,6 +37,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import type { Config } from "@/lib/types";
+import { safeJsonParse } from "@/lib/safe-json";
 import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
 import { useI18n } from "@/lib/i18n";
@@ -256,11 +257,11 @@ interface CustomerProblems {
 }
 
 function parseDreamCustomer(val: string): DreamCustomer {
-  try { return JSON.parse(val); } catch { return { tonality: "", age: "", gender: "", income: "", country: "", profession: "", values: "", description: "" }; }
+  return safeJsonParse<DreamCustomer>(val, { tonality: "", age: "", gender: "", income: "", country: "", profession: "", values: "", description: "" });
 }
 
 function parseCustomerProblems(val: string): CustomerProblems {
-  try { return JSON.parse(val); } catch { return { mental: "", physical: "", financial: "", social: "", aesthetic: "" }; }
+  return safeJsonParse<CustomerProblems>(val, { mental: "", physical: "", financial: "", social: "", aesthetic: "" });
 }
 
 interface InstagramProfile {

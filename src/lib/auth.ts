@@ -1,5 +1,6 @@
 import { createSupabaseServer } from "./supabase-server";
 import { supabase } from "./supabase";
+import { cookies } from "next/headers";
 
 type UserRole = "admin" | "client";
 
@@ -8,14 +9,11 @@ export interface AppUser {
   email: string;
   role: UserRole;
   clientId: string | null;
+  impersonating?: { clientId: string; clientName: string };
 }
 
 const NO_ROWS_FOUND = "PGRST116";
 
-/**
- * Get the current authenticated user with role and client mapping.
- * Returns null if not authenticated or no client_users entry exists.
- */
 export async function getCurrentUser(): Promise<AppUser | null> {
   const serverSupabase = await createSupabaseServer();
   const {
@@ -31,17 +29,36 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     .limit(1)
     .single();
 
-  // Table missing or unexpected error — treat as admin (setup mode)
   if (!clientUser && error?.code !== NO_ROWS_FOUND) {
     return buildAppUser(user.id, user.email, "admin", null);
   }
 
-  // No entry found — no access
   if (!clientUser) return null;
 
   const role = clientUser.role as UserRole;
+  const base = buildAppUser(user.id, user.email, role, clientUser.client_id);
 
-  return buildAppUser(user.id, user.email, role, clientUser.client_id);
+  if (role === "admin") {
+    const impersonating = await readImpersonation();
+    if (impersonating) base.impersonating = impersonating;
+  }
+
+  return base;
+}
+
+async function readImpersonation(): Promise<{ clientId: string; clientName: string } | null> {
+  const cookieStore = await cookies();
+  const clientId = cookieStore.get("impersonate_client_id")?.value;
+  if (!clientId) return null;
+
+  const { data } = await supabase
+    .from("configs")
+    .select("id, configName, name")
+    .eq("id", clientId)
+    .single();
+
+  if (!data) return null;
+  return { clientId: data.id, clientName: data.configName || data.name || "Client" };
 }
 
 function buildAppUser(
@@ -54,11 +71,10 @@ function buildAppUser(
 }
 
 /**
- * Get the effective client ID for the current user.
- * For clients: their own client_id.
- * For admins: null (has access to all).
+ * Effective client ID: impersonated client for admin, own client_id for client user.
  */
 export function getEffectiveClientId(user: AppUser): string | null {
+  if (user.impersonating) return user.impersonating.clientId;
   if (user.role === "client") return user.clientId;
   return null;
 }

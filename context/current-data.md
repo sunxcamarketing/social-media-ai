@@ -12,6 +12,7 @@ Primary storage is Supabase (migrated from CSV). Legacy CSV files in `data/` may
 | `scripts` | Generated scripts (hook, body, CTA, metadata) |
 | `training_scripts` | Client training transcripts for voice/structure learning |
 | `analyses` | Audit reports per client |
+| `voice_sessions` | Voice interview transcripts + generated ideas count |
 
 ## What The Pipeline Produces
 

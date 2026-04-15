@@ -107,6 +107,32 @@ AI-Agent im Client-Portal mit Tool-Zugriff. Nutzt Claude's native `tool_use` fü
 
 Key endpoint: `POST /api/chat` (SSE stream with agent loop)
 
+### Voice Agent (Content Interview)
+
+Voice-basierter Interview-Agent im Client-Portal. Nutzt Gemini Live API (WebSocket, Echtzeit-Audio) um Clients durch gezielte Fragen Content-Material zu entlocken — Stories, Meinungen, Erfahrungen. Am Ende der Session werden daraus strukturierte Content-Ideen generiert und gespeichert.
+
+1. **Session Start** — Browser verbindet via WebSocket zum Voice Server, Gemini Live Session wird erstellt
+2. **Context Loading** — Agent lädt Client-Profil, Audit, Performance via Function Calling
+3. **Interview** — Agent stellt Fragen basierend auf WICK-Methode (Wound, Identity Shift, Cost, Key Lesson)
+4. **Content-Erkennung** — Agent erkennt Stories, kontroverse Meinungen, Tipps und markiert sie als Ideen
+5. **Session End** — Transkript wird an Claude gesendet, extrahiert 3-5 Content-Ideen, speichert in `ideas` Tabelle
+
+**Architektur:** Browser (Mic) → WebSocket → Voice Server (Port 4001) → Gemini Live API
+- Separater WebSocket-Server (`src/voice-server.ts`) — Next.js hat kein natives WS
+- Gemini Live Client: `src/lib/gemini-live.ts`
+- Voice Agent Prompt: `prompts/agents/voice-agent.md`
+- Tools (5): `load_client_context`, `load_audit`, `check_performance`, `check_learnings`, `save_idea`
+- Audio: PCM 16kHz (Browser → Gemini), 24kHz (Gemini → Browser)
+- Auth: Supabase access token als WebSocket query parameter
+
+**How to Run:**
+```bash
+npm run dev           # Next.js on port 4000
+npm run voice-server  # Voice WS server on port 4001
+```
+
+Key page: `/portal/voice`
+
 ---
 
 ## Modular Prompt Architecture
@@ -161,6 +187,7 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 | `viral-script-adapt.md` | Viral: Script Adaptation | auto: rolle-skriptschreiber, verboten-ai-sprache, natuerliche-satzstruktur, anti-monotone-formatierung, stimm-matching |
 | `viral-script-critic.md` | Viral: Quality Critique | `{{platform_context}}`, auto: verboten-ai-sprache |
 | `viral-script-production.md` | Viral: Production Notes | `{{platform_context}}` |
+| `voice-agent.md` | Voice Interview Agent | auto: konkretion-regeln, themen-spezifizitaet |
 
 ### Foundational Sub-Prompts (`prompts/foundational/`)
 
@@ -252,7 +279,8 @@ To change how scripts are generated:
 │   │   │   ├── strategy/                 # Client strategy (read-only)
 │   │   │   ├── analyse/                  # Client audit (read-only)
 │   │   │   ├── videos/                   # Client videos (read-only)
-│   │   │   └── chat/                     # Client chat (scoped context)
+│   │   │   ├── chat/                     # Client chat (scoped context)
+│   │   └── voice/                    # Voice interview agent (Gemini Live)
 │   │   ├── login/                         # Login page (password + magic link)
 │   │   ├── no-access/                     # No access page
 │   │   └── api/                           # API routes
@@ -272,6 +300,7 @@ To change how scripts are generated:
 │   │   ├── pipelines/weekly-steps.ts     # Weekly pipeline steps (extracted)
 │   │   ├── voice-profile.ts              # Voice + script structure extraction
 │   │   ├── agent-tools.ts               # Content Agent tool implementations (12 tools)
+│   │   ├── gemini-live.ts              # Gemini Live API client (WebSocket, audio streaming)
 │   │   ├── platforms.ts                  # Platform abstraction (IG, TikTok, LinkedIn)
 │   │   ├── intelligence.ts              # Intelligence snapshots CRUD + freshness
 │   │   ├── client-learnings.ts          # Client learnings with confidence scoring
@@ -285,6 +314,7 @@ To change how scripts are generated:
 │   │   │   ├── trend-refresh.ts         # Brave Search trend research
 │   │   │   └── performance-feedback.ts  # Performance analysis + learning extraction
 │   │   └── types.ts                      # TypeScript interfaces
+│   ├── voice-server.ts                   # Standalone WebSocket server for Voice Agent (port 4001)
 │   └── components/                        # UI components (shadcn + custom)
 ├── prompts/                               # ── MODULAR PROMPT SYSTEM (top-level!) ──
 │   ├── index.ts                          # Re-exports: buildPrompt, tools, analysis
@@ -362,6 +392,7 @@ To change how scripts are generated:
 | Audit | `/portal/analyse` | Latest audit report with stats |
 | Videos | `/portal/videos` | Analyzed videos with thumbnails |
 | Chat | `/portal/chat` | AI assistant scoped to client's own data |
+| Voice | `/portal/voice` | Voice interview agent for content idea extraction |
 
 ---
 

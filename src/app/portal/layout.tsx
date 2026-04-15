@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClientNav } from "@/components/client-nav";
+import { ImpersonateBanner } from "@/components/impersonate-banner";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [clientName, setClientName] = useState("");
+  const [impersonating, setImpersonating] = useState<{ clientName: string } | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -19,14 +21,15 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         }
 
         const clientId = data.clientId;
-
-        // Only clients with a clientId can access the portal
         if (!clientId) {
           router.push("/");
           return;
         }
 
-        // Load client name
+        if (data.impersonating) {
+          setImpersonating({ clientName: data.impersonating.clientName });
+        }
+
         fetch(`/api/configs/${clientId}`)
           .then(r => r.json())
           .then(cfg => {
@@ -48,6 +51,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="min-h-screen bg-warm-white">
+      {impersonating && <ImpersonateBanner clientName={impersonating.clientName} />}
       <ClientNav clientName={clientName} />
       <main className="max-w-6xl mx-auto px-6 py-8">
         {children}

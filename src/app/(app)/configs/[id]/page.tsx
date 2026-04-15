@@ -33,6 +33,7 @@ import {
   Heart,
   ExternalLink,
 } from "lucide-react";
+import { safeJsonParse } from "@/lib/safe-json";
 import type { Config } from "@/lib/types";
 import type { PerformanceInsights, VideoInsight } from "@/lib/performance-helpers";
 import { parseInsights } from "@/lib/performance-helpers";
@@ -65,10 +66,10 @@ interface DaySlot { type: string; format: string; }
 type WeeklyStructure = Record<string, DaySlot>;
 
 function parsePillars(raw: string): Pillar[] {
-  try { return JSON.parse(raw) || []; } catch { return []; }
+  return safeJsonParse<Pillar[]>(raw, []);
 }
 function parseWeekly(raw: string): WeeklyStructure {
-  try { return JSON.parse(raw) || {}; } catch { return {}; }
+  return safeJsonParse<WeeklyStructure>(raw, {});
 }
 // ─── Small UI pieces ──────────────────────────────────────────────────────────
 

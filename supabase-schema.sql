@@ -156,6 +156,16 @@ CREATE TABLE IF NOT EXISTS client_users (
 -- Aysun als Admin eintragen (nach dem ersten Login manuell):
 -- INSERT INTO client_users (user_id, role, client_id) VALUES ('<aysun-auth-id>', 'admin', NULL);
 
+-- Voice Sessions (Content Interview transcripts + generated ideas)
+CREATE TABLE voice_sessions (
+  id TEXT PRIMARY KEY,
+  client_id TEXT REFERENCES configs(id) ON DELETE CASCADE,
+  transcript JSONB DEFAULT '[]'::jsonb,
+  ideas_generated INTEGER DEFAULT 0,
+  duration_seconds INTEGER DEFAULT 0,
+  created_at TEXT
+);
+
 -- Enable RLS and allow service role full access
 ALTER TABLE configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE creators ENABLE ROW LEVEL SECURITY;
@@ -174,6 +184,9 @@ CREATE POLICY "Service role full access" ON ideas FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON training_scripts FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON analyses FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON strategy_config FOR ALL USING (true);
+
+ALTER TABLE voice_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON voice_sessions FOR ALL USING (true);
 
 ALTER TABLE client_users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role full access" ON client_users FOR ALL USING (true);

@@ -58,13 +58,19 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const messages: ChatMessage[] = body.messages || [];
+  const requestedClientId: string | undefined = body.clientId;
 
   if (messages.length === 0) {
     return Response.json({ error: "No messages" }, { status: 400 });
   }
 
   const isAdmin = user.role === "admin";
-  const scopedClientId = getEffectiveClientId(user); // null for admins, clientId for clients
+  // For admins, a clientId in the request body scopes the conversation to that
+  // client (used by /clients/[id]/chat). Otherwise: null for admin (global),
+  // effective client for client users.
+  const scopedClientId = isAdmin && requestedClientId
+    ? requestedClientId
+    : getEffectiveClientId(user);
 
   // Build system prompt based on role
   const isFirstMessage = messages.length === 1;
@@ -81,18 +87,23 @@ export async function POST(request: Request) {
 
   let systemPrompt = buildPrompt("content-agent", { platform_context: platformContext });
 
-  if (isAdmin) {
+  if (isAdmin && !scopedClientId) {
     systemPrompt += `\n\n# ADMIN-MODUS
 Du sprichst mit Aysun, der Inhaberin von SUNXCA. Sie hat Zugriff auf ALLE Clients.
 Nutze list_clients um alle Clients zu sehen. Bei allen anderen Tools MUSST du client_name angeben.
 Wenn Aysun keinen Client-Namen nennt, frag kurz nach.`;
   } else if (scopedClientId && isFirstMessage) {
-    // Pre-load client context for clients on first message
+    // Pre-load client context on first message (admin-per-client or client user)
     const context = await toolLoadClientContext(scopedClientId);
-    systemPrompt += `\n\n# DEIN CLIENT-KONTEXT (vorgeladen)\n${context}`;
+    const header = isAdmin
+      ? `\n\n# ADMIN-MODUS (SCOPED AUF EINEN CLIENT)\nDu sprichst mit Aysun über einen konkreten Client. Nutze Tools OHNE client_name — der Kontext ist bereits vorgeladen.\n\n# CLIENT-KONTEXT\n`
+      : "\n\n# DEIN CLIENT-KONTEXT (vorgeladen)\n";
+    systemPrompt += header + context;
   }
 
-  const tools = isAdmin ? ADMIN_TOOLS : SHARED_TOOLS;
+  // When admin is scoped to a specific client, drop list_clients to avoid
+  // scope drift — the chat is about THIS client only.
+  const tools = isAdmin && !scopedClientId ? ADMIN_TOOLS : SHARED_TOOLS;
   const client = getAnthropicClient();
 
   const anthropicMessages: Anthropic.MessageParam[] = messages.map(m => ({

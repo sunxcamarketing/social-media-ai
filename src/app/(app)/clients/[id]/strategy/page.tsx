@@ -38,6 +38,7 @@ import {
   Film,
   ChevronDown,
 } from "lucide-react";
+import { safeJsonParse } from "@/lib/safe-json";
 import type { Config, Analysis } from "@/lib/types";
 import { AuditReport, type ProfileData } from "@/components/audit-report";
 import { useAudit } from "@/context/audit-context";
@@ -82,10 +83,10 @@ interface DaySlot { type: string; format: string; pillar?: string; reason?: stri
 type WeeklyStructure = Record<string, DaySlot>;
 
 function parsePillars(raw: string): Pillar[] {
-  try { return JSON.parse(raw) || []; } catch { return []; }
+  return safeJsonParse<Pillar[]>(raw, []);
 }
 function parseWeekly(raw: string): WeeklyStructure {
-  try { return JSON.parse(raw) || {}; } catch { return {}; }
+  return safeJsonParse<WeeklyStructure>(raw, {});
 }
 function VideoInsightCard({ video }: { video: VideoInsight }) {
   const { t } = useI18n();

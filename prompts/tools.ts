@@ -650,8 +650,8 @@ export const VIRAL_ADAPT_TOOL = {
   input_schema: {
     type: "object" as const,
     properties: {
-      textHookShort: { type: "string", description: "Text-Hook der kurzen Version — der Text der AUF DEM VIDEO eingeblendet wird (max 8 Wörter, groß, knackig). Dieser Text wird als erstes gelesen und muss zum Stoppen zwingen." },
-      textHookLong: { type: "string", description: "Text-Hook der langen Version — der Text der AUF DEM VIDEO eingeblendet wird (max 8 Wörter). Kann gleich oder leicht anders als Short sein." },
+      textHookShort: { type: "string", description: "Text-Hook der kurzen Version — der Text der AUF DEM VIDEO eingeblendet wird. MAX 5 WÖRTER, knackig, Fragment statt Satz. Dieser Text wird als erstes gelesen und muss zum Stoppen zwingen." },
+      textHookLong: { type: "string", description: "Text-Hook der langen Version — der Text der AUF DEM VIDEO eingeblendet wird. MAX 5 WÖRTER. Kann gleich oder leicht anders als Short sein." },
       hookShort: { type: "string", description: "Gesprochener Hook der kurzen Version (1-2 Sätze, max 20 Wörter)" },
       bodyShort: { type: "string", description: "Body der kurzen Version. Nutze echte Zeilenumbrüche für Absätze." },
       ctaShort: { type: "string", description: "CTA der kurzen Version (1-2 Sätze)" },
@@ -750,8 +750,8 @@ export const VIRAL_REVISE_TOOL = {
   input_schema: {
     type: "object" as const,
     properties: {
-      textHookShort: { type: "string", description: "Text-Hook der kurzen Version (max 8 Wörter)" },
-      textHookLong: { type: "string", description: "Text-Hook der langen Version (max 8 Wörter)" },
+      textHookShort: { type: "string", description: "Text-Hook der kurzen Version (MAX 5 Wörter, Fragment)" },
+      textHookLong: { type: "string", description: "Text-Hook der langen Version (MAX 5 Wörter, Fragment)" },
       hookShort: { type: "string", description: "Überarbeiteter Hook kurz" },
       bodyShort: { type: "string", description: "Überarbeiteter Body kurz. Nutze echte Zeilenumbrüche." },
       ctaShort: { type: "string", description: "Überarbeiteter CTA kurz" },
@@ -917,6 +917,58 @@ export const AGENT_SAVE_IDEA_TOOL = {
     required: ["title", "description"] as string[],
   },
 };
+
+// ── Voice Agent Tools (Gemini Function Declarations) ────────────────────
+// Gemini Live API uses a different tool format than Anthropic.
+// These are the subset of tools available during a voice session.
+
+export const VOICE_AGENT_GEMINI_TOOLS = [
+  {
+    name: "load_client_context",
+    description: "Lade das vollständige Client-Profil mit Brand, Strategie und Zielgruppe. Ruf das am Anfang der Session auf.",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "load_audit",
+    description: "Lade den neuesten Audit-Report mit Stärken, Schwächen und Empfehlungen",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "check_performance",
+    description: "Lade Performance-Daten: Top-Videos, Views, Hook-Patterns",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "check_learnings",
+    description: "Lade datengestützte Erkenntnisse: welche Patterns funktionieren gut oder schlecht",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "save_idea",
+    description: "Speichere eine Content-Idee die aus dem Gespräch entstanden ist",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        title: { type: "string" as const, description: "Titel der Video-Idee (max 10 Wörter)" },
+        description: { type: "string" as const, description: "Beschreibung mit Kontext aus dem Gespräch" },
+        content_type: { type: "string" as const, description: "Art des Contents: Storytelling, Meinung, Tipp, Erfahrung, Aufklärung" },
+      },
+      required: ["title", "description"],
+    },
+  },
+];
 
 export const AGENT_UPDATE_PROFILE_TOOL = {
   name: "update_profile",

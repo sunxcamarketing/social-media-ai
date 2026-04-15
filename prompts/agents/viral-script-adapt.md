@@ -79,7 +79,10 @@ DOPAMIN-HITS:
 ## TEXT HOOK (ON-SCREEN)
 
 JEDES Skript braucht einen TEXT-HOOK — der große Text der AUF dem Video eingeblendet wird.
-- Max 3-8 Wörter — muss in 0,5 Sekunden lesbar sein
+
+{{text-hook-regeln}}
+
+Zusätzlich für diese Viral-Adaption:
 - Er soll den gleichen PSYCHOLOGISCHEN TRIGGER nutzen wie der Referenz-Text-Hook
 - NICHT die gleichen Wörter — den gleichen EFFEKT
 - Verlustangst, Neugier, Widerspruch, Identifikation — was passt zur Nische?

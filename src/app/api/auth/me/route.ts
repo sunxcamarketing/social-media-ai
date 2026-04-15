@@ -7,10 +7,13 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const effectiveClientId = user.impersonating?.clientId ?? user.clientId;
+
   return Response.json({
     id: user.id,
     email: user.email,
     role: user.role,
-    clientId: user.clientId,
+    clientId: effectiveClientId,
+    impersonating: user.impersonating ?? null,
   });
 }

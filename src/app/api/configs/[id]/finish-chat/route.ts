@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAnthropicClient } from "@/lib/anthropic";
 import { readConfig, readScripts, writeScripts, readTrainingScripts } from "@/lib/csv";
 import { buildFullClientContext } from "@/lib/client-context";
+import { safeJsonParse } from "@/lib/safe-json";
 import { v4 as uuid } from "uuid";
 
 export const maxDuration = 120;
@@ -25,9 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
-  const pillars: { name: string }[] = (() => {
-    try { return JSON.parse(config.strategyPillars || "[]"); } catch { return []; }
-  })();
+  const pillars = safeJsonParse<{ name: string }[]>(config.strategyPillars, []);
   const pillarList = pillars.length > 0 ? pillars.map((p) => p.name).join(", ") : "(keine Pillars definiert)";
 
   // Load training scripts as few-shot examples

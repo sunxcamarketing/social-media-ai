@@ -7,6 +7,7 @@ interface PortalUser {
   email: string;
   role: "admin" | "client";
   clientId: string | null;
+  impersonating: { clientId: string; clientName: string } | null;
 }
 
 export function usePortalClient() {

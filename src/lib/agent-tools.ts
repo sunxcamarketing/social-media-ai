@@ -19,6 +19,7 @@ import {
   voiceProfileToPromptBlock,
   scriptStructureToPromptBlock,
 } from "./voice-profile";
+import { buildAllClientSections } from "./client-context";
 import { safeJsonParse } from "./safe-json";
 import { fmt, fmtDuration } from "./format";
 import { searchWeb, searchTrends } from "./brave-search";
@@ -31,81 +32,7 @@ import type { PerformanceInsights, VideoInsight } from "./performance-helpers";
 export async function toolLoadClientContext(clientId: string): Promise<string> {
   const config = await readConfig(clientId);
   if (!config) return "Client nicht gefunden.";
-
-  const dreamCustomer = safeJsonParse(config.dreamCustomer);
-  const customerProblems = safeJsonParse(config.customerProblems);
-  const pillars: { name: string; subTopics?: string }[] = safeJsonParse(config.strategyPillars, []);
-  const weekly = safeJsonParse(config.strategyWeekly);
-
-  const sections: string[] = [];
-
-  // Profile
-  const profile = [
-    config.name && `Name: ${config.name}`,
-    config.role && `Rolle: ${config.role}`,
-    config.company && `Unternehmen: ${config.company}`,
-    config.creatorsCategory && `Nische: ${config.creatorsCategory}`,
-    config.location && `Standort: ${config.location}`,
-    config.businessContext && `Business-Kontext: ${config.businessContext}`,
-    config.professionalBackground && `Professioneller Hintergrund: ${config.professionalBackground}`,
-    config.keyAchievements && `Erfolge: ${config.keyAchievements}`,
-  ].filter(Boolean);
-  if (profile.length > 0) sections.push(`PROFIL:\n${profile.join("\n")}`);
-
-  // Brand
-  const brand = [
-    config.brandFeeling && `Marken-Gefühl: ${config.brandFeeling}`,
-    config.brandProblem && `Kernproblem: ${config.brandProblem}`,
-    config.brandingStatement && `Branding-Statement: ${config.brandingStatement}`,
-    config.humanDifferentiation && `Differenzierung: ${config.humanDifferentiation}`,
-    config.providerRole && `Anbieter-Rolle: ${config.providerRole}`,
-    config.providerBeliefs && `Überzeugungen: ${config.providerBeliefs}`,
-    config.authenticityZone && `Authentizitätszone: ${config.authenticityZone}`,
-  ].filter(Boolean);
-  if (brand.length > 0) sections.push(`BRAND:\n${brand.join("\n")}`);
-
-  // Target audience
-  const audience = [
-    dreamCustomer.description && `Traumkunde: ${dreamCustomer.description}`,
-    dreamCustomer.profession && `Beruf: ${dreamCustomer.profession}`,
-    customerProblems.mental && `Mentale Probleme: ${customerProblems.mental}`,
-    customerProblems.emotional && `Emotionale Probleme: ${customerProblems.emotional}`,
-    customerProblems.practical && `Praktische Probleme: ${customerProblems.practical}`,
-  ].filter(Boolean);
-  if (audience.length > 0) sections.push(`ZIELGRUPPE:\n${audience.join("\n")}`);
-
-  // Strategy
-  if (config.strategyGoal || pillars.length > 0) {
-    const stratParts: string[] = [];
-    if (config.strategyGoal) stratParts.push(`Ziel: ${config.strategyGoal}`);
-    if (pillars.length > 0) {
-      stratParts.push(`Content-Pillars:\n${pillars.map(p => {
-        let line = `  - ${p.name}`;
-        if (p.subTopics) line += ` (${p.subTopics})`;
-        return line;
-      }).join("\n")}`);
-    }
-    if (weekly && Object.keys(weekly).length > 0) {
-      stratParts.push(`Wochenplan:\n${Object.entries(weekly).map(([day, d]) => {
-        const info = d as { type?: string; format?: string; pillar?: string };
-        return `  ${day}: ${info.type || "?"} | ${info.format || "?"} | ${info.pillar || "?"}`;
-      }).join("\n")}`);
-    }
-    if (config.postsPerWeek) stratParts.push(`Posts/Woche: ${config.postsPerWeek}`);
-    sections.push(`STRATEGIE:\n${stratParts.join("\n")}`);
-  }
-
-  // Social profiles
-  const social = [
-    config.instagram && `Instagram: @${config.instagram.replace(/^@/, "")}`,
-    config.igFollowers && `Follower: ${config.igFollowers}`,
-    config.tiktok && `TikTok: ${config.tiktok}`,
-    config.youtube && `YouTube: ${config.youtube}`,
-    config.website && `Website: ${config.website}`,
-  ].filter(Boolean);
-  if (social.length > 0) sections.push(`SOCIAL MEDIA:\n${social.join("\n")}`);
-
-  return sections.join("\n\n");
+  return buildAllClientSections(config as unknown as Record<string, string>);
 }
 
 // ── load_voice_profile ─────────────────────────────────────────────────────

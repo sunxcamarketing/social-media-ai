@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 4000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "voice-server": "npx tsx --require dotenv/config src/voice-server.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@floating-ui/react-dom": "^2.1.8",
+    "@google/genai": "^1.48.0",
     "@inngest/realtime": "^0.4.6",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.2",
@@ -30,7 +32,8 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -38,6 +41,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "shadcn": "^3.8.5",

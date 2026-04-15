@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FileText, BarChart2, Search, Video, MessageSquare, LogOut } from "lucide-react";
+import { FileText, BarChart2, Search, Video, MessageSquare, Mic, LogOut, Lightbulb } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
 const tabs = [
   { title: "Dashboard", href: "/portal", icon: BarChart2, exact: true },
   { title: "Skripte", href: "/portal/scripts", icon: FileText },
   { title: "Strategie", href: "/portal/strategy", icon: BarChart2 },
+  { title: "Ideen", href: "/portal/ideas", icon: Lightbulb },
   { title: "Audit", href: "/portal/analyse", icon: Search },
   { title: "Videos", href: "/portal/videos", icon: Video },
   { title: "Chat", href: "/portal/chat", icon: MessageSquare },
+  { title: "Voice", href: "/portal/voice", icon: Mic },
 ];
 
 export function ClientNav({ clientName }: { clientName?: string }) {
