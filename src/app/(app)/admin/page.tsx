@@ -85,7 +85,7 @@ interface Stats {
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({ clients: 0, scripts: 0, videos: 0, ideas: 0 });
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -103,11 +103,11 @@ export default function AdminDashboard() {
     });
   }, []);
 
-  const statCards = [
-    { label: "Clients", value: stats.clients, icon: Users, color: "text-ocean" },
-    { label: "Skripte", value: stats.scripts, icon: FileText, color: "text-blush-dark" },
-    { label: "Videos analysiert", value: stats.videos, icon: Video, color: "text-ivory" },
-    { label: "Ideen gesammelt", value: stats.ideas, icon: Lightbulb, color: "text-blush-dark" },
+  const statCards: Array<{ label: string; value: number | null; icon: React.ComponentType<{ className?: string }>; color: string }> = [
+    { label: "Clients", value: stats?.clients ?? null, icon: Users, color: "text-ocean" },
+    { label: "Skripte", value: stats?.scripts ?? null, icon: FileText, color: "text-blush-dark" },
+    { label: "Videos analysiert", value: stats?.videos ?? null, icon: Video, color: "text-ivory" },
+    { label: "Ideen gesammelt", value: stats?.ideas ?? null, icon: Lightbulb, color: "text-blush-dark" },
   ];
 
   return (
@@ -127,7 +127,11 @@ export default function AdminDashboard() {
               <s.icon className={`h-4 w-4 ${s.color}`} />
               <span className="text-xs text-ocean/50 uppercase tracking-wider">{s.label}</span>
             </div>
-            <p className="text-3xl font-light text-ocean tabular-nums">{s.value}</p>
+            {s.value === null ? (
+              <div className="h-9 w-16 rounded-md bg-ocean/[0.06] animate-pulse" />
+            ) : (
+              <p className="text-3xl font-light text-ocean tabular-nums">{s.value}</p>
+            )}
           </div>
         ))}
       </div>
