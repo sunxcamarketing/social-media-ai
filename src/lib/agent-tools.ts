@@ -23,6 +23,8 @@ import { safeJsonParse } from "./safe-json";
 import { fmt, fmtDuration } from "./format";
 import { searchWeb, searchTrends } from "./brave-search";
 import { getHighConfidenceLearnings } from "./client-learnings";
+import { runScriptAgent } from "./script-agent";
+import type { ScriptAgentInput } from "./script-agent";
 import type { Config } from "./types";
 import type { PerformanceInsights, VideoInsight } from "./performance-helpers";
 
@@ -193,9 +195,6 @@ export async function toolLoadAudit(clientId: string): Promise<string> {
 // ── generate_script ────────────────────────────────────────────────────────
 // Uses the Script Agent — a multi-step agent loop that thinks about the
 // angle, crafts hooks, writes the script, and self-reviews before submitting.
-
-import { runScriptAgent } from "./script-agent";
-import type { ScriptAgentInput } from "./script-agent";
 
 export async function toolGenerateScript(
   clientId: string,
