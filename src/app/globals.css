@@ -184,3 +184,7 @@
   box-shadow: 0 0 0 3px rgba(242, 200, 210, 0.15);
   outline: none;
 }
+
+/* Hide scrollbar on horizontal scroll containers (e.g. topbar tabs). */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
