@@ -191,7 +191,7 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
       ws.onclose = (event) => {
         if (sessionState === "active" || sessionState === "connecting" || sessionState === "preparing") {
           if (event.code === 4003) setError("Nicht autorisiert");
-          else if (event.code === 4005) setError("Verbindung zu Gemini fehlgeschlagen");
+          else if (event.code === 4005) setError("Verbindung zum Voice-Server fehlgeschlagen");
           if (!summary) setSessionState("idle");
         }
         stopCapture();

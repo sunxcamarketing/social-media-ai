@@ -338,6 +338,7 @@ function ClientInformationContent() {
   const [basicForm, setBasicForm] = useState({
     configName: "", name: "", company: "", role: "", location: "",
     businessContext: "", professionalBackground: "", keyAchievements: "",
+    coreOffer: "", mainGoal: "",
     website: "", instagram: "", tiktok: "", youtube: "", linkedin: "", twitter: "",
   });
   const [brandForm, setBrandForm] = useState({
@@ -469,6 +470,8 @@ function ClientInformationContent() {
       businessContext: client.businessContext || "",
       professionalBackground: client.professionalBackground || "",
       keyAchievements: client.keyAchievements || "",
+      coreOffer: client.coreOffer || "",
+      mainGoal: client.mainGoal || "",
       website: client.website || "", instagram: client.instagram || "",
       tiktok: client.tiktok || "", youtube: client.youtube || "",
       linkedin: client.linkedin || "", twitter: client.twitter || "",
@@ -729,6 +732,12 @@ function ClientInformationContent() {
               <InfoRow label={t("label.keyAchievements")} value={client.keyAchievements} />
             </div>
           )}
+          {(client.coreOffer || client.mainGoal) && (
+            <div className="border-t border-ocean/[0.06] pt-5 space-y-5">
+              <InfoRow label="Core Offer" value={client.coreOffer || ""} />
+              <InfoRow label="Konkretes Ziel" value={client.mainGoal || ""} />
+            </div>
+          )}
         </div>
       </SectionCard>
 
@@ -924,6 +933,28 @@ function ClientInformationContent() {
                 <Textarea value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             ))}
+            <div className="border-t border-ocean/[0.06] pt-4 space-y-4">
+              <p className="text-xs font-medium text-ocean/70">Angebot & Ziel</p>
+              <div>
+                <Label className="text-xs text-ocean/70">Core Offer — Was wird verkauft?</Label>
+                <Textarea
+                  value={basicForm.coreOffer}
+                  onChange={(e) => setBasicForm({ ...basicForm, coreOffer: e.target.value })}
+                  rows={2}
+                  placeholder="z.B. 12-Wochen Coaching-Programm, 3.000€, Ergebnis: Traumfigur ohne Jojo-Effekt"
+                  className="mt-1.5 rounded-xl glass border-ocean/5 text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-ocean/70">Konkretes Ziel</Label>
+                <Input
+                  value={basicForm.mainGoal}
+                  onChange={(e) => setBasicForm({ ...basicForm, mainGoal: e.target.value })}
+                  placeholder="z.B. 5 Sales Calls/Woche, Launch in 6 Wochen"
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-11"
+                />
+              </div>
+            </div>
             <div className="border-t border-ocean/[0.06] pt-4 grid grid-cols-2 gap-3">
               {(["website", "instagram", "tiktok", "youtube", "linkedin", "twitter"] as const).map((key) => (
                 <div key={key}>

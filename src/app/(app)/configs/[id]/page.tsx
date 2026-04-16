@@ -472,9 +472,9 @@ export default function ClientDetailPage() {
 
         {analyzing && (
           <div className="space-y-2 text-sm text-ocean/60">
-            <p>Scraping Instagram profile…</p>
-            <p>Downloading & uploading top videos to Gemini…</p>
-            <p>Analysing hooks, scripts, and performance…</p>
+            <p>Instagram-Profil wird geladen…</p>
+            <p>Top-Videos werden analysiert…</p>
+            <p>Hooks, Scripts und Performance werden ausgewertet…</p>
             <p className="text-[11px] opacity-60">This takes 1–3 minutes.</p>
           </div>
         )}
