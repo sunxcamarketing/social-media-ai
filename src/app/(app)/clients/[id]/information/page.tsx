@@ -34,7 +34,6 @@ import {
   RefreshCw,
   UserCheck,
   Film,
-  FolderOpen,
 } from "lucide-react";
 import type { Config } from "@/lib/types";
 import { safeJsonParse } from "@/lib/safe-json";
@@ -328,11 +327,6 @@ function ClientInformationContent() {
   const [addInfoLoading, setAddInfoLoading] = useState(false);
   const [addInfoResult, setAddInfoResult] = useState<string | null>(null);
 
-  // Drive sync
-  const [driveSyncing, setDriveSyncing] = useState(false);
-  const [driveResult, setDriveResult] = useState<string | null>(null);
-  const [driveError, setDriveError] = useState<string | null>(null);
-
   // Edit dialog state
   const [basicOpen, setBasicOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -345,7 +339,6 @@ function ClientInformationContent() {
     configName: "", name: "", company: "", role: "", location: "",
     businessContext: "", professionalBackground: "", keyAchievements: "",
     website: "", instagram: "", tiktok: "", youtube: "", linkedin: "", twitter: "",
-    googleDriveFolder: "",
   });
   const [brandForm, setBrandForm] = useState({
     brandFeeling: "",
@@ -443,27 +436,6 @@ function ClientInformationContent() {
     }
   };
 
-  const handleDriveSync = async () => {
-    setDriveSyncing(true);
-    setDriveResult(null);
-    setDriveError(null);
-    try {
-      const res = await fetch(`/api/configs/${id}/sync-drive`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Import failed");
-      const parts: string[] = [`${data.imported} Skript(e) importiert.`];
-      if (data.skipped) parts.push(`${data.skipped} Korrektur-Dokument(e) übersprungen.`);
-      if (data.voiceProfileGenerated) parts.push("Voice Profile generiert.");
-      if (data.scriptStructureGenerated) parts.push("Skript-Struktur gelernt.");
-      setDriveResult(parts.join(" "));
-      await loadClient().then(setClient);
-    } catch (e) {
-      setDriveError(e instanceof Error ? e.message : "Import failed");
-    } finally {
-      setDriveSyncing(false);
-    }
-  };
-
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const savePartial = async (partial: Partial<Config>) => {
@@ -500,7 +472,6 @@ function ClientInformationContent() {
       website: client.website || "", instagram: client.instagram || "",
       tiktok: client.tiktok || "", youtube: client.youtube || "",
       linkedin: client.linkedin || "", twitter: client.twitter || "",
-      googleDriveFolder: client.googleDriveFolder || "",
     });
     setSaveError(null);
     setBasicOpen(true);
@@ -648,43 +619,6 @@ function ClientInformationContent() {
             <SocialLink href={client.linkedin} icon={Linkedin} label={client.linkedin} />
             <SocialLink href={client.twitter} icon={Twitter} label={`@${client.twitter.replace(/^@/, "")}`} />
           </div>
-        </div>
-      )}
-
-      {/* Google Drive Voice Training */}
-      {client.googleDriveFolder && (
-        <div className="glass rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-blush-dark" /> {t("info.driveFolder")}
-            </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDriveSync}
-              disabled={driveSyncing}
-              className="h-7 gap-1 rounded-lg px-2 text-xs text-ocean/70 hover:text-ocean"
-            >
-              {driveSyncing ? (
-                <><Loader2 className="h-3 w-3 animate-spin" /> {t("info.driveImporting")}</>
-              ) : (
-                <><RefreshCw className="h-3 w-3" /> {t("info.driveImport")}</>
-              )}
-            </Button>
-          </div>
-          <p className="text-xs text-ocean/60 truncate mb-1">{client.googleDriveFolder}</p>
-          <p className="text-[10px] text-ocean/50">{t("info.driveHint")}</p>
-          {driveResult && (
-            <div className="mt-3 flex items-start gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5 text-sm text-green-600">
-              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{driveResult}</span>
-            </div>
-          )}
-          {driveError && (
-            <div className="mt-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-500">
-              {driveError}
-            </div>
-          )}
         </div>
       )}
 
@@ -997,18 +931,6 @@ function ClientInformationContent() {
                   <Input value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                 </div>
               ))}
-            </div>
-            <div className="border-t border-ocean/[0.06] pt-4">
-              <Label className="text-xs text-ocean/70 flex items-center gap-1.5">
-                <FolderOpen className="h-3 w-3" /> {t("info.driveFolder")}
-              </Label>
-              <Input
-                value={basicForm.googleDriveFolder}
-                onChange={(e) => setBasicForm({ ...basicForm, googleDriveFolder: e.target.value })}
-                className="mt-1.5 rounded-xl glass border-ocean/5 h-11"
-                placeholder={t("info.drivePlaceholder")}
-              />
-              <p className="text-[10px] text-ocean/50 mt-1">{t("info.driveHint")}</p>
             </div>
             <Button onClick={async () => { await savePartial(basicForm); setBasicOpen(false); }} disabled={saving}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
