@@ -100,6 +100,7 @@ const CONFIG_LIGHT_COLUMNS = [
   "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements",
   "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation",
   "dreamCustomer", "customerProblems", "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone",
+  "coreOffer", "mainGoal",
   "website", "instagram", "tiktok", "youtube", "linkedin", "twitter",
   "igFullName", "igBio", "igFollowers", "igFollowing", "igPostsCount",
   "igProfilePicUrl", "igCategory", "igVerified", "igLastUpdated",

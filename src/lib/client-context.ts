@@ -34,6 +34,8 @@ export function buildBrandContext(config: ConfigRecord): string {
     config.providerBeliefs && `Überzeugungen: ${config.providerBeliefs}`,
     config.providerStrengths && `Stärken: ${config.providerStrengths}`,
     config.authenticityZone && `Authentizitätszone: ${config.authenticityZone}`,
+    config.coreOffer && `Core Offer: ${config.coreOffer}`,
+    config.mainGoal && `Konkretes Ziel: ${config.mainGoal}`,
   ].filter(Boolean).join("\n");
 }
 

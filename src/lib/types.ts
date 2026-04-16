@@ -27,6 +27,9 @@ export interface Config {
   providerBeliefs: string;
   providerStrengths: string;
   authenticityZone: string;
+  // Offer & goal (Hormozi Value Equation)
+  coreOffer?: string; // What the client sells (product, price, duration, outcome)
+  mainGoal?: string; // Concrete goal (e.g. "5 Sales Calls/Woche")
   // Social & web
   website: string;
   instagram: string;

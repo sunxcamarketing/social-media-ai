@@ -82,6 +82,16 @@ const STEPS: Step[] = [
     ],
   },
   {
+    id: "offer",
+    category: "Angebot",
+    title: "Was verkauft dein Client?",
+    subtitle: "Das Angebot ist der Kern — Content ist seine Verlängerung, nicht Kunstprojekt.",
+    fields: [
+      { key: "coreOffer", label: "Core Offer", type: "textarea", placeholder: "Was genau wird verkauft? Preis, Laufzeit, konkretes Ergebnis. z.B. '12-Wochen Coaching-Programm, 3.000€, Ergebnis: Traumfigur ohne Jojo-Effekt'" },
+      { key: "mainGoal", label: "Konkretes Ziel", type: "text", placeholder: "z.B. '5 Sales Calls/Woche', 'Launch in 6 Wochen', '10 neue Kunden/Monat'" },
+    ],
+  },
+  {
     id: "audience",
     category: "Zielgruppe",
     title: "Wen erreichen wir?",

@@ -53,6 +53,8 @@ export async function POST(request: Request) {
     igFullName: "", igBio: "", igFollowers: "", igFollowing: "",
     igPostsCount: "", igProfilePicUrl: "", igCategory: "", igVerified: "", igLastUpdated: "",
     authenticityZone: body.authenticityZone || "",
+    coreOffer: body.coreOffer || "",
+    mainGoal: body.mainGoal || "",
     voiceProfile: "",
     scriptStructure: "",
     googleDriveFolder: body.googleDriveFolder || "",

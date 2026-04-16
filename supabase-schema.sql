@@ -43,6 +43,8 @@ CREATE TABLE configs (
   "voiceProfile" TEXT DEFAULT '',
   "scriptStructure" TEXT DEFAULT '',
   "googleDriveFolder" TEXT DEFAULT '',
+  "coreOffer" TEXT DEFAULT '',
+  "mainGoal" TEXT DEFAULT '',
   "targetPlatforms" TEXT DEFAULT '["instagram"]'
 );
 

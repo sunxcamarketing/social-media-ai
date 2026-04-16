@@ -394,8 +394,38 @@ export const STRATEGY_ANALYSIS_TOOL = {
         type: "string" as const,
         description: "2-3 Sätze: Warum dieses Ziel? Welche Daten sprechen dafür?",
       },
+      beliefs: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            belief: {
+              type: "string" as const,
+              description: "Der Glaubenssatz der Zielgruppe, z.B. 'Ich hab schon alles versucht'",
+            },
+            counter: {
+              type: "string" as const,
+              description: "Wie der Client diesen Glaubenssatz brechen kann (1 Satz)",
+            },
+          },
+          required: ["belief", "counter"],
+        },
+        minItems: 3,
+        maxItems: 7,
+        description: "3-7 Glaubenssätze/Hürden der Zielgruppe die der Content adressieren muss",
+      },
+      valueEquation: {
+        type: "object" as const,
+        properties: {
+          dreamOutcome: { type: "string" as const, description: "Das Traum-Ergebnis der Zielgruppe in 1 Satz" },
+          currentPain: { type: "string" as const, description: "Der aktuelle Schmerzpunkt der Zielgruppe in 1 Satz" },
+          offerBridge: { type: "string" as const, description: "Wie das Angebot des Clients den Schmerzpunkt löst (1 Satz)" },
+        },
+        required: ["dreamOutcome", "currentPain", "offerBridge"],
+        description: "Value Equation Analyse: Traum → Schmerz → Angebots-Brücke",
+      },
     },
-    required: ["insights", "topPerformingFormats", "topPerformingTypes", "avgViralDuration", "nichePatterns", "goal", "goalReasoning"],
+    required: ["insights", "topPerformingFormats", "topPerformingTypes", "avgViralDuration", "nichePatterns", "goal", "goalReasoning", "beliefs", "valueEquation"],
   },
 };
 
@@ -403,7 +433,7 @@ export const STRATEGY_ANALYSIS_TOOL = {
 
 export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: string[], formats: string[]) => ({
   name: "submit_strategy",
-  description: "Content Pillars und Wochenplan einreichen",
+  description: "Content Pillars, Wochenplan und Beispiel-Hooks einreichen",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -416,9 +446,14 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
               type: "string" as const,
               description: "Pillar-Name: 2-4 Wörter",
             },
+            purpose: {
+              type: "string" as const,
+              enum: ["dream-outcome", "proof", "time-shortcut", "effort-reduction", "personality"],
+              description: "Value-Equation-Zweck: Traum malen, Proof zeigen, Zeit verkürzen, Aufwand senken, oder Persönlichkeit",
+            },
             why: {
               type: "string" as const,
-              description: "1 Satz: Warum dieser Pillar für dieses Ziel?",
+              description: "1 Satz: Warum dieser Pillar für dieses Ziel? Welchen Glaubenssatz bricht er?",
             },
             subTopics: {
               type: "array" as const,
@@ -480,8 +515,23 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
         required: activeDays,
         description: "Wochenplan: ein Eintrag pro aktivem Tag",
       },
+      exampleHooks: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            hook: { type: "string" as const, description: "Der Hook-Text (1-2 Sätze)" },
+            pillar: { type: "string" as const, description: "Zu welchem Pillar gehört dieser Hook?" },
+            belief: { type: "string" as const, description: "Welchen Glaubenssatz adressiert dieser Hook?" },
+          },
+          required: ["hook", "pillar", "belief"],
+        },
+        minItems: 5,
+        maxItems: 7,
+        description: "5-7 Beispiel-Hooks die zur Nische, Zielgruppe und Core Offer passen",
+      },
     },
-    required: ["pillars", "weekly"],
+    required: ["pillars", "weekly", "exampleHooks"],
   },
 });
 
