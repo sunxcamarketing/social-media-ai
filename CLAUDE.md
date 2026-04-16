@@ -98,7 +98,8 @@ AI-Agent im Client-Portal mit Tool-Zugriff. Nutzt Claude's native `tool_use` fü
 
 - Agent-Loop: Non-streaming tool iterations + SSE text streaming for final response
 - Tool implementations: `src/lib/agent-tools.ts`
-- Agent prompt: `prompts/agents/content-agent.md`
+- Agent prompt: `prompts/agents/content-agent.md` (slim, no script rules)
+- Script generation: Writer (`script-writer.md`) + Regex check + Reviewer (`script-reviewer.md`, only when needed)
 - Max 10 tool-call iterations per turn (safety limit)
 - Scripts always generated in short (30-40s) + long (60+s) versions
 - `search_web` uses Brave Search API for live web data
@@ -180,8 +181,9 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 | `strategy-analysis.md` | Strategy: Data Analysis | auto: audit-nutzung |
 | `strategy-creation.md` | Strategy: Pillar Creation | `{{posts_per_week}}`, `{{active_days}}`, `{{content_types}}`, `{{formats}}`, auto: themen-spezifizitaet, konkretion-regeln |
 | `strategy-review.md` | Strategy: Review | (no placeholders — standalone) |
-| `content-agent.md` | Content Agent (Portal Chat) | `{{platform_context}}`, auto: hook-regeln, hook-muster, body-regeln, cta-regeln, konkretion-regeln, storytelling-formel, verboten-ai-sprache, sprach-stil, natuerliche-satzstruktur, anti-monotone-formatierung |
-| `script-agent.md` | Script Agent (nested in chat) | auto: rolle-skriptschreiber, hook-regeln, body-regeln, cta-regeln, konkretion-regeln, verboten-ai-sprache, sprach-stil, natuerliche-satzstruktur, anti-monotone-formatierung |
+| `content-agent.md` | Content Agent (Portal Chat) | `{{platform_context}}` (script rules removed, delegated to Script Agent) |
+| `script-writer.md` | Script Agent: Creative Writing | `{{platform_context}}`, auto: hook-regeln, hook-muster, body-regeln, cta-regeln, konkretion-regeln, storytelling-formel, text-hook-regeln |
+| `script-reviewer.md` | Script Agent: Quality Gate | auto: verboten-ai-sprache, anti-ai-checkliste, anti-monotone-formatierung, natuerliche-satzstruktur, sprach-stil |
 | `viral-script-structure.md` | Viral: Psychology Extraction | (standalone) |
 | `viral-hook-generation.md` | Viral: Hook Generation | `{{platform_context}}` |
 | `viral-script-adapt.md` | Viral: Script Adaptation | auto: rolle-skriptschreiber, verboten-ai-sprache, natuerliche-satzstruktur, anti-monotone-formatierung, stimm-matching |

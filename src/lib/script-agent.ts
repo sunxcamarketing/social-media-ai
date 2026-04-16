@@ -1,9 +1,11 @@
 // ── Script Agent ───────────────────────────────────────────────────────────
 // Multi-step agent that writes viral video scripts.
-// Replaces the old single-call generate_script pipeline.
 //
-// Flow: load data → find angle (think) → craft hooks → write script → self-review
-// The agent decides which tools to call and when, guided by script-agent.md.
+// Flow: Writer (agent loop) → Regex check → Reviewer (single call, only if needed)
+//
+// The Writer focuses on creative quality: angle, hooks, voice matching.
+// The Reviewer focuses on language quality: AI detection, formatting, voice check.
+// Regex catches obvious AI patterns (em-dashes, banned phrases) before the reviewer.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient } from "./anthropic";
@@ -45,9 +47,81 @@ export type ScriptAgentProgressFn = (event: {
   detail?: string;
 }) => void;
 
-// ── Agent Tools (internal to the script agent) ────────────────────────────
+// ── AI Pattern Detection (Regex) ─────────────────────────────────────────
+// Catches the most common AI tells before invoking the reviewer LLM call.
+// This is a fast, cheap pre-filter — not exhaustive.
 
-const AGENT_TOOLS: Anthropic.Tool[] = [
+const BANNED_PHRASES = [
+  "Die meisten Menschen",
+  "Viele Menschen",
+  "Stell dir vor",
+  "Das Schöne daran",
+  "Am Ende des Tages",
+  "Und genau das ist der Punkt",
+  "Hier kommt der Clou",
+  "Lass das mal sacken",
+  "Nicht weil",
+  "Die Frage ist nicht ob",
+  "In der heutigen Zeit",
+  "Hast du dich jemals gefragt",
+  "Es ist kein Geheimnis",
+  "Wusstest du, dass",
+  "Das verändert alles",
+  "Potenzial entfalten",
+  "Aufs nächste Level",
+  "nächstes Level",
+  "Lass mich dir erzählen",
+  "Hier ist die Wahrheit",
+];
+
+function detectAIPatterns(script: string): string[] {
+  const issues: string[] = [];
+
+  // Em-dashes and en-dashes used as style
+  if (script.includes("—") || script.includes("–")) {
+    issues.push("Bindestriche/Gedankenstriche gefunden (—, –)");
+  }
+
+  // Monotone formatting: >60% of non-empty lines are single sentences
+  // (one sentence followed by a blank line = AI pattern)
+  const lines = script.split("\n");
+  const nonEmptyLines = lines.filter(l => l.trim().length > 0);
+  if (nonEmptyLines.length > 3) {
+    let singleSentenceLines = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.length === 0) continue;
+      // Check if this line is followed by a blank line (or end of text)
+      const nextLine = lines[i + 1]?.trim() ?? "";
+      if (nextLine.length === 0 && line.length > 0) {
+        singleSentenceLines++;
+      }
+    }
+    if (singleSentenceLines / nonEmptyLines.length > 0.6) {
+      issues.push("Monotone Ein-Satz-pro-Zeile Formatierung");
+    }
+  }
+
+  // Banned phrases (case-insensitive substring match)
+  const lowerScript = script.toLowerCase();
+  for (const phrase of BANNED_PHRASES) {
+    if (lowerScript.includes(phrase.toLowerCase())) {
+      issues.push(`Verbotene Phrase: "${phrase}"`);
+    }
+  }
+
+  // Rhetorical one-word questions (e.g. "Das Ergebnis?", "Der Clou?")
+  const rhetoricalPattern = /^(Das|Der|Die) \w+\?$/m;
+  if (rhetoricalPattern.test(script)) {
+    issues.push("Rhetorische Einwort-Frage gefunden (z.B. 'Das Ergebnis?')");
+  }
+
+  return issues;
+}
+
+// ── Writer Agent Tools ───────────────────────────────────────────────────
+
+const WRITER_TOOLS: Anthropic.Tool[] = [
   {
     name: "load_context",
     description: "Lade Client-Profil, Brand, Strategie, Zielgruppe. Einmal am Anfang aufrufen.",
@@ -99,7 +173,7 @@ const AGENT_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "think",
-    description: "Denk laut nach. Nutze dieses Tool um über Winkel, Hooks oder den Review nachzudenken. Der Output ist nur für dich — der User sieht ihn nicht.",
+    description: "Denk laut nach. Nutze dieses Tool um über Winkel, Hooks oder den Review nachzudenken. Der Output ist nur für dich. Der User sieht ihn nicht.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -110,11 +184,11 @@ const AGENT_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "submit_script",
-    description: "Reiche das fertige Skript ein. Erst aufrufen wenn du mit dem Review zufrieden bist.",
+    description: "Reiche das fertige Skript ein.",
     input_schema: {
       type: "object" as const,
       properties: {
-        text_hook: { type: "string" as const, description: "Text-Hook auf Screen (max 6 Wörter)" },
+        text_hook: { type: "string" as const, description: "Text-Hook auf Screen (max 5 Wörter)" },
         hook_pattern: { type: "string" as const, description: "Verwendetes Hook-Muster" },
         short_script: { type: "string" as const, description: "Kurzversion (30-40 Sek)" },
         long_script: { type: "string" as const, description: "Langversion (60+ Sek)" },
@@ -126,10 +200,27 @@ const AGENT_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// ── Reviewer Tool ────────────────────────────────────────────────────────
+
+const REVIEWER_TOOL: Anthropic.Tool = {
+  name: "review_script",
+  description: "Gib dein Review-Ergebnis ab: approved oder rewritten.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      approved: { type: "boolean" as const, description: "true wenn das Skript sauber ist" },
+      issues: { type: "string" as const, description: "Was geändert wurde (leer wenn approved)" },
+      short_script: { type: "string" as const, description: "Überarbeitete Kurzversion (leer wenn approved)" },
+      long_script: { type: "string" as const, description: "Überarbeitete Langversion (leer wenn approved)" },
+    },
+    required: ["approved"],
+  },
+};
+
 // ── Tool Execution ────────────────────────────────────────────────────────
 // Delegates to existing agent-tools implementations to avoid duplication.
 
-async function executeScriptAgentTool(
+async function executeWriterTool(
   toolName: string,
   toolInput: Record<string, unknown>,
   clientId: string,
@@ -159,6 +250,57 @@ async function executeScriptAgentTool(
   }
 }
 
+// ── Reviewer ─────────────────────────────────────────────────────────────
+// Single Claude call that checks script quality and optionally rewrites.
+
+async function runReviewer(
+  client: Anthropic,
+  shortScript: string,
+  longScript: string,
+  voiceProfile: string | null,
+  regexIssues: string[],
+): Promise<{ approved: boolean; shortScript?: string; longScript?: string; issues?: string }> {
+  const reviewerPrompt = buildPrompt("script-reviewer", {});
+
+  let userMessage = `Prüfe dieses Skript auf AI-Sprache, Formatierung und Voice Match.\n\n`;
+  userMessage += `── KURZ (30-40 Sek) ──\n${shortScript}\n\n`;
+  userMessage += `── LANG (60+ Sek) ──\n${longScript}`;
+
+  if (regexIssues.length > 0) {
+    userMessage += `\n\nBEREITS ERKANNTE PROBLEME (automatisch gefunden):\n${regexIssues.map(i => `- ${i}`).join("\n")}`;
+  }
+
+  if (voiceProfile) {
+    userMessage += `\n\nVOICE PROFILE:\n${voiceProfile}`;
+  }
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 4096,
+    system: reviewerPrompt,
+    messages: [{ role: "user", content: userMessage }],
+    tools: [REVIEWER_TOOL],
+    tool_choice: { type: "tool", name: "review_script" },
+  });
+
+  const toolBlock = response.content.find(
+    (b): b is Anthropic.ToolUseBlock => b.type === "tool_use" && b.name === "review_script",
+  );
+
+  if (!toolBlock) {
+    // Fallback: if reviewer didn't use the tool, return approved (don't block)
+    return { approved: true };
+  }
+
+  const result = toolBlock.input as Record<string, unknown>;
+  return {
+    approved: result.approved as boolean,
+    shortScript: (result.short_script as string) || undefined,
+    longScript: (result.long_script as string) || undefined,
+    issues: (result.issues as string) || undefined,
+  };
+}
+
 // ── Main Agent Loop ───────────────────────────────────────────────────────
 
 const MAX_ITERATIONS = 15;
@@ -177,8 +319,8 @@ export async function runScriptAgent(
   const platforms = parseTargetPlatforms(config.targetPlatforms);
   const platformContext = buildPlatformContext(platforms[0] || DEFAULT_PLATFORM);
 
-  // Build system prompt
-  const systemPrompt = buildPrompt("script-agent", { platform_context: platformContext });
+  // Build system prompt — now uses script-writer (creative focus)
+  const systemPrompt = buildPrompt("script-writer", { platform_context: platformContext });
 
   // Build the user message with task + optional conversation context
   const metaLine = [
@@ -202,21 +344,27 @@ export async function runScriptAgent(
     { role: "user", content: userMessage },
   ];
 
-  // Agent loop
+  // Track voice profile for the reviewer
+  let cachedVoiceProfile: string | null = null;
+
+  // ── Writer agent loop ──────────────────────────────────────────────────
+
+  let writerResult: ScriptAgentResult | null = null;
+
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 4096,
       system: systemPrompt,
       messages,
-      tools: AGENT_TOOLS,
+      tools: WRITER_TOOLS,
     });
 
     const toolUseBlocks = response.content.filter(
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
     );
 
-    // No tool calls — shouldn't happen (agent should always submit_script), but handle gracefully
+    // No tool calls — shouldn't happen (agent should always submit_script)
     if (toolUseBlocks.length === 0) {
       throw new Error("Script Agent hat kein Skript eingereicht. Bitte nochmal versuchen.");
     }
@@ -224,16 +372,17 @@ export async function runScriptAgent(
     // Check if submit_script is among the tool calls
     const submitBlock = toolUseBlocks.find(b => b.name === "submit_script");
     if (submitBlock) {
-      onProgress?.({ step: "submit_script", detail: "Skript fertig" });
-      const result = submitBlock.input as Record<string, string>;
-      return {
-        textHook: result.text_hook || "",
-        hookPattern: result.hook_pattern || "",
-        shortScript: result.short_script || "",
-        longScript: result.long_script || "",
-        angle: result.angle || "",
-        whyItWorks: result.why_it_works || "",
+      onProgress?.({ step: "submit_script", detail: "Skript geschrieben, prüfe Qualität…" });
+      const raw = submitBlock.input as Record<string, string>;
+      writerResult = {
+        textHook: raw.text_hook || "",
+        hookPattern: raw.hook_pattern || "",
+        shortScript: raw.short_script || "",
+        longScript: raw.long_script || "",
+        angle: raw.angle || "",
+        whyItWorks: raw.why_it_works || "",
       };
+      break;
     }
 
     // Execute all tool calls in parallel
@@ -255,11 +404,17 @@ export async function runScriptAgent(
 
     const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
       toolUseBlocks.map(async (toolBlock) => {
-        const result = await executeScriptAgentTool(
+        const result = await executeWriterTool(
           toolBlock.name,
           toolBlock.input as Record<string, unknown>,
           clientId,
         );
+
+        // Cache voice profile for the reviewer
+        if (toolBlock.name === "load_voice") {
+          cachedVoiceProfile = result;
+        }
+
         return {
           type: "tool_result" as const,
           tool_use_id: toolBlock.id,
@@ -275,5 +430,47 @@ export async function runScriptAgent(
     );
   }
 
-  throw new Error("Script Agent hat nach 15 Iterationen kein Skript eingereicht.");
+  if (!writerResult) {
+    throw new Error("Script Agent hat nach 15 Iterationen kein Skript eingereicht.");
+  }
+
+  // ── Regex check ────────────────────────────────────────────────────────
+
+  const allScriptText = writerResult.shortScript + "\n" + writerResult.longScript;
+  const regexIssues = detectAIPatterns(allScriptText);
+
+  if (regexIssues.length === 0) {
+    // Script is clean — skip reviewer, save tokens
+    onProgress?.({ step: "quality_check", detail: "Qualitäts-Check bestanden" });
+    return writerResult;
+  }
+
+  // ── Reviewer call (only when regex finds issues) ───────────────────────
+
+  onProgress?.({
+    step: "reviewer",
+    detail: `AI-Patterns erkannt (${regexIssues.length}), Reviewer prüft…`,
+  });
+
+  const reviewResult = await runReviewer(
+    client,
+    writerResult.shortScript,
+    writerResult.longScript,
+    cachedVoiceProfile,
+    regexIssues,
+  );
+
+  if (reviewResult.approved || !reviewResult.shortScript || !reviewResult.longScript) {
+    // Reviewer approved or didn't provide rewrites — use writer's version
+    onProgress?.({ step: "quality_check", detail: "Reviewer: approved" });
+    return writerResult;
+  }
+
+  // Use reviewer's rewritten scripts
+  onProgress?.({ step: "quality_check", detail: `Reviewer: umgeschrieben (${reviewResult.issues || "Sprache poliert"})` });
+  return {
+    ...writerResult,
+    shortScript: reviewResult.shortScript,
+    longScript: reviewResult.longScript,
+  };
 }

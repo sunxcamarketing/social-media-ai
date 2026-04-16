@@ -1,7 +1,7 @@
 # Plan: Script Agent Quality Gate — Writer/Reviewer Split
 
 **Created:** 2026-04-16
-**Status:** Draft
+**Status:** Implemented
 **Request:** Split the monolithic script-agent into Writer + Reviewer, remove duplicate script rules from content-agent, add regex-based post-processing. Goals: better script quality, fewer tokens, enforced quality gate.
 
 ---
@@ -432,3 +432,23 @@ The implementation is complete when:
 - **Future upgrade path**: If the reviewer on Sonnet still lets issues through, change the model in the reviewer call from `claude-sonnet-4-6` to `claude-opus-4-6`. One-line change in `script-agent.ts`. The focused 3,000-token prompt should make this unnecessary, but the option is there.
 - **Regex list maintenance**: The hardcoded banned phrases in the regex check are a subset of `verboten-ai-sprache.md`. If the foundational prompt grows, the regex list should be updated too. Consider auto-parsing the .md file for the regex list in a future iteration.
 - **Monitoring**: After deployment, check the first 5-10 generated scripts manually. If the reviewer triggers on >50% of scripts, the writer prompt may need adjustment (more emphasis on natural language in the writer itself).
+
+---
+
+## Implementation Notes
+
+**Implemented:** 2026-04-16
+
+### Summary
+
+Split the monolithic script-agent into a Writer (creative focus, ~5,144 tokens) + Reviewer (quality gate, ~2,656 tokens) pipeline. Added regex-based AI pattern detection (em-dashes, banned phrases, monotone formatting) as a fast pre-filter before the reviewer. Removed ~4,400 tokens of duplicate script rules from the Content Agent (7,200 → 2,812 tokens). The reviewer only runs when regex detects issues, saving tokens on clean scripts.
+
+### Deviations from Plan
+
+- Writer prompt came in at ~5,144 tokens (plan estimated ~4,000-5,200). Within range.
+- Reviewer prompt came in at ~2,656 tokens (plan estimated ~3,000). Slightly under.
+- Also fixed em-dashes in content-agent.md intro text (not in original plan but consistent with the goal).
+
+### Issues Encountered
+
+None.
