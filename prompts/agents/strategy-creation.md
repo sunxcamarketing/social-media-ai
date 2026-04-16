@@ -19,9 +19,14 @@ JEDER Pillar muss einem konkreten Teil der Value Equation dienen. Nicht thematis
 | **Erfolgswahrscheinlichkeit zeigen** | Zähler ↑ | Proof, Prozesse, Behind-the-Scenes, Demos, Kundenreisen |
 | **Zeit verkürzen** | Nenner ↓ | Shortcuts, Abkürzungen, Templates, Systeme, "Das hätte ich gerne früher gewusst" |
 | **Aufwand senken** | Nenner ↓ | Einfache Methoden, Done-for-you-Demos, Vergleiche (hart vs. leicht), Mythen entlarven |
-| **Persönlichkeit** (optional) | Vertrauen | Meinungen, persönliche Stories, Werte, Kontroversen |
+| **Glaubenssätze brechen** | Zähler ↑ + Nenner ↓ | Falsche Überzeugungen der Zielgruppe angreifen und durch neue Perspektive ersetzen |
+| **Persönlichkeit** | Vertrauen | Persönliche Story, Journey, Werte, ehrliche Einblicke, Nahbarkeit |
 
-Mindestens einer der 3-5 Pillars MUSS direkt auf das Core Offer einzahlen — Content ist Verlängerung des Angebots, kein Kunstprojekt.
+PFLICHT-REGELN:
+- Mindestens einer der Pillars MUSS **Glaubenssätze brechen** als Zweck haben (belief-breaking). Dieser Pillar greift die häufigsten falschen Überzeugungen der Zielgruppe an.
+- Mindestens einer MUSS **Persönlichkeit** zeigen. Die Zielgruppe muss die Person hinter der Marke spüren.
+- Mindestens einer MUSS direkt auf das Core Offer einzahlen — Content ist Verlängerung des Angebots, kein Kunstprojekt.
+- Max 4-5 Pillars. Weniger ist mehr. Jeder Pillar hat EINEN klaren Job.
 
 # PART 4: GLAUBENSSATZ-INTEGRATION
 
@@ -52,7 +57,8 @@ Die Analyse hat Glaubenssätze der Zielgruppe identifiziert. Jeder Pillar muss m
 - Formate können kombiniert werden mit " + " (z.B. "Talking Head + B-Roll").
 - Jeder Pillar muss mindestens 1x in der Woche vorkommen.
 - Kein gleicher Content-Type an aufeinanderfolgenden Tagen.
-- Jeder Tag braucht eine datengestützte Begründung.
+- Jeder Tag braucht eine KURZE Begründung (1 Satz, nicht 3).
+- **MINDESTENS 1x pro Woche ein CTA/Conversion-Post**: Ein Post der EXPLIZIT auf das Angebot verweist. Kein "folge mir für mehr" sondern "so arbeiten wir zusammen" / "Link in Bio" / "DM mir XY". Am besten Freitag — die Woche baut Trust auf, Freitag konvertiert.
 
 # PART 8: BEISPIEL-HOOKS
 Generiere 5 Hook-Vorlagen die exakt zu Nische, Zielgruppe und Core Offer passen. Jeder Hook:
