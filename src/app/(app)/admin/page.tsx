@@ -8,7 +8,6 @@ import {
   Video,
   Lightbulb,
   ArrowRight,
-  Sparkles,
   Mic,
   Search,
   BookOpen,
@@ -78,7 +77,6 @@ export default function AdminDashboard() {
 
   const quickActions = [
     { title: "Content Agent", description: "Chat mit Zugriff auf alle Clients", href: "/chat", icon: MessageSquare },
-    { title: "Viral Script", description: "Skript aus Viral-Video adaptieren", href: "/viral-script", icon: Sparkles },
     { title: "Audit", description: "Instagram-Profil analysieren", href: "/analyse", icon: Search },
     { title: "Transkribieren", description: "Audio/Video zu Text", href: "/transcribe", icon: Mic },
     { title: "Training", description: "Voice-Profile & Training Scripts", href: "/training", icon: BookOpen },

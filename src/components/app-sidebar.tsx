@@ -15,7 +15,6 @@ import {
   ChevronDown,
   Plus,
   Check,
-  Sparkles,
   LayoutDashboard,
   Users,
   Eye,
@@ -44,7 +43,6 @@ const CLIENT_TABS: NavLink[] = [
 const ADMIN_LINKS: NavLink[] = [
   { title: "Dashboard", path: "/admin", icon: LayoutDashboard },
   { title: "Content Agent", path: "/chat", icon: MessageSquare },
-  { title: "Viral Script", path: "/viral-script", icon: Sparkles },
   { title: "Globales Audit", path: "/analyse", icon: Search },
   { title: "Training", path: "/training", icon: BookOpen },
   { title: "Transkribieren", path: "/transcribe", icon: Mic },

@@ -12,7 +12,6 @@ import {
   Video,
   MessageSquare,
   Mic,
-  Sparkles,
   LayoutDashboard,
   Settings,
   Film,
@@ -43,7 +42,6 @@ const CLIENT_TABS: Array<{ key: string; label: string; icon: React.ComponentType
 const ADMIN_TOOLS: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { href: "/admin", label: "Admin Dashboard", icon: LayoutDashboard },
   { href: "/chat", label: "Content Agent", icon: MessageSquare },
-  { href: "/viral-script", label: "Viral Script", icon: Sparkles },
   { href: "/analyse", label: "Globales Audit", icon: Search },
   { href: "/training", label: "Training", icon: BookOpen },
   { href: "/transcribe", label: "Transkribieren", icon: Mic },
