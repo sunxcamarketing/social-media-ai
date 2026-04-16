@@ -21,8 +21,7 @@ import {
   Eye,
   Trash2,
 } from "lucide-react";
-import { useClientsCache, addClientToCache } from "@/hooks/use-clients-cache";
-import type { Config } from "@/lib/types";
+import { useClientsCache } from "@/hooks/use-clients-cache";
 
 interface NavLink {
   title: string;
@@ -78,19 +77,9 @@ export function AppSidebar() {
     router.push(`/clients/${clientId}/dashboard`);
   };
 
-  const createClient = async () => {
-    const name = window.prompt("Name des neuen Clients:");
-    if (!name?.trim()) return;
-    const res = await fetch("/api/configs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ configName: name.trim() }),
-    });
-    if (!res.ok) { alert("Fehler beim Erstellen"); return; }
-    const created: Config = await res.json();
-    addClientToCache(created);
+  const createClient = () => {
     setSwitcherOpen(false);
-    router.push(`/clients/${created.id}/information?setup=1`);
+    router.push("/clients/new");
   };
 
   const impersonate = async (clientId: string) => {
