@@ -12,11 +12,18 @@ import {
   MessageSquare,
   Mic,
   BookOpen,
+  AlertTriangle,
 } from "lucide-react";
+
+interface MissingField {
+  label: string;
+  key: string;
+}
 
 export default function ClientDashboard() {
   const { id } = useParams<{ id: string }>();
   const [clientName, setClientName] = useState("");
+  const [missingFields, setMissingFields] = useState<MissingField[]>([]);
   const [stats, setStats] = useState({
     scripts: 0,
     ideas: 0,
@@ -33,6 +40,15 @@ export default function ClientDashboard() {
       .then((cfg) => {
         setClientName(cfg.configName || cfg.name || "");
         setStats((s) => ({ ...s, hasStrategy: Boolean(cfg.strategyPillars) }));
+
+        // Check for important missing fields
+        const missing: MissingField[] = [];
+        if (!cfg.coreOffer?.trim()) missing.push({ label: "Core Offer (Was wird verkauft?)", key: "coreOffer" });
+        if (!cfg.mainGoal?.trim()) missing.push({ label: "Konkretes Ziel", key: "mainGoal" });
+        if (!cfg.brandProblem?.trim()) missing.push({ label: "Kernproblem der Zielgruppe", key: "brandProblem" });
+        if (!cfg.dreamCustomer?.trim() || cfg.dreamCustomer === "{}") missing.push({ label: "Traumkunde", key: "dreamCustomer" });
+        if (!cfg.businessContext?.trim()) missing.push({ label: "Business-Kontext", key: "businessContext" });
+        setMissingFields(missing);
       })
       .catch(() => {});
 
@@ -119,6 +135,28 @@ export default function ClientDashboard() {
         </h1>
         <p className="text-sm text-ocean/50 mt-1">Übersicht & Schnellzugriff</p>
       </div>
+
+      {missingFields.length > 0 && (
+        <Link
+          href={`/clients/${id}/information`}
+          className="block rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 hover:bg-amber-50/80 transition-colors group"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-ocean">
+                Profil unvollständig — {missingFields.length} {missingFields.length === 1 ? "Feld fehlt" : "Felder fehlen"}
+              </p>
+              <p className="text-xs text-ocean/60 mt-1 leading-relaxed">
+                Für bessere Strategien und Skripte brauchen wir: {missingFields.map((f) => f.label).join(", ")}.
+              </p>
+              <span className="inline-block mt-2 text-xs font-medium text-amber-600 group-hover:text-amber-700 transition-colors">
+                Jetzt im Profil ergänzen →
+              </span>
+            </div>
+          </div>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
         {cards.map((card) => (
