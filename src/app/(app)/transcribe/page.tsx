@@ -120,6 +120,12 @@ export default function TranscribePage() {
         body: JSON.stringify(saveForm),
       });
       setSaveOpen(false);
+
+      // Auto-regenerate voice profile in the background if a client was selected.
+      if (saveForm.clientId) {
+        fetch(`/api/configs/${saveForm.clientId}/generate-voice-profile`, { method: "POST" })
+          .catch(() => {}); // fire-and-forget
+      }
     } finally { setSaving(false); }
   }
 

@@ -693,24 +693,103 @@ function ContentFormatsTab() {
 // Root page
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ── Voice Profile Status Dashboard ─────────────────────────────────────────
+
+function VoiceProfileDashboard() {
+  const [clients, setClients] = useState<Array<{
+    id: string; name: string; scriptCount: number;
+    hasVoiceProfile: boolean; hasScriptStructure: boolean;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/configs").then(r => r.json()),
+      fetch("/api/training-scripts").then(r => r.json()),
+    ]).then(([configs, scripts]: [Config[], TrainingScript[]]) => {
+      setClients(configs.map(c => ({
+        id: c.id,
+        name: c.configName || c.name || "Client",
+        scriptCount: scripts.filter((s: TrainingScript) => s.clientId === c.id).length,
+        hasVoiceProfile: Boolean(c.voiceProfile),
+        hasScriptStructure: Boolean(c.scriptStructure),
+      })));
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const regenerate = async (clientId: string) => {
+    setRegeneratingId(clientId);
+    try {
+      await fetch(`/api/configs/${clientId}/generate-voice-profile`, { method: "POST" });
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, hasVoiceProfile: true, hasScriptStructure: true } : c));
+    } finally { setRegeneratingId(null); }
+  };
+
+  if (loading) return null;
+  if (clients.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-ocean/[0.06] bg-white p-5 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
+      <h2 className="text-xs font-medium text-ocean uppercase tracking-wider mb-4">Voice-Profile Status</h2>
+      <div className="space-y-2">
+        {clients.map(c => {
+          const confidence = c.scriptCount >= 15 ? "high" : c.scriptCount >= 8 ? "medium" : c.scriptCount >= 1 ? "low" : "none";
+          const confidenceLabel = { high: "Stark", medium: "Solide", low: "Schwach", none: "Keine Daten" }[confidence];
+          const confidenceColor = {
+            high: "text-green-600 bg-green-50 border-green-200",
+            medium: "text-amber-600 bg-amber-50 border-amber-200",
+            low: "text-red-500 bg-red-50 border-red-200",
+            none: "text-ocean/40 bg-ocean/[0.03] border-ocean/[0.06]",
+          }[confidence];
+          const isRegenerating = regeneratingId === c.id;
+
+          return (
+            <div key={c.id} className="flex items-center gap-3 rounded-xl bg-ocean/[0.01] px-4 py-3 hover:bg-ocean/[0.03] transition-colors">
+              <span className="text-sm text-ocean font-medium flex-1 truncate">{c.name}</span>
+              <span className="text-xs text-ocean/50 tabular-nums">{c.scriptCount} Skripte</span>
+              <span className={`text-[10px] font-medium rounded-md border px-2 py-0.5 ${confidenceColor}`}>
+                {confidenceLabel}
+              </span>
+              {c.hasVoiceProfile ? (
+                <span className="text-[10px] text-green-600">Profil aktiv</span>
+              ) : c.scriptCount > 0 ? (
+                <button
+                  onClick={() => regenerate(c.id)}
+                  disabled={isRegenerating}
+                  className="text-[10px] text-ocean/60 hover:text-ocean underline transition-colors disabled:opacity-50"
+                >
+                  {isRegenerating ? "Generiere..." : "Profil generieren"}
+                </button>
+              ) : (
+                <span className="text-[10px] text-ocean/35">—</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-ocean/40 mt-3 leading-relaxed">
+        Empfehlung: Mind. 8 Skripte pro Client für ein solides Profil, 15+ für starke Voice-Erkennung.
+        Nutze <span className="font-medium">Transkribieren</span> um schnell Videos in Training-Skripte umzuwandeln.
+      </p>
+    </div>
+  );
+}
+
 export default function TrainingPage() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("scripts");
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ocean">
-          <BookOpen className="h-4 w-4 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">{t("training.title")}</h1>
-          <p className="text-[12px] text-ocean/60 mt-0.5">
-            {t("training.subtitle")}
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-light text-ocean">Training & Voice-Profile</h1>
+        <p className="text-sm text-ocean/50 mt-1">
+          Training-Skripte hochladen, Voice-Profile verwalten, Content-Formate definieren
+        </p>
       </div>
+
+      <VoiceProfileDashboard />
 
       <TabBar active={tab} onChange={setTab} />
 
