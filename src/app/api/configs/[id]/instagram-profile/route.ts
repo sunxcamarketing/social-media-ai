@@ -106,7 +106,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       verified: p.verified || false,
       lastUpdated,
     } satisfies InstagramProfileData);
-  } catch {
-    return NextResponse.json({ error: `Profil @${username} konnte nicht geladen werden` }, { status: 500 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[instagram-profile] @${username} failed:`, msg);
+    return NextResponse.json({ error: `Profil @${username} konnte nicht geladen werden: ${msg}` }, { status: 500 });
   }
 }
