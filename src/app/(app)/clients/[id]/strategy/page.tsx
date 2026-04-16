@@ -428,7 +428,7 @@ export default function ClientStrategyPage() {
   const auditReport = audit?.report ?? "";
   const auditError = audit?.error ?? "";
 
-  const { analysisGen, startAnalysis, clearAnalysisGen } = useGeneration();
+  const { analysisGen, startAnalysis, clearAnalysisGen, strategyGen, startStrategyGeneration } = useGeneration();
   const analysisState = analysisGen.get(id);
   const analyzing = analysisState?.status === "running";
   const analyzeError = analysisState?.status === "error" ? (analysisState.error ?? "Analysis failed") : null;
@@ -553,7 +553,7 @@ export default function ClientStrategyPage() {
 
   const runAnalysis = () => { startAnalysis(id); };
 
-  const generateStrategy = async () => {
+  const generateStrategy = () => {
     setGenerating(true);
     setGenerateError(null);
     setPipelineStep("context");
@@ -564,59 +564,32 @@ export default function ClientStrategyPage() {
     setReviewIssueCount(0);
     setReviewAssessment("");
 
-    try {
-      const res = await fetch(`/api/configs/${id}/generate-strategy`, { method: "POST" });
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("No response stream");
+    // Fire-and-forget: runs in the GenerationProvider context, survives tab switches.
+    startStrategyGeneration(id);
+  };
 
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          let data: Record<string, unknown>;
-          try { data = JSON.parse(line.slice(6)); } catch { continue; }
-
-          if (data.step === "error") {
-            setGenerateError(String(data.message || "Unbekannter Fehler"));
-            setGenerating(false);
-            return;
-          }
-
-          if (data.step === "context" && data.status === "done") {
-            setPipelineStep("analysis");
-          } else if (data.step === "analysis" && data.status === "done") {
-            setPipelineStep("strategy");
-            setStreamedGoal(data.goal as string);
-            setStreamedGoalReasoning(data.goalReasoning as string);
-            setInsightCount(data.insightCount as number || 0);
-          } else if (data.step === "strategy" && data.status === "done") {
-            setPipelineStep("review");
-            setPillarNames((data.pillars as string[]) || []);
-          } else if (data.step === "review" && data.status === "done") {
-            setReviewIssueCount(data.issueCount as number || 0);
-            setReviewAssessment(data.assessment as string || "");
-          } else if (data.step === "done") {
-            setPipelineStep("done");
-            // Reload client data with new strategy
-            loadClient().then(setClient);
-          }
-        }
-      }
-    } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : "Fehler bei der Generierung");
-    } finally {
+  // Watch the context-level strategy state. When it completes or errors,
+  // update local UI state and reload the client data.
+  const strategyState = strategyGen.get(id);
+  useEffect(() => {
+    if (!strategyState) return;
+    if (strategyState.status === "done") {
+      setPipelineStep("done");
+      setGenerating(false);
+      loadClient().then(setClient);
+    } else if (strategyState.status === "error") {
+      setGenerateError(strategyState.error || "Fehler bei der Generierung");
       setGenerating(false);
     }
-  };
+  }, [strategyState?.status]);
+
+  // If we navigate back to this page while strategy is still running, restore the generating state.
+  useEffect(() => {
+    if (strategyState?.status === "running") {
+      setGenerating(true);
+      setPipelineStep("context");
+    }
+  }, []);
 
   const saveStrategy = async (form: StrategyForm) => {
     if (!client) return;
