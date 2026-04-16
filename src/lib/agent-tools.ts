@@ -24,7 +24,7 @@ import { fmt, fmtDuration } from "./format";
 import { searchWeb, searchTrends } from "./brave-search";
 import { getHighConfidenceLearnings } from "./client-learnings";
 import { runScriptAgent } from "./script-agent";
-import type { ScriptAgentInput } from "./script-agent";
+import type { ScriptAgentInput, ScriptAgentProgressFn } from "./script-agent";
 import type { Config } from "./types";
 import type { PerformanceInsights, VideoInsight } from "./performance-helpers";
 
@@ -199,9 +199,10 @@ export async function toolLoadAudit(clientId: string): Promise<string> {
 export async function toolGenerateScript(
   clientId: string,
   input: ScriptAgentInput,
+  onProgress?: ScriptAgentProgressFn,
 ): Promise<string> {
   try {
-    const result = await runScriptAgent(clientId, input);
+    const result = await runScriptAgent(clientId, input, onProgress);
 
     const header = [
       `SKRIPT: "${input.title}"`,
@@ -433,6 +434,7 @@ export async function executeAgentTool(
   scopedClientId: string | null,
   toolName: string,
   toolInput: Record<string, unknown>,
+  onScriptProgress?: ScriptAgentProgressFn,
 ): Promise<string> {
   // Tools that don't need a clientId
   if (toolName === "list_clients") {
@@ -476,7 +478,7 @@ export async function executeAgentTool(
         tone: toolInput.tone as string | undefined,
         conversationContext: toolInput.conversation_context as string | undefined,
       };
-      return toolGenerateScript(clientId, scriptInput);
+      return toolGenerateScript(clientId, scriptInput, onScriptProgress);
     }
     case "check_competitors":
       return toolCheckCompetitors(clientId, toolInput as { limit?: number });

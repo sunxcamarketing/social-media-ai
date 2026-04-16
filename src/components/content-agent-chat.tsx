@@ -16,6 +16,8 @@ interface ChatMessage {
 interface ToolStatus {
   tool: string;
   status: "running" | "done";
+  /** Sub-steps shown when the script agent is working. */
+  subSteps?: string[];
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -145,10 +147,23 @@ export function ContentAgentChat({
                 const existing = prev.findIndex((t) => t.tool === data.tool);
                 if (existing >= 0) {
                   const updated = [...prev];
-                  updated[existing] = { tool: data.tool, status: data.status };
+                  updated[existing] = { ...updated[existing], tool: data.tool, status: data.status };
                   return updated;
                 }
                 return [...prev, { tool: data.tool, status: data.status }];
+              });
+            } else if (data.type === "script_progress") {
+              // Append sub-step to the generate_script tool status
+              setToolStatuses((prev) => {
+                const idx = prev.findIndex((t) => t.tool === "generate_script");
+                if (idx < 0) return prev;
+                const updated = [...prev];
+                const existing = updated[idx];
+                const subSteps = [...(existing.subSteps || [])];
+                const detail = data.detail || data.step;
+                if (!subSteps.includes(detail)) subSteps.push(detail);
+                updated[idx] = { ...existing, subSteps };
+                return updated;
               });
             }
             if (data.error) {
@@ -320,21 +335,37 @@ export function ContentAgentChat({
                 >
                   <div className="flex flex-col gap-1.5 rounded-2xl bg-ocean/[0.02] border border-ocean/[0.04] px-4 py-3">
                     {toolStatuses.map((ts) => (
-                      <motion.div
-                        key={ts.tool}
-                        initial={{ opacity: 0, x: -4 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center gap-2 text-xs text-ocean/50"
-                      >
-                        {ts.status === "running" ? (
-                          <Loader2 className="h-3 w-3 animate-spin text-blush-dark" />
-                        ) : (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                            <Check className="h-3 w-3 text-green-500" />
-                          </motion.div>
+                      <div key={ts.tool}>
+                        <motion.div
+                          initial={{ opacity: 0, x: -4 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex items-center gap-2 text-xs text-ocean/50"
+                        >
+                          {ts.status === "running" ? (
+                            <Loader2 className="h-3 w-3 animate-spin text-blush-dark" />
+                          ) : (
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                              <Check className="h-3 w-3 text-green-500" />
+                            </motion.div>
+                          )}
+                          <span>{TOOL_LABELS[ts.tool] || ts.tool}</span>
+                        </motion.div>
+                        {ts.subSteps && ts.subSteps.length > 0 && (
+                          <div className="ml-5 mt-1 flex flex-col gap-1">
+                            {ts.subSteps.map((sub, i) => (
+                              <motion.div
+                                key={i}
+                                initial={{ opacity: 0, x: -4 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="flex items-center gap-1.5 text-[11px] text-ocean/35"
+                              >
+                                <div className="h-1 w-1 rounded-full bg-ocean/20" />
+                                <span>{sub}</span>
+                              </motion.div>
+                            ))}
+                          </div>
                         )}
-                        <span>{TOOL_LABELS[ts.tool] || ts.tool}</span>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 </motion.div>

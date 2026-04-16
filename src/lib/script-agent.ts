@@ -39,6 +39,12 @@ export interface ScriptAgentResult {
   whyItWorks: string;
 }
 
+/** Callback for streaming progress updates back to the caller. */
+export type ScriptAgentProgressFn = (event: {
+  step: string;
+  detail?: string;
+}) => void;
+
 // ── Agent Tools (internal to the script agent) ────────────────────────────
 
 const AGENT_TOOLS: Anthropic.Tool[] = [
@@ -160,6 +166,7 @@ const MAX_ITERATIONS = 15;
 export async function runScriptAgent(
   clientId: string,
   input: ScriptAgentInput,
+  onProgress?: ScriptAgentProgressFn,
 ): Promise<ScriptAgentResult> {
   const config = await readConfig(clientId);
   if (!config) throw new Error("Client nicht gefunden.");
@@ -217,6 +224,7 @@ export async function runScriptAgent(
     // Check if submit_script is among the tool calls
     const submitBlock = toolUseBlocks.find(b => b.name === "submit_script");
     if (submitBlock) {
+      onProgress?.({ step: "submit_script", detail: "Skript fertig" });
       const result = submitBlock.input as Record<string, string>;
       return {
         textHook: result.text_hook || "",
@@ -228,20 +236,37 @@ export async function runScriptAgent(
       };
     }
 
-    // Execute all tool calls
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    // Execute all tool calls in parallel
+    const STEP_LABELS: Record<string, string> = {
+      load_context: "Lade Client-Profil…",
+      load_voice: "Lade Stimmprofil…",
+      check_competitors: "Prüfe Competitor-Videos…",
+      check_performance: "Prüfe Performance-Daten…",
+      search_web: "Web-Recherche…",
+      think: "Denkt nach…",
+    };
+
     for (const toolBlock of toolUseBlocks) {
-      const result = await executeScriptAgentTool(
-        toolBlock.name,
-        toolBlock.input as Record<string, unknown>,
-        clientId,
-      );
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: toolBlock.id,
-        content: result,
+      onProgress?.({
+        step: toolBlock.name,
+        detail: STEP_LABELS[toolBlock.name] || toolBlock.name,
       });
     }
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
+      toolUseBlocks.map(async (toolBlock) => {
+        const result = await executeScriptAgentTool(
+          toolBlock.name,
+          toolBlock.input as Record<string, unknown>,
+          clientId,
+        );
+        return {
+          type: "tool_result" as const,
+          tool_use_id: toolBlock.id,
+          content: result,
+        };
+      }),
+    );
 
     // Append assistant response + tool results for next iteration
     messages.push(

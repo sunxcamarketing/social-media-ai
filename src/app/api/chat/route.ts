@@ -22,7 +22,7 @@ import { sendEvent, sseResponse } from "@/lib/sse";
 import { readConfig } from "@/lib/csv";
 import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const MAX_ITERATIONS = 10;
 
@@ -212,10 +212,23 @@ Wenn Aysun keinen Client-Namen nennt, frag kurz nach.`;
 
           const toolResults = await Promise.all(
             toolUseBlocks.map(async (toolBlock) => {
+              // For generate_script, pass a progress callback that streams
+              // sub-steps back to the client so the connection stays alive.
+              const scriptProgress = toolBlock.name === "generate_script"
+                ? (evt: { step: string; detail?: string }) => {
+                    sendEvent(controller, {
+                      type: "script_progress",
+                      step: evt.step,
+                      detail: evt.detail,
+                    });
+                  }
+                : undefined;
+
               const result = await executeAgentTool(
                 scopedClientId,
                 toolBlock.name,
                 toolBlock.input as Record<string, unknown>,
+                scriptProgress,
               );
               sendEvent(controller, { type: "tool_status", tool: toolBlock.name, status: "done" });
               return {
