@@ -12,11 +12,9 @@ import {
   Video,
   MessageSquare,
   Mic,
-  Users,
   Sparkles,
   LayoutDashboard,
   Settings,
-  Play,
   Film,
 } from "lucide-react";
 import { useClientsCache } from "@/hooks/use-clients-cache";
@@ -33,28 +31,22 @@ interface CommandItem {
 
 const CLIENT_TABS: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { key: "dashboard", label: "Dashboard", icon: BarChart2 },
-  { key: "information", label: "Kontext", icon: BookOpen },
+  { key: "information", label: "Profil", icon: BookOpen },
   { key: "scripts", label: "Skripte", icon: FileText },
   { key: "ideas", label: "Ideen", icon: Lightbulb },
   { key: "strategy", label: "Strategie", icon: BarChart2 },
   { key: "analyse", label: "Audit", icon: Search },
-  { key: "videos", label: "Videos", icon: Video },
   { key: "chat", label: "Chat", icon: MessageSquare },
-  { key: "voice", label: "Voice", icon: Mic },
-  { key: "creators", label: "Konkurrenz", icon: Users },
-  { key: "research", label: "Research", icon: Search },
-  { key: "run", label: "Pipeline Run", icon: Play },
+  { key: "competitors", label: "Konkurrenz-Analyse", icon: Video },
 ];
 
 const ADMIN_TOOLS: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { href: "/admin", label: "Admin Dashboard", icon: LayoutDashboard },
-  { href: "/chat", label: "Content Agent (Global)", icon: MessageSquare },
-  { href: "/transcribe", label: "Transkribieren", icon: Mic },
+  { href: "/chat", label: "Content Agent", icon: MessageSquare },
   { href: "/viral-script", label: "Viral Script", icon: Sparkles },
-  { href: "/viral-builder", label: "Viral Builder", icon: Sparkles },
   { href: "/analyse", label: "Globales Audit", icon: Search },
-  { href: "/training", label: "Training Scripts", icon: BookOpen },
-  { href: "/strategy", label: "Strategie-Übersicht", icon: BarChart2 },
+  { href: "/training", label: "Training", icon: BookOpen },
+  { href: "/transcribe", label: "Transkribieren", icon: Mic },
 ];
 
 export function CommandPalette() {

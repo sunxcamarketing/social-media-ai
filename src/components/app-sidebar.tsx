@@ -18,7 +18,6 @@ import {
   Sparkles,
   LayoutDashboard,
   Users,
-  Play,
   Eye,
   Trash2,
 } from "lucide-react";
@@ -34,27 +33,22 @@ interface NavLink {
 
 const CLIENT_TABS: NavLink[] = [
   { title: "Dashboard", path: "dashboard", icon: LayoutDashboard },
-  { title: "Kontext", path: "information", icon: BookOpen },
+  { title: "Profil", path: "information", icon: BookOpen },
   { title: "Skripte", path: "scripts", icon: FileText },
   { title: "Strategie", path: "strategy", icon: BarChart2 },
   { title: "Ideen", path: "ideas", icon: Lightbulb },
   { title: "Audit", path: "analyse", icon: Search },
-  { title: "Videos", path: "videos", icon: Video },
   { title: "Chat", path: "chat", icon: MessageSquare },
-  { title: "Voice", path: "voice", icon: Mic },
-  { title: "Konkurrenz", path: "creators", icon: Users },
-  { title: "Research", path: "research", icon: Search },
-  { title: "Pipeline Run", path: "run", icon: Play },
+  { title: "Konkurrenz-Analyse", path: "competitors", icon: Video },
 ];
 
 const ADMIN_LINKS: NavLink[] = [
   { title: "Dashboard", path: "/admin", icon: LayoutDashboard },
   { title: "Content Agent", path: "/chat", icon: MessageSquare },
   { title: "Viral Script", path: "/viral-script", icon: Sparkles },
-  { title: "Viral Builder", path: "/viral-builder", icon: Sparkles },
-  { title: "Audit (global)", path: "/analyse", icon: Search },
+  { title: "Globales Audit", path: "/analyse", icon: Search },
+  { title: "Training", path: "/training", icon: BookOpen },
   { title: "Transkribieren", path: "/transcribe", icon: Mic },
-  { title: "Training Scripts", path: "/training", icon: BookOpen },
 ];
 
 export function AppSidebar() {

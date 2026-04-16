@@ -14,15 +14,17 @@ import { useClientsCache } from "@/hooks/use-clients-cache";
 
 const SECTION_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
-  information: "Kontext",
+  information: "Profil",
   scripts: "Skripte",
   strategy: "Strategie",
   ideas: "Ideen",
   analyse: "Audit",
-  videos: "Videos",
   chat: "Chat",
+  competitors: "Konkurrenz-Analyse",
+  // Legacy routes still work
+  videos: "Videos",
   voice: "Voice",
-  creators: "Konkurrenz",
+  creators: "Creators",
   research: "Research",
   run: "Pipeline Run",
 };
