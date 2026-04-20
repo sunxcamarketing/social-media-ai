@@ -891,8 +891,10 @@ function ClientInformationContent() {
                 initialCompletedBlocks={completedBlockIds}
                 onSessionEnd={() => {
                   setVoiceOnboardingOpen(false);
-                  // Reload client config to pick up new voice_onboarding state
-                  router.refresh();
+                  // Invalidate the cached Config and reload — router.refresh()
+                  // alone doesn't touch the client-data-context cache.
+                  invalidateClient(id);
+                  loadClient().then(setClient);
                 }}
               />
             )}

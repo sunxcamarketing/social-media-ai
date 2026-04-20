@@ -24,7 +24,7 @@ import {
   buildOnboardingProgressBlock,
   synthesizeVoiceOnboarding,
 } from "./lib/voice-onboarding";
-import { VOICE_BLOCK_ORDER, type VoiceBlockId } from "./lib/types";
+import { VOICE_BLOCK_ORDER, type VoiceBlockId, type Config } from "./lib/types";
 import Anthropic from "@anthropic-ai/sdk";
 
 // dotenv is loaded via --require dotenv/config in the npm script
@@ -68,6 +68,54 @@ async function verifyToken(token: string): Promise<{ clientId: string; userId: s
   return null;
 }
 
+// ── Shared helpers for Claude post-session extractions ───────────────────
+
+function formatTranscript(transcript: TranscriptEntry[]): string {
+  return transcript
+    .map((t) => `${t.role === "user" ? "Client" : "Agent"}: ${t.text}`)
+    .join("\n");
+}
+
+interface ToolExtractionOptions<TInput> {
+  label: string;
+  systemPrompt: string;
+  userContent: string;
+  tool: Anthropic.Messages.Tool;
+  maxTokens?: number;
+}
+
+/** Run a single Claude tool-call extraction. Returns the raw tool input or null
+ *  on any failure (no key, no tool-use block, API error). Never throws — callers
+ *  can treat `null` as "extraction produced nothing". */
+async function runToolExtraction<TInput>(
+  opts: ToolExtractionOptions<TInput>,
+): Promise<TInput | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.warn(`[${opts.label}] ANTHROPIC_API_KEY not set, skipping`);
+    return null;
+  }
+  try {
+    const client = new Anthropic({ apiKey });
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: opts.maxTokens ?? 3000,
+      system: opts.systemPrompt,
+      tools: [opts.tool],
+      messages: [{ role: "user", content: opts.userContent }],
+    });
+    const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+    if (!toolUse) {
+      console.log(`[${opts.label}] Claude returned no tool use`);
+      return null;
+    }
+    return toolUse.input as TInput;
+  } catch (err) {
+    console.error(`[${opts.label}] extraction failed:`, err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 // ── Session summary: Convert transcript to content ideas ─────────────────
 
 async function generateSessionSummary(
@@ -84,85 +132,51 @@ async function generateSessionSummary(
     return [];
   }
 
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (!anthropicKey) {
-    console.warn("[summary] ANTHROPIC_API_KEY not set, skipping idea extraction");
-    return [];
-  }
-
-  const client = new Anthropic({ apiKey: anthropicKey });
-
-  const transcriptText = transcript
-    .map((t) => `${t.role === "user" ? "Client" : "Agent"}: ${t.text}`)
-    .join("\n");
-
-  console.log(`[summary] extracting ideas from ${transcript.length}-entry transcript (${transcriptText.length} chars)`);
-
-  const systemPrompt = lang === "en"
-    ? "You are a content strategist. Extract ONLY video ideas from the interview that are based on concrete things the client actually said (story, opinion, experience, tip). If the client hasn't said anything substantive, do NOT call the tool. Invent NOTHING. No placeholders, no <UNKNOWN> values."
-    : "Du bist ein Content-Stratege. Extrahiere aus dem Interview NUR Video-Ideen, die auf konkreten Aussagen des Clients basieren (Story, Meinung, Erfahrung, Tipp). Wenn der Client nichts Substantielles gesagt hat, rufe das Tool NICHT auf. Erfinde NICHTS. Keine Platzhalter, keine <UNKNOWN>-Werte.";
   const contentTypeEnum = lang === "en"
     ? ["Storytelling", "Opinion", "Tip", "Experience", "Education"]
     : ["Storytelling", "Meinung", "Tipp", "Erfahrung", "Aufklärung"];
-  const toolDescription = lang === "en"
-    ? "Save 1-5 concrete video ideas from the interview. ONLY call when at least one real idea based on client statements exists."
-    : "Speichere 1-5 konkrete Video-Ideen aus dem Interview. NUR aufrufen wenn mindestens eine echte, auf Client-Aussagen basierende Idee existiert.";
-  const titleDesc = lang === "en"
-    ? "Max 10 words, specific, based on a real statement"
-    : "Max 10 Wörter, spezifisch, basiert auf echter Aussage";
-  const descDesc = lang === "en"
-    ? "1-2 sentences capturing the core of the story/opinion"
-    : "1-2 Sätze mit dem Kern der Geschichte/Meinung";
 
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2048,
-    system: systemPrompt,
-    tools: [
-      {
-        name: "save_ideas",
-        description: toolDescription,
-        input_schema: {
-          type: "object",
-          properties: {
-            ideas: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  title: { type: "string", description: titleDesc },
-                  description: { type: "string", description: descDesc },
-                  contentType: { type: "string", enum: contentTypeEnum },
-                },
-                required: ["title", "description", "contentType"],
+  const input = await runToolExtraction<{ ideas?: Array<{ title: string; description: string; contentType: string }> }>({
+    label: "summary",
+    systemPrompt: lang === "en"
+      ? "You are a content strategist. Extract ONLY video ideas from the interview that are based on concrete things the client actually said (story, opinion, experience, tip). If the client hasn't said anything substantive, do NOT call the tool. Invent NOTHING. No placeholders, no <UNKNOWN> values."
+      : "Du bist ein Content-Stratege. Extrahiere aus dem Interview NUR Video-Ideen, die auf konkreten Aussagen des Clients basieren (Story, Meinung, Erfahrung, Tipp). Wenn der Client nichts Substantielles gesagt hat, rufe das Tool NICHT auf. Erfinde NICHTS. Keine Platzhalter, keine <UNKNOWN>-Werte.",
+    userContent: formatTranscript(transcript),
+    maxTokens: 2048,
+    tool: {
+      name: "save_ideas",
+      description: lang === "en"
+        ? "Save 1-5 concrete video ideas from the interview. ONLY call when at least one real idea based on client statements exists."
+        : "Speichere 1-5 konkrete Video-Ideen aus dem Interview. NUR aufrufen wenn mindestens eine echte, auf Client-Aussagen basierende Idee existiert.",
+      input_schema: {
+        type: "object",
+        properties: {
+          ideas: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: lang === "en" ? "Max 10 words, specific, based on a real statement" : "Max 10 Wörter, spezifisch, basiert auf echter Aussage" },
+                description: { type: "string", description: lang === "en" ? "1-2 sentences capturing the core of the story/opinion" : "1-2 Sätze mit dem Kern der Geschichte/Meinung" },
+                contentType: { type: "string", enum: contentTypeEnum },
               },
-              minItems: 1,
-              maxItems: 5,
+              required: ["title", "description", "contentType"],
             },
+            minItems: 1,
+            maxItems: 5,
           },
-          required: ["ideas"],
         },
+        required: ["ideas"],
       },
-    ],
-    messages: [{ role: "user", content: transcriptText }],
+    },
   });
 
-  const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
-  if (!toolUse) {
-    console.log("[summary] Claude found no substantive ideas — nothing saved");
-    return [];
-  }
-
-  const input = toolUse.input as { ideas: Array<{ title: string; description: string; contentType: string }> };
-  const raw = input.ideas || [];
-
+  const raw = input?.ideas || [];
   const isPlaceholder = (s: string) => /^<?unknown>?$/i.test(s.trim()) || s.trim().length < 5;
   const cleaned = raw.filter((i) => !isPlaceholder(i.title) && !isPlaceholder(i.description));
-
-  if (cleaned.length < raw.length) {
-    console.warn(`[summary] dropped ${raw.length - cleaned.length} placeholder idea(s)`);
-  }
-  console.log(`[summary] extracted ${cleaned.length} idea(s)`);
+  if (cleaned.length < raw.length) console.warn(`[summary] dropped ${raw.length - cleaned.length} placeholder idea(s)`);
+  if (cleaned.length > 0) console.log(`[summary] extracted ${cleaned.length} idea(s)`);
+  void clientId; // kept in signature for future per-client context
   return cleaned;
 }
 
@@ -177,6 +191,100 @@ interface ExtractedBlock {
   quotes: string[];
 }
 
+const VALID_BLOCK_IDS = new Set<VoiceBlockId>(VOICE_BLOCK_ORDER);
+function isVoiceBlockId(v: unknown): v is VoiceBlockId {
+  return typeof v === "string" && VALID_BLOCK_IDS.has(v as VoiceBlockId);
+}
+
+// ── Profile field suggestions: map voice-interview content to Config fields
+
+type SuggestableField =
+  | "company" | "role" | "location" | "businessContext" | "professionalBackground" | "keyAchievements"
+  | "brandFeeling" | "brandProblem" | "brandingStatement" | "humanDifferentiation"
+  | "dreamCustomer" | "customerProblems"
+  | "providerRole" | "providerBeliefs" | "providerStrengths" | "authenticityZone"
+  | "coreOffer" | "mainGoal";
+
+const SUGGESTABLE_FIELDS: SuggestableField[] = [
+  "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements",
+  "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation",
+  "dreamCustomer", "customerProblems",
+  "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone",
+  "coreOffer", "mainGoal",
+];
+
+export interface FieldSuggestion {
+  field: SuggestableField;
+  value: string;
+  sourceQuote: string;
+}
+
+async function extractProfileSuggestions(
+  transcript: TranscriptEntry[],
+  existingConfig: Partial<Config>,
+  lang: "de" | "en",
+): Promise<FieldSuggestion[]> {
+  if (transcript.length < 4) return [];
+
+  const existingFields = SUGGESTABLE_FIELDS
+    .map((f) => `- ${f}: ${(existingConfig[f] as string) || "(empty)"}`)
+    .join("\n");
+
+  const userContent = `${lang === "en" ? "## Existing profile fields" : "## Existierende Profil-Felder"}\n${existingFields}\n\n${lang === "en" ? "## Transcript" : "## Transcript"}\n${formatTranscript(transcript)}`;
+
+  const input = await runToolExtraction<{ suggestions?: Array<{ field: string; value: string; sourceQuote: string }> }>({
+    label: "profile-suggestions",
+    maxTokens: 3000,
+    systemPrompt: lang === "en"
+      ? `You extract profile field suggestions from a voice interview transcript. Only propose updates when the client actually said something concrete that belongs in that field. Rules:
+(1) If an existing field already has substantive content, only propose an update if the voice content is MEANINGFULLY better/richer — otherwise skip.
+(2) If an existing field is empty and the voice has content for it, propose it.
+(3) NEVER invent values. If the client never mentioned anything that maps to a field, skip it.
+(4) Keep values concise and in the same language as the transcript.
+(5) The sourceQuote must be a verbatim quote from the CLIENT (not the agent).`
+      : `Du extrahierst Profil-Feld-Vorschläge aus einem Voice-Interview-Transcript. Schlag nur Updates vor wenn der Client wirklich etwas Konkretes gesagt hat das in das Feld gehört. Regeln:
+(1) Wenn ein existierendes Feld bereits substanziellen Inhalt hat, schlag nur ein Update vor wenn der Voice-Inhalt WESENTLICH besser/reichhaltiger ist — sonst auslassen.
+(2) Wenn ein Feld leer ist und das Voice-Gespräch Inhalt dafür hat, schlag es vor.
+(3) Erfinde NIEMALS Werte. Wenn der Client nichts zu einem Feld gesagt hat, lass es weg.
+(4) Halte Werte knapp und in der gleichen Sprache wie das Transcript.
+(5) Das sourceQuote muss ein wörtliches Zitat vom CLIENT sein (nicht vom Agent).`,
+    userContent,
+    tool: {
+      name: "suggest_profile_fields",
+      description: "Propose 0-N profile field updates based on voice interview content.",
+      input_schema: {
+        type: "object",
+        properties: {
+          suggestions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                field: { type: "string", enum: [...SUGGESTABLE_FIELDS] },
+                value: { type: "string", description: "The proposed value for this field" },
+                sourceQuote: { type: "string", description: "Verbatim quote from the client that justifies this suggestion" },
+              },
+              required: ["field", "value", "sourceQuote"],
+            },
+          },
+        },
+        required: ["suggestions"],
+      },
+    },
+  });
+
+  const raw = Array.isArray(input?.suggestions) ? input!.suggestions : [];
+  // Runtime-validate: Claude sometimes hallucinates field names outside the enum.
+  const validFieldSet = new Set<string>(SUGGESTABLE_FIELDS);
+  const cleaned: FieldSuggestion[] = raw
+    .filter((s) => validFieldSet.has(s.field))
+    .filter((s) => s.value && s.value.trim().length > 2 && s.sourceQuote && s.sourceQuote.trim().length > 0)
+    .map((s) => ({ field: s.field as SuggestableField, value: s.value, sourceQuote: s.sourceQuote }));
+  if (cleaned.length < raw.length) console.warn(`[profile-suggestions] dropped ${raw.length - cleaned.length} invalid suggestion(s)`);
+  console.log(`[profile-suggestions] ${cleaned.length} field suggestion(s) extracted`);
+  return cleaned;
+}
+
 async function extractOnboardingBlocks(
   transcript: TranscriptEntry[],
   lang: "de" | "en",
@@ -186,73 +294,107 @@ async function extractOnboardingBlocks(
     return [];
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.warn("[onboarding-extract] ANTHROPIC_API_KEY not set, skipping");
-    return [];
-  }
-
-  const transcriptText = transcript
-    .map((t) => `${t.role === "user" ? "Client" : "Agent"}: ${t.text}`)
-    .join("\n");
-
-  const systemPrompt = lang === "en"
-    ? `You analyze a voice interview transcript between a content strategist agent and a creator. Extract per-block summaries for the 8 blocks the agent was working through: identity, positioning, audience, beliefs, offer, feel, vision, resources. For EACH block that was covered with real substance, provide: a 1-3 sentence summary + 1-5 verbatim quotes from the CLIENT (not the agent). Only include blocks where the client said something concrete. Skip blocks with only platitudes or nothing said. Invent nothing.`
-    : `Du analysierst das Transcript eines Voice-Interviews zwischen einem Content-Strategen-Agent und einem Creator. Extrahiere pro-Block Zusammenfassungen für die 8 Blöcke die der Agent durchging: identity, positioning, audience, beliefs, offer, feel, vision, resources. Für JEDEN Block der mit echter Substanz abgedeckt wurde, gib an: eine 1-3-Satz-Zusammenfassung + 1-5 wörtliche Zitate vom CLIENT (nicht vom Agent). Nimm nur Blöcke auf bei denen der Client etwas Konkretes gesagt hat. Überspring Blöcke mit nur Plattitüden oder nichts Gesagtem. Erfinde nichts.`;
-
-  const client = new Anthropic({ apiKey });
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: systemPrompt,
-    tools: [
-      {
-        name: "save_blocks",
-        description: "Save per-block summaries extracted from the interview.",
-        input_schema: {
-          type: "object",
-          properties: {
-            blocks: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  block_id: {
-                    type: "string",
-                    enum: [...VOICE_BLOCK_ORDER],
-                  },
-                  summary: { type: "string", description: "1-3 sentence summary in the interview language" },
-                  quotes: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "1-5 verbatim client quotes",
-                    minItems: 1,
-                    maxItems: 5,
-                  },
+  const input = await runToolExtraction<{ blocks?: Array<{ block_id: string; summary: string; quotes: string[] }> }>({
+    label: "onboarding-extract",
+    maxTokens: 4096,
+    systemPrompt: lang === "en"
+      ? `You analyze a voice interview transcript between a content strategist agent and a creator. Extract per-block summaries for the 8 blocks the agent was working through: identity, positioning, audience, beliefs, offer, feel, vision, resources. For EACH block that was covered with real substance, provide: a 1-3 sentence summary + 1-5 verbatim quotes from the CLIENT (not the agent). Only include blocks where the client said something concrete. Skip blocks with only platitudes or nothing said. Invent nothing.`
+      : `Du analysierst das Transcript eines Voice-Interviews zwischen einem Content-Strategen-Agent und einem Creator. Extrahiere pro-Block Zusammenfassungen für die 8 Blöcke die der Agent durchging: identity, positioning, audience, beliefs, offer, feel, vision, resources. Für JEDEN Block der mit echter Substanz abgedeckt wurde, gib an: eine 1-3-Satz-Zusammenfassung + 1-5 wörtliche Zitate vom CLIENT (nicht vom Agent). Nimm nur Blöcke auf bei denen der Client etwas Konkretes gesagt hat. Überspring Blöcke mit nur Plattitüden oder nichts Gesagtem. Erfinde nichts.`,
+    userContent: formatTranscript(transcript),
+    tool: {
+      name: "save_blocks",
+      description: "Save per-block summaries extracted from the interview.",
+      input_schema: {
+        type: "object",
+        properties: {
+          blocks: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                block_id: { type: "string", enum: [...VOICE_BLOCK_ORDER] },
+                summary: { type: "string", description: "1-3 sentence summary in the interview language" },
+                quotes: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "1-5 verbatim client quotes",
+                  minItems: 1,
+                  maxItems: 5,
                 },
-                required: ["block_id", "summary", "quotes"],
               },
+              required: ["block_id", "summary", "quotes"],
             },
           },
-          required: ["blocks"],
         },
+        required: ["blocks"],
       },
-    ],
-    messages: [{ role: "user", content: transcriptText }],
+    },
   });
 
-  const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
-  if (!toolUse) {
-    console.log("[onboarding-extract] Claude returned no blocks");
-    return [];
-  }
-  const input = toolUse.input as { blocks?: ExtractedBlock[] };
-  const blocks = Array.isArray(input.blocks) ? input.blocks : [];
+  const raw = Array.isArray(input?.blocks) ? input!.blocks : [];
+  const blocks: ExtractedBlock[] = raw
+    .filter((b) => isVoiceBlockId(b.block_id))
+    .map((b) => ({
+      block_id: b.block_id as VoiceBlockId,
+      summary: b.summary,
+      quotes: Array.isArray(b.quotes) ? b.quotes : [],
+    }));
+  if (blocks.length < raw.length) console.warn(`[onboarding-extract] dropped ${raw.length - blocks.length} invalid block(s)`);
   console.log(`[onboarding-extract] ${blocks.length} block(s) extracted`);
   return blocks;
 }
 
 // ── Save session to Supabase ─────────────────────────────────────────────
+
+// ── System prompt assembly ───────────────────────────────────────────────
+
+interface SystemPromptContext {
+  clientContext: string;
+  auditContext: string;
+  performanceContext: string;
+  learningsContext: string;
+  onboardingProgress: Awaited<ReturnType<typeof loadVoiceOnboarding>> | null;
+}
+
+function buildSessionSystemPrompt(
+  mode: "onboarding" | "content-ideas",
+  lang: "de" | "en",
+  ctx: SystemPromptContext,
+): string {
+  const basePromptName = mode === "onboarding" ? "voice-agent-onboarding" : "voice-agent";
+  const basePrompt = buildPrompt(basePromptName, {}, lang);
+
+  const headers = lang === "en"
+    ? {
+        context: "# PRE-LOADED CONTEXT\n\nYou already have all relevant data below. Use it directly in the conversation — no tool calls needed.",
+        clientProfile: "## CLIENT PROFILE",
+        audit: "## AUDIT FINDINGS",
+        performance: "## PERFORMANCE DATA",
+        learnings: "## LEARNINGS",
+      }
+    : {
+        context: "# VORAB GELADENER KONTEXT\n\nDu hast alle relevanten Daten bereits unten. Nutze sie direkt im Gespräch — keine Tool-Calls nötig.",
+        clientProfile: "## CLIENT-PROFIL",
+        audit: "## AUDIT-FINDINGS",
+        performance: "## PERFORMANCE-DATEN",
+        learnings: "## LEARNINGS",
+      };
+
+  const sections: string[] = [];
+  if (ctx.clientContext) sections.push(`${headers.clientProfile}\n${ctx.clientContext}`);
+  if (ctx.auditContext) sections.push(`${headers.audit}\n${ctx.auditContext}`);
+  if (ctx.performanceContext) sections.push(`${headers.performance}\n${ctx.performanceContext}`);
+  if (ctx.learningsContext) sections.push(`${headers.learnings}\n${ctx.learningsContext}`);
+
+  if (ctx.onboardingProgress) {
+    sections.push(buildOnboardingProgressBlock(ctx.onboardingProgress, lang));
+    sections.push(lang === "en"
+      ? `# BLOCK-COMPLETION SIGNAL (IMPORTANT)\n\nWhen you finish a block, say EXACTLY this short sentence out loud before transitioning to the next block:\n\n\`\`\`\nDone with {block_id}.\n\`\`\`\n\nReplace {block_id} with one of: identity, positioning, audience, beliefs, offer, feel, vision, resources. Then continue naturally with the next question. This is a signal so the UI can track progress — keep it short and confident.`
+      : `# BLOCK-ABSCHLUSS-SIGNAL (WICHTIG)\n\nWenn du einen Block abschließt, sag EXAKT diesen kurzen Satz laut, bevor du zum nächsten Block überleitest:\n\n\`\`\`\nBlock {block_id} abgeschlossen.\n\`\`\`\n\nErsetze {block_id} durch einen von: identity, positioning, audience, beliefs, offer, feel, vision, resources. Dann redest du natürlich mit der nächsten Frage weiter. Das ist ein Signal damit das UI den Fortschritt tracken kann — halte es kurz und bestimmt.`);
+  }
+
+  return `${basePrompt}\n\n${headers.context}\n\n${sections.join("\n\n")}`;
+}
 
 async function saveVoiceSession(
   clientId: string,
@@ -275,7 +417,7 @@ async function saveVoiceSession(
 
 const wss = new WebSocketServer({ port: PORT });
 
-console.log(`Voice server listening on ws://localhost:${PORT}`);
+console.log(`[${new Date().toISOString()}] Voice server listening on ws://localhost:${PORT}`);
 
 wss.on("connection", async (ws: WebSocket, req) => {
   const url = new URL(req.url || "/", `http://localhost:${PORT}`);
@@ -331,40 +473,10 @@ wss.on("connection", async (ws: WebSocket, req) => {
     toolCheckLearnings(clientId).catch(() => ""),
   ]);
 
-  const basePromptName = mode === "onboarding" ? "voice-agent-onboarding" : "voice-agent";
-  const basePrompt = buildPrompt(basePromptName, {}, lang);
-  const headers = lang === "en"
-    ? {
-        context: "# PRE-LOADED CONTEXT\n\nYou already have all relevant data below. Use it directly in the conversation — no tool calls needed.",
-        clientProfile: "## CLIENT PROFILE",
-        audit: "## AUDIT FINDINGS",
-        performance: "## PERFORMANCE DATA",
-        learnings: "## LEARNINGS",
-      }
-    : {
-        context: "# VORAB GELADENER KONTEXT\n\nDu hast alle relevanten Daten bereits unten. Nutze sie direkt im Gespräch — keine Tool-Calls nötig.",
-        clientProfile: "## CLIENT-PROFIL",
-        audit: "## AUDIT-FINDINGS",
-        performance: "## PERFORMANCE-DATEN",
-        learnings: "## LEARNINGS",
-      };
-  const contextSections: string[] = [];
-  if (clientContext) contextSections.push(`${headers.clientProfile}\n${clientContext}`);
-  if (auditContext) contextSections.push(`${headers.audit}\n${auditContext}`);
-  if (performanceContext) contextSections.push(`${headers.performance}\n${performanceContext}`);
-  if (learningsContext) contextSections.push(`${headers.learnings}\n${learningsContext}`);
-
-  // Onboarding mode: inject resume context (which blocks are already done) + signal-phrase instructions
   let onboardingProgress = mode === "onboarding" ? await loadVoiceOnboarding(clientId) : null;
-  if (onboardingProgress) {
-    contextSections.push(buildOnboardingProgressBlock(onboardingProgress, lang));
-    const signalInstruction = lang === "en"
-      ? `# BLOCK-COMPLETION SIGNAL (IMPORTANT)\n\nWhen you finish a block, say EXACTLY this short sentence out loud before transitioning to the next block:\n\n\`\`\`\nDone with {block_id}.\n\`\`\`\n\nReplace {block_id} with one of: identity, positioning, audience, beliefs, offer, feel, vision, resources. Then continue naturally with the next question. This is a signal so the UI can track progress — keep it short and confident.`
-      : `# BLOCK-ABSCHLUSS-SIGNAL (WICHTIG)\n\nWenn du einen Block abschließt, sag EXAKT diesen kurzen Satz laut, bevor du zum nächsten Block überleitest:\n\n\`\`\`\nBlock {block_id} abgeschlossen.\n\`\`\`\n\nErsetze {block_id} durch einen von: identity, positioning, audience, beliefs, offer, feel, vision, resources. Dann redest du natürlich mit der nächsten Frage weiter. Das ist ein Signal damit das UI den Fortschritt tracken kann — halte es kurz und bestimmt.`;
-    contextSections.push(signalInstruction);
-  }
-
-  const systemPrompt = `${basePrompt}\n\n${headers.context}\n\n${contextSections.join("\n\n")}`;
+  const systemPrompt = buildSessionSystemPrompt(mode, lang, {
+    clientContext, auditContext, performanceContext, learningsContext, onboardingProgress,
+  });
   console.log(`[voice-server] system prompt: ${systemPrompt.length} chars (context pre-loaded, NO tools, mode=${mode})`);
 
   // Create Gemini Live session
@@ -381,27 +493,44 @@ wss.on("connection", async (ws: WebSocket, req) => {
   const alreadyMarked = new Set<VoiceBlockId>(
     onboardingProgress ? onboardingProgress.blocks.filter((b) => b.status === "done").map((b) => b.id) : [],
   );
-  const blockIdPattern = VOICE_BLOCK_ORDER.join("|"); // identity|positioning|...
+  // Multiple surface forms — Gemini paraphrases under voice pressure.
+  // Matches: "Block identity abgeschlossen", "identity block abgeschlossen",
+  // "done with identity", "identity complete/done/fertig", "identity block is done", etc.
+  // Punctuation between the block id and the verb is tolerated.
+  const blockIdPattern = VOICE_BLOCK_ORDER.join("|");
   const signalRegex = new RegExp(
-    `(?:block\\s+(${blockIdPattern})\\s+abgeschlossen|done\\s+with\\s+(${blockIdPattern}))`,
-    "i",
+    [
+      `\\bblock\\s+(${blockIdPattern})\\b`,                                                  // "block identity"
+      `\\b(${blockIdPattern})\\s+block\\b`,                                                  // "identity block"
+      `\\bdone\\s+with\\s+(${blockIdPattern})\\b`,                                           // "done with identity"
+      `\\b(${blockIdPattern})[\\s,\\.!?-]+(?:block\\s+)?(?:is\\s+)?(?:complete|done|fertig|abgeschlossen|erledigt|durch)\\b`, // "identity, complete"
+    ].join("|"),
+    "gi",
   );
 
   async function accumulateAndMaybeMarkBlock(fragment: string) {
     modelBuf += fragment.toLowerCase();
-    // Cap the buffer so it doesn't grow unbounded over a 20-min session
     if (modelBuf.length > 4000) modelBuf = modelBuf.slice(-2000);
 
-    const match = modelBuf.match(signalRegex);
-    if (!match) return;
-    const blockId = (match[1] || match[2]) as VoiceBlockId;
-    if (alreadyMarked.has(blockId)) return;
-    alreadyMarked.add(blockId);
-    modelBuf = modelBuf.slice(match.index! + match[0].length); // drop consumed segment
+    // Loop: multiple signals can land in one turn ("done with identity. Positioning block is next.")
+    const matches = [...modelBuf.matchAll(signalRegex)];
+    if (matches.length === 0) return;
 
-    // Provisional mark: summary + quotes are empty, they get filled by the
-    // post-session Claude extraction pass. The UI just needs to advance the
-    // progress bar live.
+    let lastEnd = 0;
+    for (const m of matches) {
+      // Any capture group holds the matched id (only one fires per alternation)
+      const blockId = (m[1] || m[2] || m[3] || m[4]) as VoiceBlockId | undefined;
+      if (!blockId || alreadyMarked.has(blockId)) continue;
+      alreadyMarked.add(blockId);
+      lastEnd = Math.max(lastEnd, (m.index || 0) + m[0].length);
+      await markBlockProvisional(blockId);
+    }
+    if (lastEnd > 0) modelBuf = modelBuf.slice(lastEnd);
+  }
+
+  async function markBlockProvisional(blockId: VoiceBlockId) {
+    // Summary + quotes stay empty — filled by the post-session Claude pass.
+    // The UI only needs the progress bar to advance live.
     try {
       const { onboarding, accepted } = await markBlockComplete(clientId, {
         block_id: blockId,
@@ -428,6 +557,7 @@ wss.on("connection", async (ws: WebSocket, req) => {
   try {
     let audioChunks = 0;
     let firstChunkSent = false;
+    let firstChunkTimeout: NodeJS.Timeout | null = null;
     await geminiSession.connect({
       clientId,
       systemPrompt,
@@ -441,9 +571,10 @@ wss.on("connection", async (ws: WebSocket, req) => {
         if (ws.readyState === WebSocket.OPEN) {
           // On the very first audio chunk, signal the browser that the agent
           // is about to speak — this is when the UI should flip from loading
-          // to "active".
+          // to "active". Clear the stall-timeout the same way.
           if (!firstChunkSent) {
             firstChunkSent = true;
+            if (firstChunkTimeout) { clearTimeout(firstChunkTimeout); firstChunkTimeout = null; }
             ws.send(JSON.stringify({ type: "speaking" }));
           }
           ws.send(JSON.stringify({ type: "audio", data: audioBase64 }));
@@ -499,22 +630,19 @@ wss.on("connection", async (ws: WebSocket, req) => {
     // Safety timeout: if Gemini hasn't produced the first audio chunk within
     // 30s of sending the greeting trigger, something's wrong — bail out with
     // a clear error instead of leaving the browser stuck on "Lade Kontext...".
-    const firstChunkTimeout = setTimeout(() => {
+    // The onAudioOutput callback clears this when the first chunk arrives.
+    firstChunkTimeout = setTimeout(() => {
       if (!firstChunkSent && ws.readyState === WebSocket.OPEN) {
         console.error("[voice-server] ⚠️ no audio from Gemini within 30s — aborting");
         ws.send(JSON.stringify({
           type: "error",
           message: "Gemini antwortet nicht. Bitte in 10 Sek. nochmal versuchen.",
         }));
-        try { ws.close(4006, "Gemini audio timeout"); } catch {}
+        try { ws.close(4006, "Gemini audio timeout"); } catch (err) {
+          console.warn("[voice-server] ws.close failed during timeout:", err);
+        }
       }
     }, 30_000);
-    // Clear timeout when first chunk arrives
-    const originalFirstChunkHandler = firstChunkSent;
-    void originalFirstChunkHandler;
-    const clearOnFirstChunk = setInterval(() => {
-      if (firstChunkSent) { clearTimeout(firstChunkTimeout); clearInterval(clearOnFirstChunk); }
-    }, 500);
 
     // Trigger the first agent turn. System prompt already includes full context.
     // recordInTranscript:false keeps the internal trigger out of the summary.
@@ -566,74 +694,103 @@ wss.on("connection", async (ws: WebSocket, req) => {
 
     try {
       if (mode === "onboarding") {
-        // Post-session: authoritative per-block extraction overwrites any
-        // provisional marks from the signal-phrase parser.
-        const extracted = await extractOnboardingBlocks(transcript, lang);
-        let onboarding = await loadVoiceOnboarding(clientId);
-        for (const eb of extracted) {
-          const block = onboarding.blocks.find((b) => b.id === eb.block_id);
-          if (!block) continue;
-          block.status = "done";
-          block.summary = (eb.summary || "").trim();
-          block.quotes = Array.isArray(eb.quotes) ? eb.quotes.map((q) => String(q).trim()).filter(Boolean).slice(0, 5) : [];
-          block.completedAt = new Date().toISOString();
-        }
-        const nextOpen = onboarding.blocks.find((b) => b.status === "pending");
-        onboarding.currentBlockId = nextOpen?.id || "resources";
-        onboarding.updatedAt = new Date().toISOString();
-        await saveVoiceOnboarding(clientId, onboarding);
-
-        const doneCount = onboarding.blocks.filter((b) => b.status === "done").length;
-        console.log(`[onboarding] session ended: ${durationSeconds}s, ${doneCount}/8 blocks done`);
-
-        // If all 8 blocks are done, generate the holistic voice-DNA synthesis
-        let synthesis = "";
-        if (doneCount >= VOICE_BLOCK_ORDER.length) {
-          try {
-            synthesis = await synthesizeVoiceOnboarding(clientId, lang);
-            console.log(`[onboarding] synthesis generated: ${synthesis.length} chars`);
-          } catch (err) {
-            console.error("[onboarding] synthesis failed:", err);
-          }
-        }
-
-        // Persist session transcript (reusing the same voice_sessions table)
-        await saveVoiceSession(clientId, transcript, doneCount, durationSeconds);
-
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: "onboarding_summary",
-            doneCount,
-            total: VOICE_BLOCK_ORDER.length,
-            durationSeconds,
-            transcriptLength: transcript.length,
-            synthesisGenerated: !!synthesis,
-          }));
-        }
+        await finalizeOnboardingSession({ ws, clientId, lang, transcript, durationSeconds });
       } else {
-        // Content-ideas mode (original behavior): extract 3-5 content ideas
-        const ideas = await generateSessionSummary(clientId, transcript, lang);
-        for (const idea of ideas) {
-          await executeAgentTool(clientId, "save_idea", {
-            title: idea.title,
-            description: idea.description,
-            content_type: idea.contentType,
-          });
-        }
-        await saveVoiceSession(clientId, transcript, ideas.length, durationSeconds);
-
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: "summary",
-            ideas,
-            durationSeconds,
-            transcriptLength: transcript.length,
-          }));
-        }
-        console.log(`Voice session ended: ${durationSeconds}s, ${ideas.length} ideas saved`);
+        await finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds });
       }
     } catch (err) {
-      console.error("Error generating summary:", err);
+      console.error("Error finalizing session:", err);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "error", message: "Session summary failed" }));
+      }
     }
   }
 });
+
+// ── Post-session finalizers (extracted from connection handler) ──────────
+
+interface FinalizeArgs {
+  ws: WebSocket;
+  clientId: string;
+  lang: "de" | "en";
+  transcript: TranscriptEntry[];
+  durationSeconds: number;
+}
+
+async function finalizeOnboardingSession({ ws, clientId, lang, transcript, durationSeconds }: FinalizeArgs): Promise<void> {
+  // Authoritative per-block extraction — overwrites any provisional marks
+  // the signal-phrase parser set during the live session.
+  const extracted = await extractOnboardingBlocks(transcript, lang);
+  const onboarding = await loadVoiceOnboarding(clientId);
+  for (const eb of extracted) {
+    const block = onboarding.blocks.find((b) => b.id === eb.block_id);
+    if (!block) continue;
+    block.status = "done";
+    block.summary = (eb.summary || "").trim();
+    block.quotes = Array.isArray(eb.quotes) ? eb.quotes.map((q) => String(q).trim()).filter(Boolean).slice(0, 5) : [];
+    block.completedAt = new Date().toISOString();
+  }
+  const nextOpen = onboarding.blocks.find((b) => b.status === "pending");
+  onboarding.currentBlockId = nextOpen?.id || "resources";
+  onboarding.updatedAt = new Date().toISOString();
+  await saveVoiceOnboarding(clientId, onboarding);
+
+  const doneCount = onboarding.blocks.filter((b) => b.status === "done").length;
+  console.log(`[onboarding] session ended: ${durationSeconds}s, ${doneCount}/8 blocks done`);
+
+  let synthesis = "";
+  if (doneCount >= VOICE_BLOCK_ORDER.length) {
+    try {
+      synthesis = await synthesizeVoiceOnboarding(clientId, lang);
+      console.log(`[onboarding] synthesis generated: ${synthesis.length} chars`);
+    } catch (err) {
+      console.error("[onboarding] synthesis failed:", err);
+    }
+  }
+
+  let fieldSuggestions: FieldSuggestion[] = [];
+  try {
+    const { data: fullConfig } = await supabase.from("configs").select("*").eq("id", clientId).single();
+    if (fullConfig) {
+      fieldSuggestions = await extractProfileSuggestions(transcript, fullConfig as Partial<Config>, lang);
+    }
+  } catch (err) {
+    console.error("[profile-suggestions] failed:", err);
+  }
+
+  await saveVoiceSession(clientId, transcript, doneCount, durationSeconds);
+
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: "onboarding_summary",
+      doneCount,
+      total: VOICE_BLOCK_ORDER.length,
+      durationSeconds,
+      transcriptLength: transcript.length,
+      synthesisGenerated: !!synthesis,
+      fieldSuggestions,
+    }));
+  }
+}
+
+async function finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds }: FinalizeArgs): Promise<void> {
+  const ideas = await generateSessionSummary(clientId, transcript, lang);
+  for (const idea of ideas) {
+    await executeAgentTool(clientId, "save_idea", {
+      title: idea.title,
+      description: idea.description,
+      content_type: idea.contentType,
+    });
+  }
+  await saveVoiceSession(clientId, transcript, ideas.length, durationSeconds);
+
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: "summary",
+      ideas,
+      durationSeconds,
+      transcriptLength: transcript.length,
+    }));
+  }
+  console.log(`Voice session ended: ${durationSeconds}s, ${ideas.length} ideas saved`);
+}

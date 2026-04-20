@@ -727,6 +727,15 @@ const translations: Record<string, { de: string; en: string }> = {
   "voice.onboardingComplete": { de: "Onboarding abgeschlossen", en: "Onboarding complete" },
   "voice.onboardingPartial": { de: "{{done}} von {{total}} Blöcken gespeichert. Du kannst jederzeit im Profil weitermachen.", en: "{{done}} of {{total}} blocks saved. You can continue any time from your profile." },
   "voice.blocksSaved": { de: "Blöcke erfasst", en: "Blocks captured" },
+  // Field suggestions (extracted from voice interview)
+  "voice.fieldSuggestionsTitle": { de: "Vorschläge fürs Profil", en: "Suggestions for your profile" },
+  "voice.fieldSuggestionsHint": { de: "Das habe ich aus dem Gespräch rausgehört. Wähle aus, was du in dein Profil übernehmen willst.", en: "Here's what I picked up from the conversation. Select what you want to apply to your profile." },
+  "voice.selectAll": { de: "Alle wählen", en: "Select all" },
+  "voice.deselectAll": { de: "Keine", en: "Deselect all" },
+  "voice.applySelected": { de: "{{count}} übernehmen", en: "Apply {{count}}" },
+  "voice.applying": { de: "Wird übernommen...", en: "Applying..." },
+  "voice.applied": { de: "Übernommen", en: "Applied" },
+  "voice.applyError": { de: "Fehler beim Speichern", en: "Save failed" },
 };
 
 type Substitutions = Record<string, string | number>;

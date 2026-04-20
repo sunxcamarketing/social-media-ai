@@ -110,6 +110,8 @@ const CONFIG_LIGHT_COLUMNS = [
   "igFullName", "igBio", "igFollowers", "igFollowing", "igPostsCount",
   "igProfilePicUrl", "igCategory", "igVerified", "igLastUpdated",
   "googleDriveFolder",
+  "voiceOnboarding",
+  "language",
 ].join(",");
 
 export async function readConfigs(): Promise<Config[]> {
@@ -134,10 +136,11 @@ export async function readConfig(id: string): Promise<Config | null> {
   return setCache(`config:${id}`, data as Config, TTL_5M);
 }
 
-/** Read a single config with only frontend-needed fields */
+/** Read a single config with only frontend-needed fields. No cache: frontend
+ *  has its own cache layer (client-data-context) — adding a server-side cache
+ *  here would silently stale data written by the voice-server process (in-memory
+ *  caches don't sync across processes). */
 export async function readConfigLight(id: string): Promise<Config | null> {
-  const cached = getCached<Config | null>(`configLight:${id}`);
-  if (cached !== null) return cached;
   const { data, error } = await supabase
     .from("configs")
     .select(CONFIG_LIGHT_COLUMNS)
@@ -145,7 +148,7 @@ export async function readConfigLight(id: string): Promise<Config | null> {
     .single();
   if (error && error.code === "PGRST116") return null;
   if (error) throw error;
-  return setCache(`configLight:${id}`, data as unknown as Config, TTL_5M);
+  return data as unknown as Config;
 }
 
 export async function writeConfigs(configs: Config[]) {
