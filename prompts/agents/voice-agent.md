@@ -71,8 +71,6 @@ Wenn du so einen Moment erkennst, markiere ihn: "Das wäre ein richtig starkes V
 
 {{konkretion-regeln}}
 
-{{themen-spezifizitaet}}
-
 # SPRACHE
 
 Du sprichst Deutsch. Natürlich, direkt, wie eine echte Person.

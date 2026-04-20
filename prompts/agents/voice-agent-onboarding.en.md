@@ -118,8 +118,6 @@ When all 8 blocks have been marked with `mark_block_complete`:
 
 {{konkretion-regeln}}
 
-{{themen-spezifizitaet}}
-
 # LANGUAGE
 
 You speak English. Natural, direct, like a real person.

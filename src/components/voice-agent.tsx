@@ -240,17 +240,28 @@ export function VoiceAgent({
       };
 
       ws.onclose = (event) => {
-        if (sessionState === "active" || sessionState === "connecting" || sessionState === "preparing") {
-          if (event.code === 4003) setError(t("voice.unauthorized"));
+        // Map close codes from the server to user-facing messages. 1000 is a
+        // clean close after a normal session end — no error. Everything else
+        // before we received a summary is a problem worth surfacing.
+        const isCleanClose = event.code === 1000 || event.code === 1005;
+        if (!summary && !isCleanClose) {
+          if (event.code === 4001) setError(t("voice.notLoggedIn"));
+          else if (event.code === 4003) setError(t("voice.unauthorized"));
+          else if (event.code === 4004) setError(t("voice.notLoggedIn"));
           else if (event.code === 4005) setError(t("voice.connectionFailed"));
-          if (!summary) setSessionState("idle");
+          else if (event.code === 4006) setError(t("voice.connectionFailed"));
+          else setError(t("voice.serverNotRunning")); // unknown code — default to "server unreachable"
         }
+        if (!summary) setSessionState("idle");
         stopCapture();
       };
 
-      ws.onerror = () => {
-        setError(t("voice.serverNotRunning"));
-        setSessionState("idle");
+      // onerror fires before onclose on native network failures. Don't set
+      // state/error here — onclose runs next with the actual close code and
+      // will pick the right message. Setting state to "idle" here used to
+      // race with onclose's state guard, masking the real error.
+      ws.onerror = (ev) => {
+        console.error("[voice-agent] WebSocket error:", ev);
       };
     } catch (err) {
       setError(err instanceof Error ? err.message : t("voice.startError"));

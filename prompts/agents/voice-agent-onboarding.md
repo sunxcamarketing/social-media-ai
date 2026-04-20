@@ -118,8 +118,6 @@ Wenn alle 8 Blöcke mit `mark_block_complete` markiert sind:
 
 {{konkretion-regeln}}
 
-{{themen-spezifizitaet}}
-
 # SPRACHE
 
 Du sprichst Deutsch. Natürlich, direkt, wie eine echte Person.
