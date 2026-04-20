@@ -53,7 +53,10 @@ export class GeminiLiveSession {
     const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
     const languageCode = config.languageCode || "de-DE";
-    const voiceName = config.voiceName || "Kore";
+    // "Aoede" is the most natural Gemini Live voice for non-English langs.
+    // "Kore" started sounding heavily accented (user-reported "indian accent")
+    // after a server-side Gemini update — avoid unless the user explicitly picks it.
+    const voiceName = config.voiceName || "Aoede";
 
     this.session = await ai.live.connect({
       model: "gemini-2.5-flash-native-audio-preview-09-2025",
