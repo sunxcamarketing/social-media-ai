@@ -87,6 +87,8 @@ interface ToolExtractionOptions<TInput> {
 /** Run a single Claude tool-call extraction. Returns the raw tool input or null
  *  on any failure (no key, no tool-use block, API error). Never throws — callers
  *  can treat `null` as "extraction produced nothing". */
+const CLAUDE_EXTRACTION_TIMEOUT_MS = 45_000;
+
 async function runToolExtraction<TInput>(
   opts: ToolExtractionOptions<TInput>,
 ): Promise<TInput | null> {
@@ -97,13 +99,18 @@ async function runToolExtraction<TInput>(
   }
   try {
     const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: opts.maxTokens ?? 3000,
-      system: opts.systemPrompt,
-      tools: [opts.tool],
-      messages: [{ role: "user", content: opts.userContent }],
-    });
+    const response = await Promise.race([
+      client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: opts.maxTokens ?? 3000,
+        system: opts.systemPrompt,
+        tools: [opts.tool],
+        messages: [{ role: "user", content: opts.userContent }],
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`${opts.label} timeout after ${CLAUDE_EXTRACTION_TIMEOUT_MS}ms`)), CLAUDE_EXTRACTION_TIMEOUT_MS),
+      ),
+    ]);
     const toolUse = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
     if (!toolUse) {
       console.log(`[${opts.label}] Claude returned no tool use`);
@@ -718,8 +725,52 @@ interface FinalizeArgs {
 }
 
 async function finalizeOnboardingSession({ ws, clientId, lang, transcript, durationSeconds }: FinalizeArgs): Promise<void> {
-  // Authoritative per-block extraction — overwrites any provisional marks
-  // the signal-phrase parser set during the live session.
+  // FAST PATH: persist the baseline data and send the summary event IMMEDIATELY.
+  // Provisional block marks from the live signal-phrase parser are already in DB,
+  // so a resumable state exists even if all Claude extractions fail.
+  const onboarding = await loadVoiceOnboarding(clientId);
+  const doneCount = onboarding.blocks.filter((b) => b.status === "done").length;
+
+  // Best-effort: persist transcript. Don't let a DB hiccup block the UI summary.
+  saveVoiceSession(clientId, transcript, doneCount, durationSeconds).catch((err) => {
+    console.error("[onboarding] saveVoiceSession failed:", err);
+  });
+
+  console.log(`[onboarding] session ended: ${durationSeconds}s, ${doneCount}/8 blocks done (summary sent, Claude extraction backgrounded)`);
+
+  // Send summary NOW — browser unblocks. Flag tells UI that Claude enrichment
+  // is still running and suggestions may arrive later via onboarding_enriched.
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: "onboarding_summary",
+      doneCount,
+      total: VOICE_BLOCK_ORDER.length,
+      durationSeconds,
+      transcriptLength: transcript.length,
+      synthesisGenerated: false,
+      fieldSuggestions: [],
+      backgroundProcessing: true,
+    }));
+  }
+
+  // SLOW PATH: fire-and-forget. Runs Claude passes with per-call 45s timeouts.
+  // On success, sends onboarding_enriched to browser if still connected.
+  // On any failure, errors are logged but provisional state is already saved.
+  enrichOnboardingInBackground({ ws, clientId, lang, transcript }).catch((err) => {
+    console.error("[onboarding-bg] background enrichment crashed:", err);
+  });
+}
+
+async function enrichOnboardingInBackground(args: {
+  ws: WebSocket;
+  clientId: string;
+  lang: "de" | "en";
+  transcript: TranscriptEntry[];
+}): Promise<void> {
+  const { ws, clientId, lang, transcript } = args;
+
+  // 1. Authoritative per-block extraction — overwrites provisional marks
+  //    (which have empty summary/quotes).
   const extracted = await extractOnboardingBlocks(transcript, lang);
   const onboarding = await loadVoiceOnboarding(clientId);
   for (const eb of extracted) {
@@ -734,20 +785,21 @@ async function finalizeOnboardingSession({ ws, clientId, lang, transcript, durat
   onboarding.currentBlockId = nextOpen?.id || "resources";
   onboarding.updatedAt = new Date().toISOString();
   await saveVoiceOnboarding(clientId, onboarding);
-
   const doneCount = onboarding.blocks.filter((b) => b.status === "done").length;
-  console.log(`[onboarding] session ended: ${durationSeconds}s, ${doneCount}/8 blocks done`);
+  console.log(`[onboarding-bg] ${extracted.length} block(s) enriched from transcript`);
 
+  // 2. Synthesis (only when all 8 done)
   let synthesis = "";
   if (doneCount >= VOICE_BLOCK_ORDER.length) {
     try {
       synthesis = await synthesizeVoiceOnboarding(clientId, lang);
-      console.log(`[onboarding] synthesis generated: ${synthesis.length} chars`);
+      console.log(`[onboarding-bg] synthesis: ${synthesis.length} chars`);
     } catch (err) {
-      console.error("[onboarding] synthesis failed:", err);
+      console.error("[onboarding-bg] synthesis failed:", err);
     }
   }
 
+  // 3. Profile field suggestions
   let fieldSuggestions: FieldSuggestion[] = [];
   try {
     const { data: fullConfig } = await supabase.from("configs").select("*").eq("id", clientId).single();
@@ -755,21 +807,20 @@ async function finalizeOnboardingSession({ ws, clientId, lang, transcript, durat
       fieldSuggestions = await extractProfileSuggestions(transcript, fullConfig as Partial<Config>, lang);
     }
   } catch (err) {
-    console.error("[profile-suggestions] failed:", err);
+    console.error("[onboarding-bg] profile-suggestions failed:", err);
   }
 
-  await saveVoiceSession(clientId, transcript, doneCount, durationSeconds);
-
+  // 4. Notify browser if still connected — it may have moved on already.
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
-      type: "onboarding_summary",
+      type: "onboarding_enriched",
       doneCount,
-      total: VOICE_BLOCK_ORDER.length,
-      durationSeconds,
-      transcriptLength: transcript.length,
       synthesisGenerated: !!synthesis,
       fieldSuggestions,
     }));
+    console.log("[onboarding-bg] enrichment event sent to browser");
+  } else {
+    console.log("[onboarding-bg] browser already disconnected — enrichment saved to DB only");
   }
 }
 

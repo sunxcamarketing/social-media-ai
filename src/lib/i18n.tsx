@@ -736,6 +736,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "voice.applying": { de: "Wird übernommen...", en: "Applying..." },
   "voice.applied": { de: "Übernommen", en: "Applied" },
   "voice.applyError": { de: "Fehler beim Speichern", en: "Save failed" },
+  "voice.backgroundProcessing": { de: "Wird im Hintergrund analysiert — Profil-Vorschläge erscheinen gleich. Du kannst das Fenster auch schließen, die Daten sind gespeichert.", en: "Analyzing in the background — profile suggestions will appear shortly. You can close this window; your data is saved." },
 };
 
 type Substitutions = Record<string, string | number>;

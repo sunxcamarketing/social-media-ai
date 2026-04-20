@@ -21,6 +21,7 @@ export interface SessionSummaryData {
   total?: number;
   synthesisGenerated?: boolean;
   fieldSuggestions?: FieldSuggestion[];
+  backgroundProcessing?: boolean;
   durationSeconds: number;
   transcriptLength: number;
 }
@@ -111,6 +112,15 @@ export function SessionSummaryView({
                 </div>
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {mode === "onboarding" && summary.backgroundProcessing && (!summary.fieldSuggestions || summary.fieldSuggestions.length === 0) && (
+          <div className="mb-8 rounded-2xl bg-ocean/[0.03] border border-ocean/[0.06] p-4 flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            <p className="text-xs text-ocean/60 leading-relaxed">
+              {t("voice.backgroundProcessing")}
+            </p>
           </div>
         )}
 

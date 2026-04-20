@@ -36,6 +36,7 @@ interface SessionSummary {
   total?: number;                      // onboarding mode
   synthesisGenerated?: boolean;        // onboarding mode
   fieldSuggestions?: FieldSuggestion[]; // onboarding mode: extracted profile field updates
+  backgroundProcessing?: boolean;      // onboarding mode: Claude enrichment still running
   durationSeconds: number;
   transcriptLength: number;
 }
@@ -223,6 +224,16 @@ export function VoiceAgent({
             case "onboarding_summary":
               setSummary(msg);
               setSessionState("summary");
+              break;
+            case "onboarding_enriched":
+              // Late-arriving background enrichment — merge into current summary
+              // so the UI shows fieldSuggestions when they finally land.
+              setSummary((prev) => prev ? {
+                ...prev,
+                synthesisGenerated: msg.synthesisGenerated ?? prev.synthesisGenerated,
+                fieldSuggestions: msg.fieldSuggestions ?? prev.fieldSuggestions,
+                backgroundProcessing: false,
+              } : prev);
               break;
             case "block_progress":
               if (typeof msg.blockId === "string" && isVoiceBlockId(msg.blockId)) {
