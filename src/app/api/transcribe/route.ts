@@ -3,7 +3,7 @@ import { uploadVideo, analyzeVideo } from "@/lib/gemini";
 
 export const maxDuration = 120;
 
-const GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 const TRANSCRIBE_PROMPT = `Transcribe the spoken words in this video verbatim.
 Return ONLY the transcript — no descriptions, no speaker labels, no timestamps, no formatting marks.

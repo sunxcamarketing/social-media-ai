@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>{{CAROUSEL_TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green:      #22C55E;
+      --green-soft: #86EFAC;
+      --red:        #EF4444;
+      --red-soft:   #FCA5A5;
+      --dark:       #0A0A0A;
+      --text:       #FFFFFF;
+      --text-dim:   rgba(255,255,255,0.55);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000;
+    }
+
+    section {
+      width: 1080px;
+      height: 1350px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER BAR (entrümpelt: nur @handle + Seitenzahl) ── */
+    .header-bar {
+      position: absolute;
+      top: 28px;
+      left: 40px;
+      right: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text);
+      opacity: 0.7;
+      z-index: 20;
+    }
+
+    /* ── HALVES ───────────────────────────────── */
+    .half {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 100px 80px;
+    }
+
+    .half-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+    .half.bad .half-bg {
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(239,68,68,0.18) 0%, transparent 60%),
+        linear-gradient(180deg, #1a0808 0%, #0a0a0a 100%);
+    }
+    .half.good .half-bg {
+      background:
+        radial-gradient(ellipse at 80% 70%, rgba(34,197,94,0.28) 0%, transparent 60%),
+        linear-gradient(180deg, #08180f 0%, #0a2416 100%);
+    }
+    .half::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 22px 22px;
+      z-index: 1;
+      opacity: 0.7;
+    }
+
+    .half-content {
+      position: relative;
+      z-index: 2;
+      color: var(--text);
+    }
+
+    /* ── EBENE 1: BADGE (kleiner Marker) ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 18px;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      margin-bottom: 36px;
+    }
+    .badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .badge-bad {
+      background: rgba(239,68,68,0.1);
+      color: var(--red-soft);
+      border: 1px solid rgba(239,68,68,0.35);
+    }
+    .badge-bad .dot { background: var(--red); box-shadow: 0 0 10px var(--red); }
+    .badge-good {
+      background: rgba(34,197,94,0.15);
+      color: var(--green-soft);
+      border: 1px solid rgba(34,197,94,0.45);
+    }
+    .badge-good .dot { background: var(--green); box-shadow: 0 0 12px var(--green); }
+
+    /* ── EBENE 2: HERO-LINE (der Takeaway-Satz, HAUPTFOKUS) ── */
+    .hero-line {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 62px;
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      color: var(--text);
+      margin-bottom: 32px;
+      max-width: 100%;
+    }
+    .half.bad .hero-line {
+      color: rgba(255,255,255,0.72);
+    }
+    /* Accent auf genau EINER Phrase pro Hero-Satz */
+    .accent-bad {
+      color: var(--red-soft);
+      text-decoration: underline;
+      text-decoration-color: rgba(239,68,68,0.7);
+      text-decoration-thickness: 4px;
+      text-underline-offset: 6px;
+    }
+    .accent-good {
+      color: var(--green-soft);
+      background: linear-gradient(180deg, transparent 65%, rgba(34,197,94,0.35) 65%);
+      padding: 0 4px;
+    }
+
+    /* ── EBENE 3: SUPPORT-LINE (Mono-Footer) ── */
+    .stat-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-top: 24px;
+    }
+
+    /* ── EBENE 4: TOOL-PILLS (nur Good-Hälfte) ── */
+    .tool-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 36px;
+      flex-wrap: wrap;
+    }
+    .tool-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .tool-pill img {
+      width: 22px;
+      height: 22px;
+      filter: brightness(1.15);
+    }
+
+    /* ── DIVIDER-CHIP (Faktor, zentriert auf 50%-Linie) ── */
+    .factor-chip {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #4ADE80 0%, #16A34A 100%);
+      color: var(--dark);
+      font-family: 'Inter', sans-serif;
+      font-weight: 900;
+      font-size: 24px;
+      padding: 18px 36px;
+      border-radius: 999px;
+      letter-spacing: -0.01em;
+      z-index: 6;
+      white-space: nowrap;
+      box-shadow:
+        0 10px 40px rgba(34,197,94,0.55),
+        0 0 0 6px rgba(10,10,10,1),
+        0 0 0 7px rgba(34,197,94,0.3);
+    }
+
+    /* ── HOOK SLIDE (Slide 01 — ohne Split) ── */
+    .slide-hook {
+      background:
+        radial-gradient(ellipse at 80% 20%, rgba(34,197,94,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 20% 80%, rgba(239,68,68,0.15) 0%, transparent 55%),
+        var(--dark);
+      color: var(--text);
+      justify-content: center;
+      padding: 120px 80px;
+    }
+    .slide-hook::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 22px 22px;
+      opacity: 0.7;
+    }
+    .slide-hook h1 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 800;
+      font-size: 96px;
+      line-height: 0.98;
+      letter-spacing: -0.035em;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ── CTA SLIDE (letzte Slide — Pattern-Break) ── */
+    .slide-cta {
+      background: linear-gradient(165deg, #16A34A 0%, #22C55E 60%, #86EFAC 100%);
+      color: var(--dark);
+      justify-content: center;
+      align-items: center;
+      padding: 120px 80px;
+      text-align: center;
+    }
+    .slide-cta h2 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 900;
+      font-size: 80px;
+      line-height: 1.05;
+      letter-spacing: -0.025em;
+      max-width: 90%;
+      margin: 0 auto;
+    }
+    .slide-cta .cta-button {
+      display: inline-block;
+      background: var(--dark);
+      color: var(--text);
+      padding: 24px 48px;
+      margin-top: 56px;
+      font-weight: 700;
+      font-size: 28px;
+      border-radius: 999px;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       SPLIT-SCREEN KARUSSELL — Slide-Struktur (V2)
+
+       Jede Content-Slide folgt strikt der 4-Ebenen-Hierarchie:
+         1. Badge       (15px Mono, Marker)
+         2. Hero-Line   (62px Inter 700, der Takeaway-Satz mit Accent)
+         3. Stat-Line   (17px Mono, Fakten-Footer)
+         4. Tool-Pills  (nur Good-Hälfte, optional)
+
+       Divider-Chip: zentriert auf 50%-Linie (position: absolute)
+
+       <section class="slide">
+         <div class="header-bar">
+           <span>@handle</span>
+           <span>02 / 04</span>
+         </div>
+         <div class="half bad">
+           <div class="half-bg"></div>
+           <div class="half-content">
+             <div class="badge badge-bad">
+               <span class="dot"></span>
+               OHNE AI
+             </div>
+             <h2 class="hero-line">
+               1 Stunde pro Idee — und meistens ist
+               <span class="accent-bad">keine gute dabei</span>.
+             </h2>
+             <div class="stat-line">ALTER WORKFLOW · 3 IDEEN PRO WOCHE</div>
+           </div>
+         </div>
+         <div class="factor-chip">10× MEHR OUTPUT</div>
+         <div class="half good">
+           <div class="half-bg"></div>
+           <div class="half-content">
+             <div class="badge badge-good">
+               <span class="dot"></span>
+               MIT AI
+             </div>
+             <h2 class="hero-line">
+               30 Ideen in 10 Minuten —
+               <span class="accent-good">datengetrieben</span> und sofort nutzbar.
+             </h2>
+             <div class="tool-row">
+               <div class="tool-pill">
+                 <img src="https://cdn.simpleicons.org/anthropic/FFFFFF" alt="Claude">
+                 <span>Claude</span>
+               </div>
+             </div>
+             <div class="stat-line">NEUER WORKFLOW · 3 MIN PRO IDEE</div>
+           </div>
+         </div>
+       </section>
+
+       Hook-Slide (01): <section class="slide-hook">...</section>
+       CTA-Slide  (N):  <section class="slide-cta">...</section>
+  ═══════════════════════════════════════════════════════════════ -->
+
+</body>
+</html>

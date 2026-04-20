@@ -124,6 +124,14 @@ export async function POST(
   const top30Results = top30Raw.filter((v): v is VideoInsight => v !== null);
   const topAllResults = topAllRaw.filter((v): v is VideoInsight => v !== null);
 
+  const attempted = top30Days.length + topAllTime.length;
+  if (attempted > 0 && top30Results.length === 0 && topAllResults.length === 0) {
+    return NextResponse.json(
+      { error: "Gemini-Analyse fehlgeschlagen für alle Videos. API vermutlich überlastet — in paar Minuten erneut versuchen." },
+      { status: 503 }
+    );
+  }
+
   const insights: PerformanceInsights = {
     scrapedAt: new Date().toISOString().slice(0, 10),
     scrapeWindowDays: SCRAPE_WINDOW_DAYS,

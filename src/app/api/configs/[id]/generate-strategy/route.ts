@@ -3,6 +3,7 @@ import { readConfig, updateConfig, readVideosByConfig, readAnalysesByClient, rea
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS, type ContentType, type ContentFormat } from "@/lib/strategy";
 import { buildPrompt, STRATEGY_ANALYSIS_TOOL, STRATEGY_CREATION_TOOL, STRATEGY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
+import { voiceOnboardingToPromptBlock } from "@/lib/voice-onboarding";
 import { sendEvent, sseResponse } from "@/lib/sse";
 import { safeJsonParse } from "@/lib/safe-json";
 import { buildClientProfile, buildBrandContext } from "@/lib/client-context";
@@ -78,6 +79,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         }
 
         const claude = getAnthropicClient();
+        const lang: "de" | "en" = config.language === "en" ? "en" : "de";
         const clientContext = buildClientProfile(config as unknown as Record<string, string>);
         const brandContext = buildBrandContext(config as unknown as Record<string, string>);
         const clientName = config.name || config.configName || "Kunde";
@@ -138,6 +140,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
         // Voice profile
         const voiceProfile: VoiceProfile | null = await getVoiceProfile(id).catch(() => null);
+        const langForPrompts: "de" | "en" = config.language === "en" ? "en" : "de";
+        const voiceOnboardingBlock = await voiceOnboardingToPromptBlock(id, langForPrompts).catch(() => "");
 
         const hasData = !!performanceBlock || !!auditBlock || !!competitorBlock;
 
@@ -179,7 +183,7 @@ Analysiere ALLE Daten und bestimme das strategische Ziel.`;
           const analysisMsg = await claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 3000,
-            system: buildPrompt("strategy-analysis", { platform_context: platformContext }),
+            system: buildPrompt("strategy-analysis", { platform_context: platformContext }, lang),
             tools: [STRATEGY_ANALYSIS_TOOL],
             tool_choice: { type: "tool", name: "submit_analysis" },
             messages: [{ role: "user", content: analysisUserPrompt }],
@@ -236,7 +240,7 @@ ${analysisResult.nichePatterns ? `Nischen-Muster: ${analysisResult.nichePatterns
           content_types: contentTypeNames.join(", "),
           formats: formatNames.join(", "),
           platform_context: platformContext,
-        });
+        }, lang);
 
         const creationTool = STRATEGY_CREATION_TOOL(activeDays, contentTypeNames, formatNames);
 
@@ -311,6 +315,7 @@ ${activeDays.map(d => {
 }).join("\n")}
 
 ${voiceBlock ? `\n${voiceBlock}` : ""}
+${voiceOnboardingBlock ? `\n${voiceOnboardingBlock}` : ""}
 
 <client_brand>
 ${brandContext}
@@ -325,7 +330,7 @@ Prüfe diese Strategie.`;
           const reviewMsg = await claude.messages.create({
             model: "claude-sonnet-4-6",
             max_tokens: 3000,
-            system: buildPrompt("strategy-review", { platform_context: platformContext }),
+            system: buildPrompt("strategy-review", { platform_context: platformContext }, lang),
             tools: [STRATEGY_REVIEW_TOOL(activeDays)],
             tool_choice: { type: "tool", name: "submit_strategy_review" },
             messages: [{ role: "user", content: reviewUserPrompt }],

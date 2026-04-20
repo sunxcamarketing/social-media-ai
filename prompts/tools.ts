@@ -42,12 +42,22 @@ export const TOPIC_SELECTION_TOOL = (days: string[], pillarNames: string[], cont
             pillar: { type: "string", ...(pillarNames.length > 0 ? { enum: pillarNames } : {}) },
             contentType: { type: "string", ...(contentTypeNames.length > 0 ? { enum: contentTypeNames } : {}) },
             format: { type: "string", ...(formatNames.length > 0 ? { enum: formatNames } : {}) },
-            title: { type: "string", description: "Konkreter Arbeitstitel (max 10 Wörter). SPEZIFISCH, nicht generisch." },
+            patternType: { type: "string", enum: ["STORY", "HOW_TO", "MISTAKES", "PROOF", "HOT_TAKE"], description: "Story-Pattern wie im Wochenplan vorgegeben — übernehmen, nicht ändern." },
+            postType: {
+              type: "string",
+              enum: ["core", "variant", "test"],
+              description: "core = direkte Adaption eines Winner-Videos/Learnings (anchorRef MUSS gesetzt sein). variant = neuer Winkel auf ein Winner-Thema (anchorRef empfohlen). test = komplett neue Idee ohne direkte Performance-Basis.",
+            },
+            anchorRef: {
+              type: "string",
+              description: "Bei core/variant: Titel/Thema des Winner-Videos oder Learnings das die Basis ist. Bei test: leerer String.",
+            },
+            title: { type: "string", description: "Konkreter Arbeitstitel (max 10 Wörter). SPEZIFISCH, nicht generisch. Muss zum patternType passen." },
             description: { type: "string", description: "Kernaussage in 1 Satz — was lernt/fühlt der Zuschauer?" },
             reasoning: { type: "string", description: "Welche konkreten Daten aus Audit/Performance stützen diese Wahl? 1-2 Sätze." },
             trendRef: { type: "string", description: "Welcher Trend aus den Trend-Daten war die Basis? (Trend-Topic zitieren)" },
           },
-          required: ["day", "pillar", "contentType", "format", "title", "description", "reasoning", "trendRef"],
+          required: ["day", "pillar", "contentType", "format", "patternType", "postType", "anchorRef", "title", "description", "reasoning", "trendRef"],
         },
         minItems: days.length,
         maxItems: days.length,
@@ -317,8 +327,8 @@ export const TREND_RESEARCH_TOOL = {
             },
             category: {
               type: "string" as const,
-              enum: ["search_intent", "viral", "news", "pain_point", "pillar", "seasonal"],
-              description: "Art des Trends",
+              enum: ["search_intent", "viral", "news", "pain_point", "pillar", "seasonal", "community_voices", "adjacent_market", "objection"],
+              description: "Art des Trends — muss mit der Quelle übereinstimmen",
             },
           },
           required: ["topic", "angle", "whyNow", "hookIdea", "sourceUrls", "category"],
@@ -326,8 +336,15 @@ export const TREND_RESEARCH_TOOL = {
         minItems: 6,
         maxItems: 12,
       },
+      categoryMix: {
+        type: "object" as const,
+        properties: {
+          distinctCategoriesUsed: { type: "number", description: "Anzahl unterschiedlicher Kategorien in deinen Trends. Muss >= 3 sein." },
+        },
+        required: ["distinctCategoriesUsed"],
+      },
     },
-    required: ["trends"],
+    required: ["trends", "categoryMix"],
   },
 };
 
@@ -444,12 +461,16 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
           properties: {
             name: {
               type: "string" as const,
-              description: "Pillar-Name: 2-4 Wörter",
+              description: "Pillar-Name: 2-4 Wörter — frei gewählt, passend zur Marke",
             },
-            purpose: {
+            pillarType: {
               type: "string" as const,
-              enum: ["dream-outcome", "proof", "time-shortcut", "effort-reduction", "personality"],
-              description: "Value-Equation-Zweck: Traum malen, Proof zeigen, Zeit verkürzen, Aufwand senken, oder Persönlichkeit",
+              enum: ["RESULT", "PROOF", "MECHANISM", "BELIEFS", "IDENTITY"],
+              description: "Value-Equation-Typ: RESULT (Traumergebnis/Vision), PROOF (Cases/Zahlen/Vorher-Nachher), MECHANISM (System/Methode/Framework), BELIEFS (Glaubenssätze brechen, Fehler aufdecken), IDENTITY (Gründerin, Persönlichkeit, Story)",
+            },
+            offerLink: {
+              type: "string" as const,
+              description: "Wie verbindet dieser Pillar direkt zum Core Offer (z.B. 12-Wochen-Programm)? 1-2 Sätze. Pflicht — kein Pillar darf Selbstzweck sein.",
             },
             why: {
               type: "string" as const,
@@ -476,11 +497,11 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
               description: "4-6 konkrete Video-Ideen pro Pillar",
             },
           },
-          required: ["name", "why", "subTopics"],
+          required: ["name", "pillarType", "offerLink", "why", "subTopics"],
         },
-        minItems: 3,
+        minItems: 4,
         maxItems: 5,
-        description: "3-5 Content Pillars",
+        description: "4-5 Content Pillars — mindestens 1 pro pillarType (RESULT/PROOF/MECHANISM/BELIEFS/IDENTITY), sofern 4+ Pillars gewünscht.",
       },
       weekly: {
         type: "object" as const,
@@ -503,17 +524,31 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
                   type: "string" as const,
                   description: "Welcher Pillar wird an diesem Tag bedient",
                 },
+                ctaType: {
+                  type: "string" as const,
+                  enum: ["soft", "lead", "authority", "none"],
+                  description: "CTA-Typ: soft=Interaktion (Kommentar/Save/Share), lead=Funnel-Schritt (DM-Keyword/Call/Webinar), authority=Positionierung (kein direkter CTA aber Status-Signal), none=kein CTA",
+                },
+                ctaExample: {
+                  type: "string" as const,
+                  description: "Konkreter CTA-Satz auf Deutsch (max 2 Sätze). Muss zum ctaType passen und auf Deutsch formuliert sein.",
+                },
+                funnelStage: {
+                  type: "string" as const,
+                  enum: ["TOF", "MOF", "BOF"],
+                  description: "Funnel-Stufe: TOF=Top (Reach, neu entdeckt), MOF=Middle (Trust, Education), BOF=Bottom (Entscheidung, Offer-Berührung)",
+                },
                 reason: {
                   type: "string" as const,
-                  description: "Datengestützte Begründung: Warum dieser Type/Format an diesem Tag?",
+                  description: "Datengestützte Begründung: Warum dieser Type/Format/CTA an diesem Tag? 1-2 Sätze.",
                 },
               },
-              required: ["type", "format", "pillar", "reason"],
+              required: ["type", "format", "pillar", "ctaType", "ctaExample", "funnelStage", "reason"],
             },
           ])
         ),
         required: activeDays,
-        description: "Wochenplan: ein Eintrag pro aktivem Tag",
+        description: "Wochenplan: ein Eintrag pro aktivem Tag. MUSS enthalten: mindestens 2x ctaType='lead' (Funnel-Push), mindestens 2x ctaType='soft' (Interaktion), Rest authority/none. Mindestens 1x funnelStage='BOF' pro Woche.",
       },
       exampleHooks: {
         type: "array" as const,
@@ -955,7 +990,7 @@ export const AGENT_RESEARCH_TRENDS_TOOL = {
 
 export const AGENT_SAVE_IDEA_TOOL = {
   name: "save_idea",
-  description: "Speichere eine Video-Idee in die Ideen-Liste des Clients. Nutze das wenn der User eine gute Idee bestätigt oder explizit sagt 'speicher das'.",
+  description: "Speichere eine Video-Idee (noch nicht ausgeschrieben) in die Ideen-Liste des Clients. Nur für frühe Ideen ohne Skript-Text. Wenn du ein fertiges Skript hast, nutze save_script.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -965,6 +1000,28 @@ export const AGENT_SAVE_IDEA_TOOL = {
       content_type: { type: "string" as const, description: "Optional: Content-Typ (z.B. Education, Storytelling, Authority)" },
     },
     required: ["title", "description"] as string[],
+  },
+};
+
+export const AGENT_SAVE_SCRIPT_TOOL = {
+  name: "save_script",
+  description: "Speichere ein fertiges Skript direkt in den Skripte-Tab des Clients (NICHT nur als Idee). Nutze das wenn der User einen kompletten Skript-Text im Chat liefert oder sagt 'speicher das Skript', und du es ohne erneute Generierung ablegen sollst. Für NEUE Skript-Generierung nutze generate_script (speichert automatisch).",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      title: { type: "string" as const, description: "Skript-Titel (max 10 Wörter)" },
+      short_script: { type: "string" as const, description: "Kurzversion 30-40 Sek (ohne '── KURZ ──'-Marker, nur der reine Text inkl. Absätze)" },
+      long_script: { type: "string" as const, description: "Langversion 60+ Sek (ohne '── LANG ──'-Marker, nur der reine Text inkl. Absätze)" },
+      body: { type: "string" as const, description: "Alternative zu short_script/long_script: vollständiger Body mit beiden Versionen bereits formatiert. Nur nutzen wenn du den Rohtext 1:1 übernehmen sollst." },
+      text_hook: { type: "string" as const, description: "Text-Hook der auf dem Screen eingeblendet wird (ein kurzer Satz)" },
+      hook_pattern: { type: "string" as const, description: "Optional: Hook-Muster (z.B. Kontrast, Provokation, Neugier)" },
+      pillar: { type: "string" as const, description: "Optional: Content-Pillar" },
+      content_type: { type: "string" as const, description: "Optional: Content-Typ (Storytelling, Education, ...)" },
+      format: { type: "string" as const, description: "Optional: Format (Reel, Talking Head, ...)" },
+      cta: { type: "string" as const, description: "Optional: Call-to-Action Text" },
+    },
+    required: ["title"] as string[],
   },
 };
 

@@ -5,6 +5,7 @@ import { Sparkles, Trash2, Loader2, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { MarkdownContent } from "@/components/markdown-content";
 import { ChatInput, type ChatAttachment } from "@/components/ui/chat-input";
+import { useI18n } from "@/lib/i18n";
 
 interface ChatMessage {
   id: string;
@@ -19,22 +20,6 @@ interface ToolStatus {
   /** Sub-steps shown when the script agent is working. */
   subSteps?: string[];
 }
-
-const TOOL_LABELS: Record<string, string> = {
-  list_clients: "Lade Client-Liste",
-  load_client_context: "Lade Client-Profil",
-  load_voice_profile: "Lade Voice Profile",
-  search_scripts: "Suche Skripte",
-  check_performance: "Prüfe Performance",
-  load_audit: "Lade Audit",
-  generate_script: "Generiere Skript",
-  check_competitors: "Analysiere Wettbewerber",
-  check_learnings: "Lade Learnings",
-  search_web: "Web-Recherche",
-  research_trends: "Trend-Research",
-  save_idea: "Speichere Idee",
-  update_profile: "Aktualisiere Profil",
-};
 
 let msgCounter = 0;
 const msgId = () => `msg-${Date.now()}-${++msgCounter}`;
@@ -59,9 +44,26 @@ export function ContentAgentChat({
   clientName,
   suggestions,
   layout = "fullscreen",
-  title = "Content Agent",
+  title,
   emptyStateSubtitle,
 }: ContentAgentChatProps) {
+  const { t } = useI18n();
+  const TOOL_LABELS: Record<string, string> = {
+    list_clients: t("chat.tools.listClients"),
+    load_client_context: t("chat.tools.loadClientContext"),
+    load_voice_profile: t("chat.tools.loadVoiceProfile"),
+    search_scripts: t("chat.tools.searchScripts"),
+    check_performance: t("chat.tools.checkPerformance"),
+    load_audit: t("chat.tools.loadAudit"),
+    generate_script: t("chat.tools.generateScript"),
+    check_competitors: t("chat.tools.checkCompetitors"),
+    check_learnings: t("chat.tools.checkLearnings"),
+    search_web: t("chat.tools.searchWeb"),
+    research_trends: t("chat.tools.researchTrends"),
+    save_idea: t("chat.tools.saveIdea"),
+    update_profile: t("chat.tools.updateProfile"),
+  };
+  const resolvedTitle = title ?? t("chat.title");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -167,7 +169,7 @@ export function ContentAgentChat({
               });
             }
             if (data.error) {
-              fullText += `\n\n*Fehler: ${data.error}*`;
+              fullText += `\n\n${t("chat.errorMsg", { error: data.error })}`;
               setMessages((prev) => {
                 const updated = [...prev];
                 const last = updated[updated.length - 1];
@@ -184,7 +186,7 @@ export function ContentAgentChat({
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === "assistant" && !last.content)
-            updated[updated.length - 1] = { ...last, content: "*Verbindungsfehler. Bitte nochmal versuchen.*" };
+            updated[updated.length - 1] = { ...last, content: t("chat.connectionError") };
           return updated;
         });
       }
@@ -215,7 +217,7 @@ export function ContentAgentChat({
       <div className="flex items-center justify-between px-6 py-3 border-b border-ocean/[0.06] shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-ivory" />
-          <span className="text-sm font-medium text-ocean">{title}</span>
+          <span className="text-sm font-medium text-ocean">{resolvedTitle}</span>
           {clientName && <span className="text-xs text-ocean/45">· {clientName}</span>}
         </div>
         <AnimatePresence>
@@ -227,7 +229,7 @@ export function ContentAgentChat({
               onClick={handleClear}
               className="flex items-center gap-1 text-[11px] text-ocean/30 hover:text-ocean/60 transition-colors"
             >
-              <Trash2 className="h-3 w-3" /> Chat leeren
+              <Trash2 className="h-3 w-3" /> {t("chat.clearHistory")}
             </motion.button>
           )}
         </AnimatePresence>
@@ -247,11 +249,10 @@ export function ContentAgentChat({
                 <Sparkles className="h-8 w-8 text-ocean/15" />
               </div>
               <p className="text-lg font-medium text-ocean mb-1">
-                {clientName ? `Chat über ${clientName}` : "Wie kann ich dir helfen?"}
+                {clientName ? t("chat.emptyTitle", { name: clientName }) : t("chat.emptyTitleDefault")}
               </p>
               <p className="text-sm text-ocean/45 max-w-md">
-                {emptyStateSubtitle ||
-                  "Ich habe Zugriff auf Kontext, Audit, Performance & Skripte. Du kannst auch PDFs oder Bilder anhängen."}
+                {emptyStateSubtitle || t("chat.emptySubtitle")}
               </p>
             </motion.div>
 
@@ -262,7 +263,7 @@ export function ContentAgentChat({
                 onSubmit={handleSend}
                 onStop={handleStop}
                 isStreaming={streaming}
-                placeholder="Frag mich etwas..."
+                placeholder={t("chat.placeholder")}
                 suggestions={suggestions}
                 onSuggestionClick={(s) => setInput(s)}
                 attachments={attachments}
@@ -384,7 +385,7 @@ export function ContentAgentChat({
               onSubmit={handleSend}
               onStop={handleStop}
               isStreaming={streaming}
-              placeholder="Nachricht schreiben..."
+              placeholder={t("chat.placeholderChat")}
               attachments={attachments}
               onAttachmentsChange={setAttachments}
             />

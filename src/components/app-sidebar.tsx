@@ -19,38 +19,45 @@ import {
   Users,
   Eye,
   Trash2,
+  Grid3x3,
 } from "lucide-react";
 import { useClientsCache } from "@/hooks/use-clients-cache";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useI18n } from "@/lib/i18n";
 
 interface NavLink {
-  title: string;
+  titleKey: string;
   icon: React.ComponentType<{ className?: string }>;
   /** For client tabs: sub-path; for admin links: full href. */
   path: string;
+  /** If true, only visible to admins. */
+  adminOnly?: boolean;
 }
 
 const CLIENT_TABS: NavLink[] = [
-  { title: "Dashboard", path: "dashboard", icon: LayoutDashboard },
-  { title: "Profil", path: "information", icon: BookOpen },
-  { title: "Skripte", path: "scripts", icon: FileText },
-  { title: "Strategie", path: "strategy", icon: BarChart2 },
-  { title: "Ideen", path: "ideas", icon: Lightbulb },
-  { title: "Audit", path: "analyse", icon: Search },
-  { title: "Chat", path: "chat", icon: MessageSquare },
-  { title: "Konkurrenz-Analyse", path: "competitors", icon: Video },
+  { titleKey: "sidebar.dashboard", path: "dashboard", icon: LayoutDashboard },
+  { titleKey: "sidebar.profile", path: "information", icon: BookOpen },
+  { titleKey: "sidebar.scripts", path: "scripts", icon: FileText },
+  { titleKey: "sidebar.strategy", path: "strategy", icon: BarChart2 },
+  { titleKey: "sidebar.ideas", path: "ideas", icon: Lightbulb },
+  { titleKey: "sidebar.chat", path: "chat", icon: MessageSquare },
+  { titleKey: "sidebar.carousel", path: "carousel", icon: Grid3x3, adminOnly: true },
+  { titleKey: "sidebar.competitorAnalysis", path: "competitors", icon: Video },
 ];
 
 const ADMIN_LINKS: NavLink[] = [
-  { title: "Dashboard", path: "/admin", icon: LayoutDashboard },
-  { title: "Content Agent", path: "/chat", icon: MessageSquare },
-  { title: "Globales Audit", path: "/analyse", icon: Search },
-  { title: "Training", path: "/training", icon: BookOpen },
-  { title: "Transkribieren", path: "/transcribe", icon: Mic },
+  { titleKey: "sidebar.dashboard", path: "/admin", icon: LayoutDashboard },
+  { titleKey: "sidebar.contentAgent", path: "/chat", icon: MessageSquare },
+  { titleKey: "sidebar.globalAudit", path: "/analyse", icon: Search },
+  { titleKey: "sidebar.training", path: "/training", icon: BookOpen },
+  { titleKey: "sidebar.transcribe", path: "/transcribe", icon: Mic },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useI18n();
+  const { isAdmin } = useCurrentUser();
 
   const clients = useClientsCache();
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -86,13 +93,13 @@ export function AppSidebar() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId }),
     });
-    if (!res.ok) { alert("Impersonate fehlgeschlagen"); return; }
+    if (!res.ok) { alert(t("sidebar.impersonateFailed")); return; }
     router.push("/portal");
     router.refresh();
   };
 
   const deleteClient = async (clientId: string, clientName: string) => {
-    if (!confirm(`"${clientName}" wirklich löschen?`)) return;
+    if (!confirm(t("sidebar.confirmDelete", { name: clientName }))) return;
     await fetch(`/api/configs?id=${clientId}`, { method: "DELETE" });
     if (activeClientId === clientId) router.push("/admin");
     router.refresh();
@@ -121,7 +128,7 @@ export function AppSidebar() {
               </div>
             )}
             <span className="flex-1 text-left text-sm font-medium truncate">
-              {activeClientName || "Client wählen"}
+              {activeClientName || t("sidebar.selectClient")}
             </span>
             <ChevronDown className={`h-3.5 w-3.5 opacity-60 transition-transform ${switcherOpen ? "rotate-180" : ""}`} />
           </button>
@@ -131,7 +138,7 @@ export function AppSidebar() {
               <div className="p-2 max-h-72 overflow-y-auto">
                 {clients.map((c) => {
                   const isActive = c.id === activeClientId;
-                  const name = c.configName || c.name || "Unbenannt";
+                  const name = c.configName || c.name || t("sidebar.unnamed");
                   return (
                     <div key={c.id} className="group relative">
                       <button
@@ -148,14 +155,14 @@ export function AppSidebar() {
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => { e.stopPropagation(); impersonate(c.id); }}
-                          title={`Als ${name} ansehen`}
+                          title={t("sidebar.impersonate", { name })}
                           className="h-6 w-6 flex items-center justify-center rounded-md bg-blush-light/60 text-blush-dark hover:bg-blush-dark hover:text-white transition-colors"
                         >
                           <Eye className="h-3 w-3" />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteClient(c.id, name); }}
-                          title="Löschen"
+                          title={t("sidebar.delete")}
                           className="h-6 w-6 flex items-center justify-center rounded-md text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -165,7 +172,7 @@ export function AppSidebar() {
                   );
                 })}
                 {clients.length === 0 && (
-                  <p className="px-3 py-4 text-center text-xs text-ocean/40">Noch keine Clients</p>
+                  <p className="px-3 py-4 text-center text-xs text-ocean/40">{t("sidebar.noClients")}</p>
                 )}
               </div>
               <button
@@ -173,7 +180,7 @@ export function AppSidebar() {
                 className="w-full flex items-center gap-2 border-t border-ocean/[0.06] px-4 py-2.5 text-xs text-ocean/60 hover:bg-ocean/[0.03] hover:text-ocean transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Neuen Client anlegen
+                {t("sidebar.createNewClient")}
               </button>
             </div>
           )}
@@ -185,10 +192,10 @@ export function AppSidebar() {
         {activeClientId && (
           <div>
             <p className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-ocean/35">
-              Client
+              {t("sidebar.sectionClient")}
             </p>
             <nav className="space-y-0.5">
-              {CLIENT_TABS.map((tab) => {
+              {CLIENT_TABS.filter((tab) => !tab.adminOnly || isAdmin).map((tab) => {
                 const isActive = activeTabKey === tab.path;
                 return (
                   <Link
@@ -201,7 +208,7 @@ export function AppSidebar() {
                     }`}
                   >
                     <tab.icon className="h-4 w-4 shrink-0" />
-                    <span>{tab.title}</span>
+                    <span>{t(tab.titleKey)}</span>
                   </Link>
                 );
               })}
@@ -211,7 +218,7 @@ export function AppSidebar() {
 
         <div>
           <p className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-ocean/35">
-            Admin Konsole
+            {t("sidebar.adminConsole")}
           </p>
           <nav className="space-y-0.5">
             {ADMIN_LINKS.map((link) => {
@@ -229,7 +236,7 @@ export function AppSidebar() {
                   }`}
                 >
                   <link.icon className="h-4 w-4 shrink-0" />
-                  <span>{link.title}</span>
+                  <span>{t(link.titleKey)}</span>
                 </Link>
               );
             })}

@@ -139,7 +139,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const client = new Anthropic({ apiKey });
 
-  const systemPrompt = buildPrompt("topic-plan");
+  const lang: "de" | "en" = config.language === "en" ? "en" : "de";
+  const systemPrompt = buildPrompt("topic-plan", {}, lang);
 
   const userPrompt = `<client>
 ${clientContext}

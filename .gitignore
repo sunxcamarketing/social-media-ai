@@ -6,4 +6,6 @@ node_modules/
 .next/
 tsconfig.tsbuildinfo
 data/export/
+data/clients/
+output/
 

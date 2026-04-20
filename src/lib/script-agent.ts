@@ -259,15 +259,18 @@ async function runReviewer(
   longScript: string,
   voiceProfile: string | null,
   regexIssues: string[],
+  lang: "de" | "en" = "de",
 ): Promise<{ approved: boolean; shortScript?: string; longScript?: string; issues?: string }> {
-  const reviewerPrompt = buildPrompt("script-reviewer", {});
+  const reviewerPrompt = buildPrompt("script-reviewer", {}, lang);
 
-  let userMessage = `Prüfe dieses Skript auf AI-Sprache, Formatierung und Voice Match.\n\n`;
-  userMessage += `── KURZ (30-40 Sek) ──\n${shortScript}\n\n`;
-  userMessage += `── LANG (60+ Sek) ──\n${longScript}`;
+  let userMessage = lang === "en"
+    ? `Review this script for AI language, formatting, and voice match.\n\n── SHORT (30-40s) ──\n${shortScript}\n\n── LONG (60+s) ──\n${longScript}`
+    : `Prüfe dieses Skript auf AI-Sprache, Formatierung und Voice Match.\n\n── KURZ (30-40 Sek) ──\n${shortScript}\n\n── LANG (60+ Sek) ──\n${longScript}`;
 
   if (regexIssues.length > 0) {
-    userMessage += `\n\nBEREITS ERKANNTE PROBLEME (automatisch gefunden):\n${regexIssues.map(i => `- ${i}`).join("\n")}`;
+    userMessage += lang === "en"
+      ? `\n\nALREADY DETECTED ISSUES (auto-found):\n${regexIssues.map(i => `- ${i}`).join("\n")}`
+      : `\n\nBEREITS ERKANNTE PROBLEME (automatisch gefunden):\n${regexIssues.map(i => `- ${i}`).join("\n")}`;
   }
 
   if (voiceProfile) {
@@ -315,12 +318,13 @@ export async function runScriptAgent(
 
   const client = getAnthropicClient();
 
-  // Build platform context
+  // Build platform context + language
   const platforms = parseTargetPlatforms(config.targetPlatforms);
   const platformContext = buildPlatformContext(platforms[0] || DEFAULT_PLATFORM);
+  const lang: "de" | "en" = config.language === "en" ? "en" : "de";
 
   // Build system prompt — now uses script-writer (creative focus)
-  const systemPrompt = buildPrompt("script-writer", { platform_context: platformContext });
+  const systemPrompt = buildPrompt("script-writer", { platform_context: platformContext }, lang);
 
   // Build the user message with task + optional conversation context
   const metaLine = [
@@ -458,6 +462,7 @@ export async function runScriptAgent(
     writerResult.longScript,
     cachedVoiceProfile,
     regexIssues,
+    lang,
   );
 
   if (reviewResult.approved || !reviewResult.shortScript || !reviewResult.longScript) {

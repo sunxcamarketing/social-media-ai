@@ -251,9 +251,10 @@ ${creatorVideos.map((v, i) => {
   const laengeRegeln = maxWords > 0
     ? `- LÄNGE: Max ${maxWords} Wörter gesamt (Hook+Body+CTA). Das entspricht ca. ${durationLabel} Sprechzeit. Kürzer ist besser.`
     : `- LÄNGE: Instagram Reels sind kurz. Max 30-60 Sekunden Sprechzeit. Prägnant.`;
+  const lang: "de" | "en" = config.language === "en" ? "en" : "de";
   const systemPrompt = buildPrompt("single-script", {
     laenge_regeln: laengeRegeln,
-  });
+  }, lang);
 
   // ── User prompt: context + task ─────────────────────────────────────────
   const dayOverrideBlock = dayOverride
@@ -438,9 +439,10 @@ async function handleTopicScript(
   const topicLaengeRegeln = maxWords > 0
     ? `- LÄNGE: Max ${maxWords} Wörter gesamt (Hook+Body+CTA). Das entspricht ca. ${topicDurationLabel} Sprechzeit. Kürzer ist besser.`
     : `- LÄNGE: Instagram Reels sind kurz. Max 30-60 Sekunden Sprechzeit. Prägnant.`;
+  const topicLang: "de" | "en" = config.language === "en" ? "en" : "de";
   const systemPrompt = buildPrompt("topic-script", {
     laenge_regeln: topicLaengeRegeln,
-  });
+  }, topicLang);
 
   const userPrompt = `<client>
 ${clientContext}

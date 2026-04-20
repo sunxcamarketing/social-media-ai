@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface PortalShellProps {
   icon: LucideIcon;
@@ -23,12 +24,14 @@ export function PortalShell({
   title,
   subtitle,
   loading,
-  emptyMessage = "Noch keine Daten vorhanden.",
+  emptyMessage,
   isEmpty,
   children,
 }: PortalShellProps) {
+  const { t } = useI18n();
+  const resolvedEmpty = emptyMessage ?? t("portal.shell.noData");
   if (loading) {
-    return <div className="text-center py-20 text-ocean/50">Laden...</div>;
+    return <div className="text-center py-20 text-ocean/50">{t("portal.shell.loading")}</div>;
   }
 
   return (
@@ -42,7 +45,7 @@ export function PortalShell({
 
       {isEmpty ? (
         <div className="glass rounded-2xl p-8 text-center">
-          <p className="text-sm text-ocean/50">{emptyMessage}</p>
+          <p className="text-sm text-ocean/50">{resolvedEmpty}</p>
         </div>
       ) : (
         children

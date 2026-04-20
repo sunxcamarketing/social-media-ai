@@ -100,6 +100,11 @@ type WeekScript = {
   body: string;
   cta: string;
   reasoning: string;
+  patternType?: string;
+  postType?: string;
+  anchorRef?: string;
+  ctaType?: string;
+  funnelStage?: string;
 };
 
 type GenerationMeta = {
@@ -760,6 +765,11 @@ export default function ClientScriptsPage() {
         body: s.body,
         cta: s.cta,
         status: "entwurf",
+        patternType: s.patternType || "",
+        postType: s.postType || "",
+        anchorRef: s.anchorRef || "",
+        ctaType: s.ctaType || "",
+        funnelStage: s.funnelStage || "",
       }),
     });
     setSavedSet(prev => new Set(prev).add(index));

@@ -3,6 +3,7 @@ import { getAnthropicClient } from "@/lib/anthropic";
 import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 import {
   buildPrompt,
+  loadFoundational,
   AGENT_LIST_CLIENTS_TOOL,
   AGENT_LOAD_CONTEXT_TOOL,
   AGENT_LOAD_VOICE_TOOL,
@@ -15,6 +16,7 @@ import {
   AGENT_SEARCH_WEB_TOOL,
   AGENT_RESEARCH_TRENDS_TOOL,
   AGENT_SAVE_IDEA_TOOL,
+  AGENT_SAVE_SCRIPT_TOOL,
   AGENT_UPDATE_PROFILE_TOOL,
 } from "@prompts";
 import { executeAgentTool, toolLoadClientContext } from "@/lib/agent-tools";
@@ -39,6 +41,7 @@ const SHARED_TOOLS = [
   AGENT_SEARCH_WEB_TOOL,
   AGENT_RESEARCH_TRENDS_TOOL,
   AGENT_SAVE_IDEA_TOOL,
+  AGENT_SAVE_SCRIPT_TOOL,
   AGENT_UPDATE_PROFILE_TOOL,
 ];
 
@@ -77,29 +80,28 @@ export async function POST(request: Request) {
   // Build system prompt based on role
   const isFirstMessage = messages.length === 1;
 
-  // Load platform context for this client
+  // Load platform context + language for this client
   let platformContext = buildPlatformContext(DEFAULT_PLATFORM);
+  let lang: "de" | "en" = "de";
   if (scopedClientId) {
     const clientConfig = await readConfig(scopedClientId);
     if (clientConfig) {
       const platforms = parseTargetPlatforms(clientConfig.targetPlatforms);
       platformContext = buildPlatformContext(platforms[0] || DEFAULT_PLATFORM);
+      if (clientConfig.language === "en") lang = "en";
     }
   }
 
-  let systemPrompt = buildPrompt("content-agent", { platform_context: platformContext });
+  let systemPrompt = buildPrompt("content-agent", { platform_context: platformContext }, lang);
 
   if (isAdmin && !scopedClientId) {
-    systemPrompt += `\n\n# ADMIN-MODUS
-Du sprichst mit Aysun, der Inhaberin von SUNXCA. Sie hat Zugriff auf ALLE Clients.
-Nutze list_clients um alle Clients zu sehen. Bei allen anderen Tools MUSST du client_name angeben.
-Wenn Aysun keinen Client-Namen nennt, frag kurz nach.`;
+    systemPrompt += "\n\n" + loadFoundational("chat-admin-mode", lang);
   } else if (scopedClientId && isFirstMessage) {
     // Pre-load client context on first message (admin-per-client or client user)
     const context = await toolLoadClientContext(scopedClientId);
     const header = isAdmin
-      ? `\n\n# ADMIN-MODUS (SCOPED AUF EINEN CLIENT)\nDu sprichst mit Aysun über einen konkreten Client. Nutze Tools OHNE client_name — der Kontext ist bereits vorgeladen.\n\n# CLIENT-KONTEXT\n`
-      : "\n\n# DEIN CLIENT-KONTEXT (vorgeladen)\n";
+      ? "\n\n" + loadFoundational("chat-admin-scoped", lang) + "\n"
+      : "\n\n" + loadFoundational("chat-client-scoped", lang) + "\n";
     systemPrompt += header + context;
   }
 

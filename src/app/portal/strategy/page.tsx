@@ -5,12 +5,14 @@ import { BarChart2, Target } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
 import { safeJsonParse } from "@/lib/safe-json";
+import { useI18n } from "@/lib/i18n";
 import type { Config } from "@/lib/types";
 
 interface Pillar { name: string; subtopics?: string[]; videoIdeas?: { title: string }[]; }
 interface WeeklyEntry { day: string; pillar?: string; contentType?: string; format?: string; title?: string; }
 
 export default function PortalStrategy() {
+  const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
   const [client, setClient] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,16 +33,16 @@ export default function PortalStrategy() {
   return (
     <PortalShell
       icon={BarChart2}
-      title="Strategie"
+      title={t("portal.dash.strategy")}
       loading={authLoading || loading}
       isEmpty={!hasStrategy}
-      emptyMessage="Noch keine Strategie erstellt."
+      emptyMessage={t("portal.strategy.empty")}
     >
       <div className="space-y-6">
         {client?.strategyGoal && (
           <div className="glass rounded-2xl p-6">
             <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
-              <Target className="h-4 w-4 text-blush-dark" /> Strategisches Ziel
+              <Target className="h-4 w-4 text-blush-dark" /> {t("portal.strategy.goal")}
             </h2>
             <p className="text-sm text-ocean leading-relaxed whitespace-pre-wrap">{client.strategyGoal}</p>
           </div>
@@ -48,7 +50,7 @@ export default function PortalStrategy() {
 
         {pillars.length > 0 && (
           <div className="glass rounded-2xl p-6">
-            <h2 className="text-sm font-semibold mb-4">Content-Pillars</h2>
+            <h2 className="text-sm font-semibold mb-4">{t("portal.strategy.pillars")}</h2>
             <div className="space-y-4">
               {pillars.map((p, i) => (
                 <div key={i} className="border border-ocean/[0.06] rounded-xl p-4">
@@ -75,7 +77,7 @@ export default function PortalStrategy() {
 
         {weekly.length > 0 && (
           <div className="glass rounded-2xl p-6">
-            <h2 className="text-sm font-semibold mb-4">Wochenplan</h2>
+            <h2 className="text-sm font-semibold mb-4">{t("portal.strategy.weeklyPlan")}</h2>
             <div className="space-y-2">
               {weekly.map((w, i) => (
                 <div key={i} className="flex items-center gap-3 text-sm py-2 border-b border-ocean/[0.04] last:border-0">

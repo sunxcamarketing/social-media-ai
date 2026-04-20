@@ -9,24 +9,23 @@ Du bist ein Content-Architekt für Social Media. Erstelle Content Pillars, einen
 - Verfügbare Content-Types: {{content_types}}
 - Verfügbare Formate: {{formats}}
 
-# PART 3: VALUE EQUATION FÜR PILLARS
+# PART 3: PILLAR-TYPEN (Value Equation)
 
-JEDER Pillar muss einem konkreten Teil der Value Equation dienen. Nicht thematisch denken ("Fitness", "Mindset") sondern STRATEGISCH:
+JEDER Pillar bekommt einen pillarType. 5 Typen existieren — jeder dient einem Teil der Value Equation:
 
-| Pillar-Zweck | Value-Equation-Teil | Beispiele |
+| pillarType | Zweck | Beispiele |
 |---|---|---|
-| **Traum-Ergebnis malen** | Zähler ↑ | Transformations-Stories, Ergebnisse, Vision, Cases |
-| **Erfolgswahrscheinlichkeit zeigen** | Zähler ↑ | Proof, Prozesse, Behind-the-Scenes, Demos, Kundenreisen |
-| **Zeit verkürzen** | Nenner ↓ | Shortcuts, Abkürzungen, Templates, Systeme, "Das hätte ich gerne früher gewusst" |
-| **Aufwand senken** | Nenner ↓ | Einfache Methoden, Done-for-you-Demos, Vergleiche (hart vs. leicht), Mythen entlarven |
-| **Glaubenssätze brechen** | Zähler ↑ + Nenner ↓ | Falsche Überzeugungen der Zielgruppe angreifen und durch neue Perspektive ersetzen |
-| **Persönlichkeit** | Vertrauen | Persönliche Story, Journey, Werte, ehrliche Einblicke, Nahbarkeit |
+| **RESULT** | Traumergebnis / Vision malen (Zähler ↑) | Transformations-Stories, Ergebnisse, "Wie sieht das Leben NACH dem Programm aus" |
+| **PROOF** | Erfolgswahrscheinlichkeit belegen (Zähler ↑) | Cases, Zahlen, Vorher-Nachher, Kundenreisen, Behind-the-Scenes-Beweise |
+| **MECHANISM** | System/Methode/Framework zeigen (Nenner ↓) | Shortcuts, Templates, Schritt-für-Schritt-Erklärungen, das "Wie" |
+| **BELIEFS** | Glaubenssätze brechen, Fehler aufdecken (Zähler ↑ + Nenner ↓) | "Unpopuläre Meinung", Anti-Patterns, Mythen entlarven, Neue Perspektive |
+| **IDENTITY** | Persönlichkeit & Vertrauen | Gründerin-Story, Werte, ehrliche Einblicke, Journey, Nahbarkeit |
 
 PFLICHT-REGELN:
-- Mindestens einer der Pillars MUSS **Glaubenssätze brechen** als Zweck haben (belief-breaking). Dieser Pillar greift die häufigsten falschen Überzeugungen der Zielgruppe an.
-- Mindestens einer MUSS **Persönlichkeit** zeigen. Die Zielgruppe muss die Person hinter der Marke spüren.
-- Mindestens einer MUSS direkt auf das Core Offer einzahlen — Content ist Verlängerung des Angebots, kein Kunstprojekt.
-- Max 4-5 Pillars. Weniger ist mehr. Jeder Pillar hat EINEN klaren Job.
+- Erstelle **4-5 Pillars**, genau einer pro Typ (wenn 5 Pillars), oder mindestens je 1× RESULT, PROOF, MECHANISM, BELIEFS (bei 4 Pillars — IDENTITY kann dann in Personal-Story-Subtopics eines anderen Pillars aufgehen).
+- Jeder Pillar MUSS das Feld `offerLink` setzen: wie verbindet er sich konkret zum Core Offer (z.B. 12-Wochen-Programm)? Kein Pillar ist Selbstzweck.
+- BELIEFS-Pillar greift die häufigsten falschen Überzeugungen der Zielgruppe an — explizit nach diesen suchen.
+- Weniger ist mehr. Jeder Pillar hat EINEN klaren Job.
 
 # PART 4: GLAUBENSSATZ-INTEGRATION
 
@@ -49,7 +48,7 @@ Die Analyse hat Glaubenssätze der Zielgruppe identifiziert. Jeder Pillar muss m
 - SubTopics sind KONKRETE Video-Titel — nicht generische Ideen.
 {{themen-spezifizitaet}}
 
-# PART 7: WOCHENPLAN-REGELN (70/20/10)
+# PART 7: WOCHENPLAN-REGELN (70/20/10 + CTA-FUNNEL)
 - **70% Bewährtes**: Themen und Formate die laut Performance-Daten funktionieren.
 - **20% Varianten**: Neue Winkel auf bewährte Themen (andere Hook-Typen, anderes Format).
 - **10% Experimente**: Komplett neue Themen oder Formate die noch nicht getestet wurden.
@@ -58,7 +57,23 @@ Die Analyse hat Glaubenssätze der Zielgruppe identifiziert. Jeder Pillar muss m
 - Jeder Pillar muss mindestens 1x in der Woche vorkommen.
 - Kein gleicher Content-Type an aufeinanderfolgenden Tagen.
 - Jeder Tag braucht eine KURZE Begründung (1 Satz, nicht 3).
-- **MINDESTENS 1x pro Woche ein CTA/Conversion-Post**: Ein Post der EXPLIZIT auf das Angebot verweist. Kein "folge mir für mehr" sondern "so arbeiten wir zusammen" / "Link in Bio" / "DM mir XY". Am besten Freitag — die Woche baut Trust auf, Freitag konvertiert.
+
+## CTA-Funnel-Verteilung (PFLICHT pro Woche)
+Jeder Tag bekommt `ctaType`, `ctaExample` und `funnelStage`:
+- **ctaType="soft"** (Interaktion): Kommentar-Frage, Save, Share. Beispiel: "Welcher Punkt trifft dich am meisten? Schreib's in die Kommentare."
+- **ctaType="lead"** (Funnel-Schritt): DM-Keyword, Call buchen, Webinar-Anmeldung, Link in Bio. Beispiel: "Schreib 'PLAN' in die DMs, ich schick dir den 4-Schritte-Fahrplan."
+- **ctaType="authority"** (Positionierung): Kein direkter CTA, aber Status-Signal ("So arbeite ich mit meinen Programm-Kundinnen").
+- **ctaType="none"**: Reiner Value-Post, bewusst kein CTA.
+
+- **funnelStage="TOF"**: Reach-Content — spricht kalte Zuschauer an. Typisch bei HOT_TAKE und MISTAKES.
+- **funnelStage="MOF"**: Trust-Content — Education, Framework, Story. Warme Zuschauer bewegen sich tiefer.
+- **funnelStage="BOF"**: Entscheidungs-Content — berührt direkt das Angebot (Case, Kundenstimme, "So arbeiten wir").
+
+**Quoten pro Woche (bei 5 Posts):**
+- min. 2× ctaType="lead"
+- min. 2× ctaType="soft"
+- min. 1× funnelStage="BOF"
+- mindestens 1 "lead"-CTA muss direkt zum Core Offer führen (DM-Keyword für Offer, Call für Programm).
 
 # PART 8: BEISPIEL-HOOKS
 Generiere 5 Hook-Vorlagen die exakt zu Nische, Zielgruppe und Core Offer passen. Jeder Hook:

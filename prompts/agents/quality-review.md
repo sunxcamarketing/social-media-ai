@@ -58,6 +58,17 @@ Prüfe jedes Skript auf die drei Gründe warum Zuschauer abschalten:
 2. GELANGWEILT — Gibt es einen Satz der nichts Neues bringt? → Raus oder ersetzen
 3. AUFGEHÖRT ZU GLAUBEN — Fehlt Social Proof oder sind Behauptungen ohne Beweis? → Konkreter machen
 
+# PART 8.5: CTA / FUNNEL CHECK
+Pro Skript bekommst du `ctaType` und `funnelStage`. Prüfe:
+- Passt der geschriebene CTA zum vorgegebenen `ctaType`?
+  - "soft" → Interaktions-Frage, Save, Share, Kommentar. KEIN Verkauf.
+  - "lead" → konkreter Funnel-Schritt (DM-Keyword, Call, Webinar, Link in Bio). MUSS klar in Richtung Core Offer führen.
+  - "authority" → Status-Signal, kein direkter Handlungsaufruf.
+  - "none" → kein CTA erlaubt; falls doch einer da ist → entfernen.
+- Falls `ctaType="lead"`: Gibt es einen klaren Next-Step Richtung Core Offer? Sonst CTA umschreiben.
+- Falls `funnelStage="BOF"`: Wird das Offer/Programm angesprochen oder zumindest gestreift? Sonst körperlich verstärken.
+- Im Feld `weekCoherence` prüfe die Gesamtwoche: Sind mind. 2 "lead"-CTAs dabei? Mind. 2 "soft"? Mind. 1 "BOF"? Wenn nein, in issues dokumentieren.
+
 # PART 9: DEIN PROZESS
 1. Lies jedes Skript und berechne die 5 Virality Scores.
 2. Prüfe die Satzrollen: Hat jeder Satz eine Aufgabe? Gibt es Progressive Value?

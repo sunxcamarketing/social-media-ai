@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useClientsCache } from "@/hooks/use-clients-cache";
+import { useI18n } from "@/lib/i18n";
 
 const SECTION_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -44,6 +45,7 @@ export function AppTopbar() {
   const pathname = usePathname();
   const router = useRouter();
   const clients = useClientsCache();
+  const { lang, toggleLang } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -121,15 +123,25 @@ export function AppTopbar() {
           })}
         </nav>
 
-        {/* Right: Search + User */}
+        {/* Right: Language toggle + Search + User */}
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={toggleLang}
+            title={lang === "de" ? "Switch to English" : "Auf Deutsch wechseln"}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-ocean/[0.08] bg-white/80 text-xs font-medium text-ocean/60 hover:text-ocean hover:border-ocean/[0.15] transition-all"
+          >
+            <span className={lang === "de" ? "text-ocean" : "text-ocean/30"}>DE</span>
+            <span className="text-ocean/20">|</span>
+            <span className={lang === "en" ? "text-ocean" : "text-ocean/30"}>EN</span>
+          </button>
+
+          <button
             onClick={openCmdK}
-            title="Suchen (⌘K)"
+            title={lang === "de" ? "Suchen (⌘K)" : "Search (⌘K)"}
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-ocean/[0.08] bg-white/80 text-xs text-ocean/45 hover:text-ocean hover:border-ocean/[0.15] transition-all"
           >
             <CommandIcon className="h-3 w-3" />
-            <span>Suchen</span>
+            <span>{lang === "de" ? "Suchen" : "Search"}</span>
             <kbd className="ml-1 font-mono text-[10px] bg-ocean/[0.03] rounded border border-ocean/[0.06] px-1">⌘K</kbd>
           </button>
 

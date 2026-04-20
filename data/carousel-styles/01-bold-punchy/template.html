@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>{{CAROUSEL_TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand-primary: #FF3B30;
+      --brand-light:   #FF6B63;
+      --brand-dark:    #CC2F26;
+      --light-bg:      #FAF7F3;
+      --light-border:  #E8E2DA;
+      --dark-bg:       #141414;
+      --text-dark:     #141414;
+      --text-light:    #FAF7F3;
+      --brand-gradient: linear-gradient(165deg, var(--brand-dark) 0%, var(--brand-primary) 50%, var(--brand-light) 100%);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000;
+    }
+
+    section {
+      width: 1080px;
+      height: 1350px;
+      padding: 100px 80px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      position: absolute;
+      top: 40px;
+      left: 80px;
+      right: 80px;
+    }
+
+    .light .header-bar { color: var(--text-dark); }
+    .dark  .header-bar { color: var(--text-light); }
+
+    .slide-content {
+      margin-top: auto;
+      margin-bottom: auto;
+      z-index: 2;
+      position: relative;
+    }
+
+    /* ── SLIDE TYPES ─────────────────────────────── */
+
+    .slide-hook {
+      background: var(--dark-bg);
+      color: var(--text-light);
+      justify-content: center;
+    }
+    .slide-hook .accent-bar {
+      width: 220px;
+      height: 10px;
+      background: var(--brand-primary);
+      margin-bottom: 40px;
+    }
+    .slide-hook h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 96px;
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+    }
+    .slide-hook .subtitle {
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 28px;
+      margin-top: 40px;
+      opacity: 0.75;
+    }
+    .slide-hook .bg-image {
+      position: absolute;
+      inset: 0;
+      object-fit: cover;
+      width: 100%;
+      height: 100%;
+      opacity: 0.25;
+      z-index: 0;
+      filter: grayscale(30%);
+    }
+    .slide-hook::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(20,20,20,0.6) 0%, rgba(20,20,20,0.9) 100%);
+      z-index: 1;
+    }
+    .slide-hook .slide-content { z-index: 2; }
+
+    .slide-problem, .slide-promise, .slide-recap {
+      background: var(--dark-bg);
+      color: var(--text-light);
+    }
+    .slide-problem .label, .slide-promise .label, .slide-value .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--brand-primary);
+      margin-bottom: 32px;
+    }
+    .slide-problem h2, .slide-promise h2, .slide-value h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 64px;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    .slide-problem p, .slide-promise p, .slide-value p {
+      font-size: 24px;
+      line-height: 1.45;
+      font-weight: 400;
+      margin-top: 32px;
+      max-width: 85%;
+      opacity: 0.9;
+    }
+
+    .slide-value {
+      background: var(--light-bg);
+      color: var(--text-dark);
+    }
+    .slide-value .hero-number {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 520px;
+      line-height: 0.85;
+      color: var(--brand-primary);
+      opacity: 0.95;
+      position: absolute;
+      top: 60px;
+      right: 80px;
+      z-index: 0;
+      letter-spacing: -0.08em;
+      -webkit-text-stroke: 2px var(--brand-primary);
+    }
+    .slide-value.dark .hero-number { color: transparent; }
+    .slide-value.light .hero-number { color: transparent; }
+
+    .slide-proof {
+      background: var(--light-bg);
+      color: var(--text-dark);
+      justify-content: center;
+    }
+    .slide-proof .quote-mark {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 180px;
+      color: var(--brand-primary);
+      line-height: 0.5;
+      font-weight: 800;
+    }
+    .slide-proof blockquote {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 56px;
+      line-height: 1.1;
+      margin-top: 20px;
+    }
+    .slide-proof cite {
+      display: block;
+      margin-top: 40px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--brand-dark);
+      font-style: normal;
+    }
+
+    .slide-recap ol {
+      list-style: none;
+      counter-reset: recap;
+      margin-top: 40px;
+    }
+    .slide-recap ol li {
+      counter-increment: recap;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 32px;
+      line-height: 1.25;
+      padding: 20px 0;
+      border-top: 1px solid rgba(250,247,243,0.15);
+      display: flex;
+      gap: 30px;
+    }
+    .slide-recap ol li:last-child { border-bottom: 1px solid rgba(250,247,243,0.15); }
+    .slide-recap ol li::before {
+      content: counter(recap, decimal-leading-zero);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--brand-primary);
+      font-size: 24px;
+      font-weight: 500;
+      min-width: 60px;
+    }
+
+    .slide-cta {
+      background: var(--brand-gradient);
+      color: var(--text-light);
+      justify-content: center;
+      text-align: center;
+      align-items: center;
+    }
+    .slide-cta h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 80px;
+      line-height: 1.0;
+      letter-spacing: -0.02em;
+      max-width: 85%;
+    }
+    .slide-cta .cta-button {
+      display: inline-block;
+      background: var(--light-bg);
+      color: var(--brand-dark);
+      padding: 28px 56px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      margin-top: 60px;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+    .slide-cta .cta-note {
+      margin-top: 40px;
+      font-size: 20px;
+      opacity: 0.85;
+    }
+
+    /* Utility: image side-by-side */
+    .with-image {
+      flex-direction: row;
+      gap: 60px;
+    }
+    .with-image .slide-content { flex: 1; }
+    .with-image .slide-image {
+      flex: 1;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .slide-number {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- GENERATED SLIDES GO HERE.
+       Each slide MUST be a <section class="slide-<TYPE> <light|dark>"> with:
+         - .header-bar containing "@HANDLE" and slide number "NN/MM"
+         - .slide-content wrapper for main content
+       Slide types available: slide-hook, slide-problem, slide-promise, slide-value, slide-proof, slide-recap, slide-cta
+  -->
+
+</body>
+</html>

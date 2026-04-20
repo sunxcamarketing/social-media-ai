@@ -59,6 +59,7 @@ export async function getVoiceProfile(clientId: string): Promise<VoiceProfile | 
 export async function generateVoiceProfile(
   clientId: string,
   clientName: string,
+  lang: "de" | "en" = "de",
 ): Promise<VoiceProfile | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
@@ -71,7 +72,7 @@ export async function generateVoiceProfile(
   // Single batch — fits in one call
   if (trainingScripts.length <= BATCH_SIZE) {
     const transcriptBlock = trainingScripts.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const profile = await extractVoiceProfileSingle(client, clientName, transcriptBlock);
+    const profile = await extractVoiceProfileSingle(client, clientName, transcriptBlock, lang);
     if (profile) await saveVoiceProfile(clientId, profile);
     return profile;
   }
@@ -82,7 +83,7 @@ export async function generateVoiceProfile(
 
   for (const chunk of chunks) {
     const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const partial = await extractVoiceProfileSingle(client, clientName, transcriptBlock);
+    const partial = await extractVoiceProfileSingle(client, clientName, transcriptBlock, lang);
     if (partial) partialProfiles.push(partial);
   }
 
@@ -93,7 +94,7 @@ export async function generateVoiceProfile(
   }
 
   // Merge step — consolidate partial profiles into one
-  const merged = await mergeVoiceProfiles(client, clientName, partialProfiles);
+  const merged = await mergeVoiceProfiles(client, clientName, partialProfiles, lang);
   if (merged) await saveVoiceProfile(clientId, merged);
   return merged;
 }
@@ -102,17 +103,18 @@ async function extractVoiceProfileSingle(
   client: Anthropic,
   clientName: string,
   transcriptBlock: string,
+  lang: "de" | "en" = "de",
 ): Promise<VoiceProfile | null> {
+  const userPrompt = lang === "en"
+    ? `Analyze these transcripts from ${clientName} and produce a voice profile.\n\n${transcriptBlock}`
+    : `Analysiere diese Transkripte von ${clientName} und erstelle ein Stimmprofil.\n\n${transcriptBlock}`;
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2000,
-    system: buildPrompt("voice-profile"),
+    system: buildPrompt("voice-profile", {}, lang),
     tools: [VOICE_PROFILE_TOOL],
     tool_choice: { type: "tool", name: "submit_voice_profile" },
-    messages: [{
-      role: "user",
-      content: `Analysiere diese Transkripte von ${clientName} und erstelle ein Stimmprofil.\n\n${transcriptBlock}`,
-    }],
+    messages: [{ role: "user", content: userPrompt }],
   });
 
   const toolUse = message.content.find(b => b.type === "tool_use");
@@ -124,6 +126,7 @@ async function mergeVoiceProfiles(
   client: Anthropic,
   clientName: string,
   profiles: VoiceProfile[],
+  lang: "de" | "en" = "de",
 ): Promise<VoiceProfile | null> {
   const profileSummaries = profiles.map((p, i) =>
     `--- Batch ${i + 1} ---
@@ -138,18 +141,19 @@ Vermeidet: ${p.avoidedPatterns.join(", ")}
 Beispielsätze: ${p.exampleSentences.map(s => `"${s}"`).join(" | ")}`
   ).join("\n\n");
 
+  const mergeInstruction = lang === "en"
+    ? `\n\nADDITIONAL TASK: You are receiving multiple partial analyses from different batches of transcripts. Consolidate them into ONE final voice profile. Keep the strongest and most characteristic examples. Merge patterns that appear across multiple batches.`
+    : `\n\nZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches von Transkripten. Konsolidiere sie zu EINEM finalen Stimmprofil. Behalte die besten und charakteristischsten Beispiele. Fasse Muster zusammen die in mehreren Batches vorkommen.`;
+  const mergeUser = lang === "en"
+    ? `Consolidate these ${profiles.length} partial analyses of ${clientName} into one final voice profile:\n\n${profileSummaries}`
+    : `Konsolidiere diese ${profiles.length} Teilanalysen von ${clientName} zu einem finalen Stimmprofil:\n\n${profileSummaries}`;
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 2000,
-    system: `${buildPrompt("voice-profile")}
-
-ZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches von Transkripten. Konsolidiere sie zu EINEM finalen Stimmprofil. Behalte die besten und charakteristischsten Beispiele. Fasse Muster zusammen die in mehreren Batches vorkommen.`,
+    system: buildPrompt("voice-profile", {}, lang) + mergeInstruction,
     tools: [VOICE_PROFILE_TOOL],
     tool_choice: { type: "tool", name: "submit_voice_profile" },
-    messages: [{
-      role: "user",
-      content: `Konsolidiere diese ${profiles.length} Teilanalysen von ${clientName} zu einem finalen Stimmprofil:\n\n${profileSummaries}`,
-    }],
+    messages: [{ role: "user", content: mergeUser }],
   });
 
   const toolUse = message.content.find(b => b.type === "tool_use");
@@ -191,6 +195,7 @@ export async function getScriptStructure(clientId: string): Promise<ScriptStruct
 export async function generateScriptStructure(
   clientId: string,
   clientName: string,
+  lang: "de" | "en" = "de",
 ): Promise<ScriptStructureProfile | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
@@ -202,7 +207,7 @@ export async function generateScriptStructure(
 
   if (trainingScripts.length <= BATCH_SIZE) {
     const transcriptBlock = trainingScripts.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const structure = await extractScriptStructureSingle(client, clientName, transcriptBlock);
+    const structure = await extractScriptStructureSingle(client, clientName, transcriptBlock, lang);
     if (structure) await saveScriptStructure(clientId, structure);
     return structure;
   }
@@ -213,7 +218,7 @@ export async function generateScriptStructure(
 
   for (const chunk of chunks) {
     const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const partial = await extractScriptStructureSingle(client, clientName, transcriptBlock);
+    const partial = await extractScriptStructureSingle(client, clientName, transcriptBlock, lang);
     if (partial) partials.push(partial);
   }
 
@@ -223,7 +228,7 @@ export async function generateScriptStructure(
     return partials[0];
   }
 
-  const merged = await mergeScriptStructures(client, clientName, partials);
+  const merged = await mergeScriptStructures(client, clientName, partials, lang);
   if (merged) await saveScriptStructure(clientId, merged);
   return merged;
 }
@@ -232,17 +237,18 @@ async function extractScriptStructureSingle(
   client: Anthropic,
   clientName: string,
   transcriptBlock: string,
+  lang: "de" | "en" = "de",
 ): Promise<ScriptStructureProfile | null> {
+  const userPrompt = lang === "en"
+    ? `Analyze the CONSTRUCTION and STRUCTURE of these scripts from ${clientName}. How are they built? What patterns repeat?\n\n${transcriptBlock}`
+    : `Analysiere den AUFBAU und die STRUKTUR dieser Skripte von ${clientName}. Wie sind sie aufgebaut? Welche Muster wiederholen sich?\n\n${transcriptBlock}`;
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 3000,
-    system: buildPrompt("script-structure"),
+    system: buildPrompt("script-structure", {}, lang),
     tools: [SCRIPT_STRUCTURE_TOOL],
     tool_choice: { type: "tool", name: "submit_script_structure" },
-    messages: [{
-      role: "user",
-      content: `Analysiere den AUFBAU und die STRUKTUR dieser Skripte von ${clientName}. Wie sind sie aufgebaut? Welche Muster wiederholen sich?\n\n${transcriptBlock}`,
-    }],
+    messages: [{ role: "user", content: userPrompt }],
   });
 
   const toolUse = message.content.find(b => b.type === "tool_use");
@@ -254,6 +260,7 @@ async function mergeScriptStructures(
   client: Anthropic,
   clientName: string,
   structures: ScriptStructureProfile[],
+  lang: "de" | "en" = "de",
 ): Promise<ScriptStructureProfile | null> {
   const summaries = structures.map((s, i) =>
     `--- Batch ${i + 1} ---
@@ -267,18 +274,19 @@ CTA-Muster: ${s.ctaPatterns.map(c => `${c.pattern}: "${c.example}"`).join(" | ")
 Regeln: ${s.keyRules.join(" | ")}`
   ).join("\n\n");
 
+  const mergeInstruction = lang === "en"
+    ? `\n\nADDITIONAL TASK: You are receiving multiple partial analyses from different batches. Consolidate them into ONE final structure profile. Prioritize patterns that appear in multiple batches — those are the real habits.`
+    : `\n\nZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches. Konsolidiere sie zu EINEM finalen Struktur-Profil. Priorisiere Muster die in mehreren Batches vorkommen — die sind die echten Gewohnheiten.`;
+  const mergeUser = lang === "en"
+    ? `Consolidate these ${structures.length} partial script-structure analyses of ${clientName} into one final profile:\n\n${summaries}`
+    : `Konsolidiere diese ${structures.length} Teilanalysen der Skript-Struktur von ${clientName} zu einem finalen Profil:\n\n${summaries}`;
   const message = await client.messages.create({
     model: MODEL,
     max_tokens: 3000,
-    system: `${buildPrompt("script-structure")}
-
-ZUSÄTZLICHE AUFGABE: Du bekommst mehrere Teilanalysen aus verschiedenen Batches. Konsolidiere sie zu EINEM finalen Struktur-Profil. Priorisiere Muster die in mehreren Batches vorkommen — die sind die echten Gewohnheiten.`,
+    system: buildPrompt("script-structure", {}, lang) + mergeInstruction,
     tools: [SCRIPT_STRUCTURE_TOOL],
     tool_choice: { type: "tool", name: "submit_script_structure" },
-    messages: [{
-      role: "user",
-      content: `Konsolidiere diese ${structures.length} Teilanalysen der Skript-Struktur von ${clientName} zu einem finalen Profil:\n\n${summaries}`,
-    }],
+    messages: [{ role: "user", content: mergeUser }],
   });
 
   const toolUse = message.content.find(b => b.type === "tool_use");

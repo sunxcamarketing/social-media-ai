@@ -1,10 +1,42 @@
+export type PillarType = "RESULT" | "PROOF" | "MECHANISM" | "BELIEFS" | "IDENTITY";
+
+export interface PillarSubTopic {
+  title: string;
+  angle?: string;
+}
+
+export interface Pillar {
+  name: string;
+  pillarType?: PillarType;       // new in Block D
+  offerLink?: string;             // new in Block D: how does this pillar funnel to coreOffer?
+  purpose?: string;               // legacy field (pre-Block D). Mapped via normalizePillarType().
+  why?: string;
+  subTopics: PillarSubTopic[] | string;
+}
+
+export function normalizePillarType(raw: string | undefined): PillarType | undefined {
+  if (!raw) return undefined;
+  const v = raw.toUpperCase();
+  if (v === "RESULT" || v === "PROOF" || v === "MECHANISM" || v === "BELIEFS" || v === "IDENTITY") return v;
+  // Legacy mapping (pre-Block D)
+  const legacy: Record<string, PillarType> = {
+    "DREAM-OUTCOME": "RESULT",
+    "PROOF": "PROOF",
+    "TIME-SHORTCUT": "MECHANISM",
+    "EFFORT-REDUCTION": "MECHANISM",
+    "PERSONALITY": "IDENTITY",
+    "BELIEF-BREAKING": "BELIEFS",
+  };
+  return legacy[v];
+}
+
 export interface Config {
   id: string;
   configName: string;
   creatorsCategory: string;
   // Strategy
   strategyGoal: string; // "reach" | "trust" | "revenue"
-  strategyPillars: string; // JSON: [{name: string, subTopics: string}]
+  strategyPillars: string; // JSON: Pillar[]
   strategyWeekly: string; // JSON: {_reasoning?: string, Mon: {type: string, format: string, reason?: string}, ...}
   performanceInsights: string; // JSON: PerformanceInsights
   postsPerWeek: string;
@@ -48,9 +80,21 @@ export interface Config {
   igVerified: string;
   igLastUpdated: string;
   voiceProfile: string; // JSON: VoiceProfile
+  voiceOnboarding?: string; // JSON: VoiceOnboarding — structured 8-block interview
+  voiceNotes?: string; // Free-form notes about speaking style
+  voiceExamples?: string; // Example texts in client's voice
   scriptStructure: string; // JSON: ScriptStructureProfile
   googleDriveFolder: string;
   targetPlatforms?: string; // JSON: PlatformId[] e.g. '["instagram","tiktok"]'
+  language?: "de" | "en"; // Drives output language for all generation + agents. Defaults to 'de'.
+  // Visual identity (captured during onboarding)
+  styleVibe?: string; // "minimal" | "bold" | "elegant" | "playful" | "techy"
+  colorPalette?: string; // JSON: { id: string, colors: string[] }
+  fontStyle?: string; // font option id e.g. "inter" | "playfair"
+  customFonts?: string; // JSON: { heading?: string, body?: string } when using custom Google Fonts
+  // Editing / content inspiration (captured during onboarding)
+  inspirationReels?: string; // Newline-separated Reel URLs the client considers well-edited
+  inspirationProfiles?: string; // Newline-separated profile URLs / @handles the client admires
 }
 
 export interface Creator {
@@ -109,6 +153,12 @@ export interface Script {
   source: string;
   shotList: string;
   platform?: string;
+  // Pipeline metadata (Block A–E, 2026-04-17)
+  patternType?: string;   // STORY | HOW_TO | MISTAKES | PROOF | HOT_TAKE
+  postType?: string;      // core | variant | test
+  anchorRef?: string;     // winner this post is anchored to
+  ctaType?: string;       // soft | lead | authority | none
+  funnelStage?: string;   // TOF | MOF | BOF
   createdAt: string;
 }
 
@@ -158,6 +208,62 @@ export interface VoiceProfile {
   slangMarkers: string[];
   exampleSentences: string[];
   summary: string;
+}
+
+// ── Voice Onboarding: structured 8-block interview ──────────────────────────
+// Captured during /clients/new voice step. Each block has an AI-extracted
+// summary + raw quotes from the transcript. Once all blocks are covered a
+// `synthesis` string holds the holistic voice-DNA document that gets fed
+// into script/strategy/chat pipelines as additional context.
+
+export type VoiceBlockId =
+  | "identity"      // 1. Persönlichkeit & Storytelling-DNA
+  | "positioning"   // 2. Positionierung & Autorität
+  | "audience"      // 3. Zielgruppe (wen anziehen / abstoßen)
+  | "beliefs"       // 4. Audience-Beliefs (was glauben sie vorher)
+  | "offer"         // 5. Emotionales Ergebnis (was wird wirklich verkauft)
+  | "feel"          // 6. Content-Feel (Ton, Vibe, Grenzen)
+  | "vision"        // 7. Instagram-Vision & KPIs
+  | "resources";    // 8. Ressourcen & Reality-Check
+
+export interface VoiceBlock {
+  id: VoiceBlockId;
+  status: "pending" | "done";
+  summary: string;        // AI-extracted 1-3 sentence summary of what client said
+  quotes: string[];       // 1-5 raw verbatim quotes from the transcript
+  completedAt?: string;   // ISO timestamp
+}
+
+export interface VoiceOnboarding {
+  blocks: VoiceBlock[];          // always 8 entries, in VOICE_BLOCK_ORDER
+  currentBlockId: VoiceBlockId;  // block the agent is currently working on
+  synthesis: string;             // holistic voice-DNA doc — populated when all 8 done
+  updatedAt: string;             // ISO timestamp
+}
+
+export const VOICE_BLOCK_ORDER: VoiceBlockId[] = [
+  "identity",
+  "positioning",
+  "audience",
+  "beliefs",
+  "offer",
+  "feel",
+  "vision",
+  "resources",
+];
+
+export function emptyVoiceOnboarding(): VoiceOnboarding {
+  return {
+    blocks: VOICE_BLOCK_ORDER.map((id) => ({
+      id,
+      status: "pending",
+      summary: "",
+      quotes: [],
+    })),
+    currentBlockId: "identity",
+    synthesis: "",
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export interface ScriptStructureProfile {

@@ -5,6 +5,18 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 export type Lang = "de" | "en";
 
 const translations: Record<string, { de: string; en: string }> = {
+  // Portal Navigation
+  "portalNav.dashboard": { de: "Dashboard", en: "Dashboard" },
+  "portalNav.scripts": { de: "Skripte", en: "Scripts" },
+  "portalNav.strategy": { de: "Strategie", en: "Strategy" },
+  "portalNav.ideas": { de: "Ideen", en: "Ideas" },
+  "portalNav.audit": { de: "Audit", en: "Audit" },
+  "portalNav.videos": { de: "Videos", en: "Videos" },
+  "portalNav.chat": { de: "Chat", en: "Chat" },
+  "portalNav.voice": { de: "Voice", en: "Voice" },
+  "portalNav.logout": { de: "Abmelden", en: "Log out" },
+  "portal.loading": { de: "Laden...", en: "Loading..." },
+
   // Navigation & Sidebar
   "nav.strategy": { de: "Strategie", en: "Strategy" },
   "nav.new": { de: "Neu", en: "New" },
@@ -558,19 +570,188 @@ const translations: Record<string, { de: string; en: string }> = {
   "vc.p9.desc": { de: "Short Form = EIN Gefühl von Verständnis. Nicht Deep Education.", en: "Short form = ONE feeling of understanding. Not deep education." },
   "vc.p10.title": { de: "5% Intentionality", en: "5% Intentionality" },
   "vc.p10.desc": { de: "Kleine Verbesserungen pro Satz = 10x mehr Views.", en: "Small improvements per sentence = 10x more views." },
+
+  // ── Sidebar ──────────────────────────────────────────────────────────────
+  "sidebar.selectClient": { de: "Client wählen", en: "Select client" },
+  "sidebar.unnamed": { de: "Unbenannt", en: "Unnamed" },
+  "sidebar.profile": { de: "Profil", en: "Profile" },
+  "sidebar.scripts": { de: "Skripte", en: "Scripts" },
+  "sidebar.strategy": { de: "Strategie", en: "Strategy" },
+  "sidebar.ideas": { de: "Ideen", en: "Ideas" },
+  "sidebar.chat": { de: "Chat", en: "Chat" },
+  "sidebar.competitorAnalysis": { de: "Konkurrenz-Analyse", en: "Competitor Analysis" },
+  "sidebar.dashboard": { de: "Dashboard", en: "Dashboard" },
+  "sidebar.impersonate": { de: "Als {{name}} ansehen", en: "View as {{name}}" },
+  "sidebar.delete": { de: "Löschen", en: "Delete" },
+  "sidebar.noClients": { de: "Noch keine Clients", en: "No clients yet" },
+  "sidebar.createNewClient": { de: "Neuen Client anlegen", en: "Create new client" },
+  "sidebar.sectionClient": { de: "Client", en: "Client" },
+  "sidebar.adminConsole": { de: "Admin Konsole", en: "Admin Console" },
+  "sidebar.impersonateFailed": { de: "Impersonate fehlgeschlagen", en: "Impersonate failed" },
+  "sidebar.confirmDelete": { de: "\"{{name}}\" wirklich löschen?", en: "Really delete \"{{name}}\"?" },
+  "sidebar.contentAgent": { de: "Content Agent", en: "Content Agent" },
+  "sidebar.carousel": { de: "Karussell", en: "Carousel" },
+  "sidebar.globalAudit": { de: "Globales Audit", en: "Global Audit" },
+  "sidebar.training": { de: "Training", en: "Training" },
+  "sidebar.transcribe": { de: "Transkribieren", en: "Transcribe" },
+
+  // ── Command Palette ──────────────────────────────────────────────────────
+  "cmdk.openDashboard": { de: "Dashboard öffnen", en: "Open dashboard" },
+  "cmdk.forClient": { de: "Für {{name}}", en: "For {{name}}" },
+  "cmdk.admin": { de: "Admin", en: "Admin" },
+  "cmdk.toAdminConsole": { de: "Zur Admin Konsole", en: "Go to Admin Console" },
+  "cmdk.placeholder": { de: "Springe zu Client, Seite oder Tool...", en: "Jump to client, page or tool..." },
+  "cmdk.noResults": { de: "Nichts gefunden", en: "Nothing found" },
+  "cmdk.groupClients": { de: "Clients", en: "Clients" },
+  "cmdk.groupCurrentClient": { de: "Aktueller Client", en: "Current Client" },
+  "cmdk.groupAdminTools": { de: "Admin & Tools", en: "Admin & Tools" },
+  "cmdk.select": { de: "wählen", en: "select" },
+  "cmdk.open": { de: "öffnen", en: "open" },
+
+  // ── Portal Dashboard ─────────────────────────────────────────────────────
+  "portal.dash.loading": { de: "Laden...", en: "Loading..." },
+  "portal.dash.welcome": { de: "Willkommen", en: "Welcome" },
+  "portal.dash.subtitle": { de: "Dein Content-Dashboard", en: "Your content dashboard" },
+  "portal.dash.scripts": { de: "Skripte", en: "Scripts" },
+  "portal.dash.scriptCount": { de: "{{count}} Skripte erstellt", en: "{{count}} scripts created" },
+  "portal.dash.strategy": { de: "Strategie", en: "Strategy" },
+  "portal.dash.strategyDesc": { de: "Content-Strategie & Wochenplan", en: "Content strategy & weekly plan" },
+  "portal.dash.audit": { de: "Audit", en: "Audit" },
+  "portal.dash.auditAvailable": { de: "Audit verfügbar", en: "Audit available" },
+  "portal.dash.noAudit": { de: "Noch kein Audit", en: "No audit yet" },
+  "portal.dash.videos": { de: "Videos", en: "Videos" },
+  "portal.dash.videoCount": { de: "Analysierte Videos", en: "Analyzed videos" },
+
+  // ── Portal Scripts ───────────────────────────────────────────────────────
+  "portal.scripts.empty": { de: "Noch keine Skripte vorhanden.", en: "No scripts yet." },
+  "portal.scripts.untitled": { de: "Ohne Titel", en: "Untitled" },
+  "portal.scripts.hook": { de: "Hook", en: "Hook" },
+  "portal.scripts.body": { de: "Body", en: "Body" },
+  "portal.scripts.cta": { de: "CTA", en: "CTA" },
+  "portal.scripts.copied": { de: "Kopiert", en: "Copied" },
+  "portal.scripts.copy": { de: "Skript kopieren", en: "Copy script" },
+
+  // ── Portal Strategy ──────────────────────────────────────────────────────
+  "portal.strategy.empty": { de: "Noch keine Strategie erstellt.", en: "No strategy created yet." },
+  "portal.strategy.goal": { de: "Strategisches Ziel", en: "Strategic Goal" },
+  "portal.strategy.pillars": { de: "Content-Pillars", en: "Content Pillars" },
+  "portal.strategy.weeklyPlan": { de: "Wochenplan", en: "Weekly Plan" },
+
+  // ── Portal Audit ─────────────────────────────────────────────────────────
+  "portal.audit.empty": { de: "Noch kein Audit vorhanden.", en: "No audit yet." },
+  "portal.audit.report": { de: "Audit-Bericht", en: "Audit Report" },
+  "portal.audit.createdAt": { de: "Erstellt: {{date}}", en: "Created: {{date}}" },
+  "portal.audit.followers": { de: "Follower", en: "Followers" },
+  "portal.audit.reels30d": { de: "Reels (30d)", en: "Reels (30d)" },
+  "portal.audit.avgViews30d": { de: "⌀ Views (30d)", en: "⌀ Views (30d)" },
+
+  // ── Portal Ideas / Videos / Shell ────────────────────────────────────────
+  "portal.ideas.empty": { de: "Noch keine Ideen. Starte ein Voice-Interview oder nutze den Chat.", en: "No ideas yet. Start a voice interview or use the chat." },
+  "portal.videos.empty": { de: "Noch keine Videos analysiert.", en: "No videos analyzed yet." },
+  "portal.shell.noData": { de: "Noch keine Daten vorhanden.", en: "No data available." },
+  "portal.shell.loading": { de: "Laden...", en: "Loading..." },
+
+  // ── Portal Chat ──────────────────────────────────────────────────────────
+  "portal.chat.suggestion1": { de: "Schreib mir ein Skript", en: "Write me a script" },
+  "portal.chat.suggestion2": { de: "Was sagt mein Audit?", en: "What does my audit say?" },
+  "portal.chat.suggestion3": { de: "Welche Hooks performen gut?", en: "Which hooks perform well?" },
+  "portal.chat.suggestion4": { de: "Was machen meine Konkurrenten?", en: "What are my competitors doing?" },
+  "portal.chat.emptySubtitle": { de: "Frag mich alles zu deinem Content, lass Skripte generieren oder check deine Performance. Du kannst auch PDFs oder Bilder anhängen.", en: "Ask me anything about your content, generate scripts or check your performance. You can also attach PDFs or images." },
+
+  // ── Content Agent Chat (admin + portal shared) ───────────────────────────
+  "chat.title": { de: "Content Agent", en: "Content Agent" },
+  "chat.clearHistory": { de: "Chat leeren", en: "Clear chat" },
+  "chat.emptyTitle": { de: "Chat über {{name}}", en: "Chat about {{name}}" },
+  "chat.emptyTitleDefault": { de: "Wie kann ich dir helfen?", en: "How can I help?" },
+  "chat.emptySubtitle": { de: "Ich habe Zugriff auf Kontext, Audit, Performance & Skripte. Du kannst auch PDFs oder Bilder anhängen.", en: "I have access to context, audit, performance & scripts. You can also attach PDFs or images." },
+  "chat.placeholder": { de: "Frag mich etwas...", en: "Ask me something..." },
+  "chat.placeholderChat": { de: "Nachricht schreiben...", en: "Write a message..." },
+  "chat.errorMsg": { de: "*Fehler: {{error}}*", en: "*Error: {{error}}*" },
+  "chat.connectionError": { de: "*Verbindungsfehler. Bitte nochmal versuchen.*", en: "*Connection error. Please try again.*" },
+  "chat.tools.listClients": { de: "Lade Client-Liste", en: "Loading client list" },
+  "chat.tools.loadClientContext": { de: "Lade Client-Profil", en: "Loading client profile" },
+  "chat.tools.loadVoiceProfile": { de: "Lade Voice Profile", en: "Loading voice profile" },
+  "chat.tools.searchScripts": { de: "Suche Skripte", en: "Searching scripts" },
+  "chat.tools.checkPerformance": { de: "Prüfe Performance", en: "Checking performance" },
+  "chat.tools.loadAudit": { de: "Lade Audit", en: "Loading audit" },
+  "chat.tools.generateScript": { de: "Generiere Skript", en: "Generating script" },
+  "chat.tools.checkCompetitors": { de: "Analysiere Wettbewerber", en: "Analyzing competitors" },
+  "chat.tools.checkLearnings": { de: "Lade Learnings", en: "Loading learnings" },
+  "chat.tools.searchWeb": { de: "Web-Recherche", en: "Web research" },
+  "chat.tools.researchTrends": { de: "Trend-Research", en: "Trend research" },
+  "chat.tools.saveIdea": { de: "Speichere Idee", en: "Saving idea" },
+  "chat.tools.updateProfile": { de: "Aktualisiere Profil", en: "Updating profile" },
+
+  // ── Voice Agent ──────────────────────────────────────────────────────────
+  "voice.you": { de: "Du", en: "You" },
+  "voice.clientRole": { de: "Client", en: "Client" },
+  "voice.agentName": { de: "SUNXCA Agent", en: "SUNXCA Agent" },
+  "voice.agentRole": { de: "KI-Interviewer", en: "AI Interviewer" },
+  "voice.statusReady": { de: "Bereit", en: "Ready" },
+  "voice.statusConnecting": { de: "Verbinde...", en: "Connecting..." },
+  "voice.statusPrep": { de: "Lade Kontext...", en: "Loading context..." },
+  "voice.statusEnding": { de: "Wird beendet...", en: "Ending..." },
+  "voice.statusDone": { de: "Beendet", en: "Done" },
+  "voice.statusActive": { de: "Verbunden", en: "Connected" },
+  "voice.startButton": { de: "Interview starten", en: "Start interview" },
+  "voice.connectingMsg": { de: "Verbinde mit Agent...", en: "Connecting to agent..." },
+  "voice.loadingMsg": { de: "Lade deinen Kontext...", en: "Loading your context..." },
+  "voice.buildingSession": { de: "Session wird aufgebaut.", en: "Setting up session." },
+  "voice.preloadingContext": { de: "Client-Profil, Audit, Performance werden vorgeladen. Der Agent begrüßt dich gleich.", en: "Client profile, audit, performance are being preloaded. The agent will greet you shortly." },
+  "voice.endButton": { de: "Interview beenden", en: "End interview" },
+  "voice.summarizing": { de: "Wird zusammengefasst...", en: "Summarizing..." },
+  "voice.notLoggedIn": { de: "Nicht eingeloggt", en: "Not logged in" },
+  "voice.unauthorized": { de: "Nicht autorisiert", en: "Not authorized" },
+  "voice.connectionFailed": { de: "Verbindung zum Voice-Server fehlgeschlagen", en: "Voice server connection failed" },
+  "voice.serverNotRunning": { de: "Verbindung zum Voice Server fehlgeschlagen. Läuft der Server? (npm run voice-server)", en: "Voice server connection failed. Is the server running? (npm run voice-server)" },
+  "voice.startError": { de: "Fehler beim Starten", en: "Error starting" },
+  "voice.sessionComplete": { de: "Session abgeschlossen", en: "Session complete" },
+  "voice.duration": { de: "{{minutes}} Min. Gespräch", en: "{{minutes}} min conversation" },
+  "voice.ideasSaved": { de: "{{count}} Ideen gespeichert", en: "{{count}} ideas saved" },
+  "voice.savedIdeas": { de: "Gespeicherte Content-Ideen", en: "Saved content ideas" },
+  "voice.showTranscript": { de: "Transkript anzeigen ({{count}} Nachrichten)", en: "Show transcript ({{count}} messages)" },
+  "voice.youLabel": { de: "Du:", en: "You:" },
+  "voice.agentLabel": { de: "Agent:", en: "Agent:" },
+  "voice.restartButton": { de: "Neues Interview starten", en: "Start new interview" },
+  // Onboarding-specific
+  "voice.pauseButton": { de: "Später weitermachen", en: "Finish later" },
+  "voice.progressLabel": { de: "{{done}} von {{total}} Blöcken", en: "{{done}} of {{total}} blocks" },
+  "voice.block.identity": { de: "Identität", en: "Identity" },
+  "voice.block.positioning": { de: "Positionierung", en: "Positioning" },
+  "voice.block.audience": { de: "Zielgruppe", en: "Audience" },
+  "voice.block.beliefs": { de: "Beliefs", en: "Beliefs" },
+  "voice.block.offer": { de: "Angebot", en: "Offer" },
+  "voice.block.feel": { de: "Content-Feel", en: "Content feel" },
+  "voice.block.vision": { de: "Vision", en: "Vision" },
+  "voice.block.resources": { de: "Ressourcen", en: "Resources" },
+  "voice.onboardingComplete": { de: "Onboarding abgeschlossen", en: "Onboarding complete" },
+  "voice.onboardingPartial": { de: "{{done}} von {{total}} Blöcken gespeichert. Du kannst jederzeit im Profil weitermachen.", en: "{{done}} of {{total}} blocks saved. You can continue any time from your profile." },
+  "voice.blocksSaved": { de: "Blöcke erfasst", en: "Blocks captured" },
 };
+
+type Substitutions = Record<string, string | number>;
 
 interface I18nContextType {
   lang: Lang;
   toggleLang: () => void;
-  t: (key: string) => string;
+  setClientLang: (lang: Lang) => void;
+  t: (key: string, subs?: Substitutions) => string;
 }
 
 const I18nContext = createContext<I18nContextType>({
   lang: "de",
   toggleLang: () => {},
+  setClientLang: () => {},
   t: (key: string) => key,
 });
+
+function applySubs(text: string, subs?: Substitutions): string {
+  if (!subs) return text;
+  return text.replace(/\{\{(\w+)\}\}/g, (_m, key) => {
+    const v = subs[key];
+    return v === undefined || v === null ? `{{${key}}}` : String(v);
+  });
+}
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>("de");
@@ -590,17 +771,24 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Precedence: user override (localStorage) > client default > "de".
+  // Only applies client default when user hasn't explicitly set a language.
+  const setClientLang = useCallback((clientLang: Lang) => {
+    const stored = localStorage.getItem("sunxca-lang") as Lang | null;
+    if (!stored) setLang(clientLang);
+  }, []);
+
   const t = useCallback(
-    (key: string) => {
+    (key: string, subs?: Substitutions) => {
       const entry = translations[key];
       if (!entry) return key;
-      return entry[lang];
+      return applySubs(entry[lang], subs);
     },
     [lang]
   );
 
   return (
-    <I18nContext.Provider value={{ lang, toggleLang, t }}>
+    <I18nContext.Provider value={{ lang, toggleLang, setClientLang, t }}>
       {children}
     </I18nContext.Provider>
   );

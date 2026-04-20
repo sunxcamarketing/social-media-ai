@@ -41,11 +41,19 @@ CREATE TABLE configs (
   "igVerified" TEXT DEFAULT '',
   "igLastUpdated" TEXT DEFAULT '',
   "voiceProfile" TEXT DEFAULT '',
+  "voiceOnboarding" TEXT DEFAULT '',
   "scriptStructure" TEXT DEFAULT '',
   "googleDriveFolder" TEXT DEFAULT '',
   "coreOffer" TEXT DEFAULT '',
   "mainGoal" TEXT DEFAULT '',
-  "targetPlatforms" TEXT DEFAULT '["instagram"]'
+  "targetPlatforms" TEXT DEFAULT '["instagram"]',
+  language TEXT DEFAULT 'de',
+  "styleVibe" TEXT DEFAULT '',
+  "colorPalette" TEXT DEFAULT '',
+  "fontStyle" TEXT DEFAULT '',
+  "customFonts" TEXT DEFAULT '',
+  "inspirationReels" TEXT DEFAULT '',
+  "inspirationProfiles" TEXT DEFAULT ''
 );
 
 -- Creators
@@ -94,8 +102,27 @@ CREATE TABLE scripts (
   status TEXT DEFAULT 'entwurf',
   source TEXT DEFAULT '',
   shot_list TEXT DEFAULT '',
+  -- Pipeline metadata (added 2026-04-17)
+  pattern_type TEXT DEFAULT '',  -- STORY | HOW_TO | MISTAKES | PROOF | HOT_TAKE
+  post_type TEXT DEFAULT '',      -- core | variant | test (70/20/10)
+  anchor_ref TEXT DEFAULT '',     -- winner this post is anchored to
+  cta_type TEXT DEFAULT '',       -- soft | lead | authority | none
+  funnel_stage TEXT DEFAULT '',   -- TOF | MOF | BOF
   created_at TEXT
 );
+
+-- Script embeddings for semantic duplicate detection (pgvector, 2026-04-17)
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE IF NOT EXISTS script_embeddings (
+  script_id TEXT PRIMARY KEY REFERENCES scripts(id) ON DELETE CASCADE,
+  client_id TEXT NOT NULL,
+  title     TEXT NOT NULL,
+  embedding vector(768) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_script_embeddings_client ON script_embeddings (client_id);
+CREATE INDEX IF NOT EXISTS idx_script_embeddings_cosine
+  ON script_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 50);
 
 -- Ideas
 CREATE TABLE ideas (
@@ -189,6 +216,39 @@ CREATE POLICY "Service role full access" ON strategy_config FOR ALL USING (true)
 
 ALTER TABLE voice_sessions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role full access" ON voice_sessions FOR ALL USING (true);
+
+ALTER TABLE script_embeddings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON script_embeddings FOR ALL USING (true);
+
+-- Saved carousel runs (2026-04-19) — admin can edit + re-download later
+CREATE TABLE IF NOT EXISTS carousels (
+  id          TEXT PRIMARY KEY,
+  client_id   TEXT NOT NULL REFERENCES configs(id) ON DELETE CASCADE,
+  run_id      TEXT NOT NULL UNIQUE,
+  topic       TEXT NOT NULL DEFAULT '',
+  style_id    TEXT NOT NULL DEFAULT '',
+  handle      TEXT NOT NULL DEFAULT '',
+  slide_count INTEGER NOT NULL DEFAULT 0,
+  meta        JSONB  NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_carousels_client_created ON carousels (client_id, created_at DESC);
+ALTER TABLE carousels ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON carousels FOR ALL USING (true);
+
+-- Pipeline locks (2026-04-17) — prevent double-fire of same client + kind
+CREATE TABLE IF NOT EXISTS pipeline_locks (
+  client_id   TEXT NOT NULL,
+  kind        TEXT NOT NULL,
+  run_id      TEXT NOT NULL,
+  acquired_at TIMESTAMPTZ DEFAULT now(),
+  expires_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (client_id, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_pipeline_locks_expires ON pipeline_locks (expires_at);
+ALTER TABLE pipeline_locks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON pipeline_locks FOR ALL USING (true);
 
 ALTER TABLE client_users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role full access" ON client_users FOR ALL USING (true);

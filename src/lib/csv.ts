@@ -72,6 +72,11 @@ function mapScript(r: Record<string, unknown>): Script {
     status: (r.status as string) || "entwurf",
     source: (r.source as string) || "",
     shotList: (r.shot_list as string) || "",
+    patternType: (r.pattern_type as string) || "",
+    postType: (r.post_type as string) || "",
+    anchorRef: (r.anchor_ref as string) || "",
+    ctaType: (r.cta_type as string) || "",
+    funnelStage: (r.funnel_stage as string) || "",
     createdAt: (r.created_at as string) || "",
   };
 }
@@ -388,11 +393,26 @@ export async function writeScripts(scripts: Script[]) {
     status: s.status,
     source: s.source || "",
     shot_list: s.shotList || "",
+    pattern_type: s.patternType || "",
+    post_type: s.postType || "",
+    anchor_ref: s.anchorRef || "",
+    cta_type: s.ctaType || "",
+    funnel_stage: s.funnelStage || "",
     created_at: s.createdAt || null,
   }));
   const { error } = await supabase.from("scripts").upsert(rows, { onConflict: "id" });
   if (error) throw error;
   invalidate("scripts");
+
+  // Fire-and-forget: persist title embeddings for semantic dup-check.
+  // Safe to fail — the pipeline falls back to in-memory comparison.
+  const embedTargets = scripts
+    .filter(s => s.id && s.clientId && s.title?.trim())
+    .map(s => ({ scriptId: s.id, clientId: s.clientId, title: s.title }));
+  if (embedTargets.length > 0) {
+    const { saveScriptEmbeddings } = await import("@/lib/embeddings");
+    saveScriptEmbeddings(embedTargets).catch(() => {});
+  }
 }
 
 // ── Ideas ────────────────────────────────────────────────────────────────────

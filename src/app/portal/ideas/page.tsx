@@ -4,11 +4,13 @@ import { Lightbulb } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { usePortalData } from "@/hooks/use-portal-data";
 import { PortalShell } from "@/components/portal-shell";
+import { useI18n } from "@/lib/i18n";
 import type { Idea } from "@/lib/types";
 
 const ideasApi = (id: string) => `/api/ideas?clientId=${id}`;
 
 export default function PortalIdeas() {
+  const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
   const { data: ideas, loading } = usePortalData<Idea>(effectiveClientId, ideasApi);
 
@@ -21,7 +23,7 @@ export default function PortalIdeas() {
       subtitle={`${ideas.length} Content-Ideen`}
       loading={authLoading || loading}
       isEmpty={ideas.length === 0}
-      emptyMessage="Noch keine Ideen. Starte ein Voice-Interview oder nutze den Chat."
+      emptyMessage={t("portal.ideas.empty")}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
         {sorted.map((idea) => (

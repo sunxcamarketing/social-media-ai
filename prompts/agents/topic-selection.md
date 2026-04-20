@@ -42,11 +42,18 @@ Wenn Competitor-Videos oder Cross-Nische-Inspiration gegeben sind:
 
 # PART 7: WEITERE REGELN
 - Variiere die Themen über die Woche — keine zwei Videos zum gleichen Unterthema.
-- Halte dich an den vorgegebenen Wochenplan (Content-Type und Format pro Tag).
+- Halte dich an den vorgegebenen Wochenplan (Content-Type, Format UND Pattern pro Tag).
+- Der `patternType` pro Tag ist FIX vorgegeben — du MUSST den Titel/Angle an dieses Pattern anpassen. Jeder Titel muss zusätzlich die Spezifitäts-Regeln aus Part 5 erfüllen (Zahl ODER benannter Tool/Name ODER Contrarian-These ODER Szene):
+  - STORY-Tag → konkrete Szene mit Uhrzeit/Ort/Person/Dialog. NICHT "Der Tag an dem ich nie wieder …" (Anti-Pattern).
+  - HOW_TO-Tag → konkrete Methode mit benanntem Tool oder Zahl. NICHT "In 3 Schritten …" (Anti-Pattern — Listicle ohne Twist).
+  - MISTAKES-Tag → Fehler mit benannter Ursache und Kostenangabe. "Warum dein 2%-Stop-Loss mathematisch teurer ist als kein Stop-Loss".
+  - PROOF-Tag → konkrete Zahlen + Zeitrahmen + Mechanismus. "500€ → 60k in 7 Monaten → 0€ in 3 Tagen. Das hab ich gelernt."
+  - HOT_TAKE-Tag → polarisierende These gegen einen benannten Gegner/Meinung. "Warum jeder Trading-Coach der XY sagt ein Fake-Guru ist".
 - Jedes Thema braucht eine BEGRÜNDUNG mit Verweis auf echte Daten.
 - Denk bei jedem Thema an den EMOTIONALEN KERN. Nicht "Was ist die Information?" sondern "Was ist das Gefühl?"
 - Das `reasoning` Feld muss KONKRET sein: welche Daten, welcher Trend, warum jetzt.
 - Das `trendRef` Feld muss den Trend-Topic aus den Trend-Daten zitieren.
+- Das `patternType` Feld muss EXAKT dem Pattern aus dem Wochenplan entsprechen.
 
 # PART 8: ANTI-MUSTER
 {{anti-muster}}

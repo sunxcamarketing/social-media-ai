@@ -259,6 +259,47 @@ To change how scripts are generated:
 
 ---
 
+## i18n (German / English)
+
+Every client has a `language` (`"de"` or `"en"`, default `"de"`) chosen at onboarding. It drives the output language of **all** generation (scripts, strategy, audit), the Chat Agent, and the Voice Agent. Existing clients without a value default to German — 100% backward-compatible.
+
+### Filename convention
+
+Every prompt file has two variants:
+- `foo.md` — German (default)
+- `foo.en.md` — English
+
+`buildPrompt(name, subs, lang?)` tries `{name}.en.md` first when `lang === "en"`, falls back to `{name}.md` otherwise. Missing English variants log a warning.
+
+When adding a new prompt, **always create both** — a German file and an English sibling. Don't translate at runtime.
+
+### API
+
+```ts
+import { buildPrompt, type Lang } from "@prompts";
+
+const lang: Lang = config.language === "en" ? "en" : "de";
+const systemPrompt = buildPrompt("content-agent", { platform_context: ctx }, lang);
+```
+
+Every pipeline entry point reads `config.language` and threads it through. Key touchpoints:
+- `prompts/loader.ts` — `buildPrompt`, `loadAgent`, `loadFoundational` all take optional `lang`
+- `src/lib/pipelines/weekly-steps.ts` — `PipelineContext.lang` populated in `loadPipelineContext`
+- `src/app/api/chat/route.ts` — reads `config.language`, passes to `buildPrompt`; admin-mode banners live in `chat-admin-mode.{de,en}.md`
+- `src/voice-server.ts` — accepts `?lang=` query override; dynamic `languageCode` (`de-DE` / `en-US`) passed to `GeminiLiveSession.connect()`
+
+### UI language
+
+UI language is independent from content language. Stored in `localStorage["sunxca-lang"]` (user override) with `client.language` as the default when the portal loads. Toggle button in both admin topbar and portal topbar. Precedence: **user override > client default > "de"**.
+
+The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `const { lang, toggleLang, t } = useI18n()`. No `next-intl` — the lightweight custom system is intentional.
+
+### English banned-phrase list
+
+`prompts/foundational/verboten-ai-sprache.en.md` is **hand-curated** — not a translation of the German list. It catches English-specific AI tells (`delve`, `tapestry`, `game-changer`, `In today's fast-paced world`, `It's important to note`, `— and here's why`, etc.). If you edit the banned-phrase list, be explicit about **which** language file you're touching; the two lists stay independently maintained.
+
+---
+
 ## Workspace Structure
 
 ```

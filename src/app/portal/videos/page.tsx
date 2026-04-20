@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Video, ExternalLink } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
+import { useI18n } from "@/lib/i18n";
 
 interface VideoItem {
   id: string;
@@ -18,6 +19,7 @@ interface VideoItem {
 }
 
 export default function PortalVideos() {
+  const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,7 @@ export default function PortalVideos() {
       subtitle={`${videos.length} analysierte Videos`}
       loading={authLoading || loading}
       isEmpty={videos.length === 0}
-      emptyMessage="Noch keine Videos analysiert."
+      emptyMessage={t("portal.videos.empty")}
     >
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {videos.map(video => (

@@ -5,11 +5,13 @@ import { FileText, ChevronDown, Copy, Check } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { usePortalData } from "@/hooks/use-portal-data";
 import { PortalShell } from "@/components/portal-shell";
+import { useI18n } from "@/lib/i18n";
 import type { Script } from "@/lib/types";
 
 const scriptsApi = (id: string) => `/api/scripts?clientId=${id}`;
 
 export default function PortalScripts() {
+  const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
   const { data: scripts, loading } = usePortalData<Script>(effectiveClientId, scriptsApi);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -25,11 +27,11 @@ export default function PortalScripts() {
   return (
     <PortalShell
       icon={FileText}
-      title="Skripte"
-      subtitle={`${scripts.length} Skripte`}
+      title={t("portal.dash.scripts")}
+      subtitle={`${scripts.length} ${t("portal.dash.scripts")}`}
       loading={authLoading || loading}
       isEmpty={scripts.length === 0}
-      emptyMessage="Noch keine Skripte vorhanden."
+      emptyMessage={t("portal.scripts.empty")}
     >
       <div className="space-y-3 stagger">
         {scripts.map(script => {
@@ -41,7 +43,7 @@ export default function PortalScripts() {
                 className="w-full flex items-center justify-between px-5 py-4 text-left"
               >
                 <div>
-                  <h3 className="text-sm font-medium text-ocean">{script.title || "Ohne Titel"}</h3>
+                  <h3 className="text-sm font-medium text-ocean">{script.title || t("portal.scripts.untitled")}</h3>
                   <div className="flex items-center gap-2 mt-1">
                     {script.pillar && (
                       <span className="text-[10px] bg-ocean/[0.04] text-ocean/60 px-2 py-0.5 rounded-md font-medium">{script.pillar}</span>
@@ -60,22 +62,22 @@ export default function PortalScripts() {
               {isExpanded && (
                 <div className="px-5 pb-5 space-y-4 border-t border-ocean/[0.06] pt-4 animate-fade">
                   {script.hook && (
-                    <ScriptSection label="Hook" text={script.hook} />
+                    <ScriptSection label={t("portal.scripts.hook")} text={script.hook} />
                   )}
                   {script.body && (
-                    <ScriptSection label="Body" text={script.body} />
+                    <ScriptSection label={t("portal.scripts.body")} text={script.body} />
                   )}
                   {script.cta && (
-                    <ScriptSection label="CTA" text={script.cta} />
+                    <ScriptSection label={t("portal.scripts.cta")} text={script.cta} />
                   )}
                   <button
                     onClick={() => copyScript(script)}
                     className="flex items-center gap-1.5 text-xs text-ocean/50 hover:text-ocean transition-all btn-press rounded-lg px-2 py-1 -ml-2 hover:bg-ocean/[0.03]"
                   >
                     {copiedId === script.id ? (
-                      <><Check className="h-3 w-3 text-green-500" /> Kopiert</>
+                      <><Check className="h-3 w-3 text-green-500" /> {t("portal.scripts.copied")}</>
                     ) : (
-                      <><Copy className="h-3 w-3" /> Skript kopieren</>
+                      <><Copy className="h-3 w-3" /> {t("portal.scripts.copy")}</>
                     )}
                   </button>
                 </div>

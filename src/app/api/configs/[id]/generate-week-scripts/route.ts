@@ -10,6 +10,7 @@ import {
   reviewQuality,
 } from "@/lib/pipelines/weekly-steps";
 import type { AssembledScript } from "@/lib/pipelines/weekly-steps";
+import { acquirePipelineLock, releasePipelineLock } from "@/lib/pipeline-lock";
 
 export const maxDuration = 300;
 
@@ -18,27 +19,41 @@ export const maxDuration = 300;
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
+  // Acquire per-client lock BEFORE starting the stream.
+  // Max 5 min TTL — pipeline usually finishes in 2-3 min.
+  const lock = await acquirePipelineLock(id, "weekly-scripts", 5);
+  if (!lock.acquired) {
+    return new Response(
+      JSON.stringify({
+        error: "Eine Wochen-Generierung läuft bereits für diesen Client. Bitte warte bis sie durch ist.",
+        holderRunId: lock.holderRunId,
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
         const claude = getAnthropicClient();
 
-        // ── Step 1: Load Context ──────────────────────────────────────
+        // ── Steps 1+2: Context + Voice Profiles (parallel) ──────────
         sendEvent(controller, { step: "context", status: "loading" });
-        const ctx = await loadPipelineContext(id);
-        sendEvent(controller, { step: "context", status: "done" });
-
-        // ── Step 2: Voice Profiles ────────────────────────────────────
         sendEvent(controller, { step: "voice", status: "loading" });
-        const voice = await loadVoiceProfiles(id, ctx.clientName);
+
+        const [ctx, voice] = await Promise.all([
+          loadPipelineContext(id),
+          loadVoiceProfiles(id, ""), // clientName resolved after ctx loads
+        ]);
+        sendEvent(controller, { step: "context", status: "done" });
         sendEvent(controller, {
           step: "voice", status: "done",
           hasVoice: !!voice.voiceProfile, hasStructure: !!voice.scriptStructure,
         });
 
-        // ── Step 2.5: Research ────────────────────────────────────────
+        // ── Step 2.5: Research (needs ctx) ────────────────────────────
         sendEvent(controller, { step: "trends", status: "loading" });
-        const research = await runResearch(id, ctx.config, ctx.clientName, ctx.recentBlock, ctx.platformContext, claude);
+        const research = await runResearch(id, ctx.config, ctx.clientName, ctx.recentBlock, ctx.platformContext, claude, ctx.weekRng, ctx.lang);
         sendEvent(controller, { step: "trends", status: "done", count: research.trendBlock ? 1 : 0 });
 
         // ── Step 3: Topic Selection ───────────────────────────────────
@@ -65,12 +80,22 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
         // ── Step 6: Quality Review ───────────────────────────────────
         sendEvent(controller, { step: "review", status: "loading" });
-        const assembled: AssembledScript[] = topics.map((t, i) => ({
-          day: t.day, pillar: t.pillar, contentType: t.contentType, format: t.format,
-          title: t.title, hook: hooks[i].hook, hookPattern: hooks[i].pattern || "",
-          body: bodies[i].body, cta: bodies[i].cta, reasoning: t.reasoning,
-        }));
-        const { finalScripts, issues } = await reviewQuality(assembled, voice, ctx.platformContext, claude);
+        const assembled: AssembledScript[] = topics.map((t, i) => {
+          const day = ctx.weekSchedule[i];
+          return {
+            day: t.day, pillar: t.pillar, contentType: t.contentType, format: t.format,
+            patternType: t.patternType, postType: t.postType, anchorRef: t.anchorRef,
+            ctaType: day?.ctaType || "soft",
+            funnelStage: day?.funnelStage || "MOF",
+            title: t.title, hook: hooks[i].hook, hookPattern: hooks[i].pattern || "",
+            body: bodies[i].body, cta: bodies[i].cta, reasoning: t.reasoning,
+          };
+        });
+        const { finalScripts, issues } = await reviewQuality(assembled, voice, ctx.platformContext, claude, {
+          maxWords: ctx.maxWords,
+          maxSeconds: ctx.avgDuration,
+          fromAudit: ctx.durationIsAuditOverride,
+        }, ctx.lang);
         sendEvent(controller, { step: "review", status: "done", issueCount: issues.length, issues: issues.slice(0, 10) });
 
         // ── Step 7: Done ─────────────────────────────────────────────
@@ -103,6 +128,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       } catch (err) {
         sendEvent(controller, { step: "error", message: err instanceof Error ? err.message : "Unbekannter Fehler" });
         controller.close();
+      } finally {
+        await releasePipelineLock(lock);
       }
     },
   });

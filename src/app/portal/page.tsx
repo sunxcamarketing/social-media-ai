@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { FileText, BarChart2, Search, Video } from "lucide-react";
 import Link from "next/link";
 import { usePortalClient } from "./use-portal-client";
+import { useI18n } from "@/lib/i18n";
 
 export default function PortalDashboard() {
+  const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
   const [stats, setStats] = useState({ scripts: 0, hasStrategy: false, hasAudit: false, videos: 0 });
   const [clientName, setClientName] = useState("");
@@ -32,23 +34,23 @@ export default function PortalDashboard() {
   }, [effectiveClientId]);
 
   if (authLoading) {
-    return <div className="text-center py-20 text-ocean/50">Laden...</div>;
+    return <div className="text-center py-20 text-ocean/50">{t("portal.dash.loading")}</div>;
   }
 
   const cards = [
-    { title: "Skripte", description: `${stats.scripts} Skripte erstellt`, href: "/portal/scripts", icon: FileText, color: "text-ocean" },
-    { title: "Strategie", description: "Content-Strategie & Wochenplan", href: "/portal/strategy", icon: BarChart2, color: "text-blush-dark" },
-    { title: "Audit", description: stats.hasAudit ? "Audit verfügbar" : "Noch kein Audit", href: "/portal/analyse", icon: Search, color: "text-ocean/60" },
-    { title: "Videos", description: "Analysierte Videos", href: "/portal/videos", icon: Video, color: "text-ivory" },
+    { title: t("portal.dash.scripts"), description: t("portal.dash.scriptCount", { count: stats.scripts }), href: "/portal/scripts", icon: FileText, color: "text-ocean" },
+    { title: t("portal.dash.strategy"), description: t("portal.dash.strategyDesc"), href: "/portal/strategy", icon: BarChart2, color: "text-blush-dark" },
+    { title: t("portal.dash.audit"), description: stats.hasAudit ? t("portal.dash.auditAvailable") : t("portal.dash.noAudit"), href: "/portal/analyse", icon: Search, color: "text-ocean/60" },
+    { title: t("portal.dash.videos"), description: t("portal.dash.videoCount"), href: "/portal/videos", icon: Video, color: "text-ivory" },
   ];
 
   return (
     <div className="space-y-8 animate-in-up">
       <div>
         <h1 className="text-2xl font-light text-ocean">
-          Willkommen{clientName ? `, ${clientName}` : ""}
+          {t("portal.dash.welcome")}{clientName ? `, ${clientName}` : ""}
         </h1>
-        <p className="text-sm text-ocean/50 mt-1">Dein Content-Dashboard</p>
+        <p className="text-sm text-ocean/50 mt-1">{t("portal.dash.subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 stagger">

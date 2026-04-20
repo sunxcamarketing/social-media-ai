@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, User, Phone, PhoneOff, Loader2, Check, Lightbulb } from "lucide-react";
+import { Mic, User, Phone, PhoneOff, Loader2, Check, Lightbulb, PauseCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAudioCapture } from "@/hooks/use-audio-capture";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useI18n } from "@/lib/i18n";
 
 type SessionState = "idle" | "connecting" | "preparing" | "active" | "ending" | "summary";
 
@@ -20,26 +21,55 @@ interface IdeaResult {
 }
 
 interface SessionSummary {
-  ideas: IdeaResult[];
+  ideas?: IdeaResult[];                // content-ideas mode
+  doneCount?: number;                  // onboarding mode
+  total?: number;                      // onboarding mode
+  synthesisGenerated?: boolean;        // onboarding mode
   durationSeconds: number;
   transcriptLength: number;
 }
 
 const VOICE_SERVER_URL = process.env.NEXT_PUBLIC_VOICE_SERVER_URL || "ws://localhost:4001";
 
+const ONBOARDING_BLOCK_IDS = [
+  "identity", "positioning", "audience", "beliefs",
+  "offer", "feel", "vision", "resources",
+] as const;
+type OnboardingBlockId = typeof ONBOARDING_BLOCK_IDS[number];
+
 interface VoiceAgentProps {
   /** If set, passed as clientId query param (admin view). If omitted, the
    *  voice-server resolves the clientId from the authenticated Supabase user. */
   clientIdOverride?: string;
+  /** If set, passed as lang query param — forces agent language. If omitted,
+   *  the voice-server falls back to the client's stored language preference. */
+  lang?: "de" | "en";
+  /** "onboarding" = structured 8-block interview with progress bar.
+   *  "content-ideas" = free-form content interview (default, original behavior). */
+  mode?: "onboarding" | "content-ideas";
+  /** For onboarding mode: which blocks are already done from a previous session. */
+  initialCompletedBlocks?: OnboardingBlockId[];
+  /** Callback after session ends. */
+  onSessionEnd?: () => void;
 }
 
-export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
+export function VoiceAgent({
+  clientIdOverride,
+  lang: langOverride,
+  mode = "content-ideas",
+  initialCompletedBlocks = [],
+  onSessionEnd,
+}: VoiceAgentProps) {
+  const { t } = useI18n();
   const [sessionState, setSessionState] = useState<SessionState>("idle");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [agentSpeaking, setAgentSpeaking] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [completedBlocks, setCompletedBlocks] = useState<Set<OnboardingBlockId>>(
+    () => new Set(initialCompletedBlocks),
+  );
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -141,10 +171,12 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
 
     try {
       const { data: { session } } = await supabaseBrowser.auth.getSession();
-      if (!session?.access_token) throw new Error("Nicht eingeloggt");
+      if (!session?.access_token) throw new Error(t("voice.notLoggedIn"));
 
       const params = new URLSearchParams({ token: session.access_token });
       if (clientIdOverride) params.set("clientId", clientIdOverride);
+      if (langOverride) params.set("lang", langOverride);
+      if (mode === "onboarding") params.set("mode", "onboarding");
       const ws = new WebSocket(`${VOICE_SERVER_URL}?${params.toString()}`);
       wsRef.current = ws;
 
@@ -175,8 +207,14 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
               });
               break;
             case "summary":
+            case "onboarding_summary":
               setSummary(msg);
               setSessionState("summary");
+              break;
+            case "block_progress":
+              if (msg.blockId && ONBOARDING_BLOCK_IDS.includes(msg.blockId)) {
+                setCompletedBlocks((prev) => new Set(prev).add(msg.blockId));
+              }
               break;
             case "interrupted":
               flushAudio();
@@ -190,19 +228,19 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
 
       ws.onclose = (event) => {
         if (sessionState === "active" || sessionState === "connecting" || sessionState === "preparing") {
-          if (event.code === 4003) setError("Nicht autorisiert");
-          else if (event.code === 4005) setError("Verbindung zum Voice-Server fehlgeschlagen");
+          if (event.code === 4003) setError(t("voice.unauthorized"));
+          else if (event.code === 4005) setError(t("voice.connectionFailed"));
           if (!summary) setSessionState("idle");
         }
         stopCapture();
       };
 
       ws.onerror = () => {
-        setError("Verbindung zum Voice Server fehlgeschlagen. Läuft der Server? (npm run voice-server)");
+        setError(t("voice.serverNotRunning"));
         setSessionState("idle");
       };
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Starten");
+      setError(err instanceof Error ? err.message : t("voice.startError"));
       setSessionState("idle");
     }
   };
@@ -226,17 +264,18 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
+    onSessionEnd?.();
   };
 
   const isActive = sessionState === "active" || sessionState === "ending";
   const isLoading = sessionState === "connecting" || sessionState === "preparing";
   const statusLabel =
-    sessionState === "idle" ? "Bereit"
-    : sessionState === "connecting" ? "Verbinde..."
-    : sessionState === "preparing" ? "Lade Kontext..."
-    : sessionState === "ending" ? "Wird beendet..."
-    : sessionState === "summary" ? "Beendet"
-    : "Verbunden";
+    sessionState === "idle" ? t("voice.statusReady")
+    : sessionState === "connecting" ? t("voice.statusConnecting")
+    : sessionState === "preparing" ? t("voice.statusPrep")
+    : sessionState === "ending" ? t("voice.statusEnding")
+    : sessionState === "summary" ? t("voice.statusDone")
+    : t("voice.statusActive");
   const statusDotClass =
     sessionState === "idle" ? "bg-ocean/30"
     : isLoading ? "bg-amber-400 animate-pulse"
@@ -247,29 +286,34 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
     <div className="flex flex-col h-[calc(100vh-12rem)]">
       {sessionState !== "summary" && (
         <>
-          <div className="shrink-0 flex items-center justify-between pb-4 border-b border-ocean/[0.06]">
-            <div className="flex items-center gap-2 text-xs text-ocean/55">
-              <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
-              <span className="font-medium">{statusLabel}</span>
+          <div className="shrink-0 pb-4 border-b border-ocean/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-ocean/55">
+                <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
+                <span className="font-medium">{statusLabel}</span>
+              </div>
+              <div className="text-xs font-mono tabular-nums text-ocean/40">
+                {isActive ? formatTime(elapsedSeconds) : "--:--"}
+              </div>
             </div>
-            <div className="text-xs font-mono tabular-nums text-ocean/40">
-              {isActive ? formatTime(elapsedSeconds) : "--:--"}
-            </div>
+            {mode === "onboarding" && (
+              <OnboardingProgress completed={completedBlocks} t={t} />
+            )}
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center px-4">
             <div className="w-full max-w-2xl grid grid-cols-2 gap-4 mb-10">
               <ParticipantCard
-                name="Du"
-                role="Client"
+                name={t("voice.you")}
+                role={t("voice.clientRole")}
                 icon={<User className="h-7 w-7 text-ocean/40" />}
                 level={isRecording ? audioLevel : 0}
                 speaking={isRecording && audioLevel > 0.08}
                 active={isActive}
               />
               <ParticipantCard
-                name="SUNXCA Agent"
-                role="KI-Interviewer"
+                name={t("voice.agentName")}
+                role={t("voice.agentRole")}
                 icon={<Mic className="h-7 w-7 text-ocean" />}
                 level={agentSpeaking ? 0.6 : 0}
                 speaking={agentSpeaking}
@@ -286,7 +330,7 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
                 className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-ocean text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 btn-press"
               >
                 <Phone className="h-5 w-5" />
-                Interview starten
+                {t("voice.startButton")}
               </motion.button>
             )}
 
@@ -294,31 +338,44 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
               <div className="flex flex-col items-center gap-3">
                 <div className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-ocean/50 text-white font-medium">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  {sessionState === "connecting" ? "Verbinde mit Agent..." : "Lade deinen Kontext..."}
+                  {sessionState === "connecting" ? t("voice.connectingMsg") : t("voice.loadingMsg")}
                 </div>
                 <p className="text-xs text-ocean/45 max-w-sm text-center leading-relaxed">
                   {sessionState === "connecting"
-                    ? "Session wird aufgebaut."
-                    : "Client-Profil, Audit, Performance werden vorgeladen. Der Agent begrüßt dich gleich."}
+                    ? t("voice.buildingSession")
+                    : t("voice.preloadingContext")}
                 </p>
               </div>
             )}
 
             {isActive && (
-              <motion.button
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={endSession}
-                disabled={sessionState === "ending"}
-                className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-red-500 text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 btn-press disabled:opacity-60"
-              >
-                {sessionState === "ending" ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <PhoneOff className="h-5 w-5" />
+              <div className="flex items-center gap-3">
+                {mode === "onboarding" && sessionState === "active" && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={endSession}
+                    className="flex items-center gap-2 px-5 py-3 rounded-2xl border border-ocean/[0.12] text-ocean/70 text-sm font-medium hover:bg-ocean/[0.03] transition-all duration-200 btn-press"
+                  >
+                    <PauseCircle className="h-4 w-4" />
+                    {t("voice.pauseButton")}
+                  </motion.button>
                 )}
-                {sessionState === "ending" ? "Wird zusammengefasst..." : "Interview beenden"}
-              </motion.button>
+                <motion.button
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={endSession}
+                  disabled={sessionState === "ending"}
+                  className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-red-500 text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 btn-press disabled:opacity-60"
+                >
+                  {sessionState === "ending" ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <PhoneOff className="h-5 w-5" />
+                  )}
+                  {sessionState === "ending" ? t("voice.summarizing") : t("voice.endButton")}
+                </motion.button>
+              </div>
             )}
 
             {error && (
@@ -345,7 +402,7 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
                       className="flex items-start gap-2 text-xs leading-relaxed"
                     >
                       <span className={`shrink-0 font-medium ${entry.role === "user" ? "text-ocean" : "text-blush-dark"}`}>
-                        {entry.role === "user" ? "Du:" : "Agent:"}
+                        {entry.role === "user" ? t("voice.youLabel") : t("voice.agentLabel")}
                       </span>
                       <span className="text-ocean/70">{entry.text}</span>
                     </motion.div>
@@ -368,17 +425,24 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
               <div className="h-12 w-12 rounded-2xl bg-green-500/10 flex items-center justify-center mb-3 mx-auto">
                 <Check className="h-6 w-6 text-green-500" />
               </div>
-              <p className="text-lg font-medium text-ocean mb-1">Session abgeschlossen</p>
+              <p className="text-lg font-medium text-ocean mb-1">
+                {mode === "onboarding" && summary.doneCount === summary.total
+                  ? t("voice.onboardingComplete")
+                  : t("voice.sessionComplete")}
+              </p>
               <p className="text-sm text-ocean/45">
-                {Math.floor(summary.durationSeconds / 60)} Min. Gespräch
-                {summary.ideas.length > 0 && ` · ${summary.ideas.length} Ideen gespeichert`}
+                {t("voice.duration", { minutes: Math.floor(summary.durationSeconds / 60) })}
+                {mode === "onboarding" && typeof summary.doneCount === "number" && typeof summary.total === "number" && (
+                  ` · ${t("voice.onboardingPartial", { done: summary.doneCount, total: summary.total })}`
+                )}
+                {mode !== "onboarding" && summary.ideas && summary.ideas.length > 0 && ` · ${t("voice.ideasSaved", { count: summary.ideas.length })}`}
               </p>
             </div>
 
-            {summary.ideas.length > 0 && (
+            {mode !== "onboarding" && summary.ideas && summary.ideas.length > 0 && (
               <div className="space-y-3 mb-8">
                 <p className="text-xs font-medium text-ocean/50 uppercase tracking-wider">
-                  Gespeicherte Content-Ideen
+                  {t("voice.savedIdeas")}
                 </p>
                 {summary.ideas.map((idea, i) => (
                   <motion.div
@@ -410,12 +474,12 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
             {transcript.length > 0 && (
               <details className="mb-6">
                 <summary className="text-xs text-ocean/40 cursor-pointer hover:text-ocean/60 transition-colors">
-                  Transkript anzeigen ({transcript.length} Nachrichten)
+                  {t("voice.showTranscript", { count: transcript.length })}
                 </summary>
                 <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
                   {transcript.map((entry, i) => (
                     <div key={i} className="text-xs text-ocean/50">
-                      <span className="font-medium">{entry.role === "user" ? "Du" : "Agent"}:</span>{" "}
+                      <span className="font-medium">{entry.role === "user" ? t("voice.you") : "Agent"}:</span>{" "}
                       {entry.text}
                     </div>
                   ))}
@@ -428,7 +492,7 @@ export function VoiceAgent({ clientIdOverride }: VoiceAgentProps) {
                 onClick={resetSession}
                 className="px-6 py-2.5 rounded-full bg-ocean text-white text-sm font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200 btn-press"
               >
-                Neues Interview starten
+                {t("voice.restartButton")}
               </button>
             </div>
           </motion.div>
@@ -487,6 +551,44 @@ function ParticipantCard({ name, role, icon, level, speaking, active, primary }:
               }}
               transition={{ duration: 0.12 }}
             />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Onboarding Progress: 8-block indicator for onboarding mode ────────────
+
+interface OnboardingProgressProps {
+  completed: Set<OnboardingBlockId>;
+  t: (key: string, subs?: Record<string, string | number>) => string;
+}
+
+function OnboardingProgress({ completed, t }: OnboardingProgressProps) {
+  const total = ONBOARDING_BLOCK_IDS.length;
+  const doneCount = completed.size;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-ocean/45">
+        <span>{t("voice.progressLabel", { done: doneCount, total })}</span>
+      </div>
+      <div className="flex gap-1.5">
+        {ONBOARDING_BLOCK_IDS.map((blockId) => {
+          const done = completed.has(blockId);
+          return (
+            <div
+              key={blockId}
+              title={t(`voice.block.${blockId}`)}
+              className={`group relative flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                done ? "bg-ocean" : "bg-ocean/15"
+              }`}
+            >
+              <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-ocean/35 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {t(`voice.block.${blockId}`)}
+              </span>
+            </div>
           );
         })}
       </div>

@@ -17,6 +17,7 @@ import {
   Film,
 } from "lucide-react";
 import { useClientsCache } from "@/hooks/use-clients-cache";
+import { useI18n } from "@/lib/i18n";
 
 interface CommandItem {
   id: string;
@@ -51,6 +52,7 @@ export function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname();
   const clients = useClientsCache();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -86,7 +88,7 @@ export function CommandPalette() {
       result.push({
         id: `client-${client.id}`,
         label: name,
-        hint: "Dashboard öffnen",
+        hint: t("cmdk.openDashboard"),
         icon: Film,
         group: "client",
         keywords: [name.toLowerCase(), client.instagram || ""].filter(Boolean),
@@ -101,7 +103,7 @@ export function CommandPalette() {
         result.push({
           id: `tab-${tab.key}`,
           label: tab.label,
-          hint: clientName ? `Für ${clientName}` : "Aktueller Client",
+          hint: clientName ? t("cmdk.forClient", { name: clientName }) : t("cmdk.groupCurrentClient"),
           icon: tab.icon,
           group: "nav",
           run: () => router.push(`/clients/${activeClientId}/${tab.key}`),
@@ -113,7 +115,7 @@ export function CommandPalette() {
       result.push({
         id: `tool-${tool.href}`,
         label: tool.label,
-        hint: "Admin",
+        hint: t("cmdk.admin"),
         icon: tool.icon,
         group: "tool",
         run: () => router.push(tool.href),
@@ -122,14 +124,14 @@ export function CommandPalette() {
 
     result.push({
       id: "settings-admin",
-      label: "Zur Admin Konsole",
+      label: t("cmdk.toAdminConsole"),
       icon: Settings,
       group: "tool",
       run: () => router.push("/admin"),
     });
 
     return result;
-  }, [clients, activeClientId, router]);
+  }, [clients, activeClientId, router, t]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -164,9 +166,9 @@ export function CommandPalette() {
   if (!open) return null;
 
   const groupLabels: Record<CommandItem["group"], string> = {
-    client: "Clients",
-    nav: "Aktueller Client",
-    tool: "Admin & Tools",
+    client: t("cmdk.groupClients"),
+    nav: t("cmdk.groupCurrentClient"),
+    tool: t("cmdk.groupAdminTools"),
   };
 
   const grouped = filtered.reduce<Record<string, CommandItem[]>>((acc, item) => {
@@ -192,7 +194,7 @@ export function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Springe zu Client, Seite oder Tool..."
+            placeholder={t("cmdk.placeholder")}
             className="flex-1 bg-transparent text-sm text-ocean placeholder:text-ocean/30 focus:outline-none"
           />
           <kbd className="text-[10px] font-mono text-ocean/35 bg-ocean/[0.04] rounded px-1.5 py-0.5 border border-ocean/[0.06]">ESC</kbd>
@@ -200,7 +202,7 @@ export function CommandPalette() {
 
         <div className="max-h-[380px] overflow-y-auto py-2">
           {filtered.length === 0 && (
-            <p className="px-5 py-8 text-center text-sm text-ocean/35">Nichts gefunden</p>
+            <p className="px-5 py-8 text-center text-sm text-ocean/35">{t("cmdk.noResults")}</p>
           )}
 
           {(["client", "nav", "tool"] as const).map((group) => {
@@ -241,11 +243,11 @@ export function CommandPalette() {
           <div className="flex items-center gap-3 text-[10px] text-ocean/40">
             <span className="flex items-center gap-1">
               <kbd className="font-mono bg-white border border-ocean/[0.08] rounded px-1 py-0.5">↑↓</kbd>
-              wählen
+              {t("cmdk.select")}
             </span>
             <span className="flex items-center gap-1">
               <kbd className="font-mono bg-white border border-ocean/[0.08] rounded px-1 py-0.5">↵</kbd>
-              öffnen
+              {t("cmdk.open")}
             </span>
           </div>
           <span className="text-[10px] text-ocean/35">SUNXCA</span>

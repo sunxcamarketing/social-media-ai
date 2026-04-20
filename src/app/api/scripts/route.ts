@@ -3,6 +3,7 @@ import { v4 as uuid } from "uuid";
 import { supabase } from "@/lib/supabase";
 import { readScripts, readScriptsByClient } from "@/lib/csv";
 import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
+import { saveScriptEmbedding } from "@/lib/embeddings";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -37,10 +38,19 @@ export async function POST(request: Request) {
     status: body.status || "entwurf",
     source: body.source || "",
     shot_list: body.shotList || "",
+    pattern_type: body.patternType || "",
+    post_type: body.postType || "",
+    anchor_ref: body.anchorRef || "",
+    cta_type: body.ctaType || "",
+    funnel_stage: body.funnelStage || "",
     created_at: new Date().toISOString().split("T")[0],
   };
   const { data, error } = await supabase.from("scripts").insert(row).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Fire-and-forget: persist title embedding for future semantic dup-check
+  if (row.title && row.client_id) {
+    saveScriptEmbedding(row.id, row.client_id, row.title).catch(() => {});
+  }
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -63,6 +73,11 @@ export async function PUT(request: Request) {
   if (rest.status !== undefined) update.status = rest.status;
   if (rest.source !== undefined) update.source = rest.source;
   if (rest.shotList !== undefined) update.shot_list = rest.shotList;
+  if (rest.patternType !== undefined) update.pattern_type = rest.patternType;
+  if (rest.postType !== undefined) update.post_type = rest.postType;
+  if (rest.anchorRef !== undefined) update.anchor_ref = rest.anchorRef;
+  if (rest.ctaType !== undefined) update.cta_type = rest.ctaType;
+  if (rest.funnelStage !== undefined) update.funnel_stage = rest.funnelStage;
 
   const { data, error } = await supabase.from("scripts").update(update).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

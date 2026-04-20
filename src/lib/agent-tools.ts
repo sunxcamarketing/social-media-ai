@@ -18,6 +18,7 @@ import {
   voiceProfileToPromptBlock,
   scriptStructureToPromptBlock,
 } from "./voice-profile";
+import { voiceOnboardingToPromptBlock } from "./voice-onboarding";
 import { buildAllClientSections } from "./client-context";
 import { safeJsonParse } from "./safe-json";
 import { fmt, fmtDuration } from "./format";
@@ -41,11 +42,13 @@ export async function toolLoadClientContext(clientId: string): Promise<string> {
 export async function toolLoadVoiceProfile(clientId: string): Promise<string> {
   const voiceProfile = await getVoiceProfile(clientId);
   const scriptStructure = await getScriptStructure(clientId);
+  const config = await readConfig(clientId);
+  const lang: "de" | "en" = config?.language === "en" ? "en" : "de";
+  const onboardingBlock = await voiceOnboardingToPromptBlock(clientId, lang);
 
   const parts: string[] = [];
 
   if (voiceProfile) {
-    const config = await readConfig(clientId);
     parts.push(voiceProfileToPromptBlock(voiceProfile, config?.name || "der Kunde"));
   } else {
     parts.push("Kein Voice Profile vorhanden. Skripte werden ohne Voice Matching generiert. Empfehlung: Training-Skripte im Portal hochladen.");
@@ -53,6 +56,10 @@ export async function toolLoadVoiceProfile(clientId: string): Promise<string> {
 
   if (scriptStructure) {
     parts.push(scriptStructureToPromptBlock(scriptStructure));
+  }
+
+  if (onboardingBlock) {
+    parts.push(onboardingBlock);
   }
 
   return parts.join("\n\n");
@@ -204,24 +211,120 @@ export async function toolGenerateScript(
   try {
     const result = await runScriptAgent(clientId, input, onProgress);
 
+    const textHookLine = result.textHook ? `[TEXT-HOOK auf Screen]: "${result.textHook}"` : "";
+    const hookPatternLine = result.hookPattern ? `Hook-Muster: ${result.hookPattern}` : "";
+
+    const shortSection = `── KURZ (30-40 Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.shortScript}`;
+    const longSection = `── LANG (60+ Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.longScript}`;
+    const body = `${shortSection}\n\n${longSection}`;
+
+    const scriptId = uuid();
+    const { error: saveError } = await supabase.from("scripts").insert({
+      id: scriptId,
+      client_id: clientId,
+      title: input.title,
+      pillar: input.pillar || "",
+      content_type: input.contentType || "",
+      format: input.format || "",
+      hook: result.shortScript.split("\n\n")[0] || "",
+      hook_pattern: result.hookPattern || "",
+      text_hook: result.textHook || "",
+      body,
+      cta: "",
+      status: "entwurf",
+      source: "chat-agent",
+      shot_list: "",
+      pattern_type: "",
+      post_type: "",
+      anchor_ref: "",
+      cta_type: "",
+      funnel_stage: "",
+      created_at: new Date().toISOString().split("T")[0],
+    });
+
     const header = [
       `SKRIPT: "${input.title}"`,
       input.pillar && `Pillar: ${input.pillar}`,
       input.contentType && `Typ: ${input.contentType}`,
       result.angle && `Winkel: ${result.angle}`,
       result.whyItWorks && `Warum es funktioniert: ${result.whyItWorks}`,
+      saveError
+        ? `Konnte nicht gespeichert werden: ${saveError.message}`
+        : `Gespeichert als Entwurf im Skripte-Tab (id=${scriptId}).`,
     ].filter(Boolean).join("\n");
-
-    const textHookLine = result.textHook ? `[TEXT-HOOK auf Screen]: "${result.textHook}"` : "";
-    const hookPatternLine = result.hookPattern ? `Hook-Muster: ${result.hookPattern}` : "";
-
-    const shortSection = `── KURZ (30-40 Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.shortScript}`;
-    const longSection = `── LANG (60+ Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.longScript}`;
 
     return [header, hookPatternLine, shortSection, longSection].filter(Boolean).join("\n\n");
   } catch (err) {
     return `Skript-Generierung fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`;
   }
+}
+
+// ── Save Script Tool ──────────────────────────────────────────────────────
+// Speichert ein bereits fertig formuliertes Skript direkt in die Skripte-Tabelle.
+// Nutzt der Agent wenn der User einen kompletten Text liefert oder im Chat ein
+// Skript manuell zusammengestellt wurde und es ohne erneute Generierung
+// gespeichert werden soll.
+
+async function toolSaveScript(
+  clientId: string,
+  input: {
+    title: string;
+    short_script?: string;
+    long_script?: string;
+    body?: string;
+    text_hook?: string;
+    hook_pattern?: string;
+    pillar?: string;
+    content_type?: string;
+    format?: string;
+    cta?: string;
+  },
+): Promise<string> {
+  if (!input.title?.trim()) return "Titel fehlt. Gib einen kurzen Titel mit.";
+
+  let body = input.body?.trim() || "";
+  if (!body) {
+    if (!input.short_script && !input.long_script) {
+      return "Skript-Text fehlt. Übergib entweder body oder short_script + long_script.";
+    }
+    const textHookLine = input.text_hook ? `[TEXT-HOOK auf Screen]: "${input.text_hook}"` : "";
+    const parts: string[] = [];
+    if (input.short_script) {
+      parts.push(`── KURZ (30-40 Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${input.short_script.trim()}`);
+    }
+    if (input.long_script) {
+      parts.push(`── LANG (60+ Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${input.long_script.trim()}`);
+    }
+    body = parts.join("\n\n");
+  }
+
+  const firstPara = (input.short_script || input.long_script || body).trim().split(/\n{2,}/)[0] || "";
+
+  const scriptId = uuid();
+  const { error } = await supabase.from("scripts").insert({
+    id: scriptId,
+    client_id: clientId,
+    title: input.title.trim(),
+    pillar: input.pillar || "",
+    content_type: input.content_type || "",
+    format: input.format || "",
+    hook: firstPara,
+    hook_pattern: input.hook_pattern || "",
+    text_hook: input.text_hook || "",
+    body,
+    cta: input.cta || "",
+    status: "entwurf",
+    source: "chat-agent-manual",
+    shot_list: "",
+    pattern_type: "",
+    post_type: "",
+    anchor_ref: "",
+    cta_type: "",
+    funnel_stage: "",
+    created_at: new Date().toISOString().split("T")[0],
+  });
+  if (error) return `Fehler beim Speichern: ${error.message}`;
+  return `Skript gespeichert: "${input.title}" (id=${scriptId}). Zu finden im Skripte-Tab des Clients.`;
 }
 
 // ── check_competitors ──────────────────────────────────────────────────────
@@ -488,6 +591,8 @@ export async function executeAgentTool(
       return toolCheckLearnings(clientId);
     case "save_idea":
       return toolSaveIdea(clientId, toolInput as { title: string; description: string; content_type?: string });
+    case "save_script":
+      return toolSaveScript(clientId, toolInput as Parameters<typeof toolSaveScript>[1]);
     case "update_profile":
       return toolUpdateProfile(clientId, toolInput as { field_name: string; value: string });
     default:

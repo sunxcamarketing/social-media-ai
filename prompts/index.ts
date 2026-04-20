@@ -5,6 +5,7 @@
 
 // Loader
 export { buildPrompt, loadFoundational, loadAgent } from "./loader";
+export type { Lang } from "./loader";
 
 // Tool schemas
 export {
@@ -35,6 +36,7 @@ export {
   AGENT_SEARCH_WEB_TOOL,
   AGENT_RESEARCH_TRENDS_TOOL,
   AGENT_SAVE_IDEA_TOOL,
+  AGENT_SAVE_SCRIPT_TOOL,
   AGENT_UPDATE_PROFILE_TOOL,
   VOICE_AGENT_GEMINI_TOOLS,
 } from "./tools";

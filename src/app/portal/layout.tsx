@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { ClientNav } from "@/components/client-nav";
 import { ImpersonateBanner } from "@/components/impersonate-banner";
 import { NavProgress } from "@/components/nav-progress";
+import { useI18n, type Lang } from "@/lib/i18n";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { setClientLang, t } = useI18n();
   const [clientName, setClientName] = useState("");
   const [impersonating, setImpersonating] = useState<{ clientName: string } | null>(null);
   const [ready, setReady] = useState(false);
@@ -35,17 +37,20 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           .then(r => r.json())
           .then(cfg => {
             setClientName(cfg.configName || cfg.name || "Client");
+            if (cfg.language === "en" || cfg.language === "de") {
+              setClientLang(cfg.language as Lang);
+            }
             setReady(true);
           })
           .catch(() => setReady(true));
       })
       .catch(() => router.push("/login"));
-  }, [router]);
+  }, [router, setClientLang]);
 
   if (!ready) {
     return (
       <div className="min-h-screen bg-warm-white flex items-center justify-center">
-        <div className="text-ocean/40 text-sm">Laden...</div>
+        <div className="text-ocean/40 text-sm">{t("portal.loading")}</div>
       </div>
     );
   }

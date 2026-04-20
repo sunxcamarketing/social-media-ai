@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Plus, Pencil, Trash2, BookOpen, Filter,
-  ChevronDown, ChevronUp, Target, FileText, Lock,
+  ChevronDown, ChevronUp, Target, FileText, Lock, Mic, Sparkles, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,12 +40,13 @@ function formatDate(iso: string, lang: string = "de") {
 }
 
 // ── Tab bar ─────────────────────────────────────────────────────────────────
-type Tab = "scripts" | "types" | "formats";
+type Tab = "scripts" | "voice" | "types" | "formats";
 
 function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   const { t } = useI18n();
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "scripts", label: "Training Scripts", icon: BookOpen },
+    { id: "voice",   label: "Voice-Training",   icon: Mic },
     { id: "types",   label: "Content Types",    icon: Target },
     { id: "formats", label: t("training.contentFormats"),  icon: FileText },
   ];
@@ -368,6 +369,254 @@ function ScriptsTab() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB — Voice-Training (Notizen + Beispieltexte → Auto-Profil)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface VoiceProfileData {
+  summary?: string;
+  tone?: string;
+  energy?: string;
+  avgSentenceLength?: number;
+  favoriteWords?: string[];
+  slangMarkers?: string[];
+  avoidedPatterns?: string[];
+  sentencePatterns?: string;
+  exampleSentences?: string[];
+}
+
+function VoiceTrainingTab() {
+  const [clients, setClients] = useState<Config[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [voiceNotes, setVoiceNotes] = useState("");
+  const [voiceExamples, setVoiceExamples] = useState("");
+  const [profile, setProfile] = useState<VoiceProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingClient, setLoadingClient] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/configs").then(r => r.json()).then((cfgs: Config[]) => {
+      setClients(cfgs);
+      if (cfgs.length > 0) setSelectedId(cfgs[0].id);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    setLoadingClient(true);
+    setError(null);
+    setProfile(null);
+    fetch(`/api/configs/${selectedId}/voice-training`)
+      .then(r => r.json())
+      .then(d => {
+        setVoiceNotes(d.voiceNotes || "");
+        setVoiceExamples(d.voiceExamples || "");
+        if (d.voiceProfile) {
+          try { setProfile(JSON.parse(d.voiceProfile)); } catch { /* not JSON */ }
+        }
+      })
+      .finally(() => setLoadingClient(false));
+  }, [selectedId]);
+
+  const save = async () => {
+    if (!selectedId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/configs/${selectedId}/voice-training`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voiceNotes, voiceExamples }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Speichern fehlgeschlagen");
+      if (data.profile) setProfile(data.profile);
+      else if (!data.profileGenerated) setProfile(null);
+      if (data.error) setError(data.error);
+      setSavedAt(Date.now());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unbekannter Fehler");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const enoughContent = voiceNotes.trim().length > 20 || voiceExamples.trim().length > 50;
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20 text-ocean/60 text-[13px]">Lädt Clients…</div>;
+  }
+  if (clients.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-ocean/[0.02] border border-ocean/[0.06]">
+          <Mic className="h-6 w-6 text-ocean/65" />
+        </div>
+        <p className="text-[14px] font-medium text-ocean/60">Noch keine Clients angelegt</p>
+        <p className="text-[12px] text-ocean/70">Lege zuerst einen Client an, um sein Voice-Profil zu trainieren.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+      {/* Left: Input */}
+      <div className="space-y-5">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-ocean/60">Client</Label>
+          <div className="relative">
+            <select value={selectedId} onChange={e => setSelectedId(e.target.value)}
+              className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
+              {clients.map(c => <option key={c.id} value={c.id}>{c.configName || c.name || "Unbenannt"}</option>)}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-ocean/60">Notizen zum Sprechstil</Label>
+          <Textarea
+            rows={6}
+            placeholder="z.B.: Spricht direkt, ohne Filter. Nutzt oft 'krass' und 'ehrlich gesagt'. Kurze Sätze, dann mal ein langer Gedanke. Kein Smalltalk im Hook."
+            value={voiceNotes}
+            onChange={e => setVoiceNotes(e.target.value)}
+            disabled={loadingClient}
+            className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-y text-[13px]"
+          />
+          <p className="text-[10px] text-ocean/45">Was macht die Stimme aus? Tonalität, typische Wörter, Energielevel, was die Person nie sagen würde.</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-ocean/60">Beispiel-Texte</Label>
+          <Textarea
+            rows={12}
+            placeholder={"Texte die typisch für diese Person sind. WhatsApp-Sprachnachrichten transkribiert, Captions, alte Skripte, Voicenotes…\n\nMehrere Beispiele mit Leerzeile trennen."}
+            value={voiceExamples}
+            onChange={e => setVoiceExamples(e.target.value)}
+            disabled={loadingClient}
+            className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-y text-[13px] font-mono"
+          />
+          <p className="text-[10px] text-ocean/45">Je authentischer und mehr Beispiele, desto besser das Profil.</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={save}
+            disabled={saving || loadingClient || !enoughContent}
+            className="rounded-xl h-10 px-4 bg-ocean hover:bg-ocean-light border-0 gap-1.5 text-[13px]"
+          >
+            {saving ? (
+              <>Generiere Profil…</>
+            ) : (
+              <><Sparkles className="h-3.5 w-3.5" /> Speichern & Profil generieren</>
+            )}
+          </Button>
+          {savedAt && !saving && (
+            <span className="flex items-center gap-1 text-[12px] text-green-600">
+              <Check className="h-3.5 w-3.5" /> Gespeichert
+            </span>
+          )}
+          {!enoughContent && !loadingClient && (
+            <span className="text-[11px] text-ocean/45">Mind. 20 Zeichen Notizen oder 50 Zeichen Beispieltext</span>
+          )}
+        </div>
+        {error && <p className="text-[12px] text-red-500">{error}</p>}
+      </div>
+
+      {/* Right: Profile preview */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/70">Generiertes Profil</p>
+        {!profile ? (
+          <div className="rounded-2xl border border-dashed border-ocean/[0.08] p-6 text-center">
+            <Mic className="h-5 w-5 text-ocean/35 mx-auto mb-2" />
+            <p className="text-[12px] text-ocean/55">
+              {loadingClient ? "Lädt…" : "Noch kein Profil generiert. Fülle Notizen oder Beispiele aus und klicke speichern."}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-ocean/[0.06] bg-white p-5 space-y-4 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
+            {profile.summary && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Zusammenfassung</p>
+                <p className="text-[12px] text-ocean/80 leading-relaxed">{profile.summary}</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              {profile.tone && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Ton</p>
+                  <p className="text-[12px] text-ocean">{profile.tone}</p>
+                </div>
+              )}
+              {profile.energy && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Energie</p>
+                  <p className="text-[12px] text-ocean">{profile.energy}</p>
+                </div>
+              )}
+              {typeof profile.avgSentenceLength === "number" && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Ø Satzlänge</p>
+                  <p className="text-[12px] text-ocean">{profile.avgSentenceLength} Wörter</p>
+                </div>
+              )}
+            </div>
+            {profile.favoriteWords && profile.favoriteWords.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1.5">Lieblingswörter</p>
+                <div className="flex flex-wrap gap-1">
+                  {profile.favoriteWords.map((w, i) => (
+                    <Badge key={i} className="rounded-md text-[10px] bg-blush/15 text-blush-dark border-blush/30 border px-1.5 py-0.5">{w}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {profile.slangMarkers && profile.slangMarkers.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1.5">Slang / Umgangssprache</p>
+                <div className="flex flex-wrap gap-1">
+                  {profile.slangMarkers.map((w, i) => (
+                    <Badge key={i} className="rounded-md text-[10px] bg-ocean/[0.04] text-ocean/70 border-ocean/[0.06] border px-1.5 py-0.5">{w}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {profile.avoidedPatterns && profile.avoidedPatterns.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1.5">Vermeidet</p>
+                <ul className="space-y-0.5">
+                  {profile.avoidedPatterns.map((p, i) => (
+                    <li key={i} className="text-[11px] text-ocean/70 leading-snug">— {p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {profile.sentencePatterns && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Satzbau</p>
+                <p className="text-[11px] text-ocean/70 leading-snug">{profile.sentencePatterns}</p>
+              </div>
+            )}
+            {profile.exampleSentences && profile.exampleSentences.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1.5">Typische Sätze</p>
+                <ul className="space-y-1">
+                  {profile.exampleSentences.map((s, i) => (
+                    <li key={i} className="text-[11px] text-ocean/75 italic leading-snug">&ldquo;{s}&rdquo;</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -795,6 +1044,7 @@ export default function TrainingPage() {
 
       <div>
         {tab === "scripts"  && <ScriptsTab />}
+        {tab === "voice"    && <VoiceTrainingTab />}
         {tab === "types"    && <ContentTypesTab />}
         {tab === "formats"  && <ContentFormatsTab />}
       </div>

@@ -58,6 +58,13 @@ export async function POST(request: Request) {
     voiceProfile: "",
     scriptStructure: "",
     googleDriveFolder: body.googleDriveFolder || "",
+    language: body.language === "en" ? "en" : "de",
+    styleVibe: body.styleVibe || "",
+    colorPalette: body.colorPalette || "",
+    fontStyle: body.fontStyle || "",
+    customFonts: body.customFonts || "",
+    inspirationReels: body.inspirationReels || "",
+    inspirationProfiles: body.inspirationProfiles || "",
   };
   try {
     const { insertConfig } = await import("@/lib/csv");

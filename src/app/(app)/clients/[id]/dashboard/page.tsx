@@ -138,7 +138,7 @@ export default function ClientDashboard() {
 
       {missingFields.length > 0 && (
         <Link
-          href={`/clients/${id}/information`}
+          href={`/clients/${id}/information?followup=1`}
           className="block rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 hover:bg-amber-50/80 transition-colors group"
         >
           <div className="flex items-start gap-3">

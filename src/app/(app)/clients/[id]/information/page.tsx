@@ -34,8 +34,12 @@ import {
   RefreshCw,
   UserCheck,
   Film,
+  Mic,
+  ArrowRight,
 } from "lucide-react";
-import type { Config } from "@/lib/types";
+import type { Config, VoiceOnboarding, VoiceBlockId } from "@/lib/types";
+import { VOICE_BLOCK_ORDER } from "@/lib/types";
+import { VoiceAgent } from "@/components/voice-agent";
 import { safeJsonParse } from "@/lib/safe-json";
 import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
@@ -327,6 +331,18 @@ function ClientInformationContent() {
   const [addInfoLoading, setAddInfoLoading] = useState(false);
   const [addInfoResult, setAddInfoResult] = useState<string | null>(null);
 
+  // Voice onboarding resume dialog
+  const [voiceOnboardingOpen, setVoiceOnboardingOpen] = useState(false);
+  const voiceOnboarding: VoiceOnboarding | null = client?.voiceOnboarding
+    ? safeJsonParse<VoiceOnboarding | null>(client.voiceOnboarding, null)
+    : null;
+  const completedBlockIds: VoiceBlockId[] = voiceOnboarding?.blocks
+    ? voiceOnboarding.blocks.filter((b) => b.status === "done").map((b) => b.id)
+    : [];
+  const voiceDoneCount = completedBlockIds.length;
+  const voiceTotal = VOICE_BLOCK_ORDER.length;
+  const voiceIncomplete = voiceDoneCount < voiceTotal;
+
   // Edit dialog state
   const [basicOpen, setBasicOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -364,12 +380,25 @@ function ClientInformationContent() {
 
   useEffect(() => {
     const isSetup = searchParams.get("setup") === "1";
+    const wantsFollowup = searchParams.get("followup") === "1";
     loadClientCached(id).then((c) => {
       setClient(c);
       if (c.instagram) loadIgProfile();
       if (isSetup && (c.instagram || c.website || c.linkedin || c.tiktok)) {
         setupMode.current = true;
         startEnrich(id);
+        router.replace(`/clients/${id}/information`);
+      } else if (wantsFollowup) {
+        const fqs = getFollowupQuestions(t);
+        const missing = fqs.filter((q) => {
+          const v = c[q.field];
+          return !v || (typeof v === "string" && !v.trim());
+        });
+        if (missing.length > 0) {
+          setMissingFields(missing);
+          setFollowupIndex(0);
+          setFollowupOpen(true);
+        }
         router.replace(`/clients/${id}/information`);
       }
     });
@@ -714,6 +743,44 @@ function ClientInformationContent() {
         </div>
       )}
 
+      {/* Voice Profile Onboarding Card — only when incomplete */}
+      {voiceIncomplete && (
+        <div className="rounded-2xl border border-blush/30 bg-gradient-to-br from-blush-light/40 to-white p-5 flex items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blush/20">
+            <Mic className="h-5 w-5 text-blush-dark" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-ocean mb-0.5">
+              {lang === "en" ? "Voice profile" : "Stimmprofil"}
+              <span className="ml-2 text-xs text-ocean/50">{voiceDoneCount}/{voiceTotal}</span>
+            </p>
+            <p className="text-xs text-ocean/55 leading-relaxed">
+              {lang === "en"
+                ? "Complete the voice interview to deepen your voice DNA. Feeds directly into script generation."
+                : "Schließe das Voice-Interview ab um deine Stimm-DNA zu vertiefen. Fließt direkt in die Skript-Generierung."}
+            </p>
+            <div className="mt-2 flex gap-1">
+              {VOICE_BLOCK_ORDER.map((bid) => (
+                <div
+                  key={bid}
+                  className={`h-1 flex-1 rounded-full ${completedBlockIds.includes(bid) ? "bg-ocean" : "bg-ocean/15"}`}
+                />
+              ))}
+            </div>
+          </div>
+          <Button
+            onClick={() => setVoiceOnboardingOpen(true)}
+            size="sm"
+            className="shrink-0 gap-2 bg-ocean text-white hover:bg-ocean-light"
+          >
+            {voiceDoneCount === 0
+              ? (lang === "en" ? "Start" : "Starten")
+              : (lang === "en" ? "Continue" : "Fortsetzen")}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
       {/* Basic Info */}
       <SectionCard icon={Briefcase} iconColor="text-blush-dark" title={t("info.basicInfo")} onEdit={openBasic} empty={basicEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
@@ -805,6 +872,33 @@ function ClientInformationContent() {
 
       {/* Kundenzugang */}
       <ClientAccessSection clientId={id} />
+
+      {/* -- VOICE ONBOARDING DIALOG -- */}
+      <Dialog open={voiceOnboardingOpen} onOpenChange={setVoiceOnboardingOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] glass-strong border-ocean/5 overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              {lang === "en" ? "Voice profile interview" : "Stimmprofil-Interview"}
+              <span className="ml-3 text-xs font-normal text-ocean/50">{voiceDoneCount}/{voiceTotal}</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            {voiceOnboardingOpen && (
+              <VoiceAgent
+                clientIdOverride={id}
+                lang={lang === "en" ? "en" : "de"}
+                mode="onboarding"
+                initialCompletedBlocks={completedBlockIds}
+                onSessionEnd={() => {
+                  setVoiceOnboardingOpen(false);
+                  // Reload client config to pick up new voice_onboarding state
+                  router.refresh();
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* -- FOLLOW-UP DIALOG -- */}
       {followupOpen && missingFields.length > 0 && (() => {

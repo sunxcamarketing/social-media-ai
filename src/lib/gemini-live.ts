@@ -25,6 +25,8 @@ export interface VoiceSessionConfig {
   clientId: string;
   systemPrompt: string;
   tools: FunctionDeclaration[];
+  languageCode?: string; // e.g. "de-DE" | "en-US". Defaults to "de-DE".
+  voiceName?: string; // Gemini Live prebuilt voice name. Defaults to "Kore".
   onAudioOutput: (audioBase64: string) => void;
   onTranscript: (role: "user" | "model", text: string) => void;
   onToolCall: (name: string, args: Record<string, unknown>) => Promise<string>;
@@ -50,6 +52,9 @@ export class GeminiLiveSession {
 
     const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
+    const languageCode = config.languageCode || "de-DE";
+    const voiceName = config.voiceName || "Kore";
+
     this.session = await ai.live.connect({
       model: "gemini-2.5-flash-native-audio-preview-09-2025",
       config: {
@@ -57,13 +62,13 @@ export class GeminiLiveSession {
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: {
-              voiceName: "Kore",
+              voiceName,
             },
           },
-          languageCode: "de-DE",
+          languageCode,
         },
-        outputAudioTranscription: { languageCodes: ["de-DE"] },
-        inputAudioTranscription: { languageCodes: ["de-DE"] },
+        outputAudioTranscription: {},
+        inputAudioTranscription: {},
         systemInstruction: {
           parts: [{ text: config.systemPrompt }],
         },
