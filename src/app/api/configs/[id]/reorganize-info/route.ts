@@ -69,24 +69,44 @@ export async function POST(
     : "(no voice onboarding data)";
 
   const systemPrompt = lang === "en"
-    ? `You reorganize a creator's quickly-typed profile fields using their voice onboarding material as the source of truth. The form fields were typed in a hurry during an intake call — fragments, typos, half-sentences. Your job is to rewrite each field into a clean, complete, well-phrased value that any team member could read and understand.
+    ? `You clean up a creator's messy profile fields. Two input sources:
 
-Rules:
-(1) PRESERVE the concrete meaning from the original input — do not invent facts.
-(2) Combine scattered bits from form + voice into one coherent value per field.
-(3) Keep values concise: 1 sentence for name/role/location fields; 2-4 sentences for context/belief fields.
-(4) If a field has no meaningful content anywhere, output an empty string "".
-(5) Write in the creator's language (their form input language is ${lang}).
-(6) Do not add marketing fluff. Plain, factual, first-person when natural.`
-    : `Du organisierst die schnell getippten Profil-Felder eines Creators neu, mit dem Voice-Onboarding-Material als Quelle der Wahrheit. Die Form-Felder wurden während eines Intake-Calls schnell getippt — Fragmente, Tippfehler, halbe Sätze. Deine Aufgabe: jedes Feld in einen sauberen, vollständigen, gut formulierten Wert umschreiben.
+(A) FORM FIELDS — typed quickly during an intake call by someone transcribing what the client said. Expect: raw transcript fragments, third-person references ("he constructed our own house"), half-sentences, typos ("Cutstom" instead of "Custom"), fillers ("in a way", "you know"), random capitalization, abrupt topic jumps within one field, filler like "Nice!" or "let's just do it".
 
-Regeln:
-(1) BEWAHRE die konkrete Bedeutung vom Original — erfinde keine Fakten.
-(2) Kombiniere verstreute Teile aus Form + Voice in einen kohärenten Wert pro Feld.
-(3) Halte Werte knapp: 1 Satz für name/role/location; 2-4 Sätze für context/beliefs.
-(4) Wenn ein Feld nirgends sinnvollen Inhalt hat, gib einen leeren String "" aus.
-(5) Schreibe in der Sprache des Creators (Input-Sprache: ${lang}).
-(6) Kein Marketing-Fluff. Klar, faktisch, erste Person wenn natürlich.`;
+(B) VOICE ONBOARDING — the authoritative source. Structured per-block summaries, verbatim client quotes, and a holistic Voice-DNA synthesis. This was analyzed from a real voice interview.
+
+Your job: rewrite each profile field into clean, structured, first-person information that reads like a polished CRM entry. Not marketing copy, not transcript, not fragments.
+
+REWRITE RULES:
+(1) Write in FIRST PERSON whenever the field describes the client themselves ("I design holiday homes…", not "She designs…" or "Designing holiday homes…"). Fields about their OFFER/CUSTOMER stay third-person where natural.
+(2) Fix all typos silently (Cutstom→Custom, Airb B→Airbnb, etc.).
+(3) Prefer voice-onboarding content over form content when they conflict — voice is the source of truth. Merge where complementary.
+(4) Turn transcript fragments into complete sentences. "In a way, he constructed our own house" → "Mein Vater hat unser Haus selbst konzipiert — daher kommt meine Design-Affinität." (or equivalent in target language).
+(5) For context/background/beliefs fields: 3–5 complete sentences. For role/location/company/name: 1 line. For coreOffer/mainGoal: 1–2 crisp sentences.
+(6) Remove all conversational fillers: "Nice!", "let's just do it", "I think", "you know", "actually", "in a way", "means".
+(7) Preserve ALL concrete facts — names, numbers, company names, credentials, places. Never invent anything. If a fact isn't in either source, don't fabricate it.
+(8) If a field has no meaningful content anywhere, output "". Do not pad.
+(9) Target language: ${lang} (use the client's own language — if they spoke German in the interview but some form fields are English, normalize to ${lang}).
+(10) One cohesive paragraph per field — never bullet lists, never numbered items.`
+    : `Du räumst die chaotischen Profil-Felder eines Creators auf. Zwei Input-Quellen:
+
+(A) FORMULAR-FELDER — schnell getippt während eines Intake-Calls, jemand hat mitgeschrieben was der Client gesagt hat. Erwarte: rohe Transkript-Fragmente, dritte Person ("he constructed our own house"), halbe Sätze, Tippfehler ("Cutstom" statt "Custom"), Füllwörter ("in a way", "you know"), zufällige Großschreibung, abrupte Themenwechsel innerhalb eines Felds, Füllwörter wie "Nice!" oder "let's just do it".
+
+(B) VOICE-ONBOARDING — die autoritative Quelle. Strukturierte Block-Zusammenfassungen, wörtliche Client-Zitate, und eine ganzheitliche Voice-DNA-Synthese. Analysiert aus einem echten Voice-Interview.
+
+Deine Aufgabe: Schreibe jedes Profil-Feld sauber und strukturiert neu in **ERSTER PERSON**, so dass es wie ein gepflegter CRM-Eintrag liest. Keine Marketing-Phrasen, kein Transkript, keine Fragmente.
+
+REGELN:
+(1) Schreibe in ERSTER PERSON wenn das Feld den Client selbst beschreibt ("Ich designe Holiday Homes…", nicht "Sie designt…" oder "Designing holiday homes…"). Felder über ANGEBOT/KUNDEN bleiben in dritter Person wo natürlich.
+(2) Korrigiere alle Tippfehler stillschweigend (Cutstom→Custom, Airb B→Airbnb, usw.).
+(3) Bevorzuge Voice-Onboarding-Content über Form-Content bei Konflikt — Voice ist die Wahrheit. Merge bei Ergänzung.
+(4) Verwandle Transkript-Fragmente in vollständige Sätze. "In a way, he constructed our own house" → "Mein Vater hat unser Haus selbst konzipiert — daher kommt meine Design-Affinität."
+(5) Für context/background/beliefs Felder: 3–5 vollständige Sätze. Für role/location/company/name: 1 Zeile. Für coreOffer/mainGoal: 1–2 knackige Sätze.
+(6) Entferne alle Conversational-Füllwörter: "Nice!", "let's just do it", "I think", "you know", "actually", "in a way", "means".
+(7) Bewahre ALLE konkreten Fakten — Namen, Zahlen, Firmennamen, Credentials, Orte. Erfinde NIEMALS etwas. Wenn ein Fakt in keiner Quelle steht, erfinde ihn nicht.
+(8) Wenn ein Feld nirgends sinnvollen Inhalt hat, gib "" aus. Nicht auffüllen.
+(9) Zielsprache: ${lang} (nutze die Sprache des Clients — wenn er deutsch gesprochen hat aber Form-Felder englisch sind, normalisiere auf ${lang}).
+(10) Ein kohärenter Absatz pro Feld — nie Bullet-Lists, nie Nummerierungen.`;
 
   const userContent = `## Current form field values\n${currentFields}\n\n${voiceMaterial}`;
 

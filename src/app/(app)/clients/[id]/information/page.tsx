@@ -879,6 +879,43 @@ function ClientInformationContent() {
         />
       )}
 
+      {/* Reorganize banner — prominent CTA when voice onboarding has enough
+          material to restructure the form-typed fields */}
+      {voiceOnboarding && voiceDoneCount >= 4 && !reorgPreview && (
+        <div className="rounded-2xl bg-gradient-to-br from-blush-light/50 to-white border border-blush/40 p-5 flex items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blush/30">
+            <Sparkles className="h-5 w-5 text-blush-dark" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-ocean mb-0.5">
+              {lang === "en" ? "Clean up profile from interview" : "Profil aus Interview aufräumen"}
+            </p>
+            <p className="text-xs text-ocean/60 leading-relaxed">
+              {lang === "en"
+                ? "The fields below contain raw transcript fragments from the onboarding call. Let AI rewrite them into clean first-person profile entries using the voice interview as source."
+                : "Die Felder unten enthalten rohe Transkript-Fragmente aus dem Onboarding-Call. KI strukturiert sie zu sauberen First-Person-Einträgen basierend auf dem Voice-Interview."}
+            </p>
+          </div>
+          <Button
+            onClick={handleReorganize}
+            disabled={reorganizing}
+            className="shrink-0 gap-2 bg-ocean text-white hover:bg-ocean-light disabled:opacity-60"
+          >
+            {reorganizing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {lang === "en" ? "Analyzing..." : "Analysiere..."}
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                {lang === "en" ? "Clean up now" : "Jetzt aufräumen"}
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
       {/* Basic Info */}
       <SectionCard icon={Briefcase} iconColor="text-blush-dark" title={t("info.basicInfo")} onEdit={openBasic} empty={basicEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
