@@ -40,6 +40,8 @@ import {
 import type { Config, VoiceOnboarding, VoiceBlockId } from "@/lib/types";
 import { VOICE_BLOCK_ORDER } from "@/lib/types";
 import { VoiceAgent } from "@/components/voice-agent";
+import { OnboardingInterviewCard } from "@/components/voice/onboarding-interview-card";
+import { OnboardingInterviewView } from "@/components/voice/onboarding-interview-view";
 import { safeJsonParse } from "@/lib/safe-json";
 import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
@@ -354,7 +356,7 @@ function ClientInformationContent() {
     transcript: Array<{ role: "user" | "model"; text: string; timestamp?: string }>;
   }
   const [voiceSessions, setVoiceSessions] = useState<VoiceSessionEntry[]>([]);
-  const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
+  const [viewingOnboardingOpen, setViewingOnboardingOpen] = useState(false);
   useEffect(() => {
     if (!id) return;
     fetch(`/api/configs/${id}/voice-sessions`)
@@ -362,7 +364,6 @@ function ClientInformationContent() {
       .then((data) => setVoiceSessions(data.sessions || []))
       .catch(() => setVoiceSessions([]));
   }, [id, voiceOnboardingOpen]);
-  const viewingSession = voiceSessions.find((s) => s.id === viewingSessionId) || null;
 
   // Edit dialog state
   const [basicOpen, setBasicOpen] = useState(false);
@@ -867,54 +868,15 @@ function ClientInformationContent() {
         </div>
       )}
 
-      {/* Voice Interview History — list past sessions with transcripts */}
-      {voiceSessions.length > 0 && (
-        <div className="rounded-2xl border border-ocean/[0.06] bg-white p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-ocean/[0.04] flex items-center justify-center">
-                <Mic className="h-4 w-4 text-ocean/60" />
-              </div>
-              <h3 className="text-sm font-medium text-ocean">
-                {lang === "en" ? "Voice Interviews" : "Voice-Interviews"}
-              </h3>
-              <span className="text-xs text-ocean/40">·</span>
-              <span className="text-xs text-ocean/45">{voiceSessions.length}</span>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            {voiceSessions.map((s) => {
-              const mins = Math.floor(s.durationSeconds / 60);
-              const secs = s.durationSeconds % 60;
-              const isFirst = voiceSessions[voiceSessions.length - 1]?.id === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setViewingSessionId(s.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-ocean/[0.03] transition-colors text-left group"
-                >
-                  <div className="h-7 w-7 shrink-0 rounded-lg bg-blush-light/40 flex items-center justify-center text-[10px] font-medium text-blush-dark">
-                    {mins || 0}&prime;
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-sm text-ocean">
-                      <span>{new Date(s.createdAt).toLocaleDateString(lang === "en" ? "en-US" : "de-DE")}</span>
-                      {isFirst && (
-                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-blush/20 text-blush-dark">
-                          {lang === "en" ? "First" : "Erstes"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-ocean/45 mt-0.5">
-                      {mins}:{secs.toString().padStart(2, "0")} · {s.userTurns + s.modelTurns} {lang === "en" ? "exchanges" : "Redebeiträge"} · {(s.totalChars / 1000).toFixed(1)}k chars
-                    </div>
-                  </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-ocean/25 group-hover:text-ocean/60 transition-colors" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* Onboarding Interview — one consolidated card across all sessions,
+          structured by the 8 blocks the agent walks through */}
+      {voiceOnboarding && voiceDoneCount > 0 && (
+        <OnboardingInterviewCard
+          lang={lang}
+          onboarding={voiceOnboarding}
+          sessions={voiceSessions}
+          onOpen={() => setViewingOnboardingOpen(true)}
+        />
       )}
 
       {/* Basic Info */}
@@ -1091,37 +1053,28 @@ function ClientInformationContent() {
         </DialogContent>
       </Dialog>
 
-      {/* -- VOICE TRANSCRIPT VIEWER -- */}
-      <Dialog open={!!viewingSessionId} onOpenChange={(open) => !open && setViewingSessionId(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] glass-strong border-ocean/5 overflow-hidden flex flex-col">
+      {/* -- ONBOARDING INTERVIEW VIEWER -- */}
+      <Dialog open={viewingOnboardingOpen} onOpenChange={setViewingOnboardingOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] glass-strong border-ocean/5 overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               <Mic className="h-4 w-4 text-ocean/60" />
-              {lang === "en" ? "Voice interview transcript" : "Voice-Interview Transkript"}
-              {viewingSession && (
+              {lang === "en" ? "Onboarding Interview" : "Onboarding-Interview"}
+              {voiceOnboarding && (
                 <span className="text-xs font-normal text-ocean/45">
-                  {new Date(viewingSession.createdAt).toLocaleDateString(lang === "en" ? "en-US" : "de-DE")} · {Math.floor(viewingSession.durationSeconds / 60)}:{(viewingSession.durationSeconds % 60).toString().padStart(2, "0")}
+                  {voiceDoneCount}/{voiceTotal} {lang === "en" ? "blocks" : "Blöcke"}
                 </span>
               )}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-            {viewingSession?.transcript.length === 0 && (
-              <p className="text-sm text-ocean/45 text-center py-12">
-                {lang === "en" ? "No transcript available for this session." : "Kein Transkript für diese Session verfügbar."}
-              </p>
+          <div className="flex-1 overflow-y-auto pr-2">
+            {voiceOnboarding && (
+              <OnboardingInterviewView
+                lang={lang}
+                onboarding={voiceOnboarding}
+                sessions={voiceSessions}
+              />
             )}
-            {viewingSession?.transcript.map((entry, i) => (
-              <div
-                key={i}
-                className={`flex gap-3 text-sm leading-relaxed ${entry.role === "user" ? "" : ""}`}
-              >
-                <span className={`shrink-0 font-medium w-14 ${entry.role === "user" ? "text-ocean" : "text-blush-dark"}`}>
-                  {entry.role === "user" ? (lang === "en" ? "Client:" : "Client:") : "Agent:"}
-                </span>
-                <span className="text-ocean/80 flex-1">{entry.text.trim()}</span>
-              </div>
-            ))}
           </div>
         </DialogContent>
       </Dialog>
