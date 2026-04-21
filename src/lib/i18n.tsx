@@ -579,6 +579,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "sidebar.strategy": { de: "Strategie", en: "Strategy" },
   "sidebar.ideas": { de: "Ideen", en: "Ideas" },
   "sidebar.chat": { de: "Chat", en: "Chat" },
+  "sidebar.voice": { de: "Voice Agent", en: "Voice Agent" },
   "sidebar.competitorAnalysis": { de: "Konkurrenz-Analyse", en: "Competitor Analysis" },
   "sidebar.dashboard": { de: "Dashboard", en: "Dashboard" },
   "sidebar.impersonate": { de: "Als {{name}} ansehen", en: "View as {{name}}" },

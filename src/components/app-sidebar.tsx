@@ -41,6 +41,7 @@ const CLIENT_TABS: NavLink[] = [
   { titleKey: "sidebar.strategy", path: "strategy", icon: BarChart2 },
   { titleKey: "sidebar.ideas", path: "ideas", icon: Lightbulb },
   { titleKey: "sidebar.chat", path: "chat", icon: MessageSquare },
+  { titleKey: "sidebar.voice", path: "voice", icon: Mic },
   { titleKey: "sidebar.carousel", path: "carousel", icon: Grid3x3, adminOnly: true },
   { titleKey: "sidebar.competitorAnalysis", path: "competitors", icon: Video },
 ];

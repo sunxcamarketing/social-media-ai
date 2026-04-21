@@ -413,7 +413,10 @@ async function saveVoiceSession(
   await supabase.from("voice_sessions").insert({
     id,
     client_id: clientId,
-    transcript: JSON.stringify(transcript),
+    // voice_sessions.transcript is JSONB — pass the array directly. Legacy rows
+    // written with JSON.stringify are stored as strings and must be parsed on
+    // read (see /api/configs/[id]/voice-sessions for the compat logic).
+    transcript,
     ideas_generated: ideasGenerated,
     duration_seconds: durationSeconds,
     created_at: new Date().toISOString().split("T")[0],

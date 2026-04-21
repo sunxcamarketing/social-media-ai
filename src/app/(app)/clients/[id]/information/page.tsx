@@ -343,6 +343,27 @@ function ClientInformationContent() {
   const voiceTotal = VOICE_BLOCK_ORDER.length;
   const voiceIncomplete = voiceDoneCount < voiceTotal;
 
+  // Voice session history + transcript viewer
+  interface VoiceSessionEntry {
+    id: string;
+    createdAt: string;
+    durationSeconds: number;
+    userTurns: number;
+    modelTurns: number;
+    totalChars: number;
+    transcript: Array<{ role: "user" | "model"; text: string; timestamp?: string }>;
+  }
+  const [voiceSessions, setVoiceSessions] = useState<VoiceSessionEntry[]>([]);
+  const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/configs/${id}/voice-sessions`)
+      .then((r) => r.json())
+      .then((data) => setVoiceSessions(data.sessions || []))
+      .catch(() => setVoiceSessions([]));
+  }, [id, voiceOnboardingOpen]);
+  const viewingSession = voiceSessions.find((s) => s.id === viewingSessionId) || null;
+
   // Edit dialog state
   const [basicOpen, setBasicOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -442,6 +463,57 @@ function ClientInformationContent() {
   };
 
   const handleAutoFill = () => startEnrich(id);
+
+  // Reorganize: Claude rewrites messy form fields using voice onboarding data
+  interface ReorgPreviewItem { field: string; before: string; after: string; changed: boolean }
+  const [reorganizing, setReorganizing] = useState(false);
+  const [reorgPreview, setReorgPreview] = useState<ReorgPreviewItem[] | null>(null);
+  const [reorgSelected, setReorgSelected] = useState<Set<string>>(new Set());
+  const [reorgApplying, setReorgApplying] = useState(false);
+  const [reorgError, setReorgError] = useState<string | null>(null);
+
+  const handleReorganize = async () => {
+    setReorganizing(true);
+    setReorgError(null);
+    try {
+      const res = await fetch(`/api/configs/${id}/reorganize-info`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Reorganize failed");
+      }
+      const data = await res.json();
+      const items: ReorgPreviewItem[] = Array.isArray(data.preview) ? data.preview : [];
+      setReorgPreview(items);
+      setReorgSelected(new Set(items.filter((p) => p.changed).map((p) => p.field)));
+    } catch (err) {
+      setReorgError(err instanceof Error ? err.message : "Reorganize failed");
+    } finally {
+      setReorganizing(false);
+    }
+  };
+
+  const applyReorg = async () => {
+    if (!reorgPreview) return;
+    const apply: Record<string, string> = {};
+    for (const p of reorgPreview) if (reorgSelected.has(p.field)) apply[p.field] = p.after;
+    if (Object.keys(apply).length === 0) return;
+    setReorgApplying(true);
+    try {
+      const res = await fetch(`/api/configs/${id}/reorganize-info`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apply }),
+      });
+      if (!res.ok) throw new Error("Apply failed");
+      setReorgPreview(null);
+      invalidateClient(id);
+      await loadClient().then(setClient);
+    } catch (err) {
+      setReorgError(err instanceof Error ? err.message : "Apply failed");
+    } finally {
+      setReorgApplying(false);
+    }
+  };
 
   const handleAddInfo = async () => {
     if (!addInfoText.trim()) return;
@@ -615,6 +687,20 @@ function ClientInformationContent() {
           <Button
             variant="ghost"
             size="sm"
+            onClick={handleReorganize}
+            disabled={reorganizing}
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean/70 hover:text-ocean disabled:opacity-40"
+            title={lang === "en" ? "Reorganize profile using voice onboarding data" : "Profil mit Voice-Onboarding-Daten neu strukturieren"}
+          >
+            {reorganizing ? (
+              <><Loader2 className="h-3 w-3 animate-spin" /> {lang === "en" ? "Reorganizing..." : "Strukturiere..."}</>
+            ) : (
+              <><Sparkles className="h-3 w-3" /> {lang === "en" ? "Reorganize" : "Neu strukturieren"}</>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleAutoFill}
             disabled={enriching || (!client.instagram && !client.website && !client.linkedin && !client.tiktok && !client.youtube)}
             className="h-8 gap-1.5 rounded-lg px-3 text-xs text-blush-dark hover:text-blush-dark hover:bg-blush/20 disabled:opacity-40"
@@ -781,6 +867,56 @@ function ClientInformationContent() {
         </div>
       )}
 
+      {/* Voice Interview History — list past sessions with transcripts */}
+      {voiceSessions.length > 0 && (
+        <div className="rounded-2xl border border-ocean/[0.06] bg-white p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-ocean/[0.04] flex items-center justify-center">
+                <Mic className="h-4 w-4 text-ocean/60" />
+              </div>
+              <h3 className="text-sm font-medium text-ocean">
+                {lang === "en" ? "Voice Interviews" : "Voice-Interviews"}
+              </h3>
+              <span className="text-xs text-ocean/40">·</span>
+              <span className="text-xs text-ocean/45">{voiceSessions.length}</span>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {voiceSessions.map((s) => {
+              const mins = Math.floor(s.durationSeconds / 60);
+              const secs = s.durationSeconds % 60;
+              const isFirst = voiceSessions[voiceSessions.length - 1]?.id === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setViewingSessionId(s.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-ocean/[0.03] transition-colors text-left group"
+                >
+                  <div className="h-7 w-7 shrink-0 rounded-lg bg-blush-light/40 flex items-center justify-center text-[10px] font-medium text-blush-dark">
+                    {mins || 0}&prime;
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-sm text-ocean">
+                      <span>{new Date(s.createdAt).toLocaleDateString(lang === "en" ? "en-US" : "de-DE")}</span>
+                      {isFirst && (
+                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-blush/20 text-blush-dark">
+                          {lang === "en" ? "First" : "Erstes"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-ocean/45 mt-0.5">
+                      {mins}:{secs.toString().padStart(2, "0")} · {s.userTurns + s.modelTurns} {lang === "en" ? "exchanges" : "Redebeiträge"} · {(s.totalChars / 1000).toFixed(1)}k chars
+                    </div>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-ocean/25 group-hover:text-ocean/60 transition-colors" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Basic Info */}
       <SectionCard icon={Briefcase} iconColor="text-blush-dark" title={t("info.basicInfo")} onEdit={openBasic} empty={basicEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
@@ -872,6 +1008,123 @@ function ClientInformationContent() {
 
       {/* Kundenzugang */}
       <ClientAccessSection clientId={id} />
+
+      {/* -- REORGANIZE PREVIEW -- */}
+      <Dialog open={!!reorgPreview} onOpenChange={(open) => !open && setReorgPreview(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] glass-strong border-ocean/5 overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Sparkles className="h-4 w-4 text-blush-dark" />
+              {lang === "en" ? "Reorganize profile" : "Profil neu strukturieren"}
+              {reorgPreview && (
+                <span className="text-xs font-normal text-ocean/45">
+                  {reorgPreview.filter((p) => p.changed).length} {lang === "en" ? "changes proposed" : "Änderungen vorgeschlagen"}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+            {reorgError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">{reorgError}</div>
+            )}
+            {(reorgPreview || []).filter((p) => p.changed).length === 0 && (
+              <p className="text-sm text-ocean/45 text-center py-8">
+                {lang === "en" ? "No changes — your fields are already clean." : "Keine Änderungen — deine Felder sind schon sauber."}
+              </p>
+            )}
+            {(reorgPreview || []).filter((p) => p.changed).map((p) => {
+              const checked = reorgSelected.has(p.field);
+              return (
+                <label
+                  key={p.field}
+                  className={`flex items-start gap-3 bg-white rounded-2xl border p-4 cursor-pointer transition-all ${
+                    checked ? "border-ocean/30 shadow-[0_2px_10px_rgba(32,35,69,0.06)]" : "border-ocean/[0.06] hover:border-ocean/15"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setReorgSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(p.field)) next.delete(p.field); else next.add(p.field);
+                        return next;
+                      });
+                    }}
+                    className="mt-1 h-4 w-4 rounded border-ocean/20 text-ocean focus:ring-ocean/30"
+                  />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <p className="text-[10px] uppercase tracking-wider text-ocean/45">{p.field}</p>
+                    {p.before && (
+                      <div className="text-xs text-ocean/40 line-through leading-relaxed">{p.before}</div>
+                    )}
+                    <div className="text-sm text-ocean leading-relaxed">{p.after}</div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          {reorgPreview && reorgPreview.filter((p) => p.changed).length > 0 && (
+            <div className="shrink-0 flex items-center justify-between pt-4 border-t border-ocean/[0.06]">
+              <span className="text-xs text-ocean/50">
+                {reorgSelected.size} {lang === "en" ? "selected" : "ausgewählt"}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setReorgPreview(null)} disabled={reorgApplying}>
+                  {lang === "en" ? "Cancel" : "Abbrechen"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={applyReorg}
+                  disabled={reorgSelected.size === 0 || reorgApplying}
+                  className="bg-ocean text-white hover:bg-ocean-light"
+                >
+                  {reorgApplying ? (
+                    <><Loader2 className="h-3 w-3 animate-spin mr-2" /> {lang === "en" ? "Applying..." : "Übernehme..."}</>
+                  ) : (
+                    lang === "en" ? `Apply ${reorgSelected.size}` : `${reorgSelected.size} übernehmen`
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* -- VOICE TRANSCRIPT VIEWER -- */}
+      <Dialog open={!!viewingSessionId} onOpenChange={(open) => !open && setViewingSessionId(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] glass-strong border-ocean/5 overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Mic className="h-4 w-4 text-ocean/60" />
+              {lang === "en" ? "Voice interview transcript" : "Voice-Interview Transkript"}
+              {viewingSession && (
+                <span className="text-xs font-normal text-ocean/45">
+                  {new Date(viewingSession.createdAt).toLocaleDateString(lang === "en" ? "en-US" : "de-DE")} · {Math.floor(viewingSession.durationSeconds / 60)}:{(viewingSession.durationSeconds % 60).toString().padStart(2, "0")}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+            {viewingSession?.transcript.length === 0 && (
+              <p className="text-sm text-ocean/45 text-center py-12">
+                {lang === "en" ? "No transcript available for this session." : "Kein Transkript für diese Session verfügbar."}
+              </p>
+            )}
+            {viewingSession?.transcript.map((entry, i) => (
+              <div
+                key={i}
+                className={`flex gap-3 text-sm leading-relaxed ${entry.role === "user" ? "" : ""}`}
+              >
+                <span className={`shrink-0 font-medium w-14 ${entry.role === "user" ? "text-ocean" : "text-blush-dark"}`}>
+                  {entry.role === "user" ? (lang === "en" ? "Client:" : "Client:") : "Agent:"}
+                </span>
+                <span className="text-ocean/80 flex-1">{entry.text.trim()}</span>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* -- VOICE ONBOARDING DIALOG -- */}
       <Dialog open={voiceOnboardingOpen} onOpenChange={setVoiceOnboardingOpen}>
