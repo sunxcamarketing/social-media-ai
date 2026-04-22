@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Lightbulb } from "lucide-react";
 import type { Idea } from "@/lib/types";
-import { ContentAgentChat } from "@/components/content-agent-chat";
+import { DevelopIdeaDialog } from "@/components/develop-idea-dialog";
 
 const CONTENT_TYPES = [
   "Face-to-camera",
@@ -278,39 +278,22 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
         )}
       </div>
 
-      <Dialog open={!!chatIdea} onOpenChange={(open) => { if (!open) setChatIdea(null); }}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 glass-strong rounded-2xl border-ocean/[0.06] overflow-hidden flex flex-col">
-          <DialogHeader className="px-5 pt-5 pb-3 border-b border-ocean/[0.06] shrink-0">
-            <DialogTitle className="flex items-start gap-2 text-left">
-              <Lightbulb className="h-4 w-4 text-blush-dark mt-1 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold leading-snug break-words">{chatIdea?.title}</p>
-                {chatIdea?.description && (
-                  <p className="text-xs text-ocean/60 leading-relaxed mt-1 font-normal line-clamp-2 break-words">
-                    {chatIdea.description}
-                  </p>
-                )}
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0">
-            {chatIdea && (
-              <ContentAgentChat
-                key={chatIdea.id}
-                clientId={clientId}
-                layout="embedded"
-                title="Content Agent"
-                initialUserMessage={buildChatSeed(chatIdea)}
-                onScriptSaved={async () => {
-                  const ideaId = chatIdea.id;
-                  setIdeas((prev) => prev.filter((i) => i.id !== ideaId));
-                  await fetch(`/api/ideas?id=${ideaId}`, { method: "DELETE" }).catch(() => {});
-                }}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {chatIdea && (
+        <DevelopIdeaDialog
+          open={!!chatIdea}
+          onClose={() => setChatIdea(null)}
+          clientId={clientId}
+          title={chatIdea.title}
+          subtitle={chatIdea.description}
+          seedMessage={buildChatSeed(chatIdea)}
+          dialogKey={chatIdea.id}
+          onScriptSaved={async () => {
+            const ideaId = chatIdea.id;
+            setIdeas((prev) => prev.filter((i) => i.id !== ideaId));
+            await fetch(`/api/ideas?id=${ideaId}`, { method: "DELETE" }).catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 }

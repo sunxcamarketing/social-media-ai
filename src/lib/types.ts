@@ -159,6 +159,10 @@ export interface Script {
   anchorRef?: string;     // winner this post is anchored to
   ctaType?: string;       // soft | lead | authority | none
   funnelStage?: string;   // TOF | MOF | BOF
+  // Client-facing feedback (2026-04-22)
+  clientFeedbackStatus?: "approved" | "rejected" | "revision_requested" | null;
+  clientFeedbackText?: string | null;
+  clientFeedbackAt?: string | null;
   createdAt: string;
 }
 

@@ -24,8 +24,6 @@ import { safeJsonParse } from "./safe-json";
 import { fmt, fmtDuration } from "./format";
 import { searchWeb, searchTrends } from "./brave-search";
 import { getHighConfidenceLearnings } from "./client-learnings";
-import { runScriptAgent } from "./script-agent";
-import type { ScriptAgentInput, ScriptAgentProgressFn } from "./script-agent";
 import type { Config } from "./types";
 import type { PerformanceInsights, VideoInsight } from "./performance-helpers";
 
@@ -197,66 +195,6 @@ export async function toolLoadAudit(clientId: string): Promise<string> {
   }
 
   return parts.join("\n\n");
-}
-
-// ── generate_script ────────────────────────────────────────────────────────
-// Uses the Script Agent — a multi-step agent loop that thinks about the
-// angle, crafts hooks, writes the script, and self-reviews before submitting.
-
-export async function toolGenerateScript(
-  clientId: string,
-  input: ScriptAgentInput,
-  onProgress?: ScriptAgentProgressFn,
-): Promise<string> {
-  try {
-    const result = await runScriptAgent(clientId, input, onProgress);
-
-    const textHookLine = result.textHook ? `[TEXT-HOOK auf Screen]: "${result.textHook}"` : "";
-    const hookPatternLine = result.hookPattern ? `Hook-Muster: ${result.hookPattern}` : "";
-
-    const shortSection = `── KURZ (30-40 Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.shortScript}`;
-    const longSection = `── LANG (60+ Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${result.longScript}`;
-    const body = `${shortSection}\n\n${longSection}`;
-
-    const scriptId = uuid();
-    const { error: saveError } = await supabase.from("scripts").insert({
-      id: scriptId,
-      client_id: clientId,
-      title: input.title,
-      pillar: input.pillar || "",
-      content_type: input.contentType || "",
-      format: input.format || "",
-      hook: result.shortScript.split("\n\n")[0] || "",
-      hook_pattern: result.hookPattern || "",
-      text_hook: result.textHook || "",
-      body,
-      cta: "",
-      status: "entwurf",
-      source: "chat-agent",
-      shot_list: "",
-      pattern_type: "",
-      post_type: "",
-      anchor_ref: "",
-      cta_type: "",
-      funnel_stage: "",
-      created_at: new Date().toISOString().split("T")[0],
-    });
-
-    const header = [
-      `SKRIPT: "${input.title}"`,
-      input.pillar && `Pillar: ${input.pillar}`,
-      input.contentType && `Typ: ${input.contentType}`,
-      result.angle && `Winkel: ${result.angle}`,
-      result.whyItWorks && `Warum es funktioniert: ${result.whyItWorks}`,
-      saveError
-        ? `Konnte nicht gespeichert werden: ${saveError.message}`
-        : `Gespeichert als Entwurf im Skripte-Tab (id=${scriptId}).`,
-    ].filter(Boolean).join("\n");
-
-    return [header, hookPatternLine, shortSection, longSection].filter(Boolean).join("\n\n");
-  } catch (err) {
-    return `Skript-Generierung fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`;
-  }
 }
 
 // ── Save Script Tool ──────────────────────────────────────────────────────
@@ -602,7 +540,6 @@ export async function executeAgentTool(
   scopedClientId: string | null,
   toolName: string,
   toolInput: Record<string, unknown>,
-  onScriptProgress?: ScriptAgentProgressFn,
 ): Promise<string> {
   // Tools that don't need a clientId
   if (toolName === "list_clients") {
@@ -636,18 +573,6 @@ export async function executeAgentTool(
       return toolCheckPerformance(clientId);
     case "load_audit":
       return toolLoadAudit(clientId);
-    case "generate_script": {
-      const scriptInput: ScriptAgentInput = {
-        title: toolInput.title as string,
-        description: toolInput.description as string,
-        pillar: toolInput.pillar as string | undefined,
-        contentType: toolInput.contentType as string | undefined,
-        format: toolInput.format as string | undefined,
-        tone: toolInput.tone as string | undefined,
-        conversationContext: toolInput.conversation_context as string | undefined,
-      };
-      return toolGenerateScript(clientId, scriptInput, onScriptProgress);
-    }
     case "check_competitors":
       return toolCheckCompetitors(clientId, toolInput as { limit?: number });
     case "research_trends":

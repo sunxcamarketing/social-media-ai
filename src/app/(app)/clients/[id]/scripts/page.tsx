@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
-import { ContentAgentChat } from "@/components/content-agent-chat";
+import { DevelopIdeaDialog } from "@/components/develop-idea-dialog";
 import { useClientData } from "@/context/client-data-context";
 import { ClientIdeasTab } from "@/components/client-ideas-tab";
 
@@ -126,13 +126,16 @@ type GenerationMeta = {
   creatorVideosUsed: number;
 };
 
-type PipelineStep = "idle" | "context" | "voice" | "trends" | "generate" | "done" | "error";
+// Pipeline steps mirror what the server actually does in sequence:
+// context + voice run in parallel → trends → generate. The "context" state
+// covers both context and voice load (server emits both done at the same
+// time after Promise.all), so we collapse them in the UI to stay honest.
+type PipelineStep = "idle" | "context" | "trends" | "generate" | "done" | "error";
 
 const PIPELINE_STEPS: { key: PipelineStep; label: string; icon: React.ElementType }[] = [
-  { key: "context", label: "Kontext laden", icon: FileText },
-  { key: "voice", label: "Stimmprofil", icon: Mic },
+  { key: "context", label: "Kontext + Stimmprofil laden", icon: FileText },
   { key: "trends", label: "Trend-Recherche", icon: Lightbulb },
-  { key: "generate", label: "Ideen entwickeln (Opus)", icon: Lightbulb },
+  { key: "generate", label: "Ideen entwickeln (Opus)", icon: Mic },
 ];
 
 const STATUS_OPTIONS = [
@@ -341,12 +344,31 @@ function ScriptCell({ script }: { script?: Script }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const fbStatus = script.clientFeedbackStatus;
+  const fbLabel = fbStatus === "approved"
+    ? { text: "Client: Gefällt mir", cls: "bg-green-50 text-green-700 border-green-200" }
+    : fbStatus === "rejected"
+    ? { text: "Client: Abgelehnt", cls: "bg-red-50 text-red-600 border-red-200" }
+    : fbStatus === "revision_requested"
+    ? { text: "Client: Verbesserung", cls: "bg-amber-50 text-amber-700 border-amber-200" }
+    : null;
+
   return (
     <td className="px-4 py-4 align-top">
       <div
         className="space-y-2 max-w-md cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
+        {fbLabel && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium ${fbLabel.cls}`}>
+              {fbLabel.text}
+            </span>
+            {script.clientFeedbackAt && (
+              <span className="text-[10px] text-ocean/40">{script.clientFeedbackAt.slice(0, 10)}</span>
+            )}
+          </div>
+        )}
         {script.hook && (
           <p className="text-[13px] text-ocean/90 leading-relaxed font-semibold">{script.hook}</p>
         )}
@@ -361,6 +383,12 @@ function ScriptCell({ script }: { script?: Script }) {
         )}
         {isLong && !expanded && (
           <span className="text-[11px] text-blush-dark/60 hover:text-blush-dark">... mehr anzeigen</span>
+        )}
+        {fbLabel && script.clientFeedbackText && (
+          <div className="rounded-lg border border-ocean/[0.06] bg-ocean/[0.02] p-2">
+            <p className="text-[10px] uppercase tracking-wider text-ocean/45 font-medium mb-0.5">Client-Kommentar</p>
+            <p className="text-[12px] text-ocean/75 leading-relaxed whitespace-pre-wrap break-words">{script.clientFeedbackText}</p>
+          </div>
         )}
         <button
           onClick={handleCopy}
@@ -399,8 +427,10 @@ export default function ClientScriptsPage() {
   const [weekMeta, setWeekMeta] = useState<GenerationMeta | null>(null);
   const [weekReasoning, setWeekReasoning] = useState<string>("");
   const [developIdea, setDevelopIdea] = useState<WeekIdea | null>(null);
-  const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
-  const [savingIdeaIndex, setSavingIdeaIndex] = useState<number | null>(null);
+  // Stable-key Sets — key by ${day}-${title} so state survives reindexing
+  const [savedIdeaKeys, setSavedIdeaKeys] = useState<Set<string>>(new Set());
+  const [savingIdeaKey, setSavingIdeaKey] = useState<string | null>(null);
+  const generateAbortRef = useRef<AbortController | null>(null);
 
   // Pipeline progress
   const [pipelineStep, setPipelineStep] = useState<PipelineStep>("idle");
@@ -428,11 +458,14 @@ export default function ClientScriptsPage() {
     fetch(`/api/analyses?clientId=${id}`).then(r => r.json()).then((analyses: unknown[]) => setHasAudit(analyses.length > 0));
   }, [id, loadScripts]);
 
+  // Stable key per idea (survives array reindexing across regenerations)
+  const ideaKey = useCallback((idea: WeekIdea) => `${idea.day}::${idea.title}`, []);
+
   // ── Save a generated idea to the Ideas tab ──────────────────────────────
-  const saveIdeaToTab = async (index: number) => {
-    const idea = weekIdeas[index];
-    if (!idea || savedIdeaIndexes.has(index)) return;
-    setSavingIdeaIndex(index);
+  const saveIdeaToTab = async (idea: WeekIdea) => {
+    const key = ideaKey(idea);
+    if (savedIdeaKeys.has(key)) return;
+    setSavingIdeaKey(key);
     try {
       const descParts: string[] = [];
       if (idea.angle) descParts.push(`Winkel: ${idea.angle}`);
@@ -457,17 +490,24 @@ export default function ClientScriptsPage() {
         }),
       });
       if (!res.ok) throw new Error("Fehler beim Speichern");
-      setSavedIdeaIndexes(prev => new Set(prev).add(index));
+      setSavedIdeaKeys(prev => new Set(prev).add(key));
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Fehler beim Speichern");
     } finally {
-      setSavingIdeaIndex(null);
+      setSavingIdeaKey(null);
     }
   };
 
   // ── Generate full week of IDEAS (SSE streaming) ─────────────────────────
   const generateWeek = async () => {
+    // Abort any in-flight generation before starting a new one
+    if (generateAbortRef.current) {
+      try { generateAbortRef.current.abort(); } catch {}
+    }
+    const abort = new AbortController();
+    generateAbortRef.current = abort;
+
     setWeekLoading(true);
     setWeekError(null);
     setWeekIdeas([]);
@@ -475,13 +515,14 @@ export default function ClientScriptsPage() {
     setWeekMeta(null);
     setPipelineStep("context");
     setSelectedTopics([]);
-    setSavedIdeaIndexes(new Set());
-    setSavingIdeaIndex(null);
+    setSavedIdeaKeys(new Set());
+    setSavingIdeaKey(null);
 
     try {
       const res = await fetch(`/api/configs/${id}/generate-week-scripts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: abort.signal,
       });
 
       const reader = res.body?.getReader();
@@ -506,9 +547,9 @@ export default function ClientScriptsPage() {
           if (data.step === "error") {
             setWeekError(data.message || "Unbekannter Fehler");
             setPipelineStep("error");
-          } else if (data.step === "context" && data.status === "done") {
-            setPipelineStep("voice");
           } else if (data.step === "voice" && data.status === "done") {
+            // voice and context finish simultaneously on the server. Advance
+            // UI to trends only after BOTH are in — skip the fake "voice" step.
             setPipelineStep("trends");
           } else if (data.step === "trends" && data.status === "done") {
             setPipelineStep("generate");
@@ -523,12 +564,25 @@ export default function ClientScriptsPage() {
         }
       }
     } catch (e) {
-      setWeekError(e instanceof Error ? e.message : "Unbekannter Fehler");
-      setPipelineStep("error");
+      // AbortError (user navigated away or restarted) is expected — stay silent.
+      if ((e as Error)?.name !== "AbortError") {
+        setWeekError(e instanceof Error ? e.message : "Unbekannter Fehler");
+        setPipelineStep("error");
+      }
     } finally {
       setWeekLoading(false);
+      if (generateAbortRef.current === abort) generateAbortRef.current = null;
     }
   };
+
+  // Abort in-flight pipeline on unmount to prevent setState-on-unmounted-component
+  useEffect(() => {
+    return () => {
+      if (generateAbortRef.current) {
+        try { generateAbortRef.current.abort(); } catch {}
+      }
+    };
+  }, []);
 
   // ── Saved scripts CRUD ──────────────────────────────────────────────────
   const openEdit = (script: Script) => {
@@ -712,16 +766,19 @@ export default function ClientScriptsPage() {
             </p>
 
             {/* Idea cards */}
-            {weekIdeas.map((idea, i) => (
-              <GeneratedIdeaCard
-                key={`${idea.day}-${i}`}
-                idea={idea}
-                onDevelop={() => setDevelopIdea(idea)}
-                onSaveAsIdea={() => saveIdeaToTab(i)}
-                ideaSaved={savedIdeaIndexes.has(i)}
-                ideaSaving={savingIdeaIndex === i}
-              />
-            ))}
+            {weekIdeas.map((idea) => {
+              const k = ideaKey(idea);
+              return (
+                <GeneratedIdeaCard
+                  key={k}
+                  idea={idea}
+                  onDevelop={() => setDevelopIdea(idea)}
+                  onSaveAsIdea={() => saveIdeaToTab(idea)}
+                  ideaSaved={savedIdeaKeys.has(k)}
+                  ideaSaving={savingIdeaKey === k}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -921,34 +978,18 @@ export default function ClientScriptsPage() {
       </Dialog>
 
       {/* Develop idea → script chat dialog */}
-      <Dialog open={!!developIdea} onOpenChange={(open) => { if (!open) { setDevelopIdea(null); loadScripts(); } }}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 glass-strong rounded-2xl border-ocean/[0.06] overflow-hidden flex flex-col">
-          <DialogHeader className="px-5 pt-5 pb-3 border-b border-ocean/[0.06] shrink-0">
-            <DialogTitle className="flex items-start gap-2 text-left">
-              <Sparkles className="h-4 w-4 text-blush-dark mt-1 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold leading-snug break-words">{developIdea?.title}</p>
-                {developIdea?.angle && (
-                  <p className="text-xs text-ocean/60 leading-relaxed mt-1 font-normal line-clamp-2 break-words">
-                    {developIdea.angle}
-                  </p>
-                )}
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0">
-            {developIdea && (
-              <ContentAgentChat
-                key={`${developIdea.day}-${developIdea.title}`}
-                clientId={id}
-                layout="embedded"
-                title="Content Agent"
-                initialUserMessage={buildIdeaChatSeed(developIdea)}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {developIdea && (
+        <DevelopIdeaDialog
+          open={!!developIdea}
+          onClose={() => { setDevelopIdea(null); loadScripts(); }}
+          clientId={id}
+          title={developIdea.title}
+          subtitle={developIdea.angle}
+          seedMessage={buildIdeaChatSeed(developIdea)}
+          dialogKey={`${developIdea.day}-${developIdea.title}`}
+          onScriptSaved={() => loadScripts()}
+        />
+      )}
       </>
       )}
     </div>

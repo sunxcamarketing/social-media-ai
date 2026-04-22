@@ -881,25 +881,6 @@ export const AGENT_LOAD_AUDIT_TOOL = {
   },
 };
 
-export const AGENT_GENERATE_SCRIPT_TOOL = {
-  name: "generate_script",
-  description: "Generiere ein neues Skript (kurz + lang) mit dem Script Agent. Der Agent denkt über den besten Winkel nach, craftet Hooks, schreibt und reviewt das Skript selbst. Übergib conversation_context wenn du im Chat kreative Ideen oder Winkel erarbeitet hast.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      client_name: CLIENT_NAME_PROP,
-      title: { type: "string" as const, description: "Skript-Titel (max 10 Wörter)" },
-      description: { type: "string" as const, description: "Kurzbeschreibung was das Skript behandelt" },
-      pillar: { type: "string" as const, description: "Content-Pillar (z.B. aus der Strategie)" },
-      contentType: { type: "string" as const, description: "Content-Typ (z.B. Edutainment, Storytelling)" },
-      format: { type: "string" as const, description: "Format (z.B. Talking Head, Listicle)" },
-      tone: { type: "string" as const, description: "Optional: Gewünschte Tonalität (provokant, ruhig, motivierend)" },
-      conversation_context: { type: "string" as const, description: "Kreative Ideen, Winkel oder Analysen aus dem bisherigen Chat-Gespräch. Der Script Agent nutzt diese als Ausgangspunkt." },
-    },
-    required: ["title", "description"] as string[],
-  },
-};
-
 export const AGENT_CHECK_COMPETITORS_TOOL = {
   name: "check_competitors",
   description: "Lade analysierte Competitor-Videos mit Hooks, Views und Konzepten",

@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { ArrowLeft, ArrowRight, Check, Loader2, Mic, Square, Sparkles } from "lucide-react";
-import { useAudioCapture } from "@/hooks/use-audio-capture";
-import { supabaseBrowser } from "@/lib/supabase-browser";
 import { VOICE_PROFILE_STEPS } from "@/lib/voice-profile-scenarios";
+import { useGeminiLiveSocket, type GeminiLiveMessage, type TranscriptEntry } from "@/hooks/use-gemini-live-socket";
 
 type StepState = "intro" | "connecting" | "recording" | "saving" | "done";
-type TranscriptEntry = { role: "user" | "model"; text: string };
-
-const VOICE_SERVER_URL = process.env.NEXT_PUBLIC_VOICE_SERVER_URL || "ws://localhost:4001";
 
 interface VoiceProfileRecorderProps {
   onClose: () => void;
@@ -20,139 +16,42 @@ interface VoiceProfileRecorderProps {
 export function VoiceProfileRecorder({ onClose, clientIdOverride, lang }: VoiceProfileRecorderProps) {
   const [stepIdx, setStepIdx] = useState(0);
   const [stepState, setStepState] = useState<StepState>("intro");
-  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const nextStartTimeRef = useRef(0);
-  const playbackQueueRef = useRef<AudioBufferSourceNode[]>([]);
 
   const step = VOICE_PROFILE_STEPS[stepIdx];
   const isLastStep = stepIdx === VOICE_PROFILE_STEPS.length - 1;
   const allDone = completedSteps.size === VOICE_PROFILE_STEPS.length;
 
-  const playAudio = useCallback((base64: string) => {
-    const ctx = audioContextRef.current;
-    if (!ctx) return;
-    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-    const int16 = new Int16Array(bytes.buffer);
-    const float32 = new Float32Array(int16.length);
-    for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 0x8000;
-    const buffer = ctx.createBuffer(1, float32.length, 24000);
-    buffer.getChannelData(0).set(float32);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
-    const now = ctx.currentTime;
-    const startAt = Math.max(now, nextStartTimeRef.current);
-    source.start(startAt);
-    nextStartTimeRef.current = startAt + buffer.duration;
-    playbackQueueRef.current.push(source);
-    source.onended = () => {
-      playbackQueueRef.current = playbackQueueRef.current.filter((n) => n !== source);
-    };
-  }, []);
-
-  const sendAudioChunk = useCallback((pcmBase64: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "audio", data: pcmBase64 }));
+  const handleMessage = useCallback((msg: GeminiLiveMessage) => {
+    if (msg.type === "voice_profile_summary") {
+      setCompletedSteps((prev) => new Set(prev).add(stepIdx));
+      setStepState("done");
     }
-  }, []);
+  }, [stepIdx]);
 
-  const { isRecording, audioLevel, start: startCapture, stop: stopCapture } = useAudioCapture({
-    onAudioChunk: sendAudioChunk,
+  const socket = useGeminiLiveSocket({
+    onMessage: handleMessage,
   });
 
+  // Mirror socket state into our step-state machine where relevant
+  if (socket.state === "active" && stepState === "connecting") {
+    setStepState("recording");
+  }
+
   const startRecording = async () => {
-    setError(null);
-    setTranscript([]);
     setStepState("connecting");
-
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
-    }
-    if (audioContextRef.current.state === "suspended") {
-      await audioContextRef.current.resume();
-    }
-
-    try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession();
-      if (!session?.access_token) throw new Error("Nicht eingeloggt");
-
-      const params = new URLSearchParams({
-        token: session.access_token,
-        mode: "voice-profile",
-        step: step.id,
-      });
-      if (clientIdOverride) params.set("clientId", clientIdOverride);
-      if (lang) params.set("lang", lang);
-
-      const ws = new WebSocket(`${VOICE_SERVER_URL}?${params.toString()}`);
-      wsRef.current = ws;
-
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          switch (msg.type) {
-            case "ready":
-              // WS + Gemini up. Wait for "speaking" before enabling mic.
-              break;
-            case "speaking":
-              // For scenarios this fires immediately (passive mode); for topic
-              // it fires when the agent speaks its first question. Either way,
-              // mic goes on now.
-              setStepState("recording");
-              startCapture();
-              break;
-            case "audio":
-              playAudio(msg.data);
-              break;
-            case "transcript":
-              setTranscript((prev) => {
-                const last = prev[prev.length - 1];
-                if (last && last.role === msg.role) {
-                  return [...prev.slice(0, -1), { ...last, text: last.text + " " + msg.text }];
-                }
-                return [...prev, { role: msg.role, text: msg.text }];
-              });
-              break;
-            case "voice_profile_summary":
-              setCompletedSteps((prev) => new Set(prev).add(stepIdx));
-              setStepState("done");
-              break;
-            case "error":
-              setError(msg.message || "Unbekannter Fehler");
-              setStepState("intro");
-              break;
-          }
-        } catch (err) {
-          console.error("WS message parse error:", err);
-        }
-      };
-
-      ws.onclose = () => {
-        stopCapture();
-        if (wsRef.current === ws) wsRef.current = null;
-      };
-
-      ws.onerror = () => {
-        setError("Verbindungsfehler. Bitte erneut versuchen.");
-        setStepState("intro");
-      };
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler beim Start");
-      setStepState("intro");
-    }
+    const params: Record<string, string> = {
+      mode: "voice-profile",
+      step: step.id,
+    };
+    if (clientIdOverride) params.clientId = clientIdOverride;
+    if (lang) params.lang = lang;
+    await socket.start({ params });
   };
 
   const stopRecording = () => {
     setStepState("saving");
-    stopCapture();
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "end" }));
-    }
+    socket.stop();
   };
 
   const goToStep = (idx: number) => {
@@ -160,23 +59,11 @@ export function VoiceProfileRecorder({ onClose, clientIdOverride, lang }: VoiceP
     if (stepState === "recording" || stepState === "connecting" || stepState === "saving") return;
     setStepIdx(idx);
     setStepState("intro");
-    setTranscript([]);
-    setError(null);
+    socket.reset();
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (wsRef.current) {
-        try { wsRef.current.close(); } catch {}
-      }
-      stopCapture();
-    };
-  }, [stopCapture]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header with back + progress */}
       <div className="flex items-center justify-between gap-3">
         <button
           onClick={onClose}
@@ -225,7 +112,6 @@ export function VoiceProfileRecorder({ onClose, clientIdOverride, lang }: VoiceP
             {step.promptDe}
           </div>
 
-          {/* State-specific UI */}
           {stepState === "intro" && (
             <div className="flex items-center justify-between gap-3 pt-2">
               <p className="text-xs text-ocean/50">
@@ -251,10 +137,10 @@ export function VoiceProfileRecorder({ onClose, clientIdOverride, lang }: VoiceP
           {stepState === "recording" && (
             <RecordingUI
               step={step}
-              transcript={transcript}
-              audioLevel={audioLevel}
+              transcript={socket.transcript}
+              audioLevel={socket.audioLevel}
               onStop={stopRecording}
-              isRecording={isRecording}
+              isRecording={socket.isRecording}
             />
           )}
 
@@ -268,15 +154,15 @@ export function VoiceProfileRecorder({ onClose, clientIdOverride, lang }: VoiceP
             <DoneStepUI
               isLast={isLastStep}
               onNext={() => goToStep(stepIdx + 1)}
-              onRetry={() => { setStepState("intro"); setTranscript([]); }}
+              onRetry={() => { setStepState("intro"); socket.reset(); }}
               onFinish={() => setStepIdx(0)}
-              transcript={transcript}
+              transcript={socket.transcript}
             />
           )}
 
-          {error && (
+          {socket.error && (
             <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-              {error}
+              {socket.error}
             </p>
           )}
         </div>

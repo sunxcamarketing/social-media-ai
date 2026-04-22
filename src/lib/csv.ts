@@ -77,6 +77,9 @@ function mapScript(r: Record<string, unknown>): Script {
     anchorRef: (r.anchor_ref as string) || "",
     ctaType: (r.cta_type as string) || "",
     funnelStage: (r.funnel_stage as string) || "",
+    clientFeedbackStatus: (r.client_feedback_status as Script["clientFeedbackStatus"]) ?? null,
+    clientFeedbackText: (r.client_feedback_text as string | null) ?? null,
+    clientFeedbackAt: (r.client_feedback_at as string | null) ?? null,
     createdAt: (r.created_at as string) || "",
   };
 }

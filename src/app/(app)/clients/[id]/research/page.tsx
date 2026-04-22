@@ -812,13 +812,13 @@ function ResearchContent() {
 
           {/* Analysis / Concepts Modal */}
           <Dialog open={!!modalVideo} onOpenChange={(open) => { if (!open) setModalVideo(null); }}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden glass-strong rounded-2xl border-ocean/[0.06] p-0 gap-0">
+            <DialogContent className="max-w-3xl max-h-[90vh] h-[90vh] flex flex-col overflow-hidden glass-strong rounded-2xl border-ocean/[0.06] p-0 gap-0">
               <DialogTitle className="sr-only">
                 {modalSection === "analysis" ? "Video Analysis" : "New Concepts"}
               </DialogTitle>
               {modalVideo && (
                 <>
-                  <div className="flex items-center gap-4 p-5 border-b border-ocean/[0.06]">
+                  <div className="flex items-center gap-4 p-5 border-b border-ocean/[0.06] shrink-0">
                     <div className="relative h-16 w-12 shrink-0 rounded-lg overflow-hidden bg-ocean/[0.02]">
                       {modalVideo.thumbnail ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -853,7 +853,7 @@ function ResearchContent() {
                       </Button>
                     </div>
                   </div>
-                  <div className="overflow-y-auto max-h-[calc(90vh-100px)] p-6">
+                  <div className="flex-1 min-h-0 overflow-y-auto p-6">
                     <MarkdownContent
                       content={modalSection === "analysis" ? modalVideo.analysis : modalVideo.newConcepts}
                       variant={modalSection === "analysis" ? "analysis" : "concepts"}

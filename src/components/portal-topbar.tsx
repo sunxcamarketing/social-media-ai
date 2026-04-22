@@ -15,11 +15,9 @@ import { useI18n } from "@/lib/i18n";
 import { useMobileNav } from "@/components/mobile-nav-context";
 
 const SECTION_LABELS: Record<string, { de: string; en: string }> = {
-  scripts: { de: "Skripte", en: "Scripts" },
+  profil: { de: "Profil", en: "Profile" },
   strategy: { de: "Strategie", en: "Strategy" },
-  ideas: { de: "Ideen", en: "Ideas" },
-  analyse: { de: "Audit", en: "Audit" },
-  videos: { de: "Videos", en: "Videos" },
+  scripts: { de: "Skripte", en: "Scripts" },
   chat: { de: "Chat", en: "Chat" },
   voice: { de: "Voice", en: "Voice" },
 };

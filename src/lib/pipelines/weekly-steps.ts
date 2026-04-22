@@ -1,13 +1,14 @@
-// ── Weekly Script Pipeline — Extracted Steps ──────────────────────────────
-// Each step has a clear input/output interface and can be tested independently.
+// ── Weekly Pipeline — Shared Context Loading ──────────────────────────────
+// Provides the context-gathering phase for the one-shot weekly ideas pipeline
+// (see weekly-oneshot.ts). Three exports: loadPipelineContext, loadVoiceProfiles,
+// runResearch.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfig, readVideos, readScriptsByClient, readStrategyConfig } from "@/lib/csv";
 import { getAuditBlockAndDuration } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt, TREND_RESEARCH_TOOL } from "@prompts";
-import { getVoiceProfile, generateVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, generateScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
-import { voiceOnboardingToPromptBlock } from "@/lib/voice-onboarding";
+import { getVoiceProfile, generateVoiceProfile, getScriptStructure, generateScriptStructure } from "@/lib/voice-profile";
 import { safeJsonParse } from "@/lib/safe-json";
 import { searchTrendsDeep, formatDeepTrendResults, countDistinctCategoriesWithResults } from "@/lib/brave-search";
 import type { DeepTrendContext } from "@/lib/brave-search";
@@ -22,7 +23,16 @@ import { parseInsights, videoInsightBlock } from "@/lib/performance-helpers";
 import type { VideoInsight } from "@/lib/performance-helpers";
 import type { VoiceProfile, ScriptStructureProfile, Config, Pillar, PillarType } from "@/lib/types";
 import { normalizePillarType } from "@/lib/types";
-import { weekSeed, mulberry32, seededInt, shuffle, ALL_PATTERN_TYPES, type PatternType } from "@/lib/week-seed";
+import { weekSeed, mulberry32, seededInt } from "@/lib/week-seed";
+
+// ── Magic-number constants (named for grep-ability + tuning) ─────────────
+
+const RECENT_SCRIPT_WINDOW = 40;           // scripts considered "recent" for anti-recycling
+const OWN_TOP_VIDEOS_LIMIT = 5;            // max own top videos shown to pipeline
+const COMPETITOR_VIDEOS_LIMIT = 6;         // max competitor videos considered
+const CROSS_NICHE_LIMIT = 5;               // max cross-niche inspiration videos
+const OWN_ANCHOR_CANDIDATES = 8;           // max own videos considered as winner anchors
+const COMPETITOR_ANCHOR_CANDIDATES = 4;    // max competitor videos as winner anchors
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -38,17 +48,13 @@ export interface PipelineContext {
   pillars: Pillar[];
   pillarNames: string[];
   pillarBlock: string;
-  pillarTypeMap: Record<string, PillarType | undefined>;   // pillar name → type
+  pillarTypeMap: Record<string, PillarType | undefined>;
   weekSchedule: {
     day: string;
     contentType: string;
     format: string;
     pillar: string;
     pillarType?: PillarType;
-    patternType: PatternType;
-    ctaType: CtaType;
-    ctaExample: string;
-    funnelStage: FunnelStage;
   }[];
   activeDays: string[];
   postsPerWeek: number;
@@ -77,12 +83,7 @@ export interface PipelineContext {
 export interface VoiceContext {
   voiceProfile: VoiceProfile | null;
   scriptStructure: ScriptStructureProfile | null;
-  voiceBlock: string;
-  structureBlock: string;
   voiceToneBlock: string;
-  structureHookBlock: string;
-  /** Voice onboarding synthesis (holistic voice-DNA doc from 8-block interview). Empty string when no onboarding data. */
-  voiceOnboardingBlock: string;
 }
 
 export interface ResearchContext {
@@ -90,38 +91,6 @@ export interface ResearchContext {
   learningsBlock: string;
   learnings: ClientLearning[];
   hasTrendSnapshot: boolean;
-}
-
-export type PostType = "core" | "variant" | "test";
-export type CtaType = "soft" | "lead" | "authority" | "none";
-export type FunnelStage = "TOF" | "MOF" | "BOF";
-
-const DEFAULT_CTA_ROTATION: Array<{ ctaType: CtaType; funnelStage: FunnelStage }> = [
-  { ctaType: "soft", funnelStage: "TOF" },
-  { ctaType: "lead", funnelStage: "MOF" },
-  { ctaType: "soft", funnelStage: "MOF" },
-  { ctaType: "authority", funnelStage: "BOF" },
-  { ctaType: "lead", funnelStage: "BOF" },
-  { ctaType: "soft", funnelStage: "TOF" },
-  { ctaType: "lead", funnelStage: "MOF" },
-];
-
-export interface AssembledScript {
-  day: string;
-  pillar: string;
-  contentType: string;
-  format: string;
-  patternType: PatternType;
-  postType: PostType;
-  anchorRef: string;
-  ctaType: CtaType;
-  funnelStage: FunnelStage;
-  title: string;
-  hook: string;
-  hookPattern: string;
-  body: string;
-  cta: string;
-  reasoning: string;
 }
 
 // ── Step 1: Load Context ──────────────────────────────────────────────────
@@ -148,10 +117,7 @@ export async function loadPipelineContext(configId: string): Promise<PipelineCon
   const pillarTypeMap: Record<string, PillarType | undefined> = Object.fromEntries(
     pillars.map(p => [p.name, p.pillarType]),
   );
-  const weekly: Record<string, {
-    type: string; format: string;
-    ctaType?: CtaType; ctaExample?: string; funnelStage?: FunnelStage;
-  }> = safeJsonParse(config.strategyWeekly);
+  const weekly: Record<string, { type: string; format: string }> = safeJsonParse(config.strategyWeekly);
 
   // Parallel DB reads
   const configName = config.configName || config.name || "";
@@ -177,23 +143,16 @@ export async function loadPipelineContext(configId: string): Promise<PipelineCon
   const seed = weekSeed(configId);
   const weekRng = mulberry32(seed);
   const pillarOffset = pillarNames.length > 0 ? seededInt(weekRng, pillarNames.length) : 0;
-  const patternOrder = shuffle(ALL_PATTERN_TYPES, weekRng);
 
-  const ctaOffset = seededInt(weekRng, DEFAULT_CTA_ROTATION.length);
   const weekSchedule = activeDays.map((day, i) => {
     const d = weekly[day];
     const pillarName = pillarNames.length > 0 ? pillarNames[(i + pillarOffset) % pillarNames.length] : "Allgemein";
-    const defaultCta = DEFAULT_CTA_ROTATION[(i + ctaOffset) % DEFAULT_CTA_ROTATION.length];
     return {
       day,
       contentType: d?.type || allContentTypes[i % allContentTypes.length]?.name || "Education / Value",
       format: d?.format || allFormats[i % allFormats.length]?.name || "Face to Camera",
       pillar: pillarName,
       pillarType: pillarTypeMap[pillarName],
-      patternType: patternOrder[i % patternOrder.length],
-      ctaType: (d?.ctaType as CtaType) || defaultCta.ctaType,
-      ctaExample: d?.ctaExample || "",
-      funnelStage: (d?.funnelStage as FunnelStage) || defaultCta.funnelStage,
     };
   });
 
@@ -218,16 +177,16 @@ export async function loadPipelineContext(configId: string): Promise<PipelineCon
     ...(insights?.topAllTime || []),
   ];
 
-  const creatorVideos = configVideos.filter(v => v.views > 0).sort((a, b) => b.views - a.views).slice(0, 6);
+  const creatorVideos = configVideos.filter(v => v.views > 0).sort((a, b) => b.views - a.views).slice(0, COMPETITOR_VIDEOS_LIMIT);
 
   const ownPerformanceBlock = ownTopVideos.length > 0
-    ? `<own_top_videos>\n${ownTopVideos.slice(0, 5).map((v, i) => videoInsightBlock(v, i)).join("\n\n")}\n</own_top_videos>`
+    ? `<own_top_videos>\n${ownTopVideos.slice(0, OWN_TOP_VIDEOS_LIMIT).map((v, i) => videoInsightBlock(v, i)).join("\n\n")}\n</own_top_videos>`
     : "";
 
   const crossNicheVideos = allVideos
     .filter(v => v.configName !== configName && v.views > 0 && v.analysis)
     .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
+    .slice(0, CROSS_NICHE_LIMIT);
 
   const crossNicheBlock = crossNicheVideos.length > 0
     ? `<cross_niche_inspiration>\nVirale Videos aus ANDEREN Nischen — Formate und Hooks die du adaptieren kannst:\n${crossNicheVideos.map((v, i) => {
@@ -254,7 +213,7 @@ export async function loadPipelineContext(configId: string): Promise<PipelineCon
     : "";
 
   // Recent scripts
-  const recentScripts = existingScripts.slice(-40);
+  const recentScripts = existingScripts.slice(-RECENT_SCRIPT_WINDOW);
   const recentTitles = recentScripts.map(s => s.title).filter(Boolean);
   const recentScriptsInfo = recentScripts.map(s => {
     let line = `- ${s.title}`;
@@ -269,11 +228,11 @@ export async function loadPipelineContext(configId: string): Promise<PipelineCon
 
   // Anchor candidates (winners) — basis for "core" and "variant" posts in the 70/20/10 mix
   const anchorCandidates: { title: string; source: string }[] = [
-    ...ownTopVideos.slice(0, 8).map(v => ({
+    ...ownTopVideos.slice(0, OWN_ANCHOR_CANDIDATES).map(v => ({
       title: (v.topic || v.audioHook || "").slice(0, 120),
       source: `Own viral video (${fmt(v.views)} views)`,
     })).filter(a => a.title),
-    ...creatorVideos.slice(0, 4).map(v => {
+    ...creatorVideos.slice(0, COMPETITOR_ANCHOR_CANDIDATES).map(v => {
       const hookMatch = v.analysis?.match(/HOOK[:\s]+([\s\S]*?)(?=\n[A-Z][\w /]+[:\s]|$)/i);
       return {
         title: hookMatch ? hookMatch[1].trim().slice(0, 120) : `@${v.creator} viral Reel`,
@@ -328,28 +287,20 @@ export async function loadVoiceProfiles(configId: string, clientName?: string, l
     return cfg?.configName || cfg?.name || "Client";
   };
 
-  const [voiceResult, structureResult, onboardingResult] = await Promise.allSettled([
+  const [voiceResult, structureResult] = await Promise.allSettled([
     getVoiceProfile(configId).then(async (p) => p || await generateVoiceProfile(configId, await getName(), lang)),
     getScriptStructure(configId).then(async (s) => s || await generateScriptStructure(configId, await getName(), lang)),
-    voiceOnboardingToPromptBlock(configId, lang),
   ]);
 
   const voiceProfile: VoiceProfile | null = voiceResult.status === "fulfilled" ? voiceResult.value : null;
   const scriptStructure: ScriptStructureProfile | null = structureResult.status === "fulfilled" ? structureResult.value : null;
-  const voiceOnboardingBlock = onboardingResult.status === "fulfilled" ? onboardingResult.value : "";
 
   return {
     voiceProfile,
     scriptStructure,
-    voiceBlock: voiceProfile ? voiceProfileToPromptBlock(voiceProfile, clientName ?? "Client") : "",
-    structureBlock: scriptStructure ? scriptStructureToPromptBlock(scriptStructure) : "",
     voiceToneBlock: voiceProfile
       ? `\nSTIMMPROFIL:\nTon: ${voiceProfile.tone}\nEnergie: ${voiceProfile.energy}\nLieblingswörter: ${voiceProfile.favoriteWords.slice(0, 5).join(", ")}`
       : "",
-    structureHookBlock: scriptStructure
-      ? `\nSKRIPT-STRUKTUR HOOK-MUSTER (aus Training gelernt — bevorzuge diese):\n${scriptStructure.hookPatterns.map(h => `- ${h.pattern}: "${h.example}"`).join("\n")}`
-      : "",
-    voiceOnboardingBlock,
   };
 }
 

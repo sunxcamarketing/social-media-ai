@@ -39,10 +39,14 @@ interface ContentAgentChatProps {
   emptyStateSubtitle?: string;
   /**
    * If set, auto-sends this as the first user message when the component
-   * mounts with an empty conversation. Use this to seed a chat with context
-   * (e.g. "Lass uns folgende Idee ausformulieren: ..."). Parent should pass
-   * a `key` tied to the context (e.g. idea id) so the chat remounts when
-   * switching between contexts.
+   * mounts with an empty conversation.
+   *
+   * **CONTRACT (important):** The auto-send is one-shot per mount. Once fired,
+   * subsequent changes to this prop are IGNORED on the same instance. To
+   * re-seed with a different message, the parent MUST force a remount by
+   * passing a `key` tied to the context (e.g. `key={idea.id}` or
+   * `key={`${idea.day}-${idea.title}`}`). Without a key change, a new prop
+   * value will silently do nothing.
    */
   initialUserMessage?: string;
   /** Fires when a save_script tool call completes. */

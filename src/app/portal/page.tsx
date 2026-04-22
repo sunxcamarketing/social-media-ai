@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileText, BarChart2, Search, Video } from "lucide-react";
+import { FileText, BarChart2, BookOpen, Lightbulb } from "lucide-react";
 import Link from "next/link";
 import { usePortalClient } from "./use-portal-client";
 import { useI18n } from "@/lib/i18n";
@@ -9,27 +9,25 @@ import { useI18n } from "@/lib/i18n";
 export default function PortalDashboard() {
   const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
-  const [stats, setStats] = useState({ scripts: 0, hasStrategy: false, hasAudit: false, videos: 0 });
+  const [stats, setStats] = useState({ scripts: 0, ideas: 0 });
   const [clientName, setClientName] = useState("");
 
   useEffect(() => {
     if (!effectiveClientId) return;
 
-    // Load client name
     fetch(`/api/configs/${effectiveClientId}`)
       .then(r => r.json())
       .then(data => setClientName(data.configName || data.name || ""))
       .catch(() => {});
 
-    // Load stats
     fetch(`/api/scripts?clientId=${effectiveClientId}`)
       .then(r => r.json())
       .then(data => setStats(s => ({ ...s, scripts: Array.isArray(data) ? data.length : 0 })))
       .catch(() => {});
 
-    fetch(`/api/analyses?clientId=${effectiveClientId}`)
+    fetch(`/api/ideas?clientId=${effectiveClientId}`)
       .then(r => r.json())
-      .then(data => setStats(s => ({ ...s, hasAudit: Array.isArray(data) && data.length > 0 })))
+      .then(data => setStats(s => ({ ...s, ideas: Array.isArray(data) ? data.length : 0 })))
       .catch(() => {});
   }, [effectiveClientId]);
 
@@ -38,10 +36,10 @@ export default function PortalDashboard() {
   }
 
   const cards = [
-    { title: t("portal.dash.scripts"), description: t("portal.dash.scriptCount", { count: stats.scripts }), href: "/portal/scripts", icon: FileText, color: "text-ocean" },
-    { title: t("portal.dash.strategy"), description: t("portal.dash.strategyDesc"), href: "/portal/strategy", icon: BarChart2, color: "text-blush-dark" },
-    { title: t("portal.dash.audit"), description: stats.hasAudit ? t("portal.dash.auditAvailable") : t("portal.dash.noAudit"), href: "/portal/analyse", icon: Search, color: "text-ocean/60" },
-    { title: t("portal.dash.videos"), description: t("portal.dash.videoCount"), href: "/portal/videos", icon: Video, color: "text-ivory" },
+    { title: t("portal.dash.profile") || "Profil", description: "Dein Business, Zielgruppe, Marke", href: "/portal/profil", icon: BookOpen, color: "text-ocean" },
+    { title: t("portal.dash.strategy"), description: "Audit, Performance, Pillars, Wochenplan", href: "/portal/strategy", icon: BarChart2, color: "text-blush-dark" },
+    { title: t("portal.dash.scripts"), description: `${stats.scripts} Skripte · Feedback abgeben`, href: "/portal/scripts", icon: FileText, color: "text-ocean/70" },
+    { title: "Ideen", description: `${stats.ideas} gespeichert · Neue hinzufügen`, href: "/portal/scripts", icon: Lightbulb, color: "text-blush-dark" },
   ];
 
   return (

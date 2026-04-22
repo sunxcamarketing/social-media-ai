@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   BarChart2,
   FileText,
-  Search,
-  Video,
   MessageSquare,
   Mic,
   BookOpen,
@@ -28,8 +26,6 @@ const PORTAL_TABS: PortalTab[] = [
   { titleKey: "portalNav.profile", href: "/portal/profil", icon: BookOpen },
   { titleKey: "portalNav.strategy", href: "/portal/strategy", icon: BarChart2 },
   { titleKey: "portalNav.scripts", href: "/portal/scripts", icon: FileText },
-  { titleKey: "portalNav.audit", href: "/portal/analyse", icon: Search },
-  { titleKey: "portalNav.videos", href: "/portal/videos", icon: Video },
   { titleKey: "portalNav.chat", href: "/portal/chat", icon: MessageSquare },
   { titleKey: "portalNav.voice", href: "/portal/voice", icon: Mic },
 ];
