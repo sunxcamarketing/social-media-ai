@@ -28,7 +28,10 @@ export const maxDuration = 300;
 
 const MAX_ITERATIONS = 10;
 
-// Shared tools available to both admins and clients
+// Shared tools available when the chat has a resolved client scope
+// (admin-scoped chat or client user). Write tools like save_idea /
+// save_script / update_profile belong here because they mutate a
+// specific client's data — and a scope is required to know which one.
 const SHARED_TOOLS = [
   AGENT_LOAD_CONTEXT_TOOL,
   AGENT_LOAD_VOICE_TOOL,
@@ -45,8 +48,22 @@ const SHARED_TOOLS = [
   AGENT_UPDATE_PROFILE_TOOL,
 ];
 
-// Admin gets list_clients in addition to shared tools
-const ADMIN_TOOLS = [AGENT_LIST_CLIENTS_TOOL, ...SHARED_TOOLS];
+// Admin global chat (no scopedClientId): read-only + list_clients.
+// Write tools are intentionally excluded so a hallucinated or partial
+// client_name can't silently persist data to the wrong client.
+const ADMIN_GLOBAL_TOOLS = [
+  AGENT_LIST_CLIENTS_TOOL,
+  AGENT_LOAD_CONTEXT_TOOL,
+  AGENT_LOAD_VOICE_TOOL,
+  AGENT_SEARCH_SCRIPTS_TOOL,
+  AGENT_CHECK_PERFORMANCE_TOOL,
+  AGENT_LOAD_AUDIT_TOOL,
+  AGENT_CHECK_COMPETITORS_TOOL,
+  AGENT_CHECK_LEARNINGS_TOOL,
+  AGENT_SEARCH_WEB_TOOL,
+  AGENT_RESEARCH_TRENDS_TOOL,
+  AGENT_LIST_IDEAS_TOOL,
+];
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -107,7 +124,7 @@ export async function POST(request: Request) {
 
   // When admin is scoped to a specific client, drop list_clients to avoid
   // scope drift — the chat is about THIS client only.
-  const tools = isAdmin && !scopedClientId ? ADMIN_TOOLS : SHARED_TOOLS;
+  const tools = isAdmin && !scopedClientId ? ADMIN_GLOBAL_TOOLS : SHARED_TOOLS;
   const client = getAnthropicClient();
 
   // Strip the "data:<mediatype>;base64," prefix Anthropic blocks expect raw base64.
