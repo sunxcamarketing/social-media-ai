@@ -15,13 +15,25 @@ const MODEL = "claude-sonnet-4-6";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Voice-profile recorder samples are stored with format `voice-profile-*`.
+ *  They're spoken interview answers, not broadcast scripts — so the cadence
+ *  is conversational, not polished. Flag them so the extractor weights them
+ *  appropriately (pick up words/personality, not pacing). */
+function classifyTranscriptSource(format?: string): "spoken_interview" | "broadcast_script" {
+  return format?.startsWith("voice-profile-") ? "spoken_interview" : "broadcast_script";
+}
+
 function formatTranscript(ts: { audioHook?: string; script?: string; cta?: string; format?: string }, index: number): string {
+  const source = classifyTranscriptSource(ts.format);
+  const sourceLabel = source === "spoken_interview"
+    ? "SPOKEN INTERVIEW — conversational register. Use for words, personality, opinions. NOT for broadcast cadence."
+    : "WRITTEN BROADCAST — the target register. Extract rhythm, sentence length, hook patterns from this.";
   const parts = [
     ts.audioHook && `Hook: ${ts.audioHook}`,
     ts.script && `Body: ${ts.script}`,
     ts.cta && `CTA: ${ts.cta}`,
   ].filter(Boolean).join("\n");
-  return `--- Transkript ${index + 1}${ts.format ? ` (${ts.format})` : ""} ---\n${parts}`;
+  return `--- Transkript ${index + 1} [${sourceLabel}]${ts.format ? ` (${ts.format})` : ""} ---\n${parts}`;
 }
 
 function chunkArray<T>(arr: T[], size: number): T[][] {

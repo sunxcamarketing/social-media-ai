@@ -85,7 +85,9 @@ export function useGeminiLiveSocket(options: UseGeminiLiveSocketOptions = {}): G
   const playbackQueueRef = useRef<AudioBufferSourceNode[]>([]);
   const transcriptRef = useRef<TranscriptEntry[]>([]);
 
-  transcriptRef.current = transcript;
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   const playAudio = useCallback((base64: string) => {
     const ctx = audioContextRef.current;

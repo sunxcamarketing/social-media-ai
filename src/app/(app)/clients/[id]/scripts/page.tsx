@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,10 +29,10 @@ import {
   Mic,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
-import { useGeneration } from "@/context/generation-context";
 import { DevelopIdeaDialog } from "@/components/develop-idea-dialog";
 import { useClientData } from "@/context/client-data-context";
 import { ClientIdeasTab } from "@/components/client-ideas-tab";
+import { useWeekIdeasStream, type WeekIdea, type WeekIdeasPipelineStep } from "@/hooks/use-week-ideas-stream";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -104,35 +104,10 @@ function buildIdeaChatSeed(idea: WeekIdea): string {
   return parts.join("\n");
 }
 
-// ── Types ───────────────────────────────────────────────────────────────────
+// ── Pipeline progress config ────────────────────────────────────────────────
+// Types (WeekIdea, WeekIdeasPipelineStep) come from use-week-ideas-stream hook.
 
-type WeekIdea = {
-  day: string;
-  pillar: string;
-  contentType: string;
-  format: string;
-  title: string;
-  angle: string;
-  hookDirection: string;
-  keyPoints: string[];
-  whyNow: string;
-  emotion: string;
-};
-
-type GenerationMeta = {
-  hasAudit: boolean;
-  hasVoiceProfile: boolean;
-  ownVideosUsed: number;
-  creatorVideosUsed: number;
-};
-
-// Pipeline steps mirror what the server actually does in sequence:
-// context + voice run in parallel → trends → generate. The "context" state
-// covers both context and voice load (server emits both done at the same
-// time after Promise.all), so we collapse them in the UI to stay honest.
-type PipelineStep = "idle" | "context" | "trends" | "generate" | "done" | "error";
-
-const PIPELINE_STEPS: { key: PipelineStep; label: string; icon: React.ElementType }[] = [
+const PIPELINE_STEPS: { key: WeekIdeasPipelineStep; label: string; icon: React.ElementType }[] = [
   { key: "context", label: "Kontext + Stimmprofil laden", icon: FileText },
   { key: "trends", label: "Trend-Recherche", icon: Lightbulb },
   { key: "generate", label: "Ideen entwickeln (Opus)", icon: Mic },
@@ -155,7 +130,7 @@ function PipelineProgress({
   topics,
   error,
 }: {
-  currentStep: PipelineStep;
+  currentStep: WeekIdeasPipelineStep;
   topics: { day: string; title: string; pillar: string }[];
   error: string | null;
 }) {
@@ -420,21 +395,29 @@ export default function ClientScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [hasAudit, setHasAudit] = useState<boolean | null>(null);
 
-  // Week generation — pipeline state
-  const [weekIdeas, setWeekIdeas] = useState<WeekIdea[]>([]);
-  const [weekLoading, setWeekLoading] = useState(false);
-  const [weekError, setWeekError] = useState<string | null>(null);
-  const [weekMeta, setWeekMeta] = useState<GenerationMeta | null>(null);
-  const [weekReasoning, setWeekReasoning] = useState<string>("");
+  // Week-ideas SSE pipeline — encapsulated in a hook
+  const {
+    ideas: weekIdeas,
+    reasoning: weekReasoning,
+    meta: weekMeta,
+    topics: selectedTopics,
+    step: pipelineStep,
+    loading: weekLoading,
+    error: weekError,
+    generate: generateWeek,
+    ideaKey,
+  } = useWeekIdeasStream({ clientId: id });
+
+  // Per-idea UI state (keyed by ${day}::${title} — stable across regenerations)
   const [developIdea, setDevelopIdea] = useState<WeekIdea | null>(null);
-  // Stable-key Sets — key by ${day}-${title} so state survives reindexing
   const [savedIdeaKeys, setSavedIdeaKeys] = useState<Set<string>>(new Set());
   const [savingIdeaKey, setSavingIdeaKey] = useState<string | null>(null);
-  const generateAbortRef = useRef<AbortController | null>(null);
 
-  // Pipeline progress
-  const [pipelineStep, setPipelineStep] = useState<PipelineStep>("idle");
-  const [selectedTopics, setSelectedTopics] = useState<{ day: string; title: string; pillar: string }[]>([]);
+  // Reset per-idea UI state whenever a new batch of ideas lands.
+  useEffect(() => {
+    setSavedIdeaKeys(new Set());
+    setSavingIdeaKey(null);
+  }, [weekIdeas]);
 
   // Saved scripts
   const [filterStatus, setFilterStatus] = useState("all");
@@ -457,9 +440,6 @@ export default function ClientScriptsPage() {
     loadClientCached(id).then(setClient);
     fetch(`/api/analyses?clientId=${id}`).then(r => r.json()).then((analyses: unknown[]) => setHasAudit(analyses.length > 0));
   }, [id, loadScripts]);
-
-  // Stable key per idea (survives array reindexing across regenerations)
-  const ideaKey = useCallback((idea: WeekIdea) => `${idea.day}::${idea.title}`, []);
 
   // ── Save a generated idea to the Ideas tab ──────────────────────────────
   const saveIdeaToTab = async (idea: WeekIdea) => {
@@ -498,91 +478,6 @@ export default function ClientScriptsPage() {
       setSavingIdeaKey(null);
     }
   };
-
-  // ── Generate full week of IDEAS (SSE streaming) ─────────────────────────
-  const generateWeek = async () => {
-    // Abort any in-flight generation before starting a new one
-    if (generateAbortRef.current) {
-      try { generateAbortRef.current.abort(); } catch {}
-    }
-    const abort = new AbortController();
-    generateAbortRef.current = abort;
-
-    setWeekLoading(true);
-    setWeekError(null);
-    setWeekIdeas([]);
-    setWeekReasoning("");
-    setWeekMeta(null);
-    setPipelineStep("context");
-    setSelectedTopics([]);
-    setSavedIdeaKeys(new Set());
-    setSavingIdeaKey(null);
-
-    try {
-      const res = await fetch(`/api/configs/${id}/generate-week-scripts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: abort.signal,
-      });
-
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("Keine Server-Antwort");
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          let data;
-          try { data = JSON.parse(line.slice(6)); } catch { continue; }
-
-          if (data.step === "error") {
-            setWeekError(data.message || "Unbekannter Fehler");
-            setPipelineStep("error");
-          } else if (data.step === "voice" && data.status === "done") {
-            // voice and context finish simultaneously on the server. Advance
-            // UI to trends only after BOTH are in — skip the fake "voice" step.
-            setPipelineStep("trends");
-          } else if (data.step === "trends" && data.status === "done") {
-            setPipelineStep("generate");
-          } else if (data.step === "generate" && data.status === "done") {
-            setSelectedTopics(data.ideaTitles || []);
-          } else if (data.step === "done") {
-            setPipelineStep("done");
-            setWeekIdeas(data.ideas || []);
-            setWeekReasoning(data.weekReasoning || "");
-            setWeekMeta(data._meta || null);
-          }
-        }
-      }
-    } catch (e) {
-      // AbortError (user navigated away or restarted) is expected — stay silent.
-      if ((e as Error)?.name !== "AbortError") {
-        setWeekError(e instanceof Error ? e.message : "Unbekannter Fehler");
-        setPipelineStep("error");
-      }
-    } finally {
-      setWeekLoading(false);
-      if (generateAbortRef.current === abort) generateAbortRef.current = null;
-    }
-  };
-
-  // Abort in-flight pipeline on unmount to prevent setState-on-unmounted-component
-  useEffect(() => {
-    return () => {
-      if (generateAbortRef.current) {
-        try { generateAbortRef.current.abort(); } catch {}
-      }
-    };
-  }, []);
 
   // ── Saved scripts CRUD ──────────────────────────────────────────────────
   const openEdit = (script: Script) => {

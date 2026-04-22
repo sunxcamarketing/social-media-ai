@@ -25,7 +25,8 @@ import {
   synthesizeVoiceOnboarding,
 } from "./lib/voice-onboarding";
 import { VOICE_BLOCK_ORDER, type VoiceBlockId, type Config } from "./lib/types";
-import { VOICE_PROFILE_STEPS, getStep, type VoiceProfileStep } from "./lib/voice-profile-scenarios";
+import { getStep, type VoiceProfileStep } from "./lib/voice-profile-scenarios";
+import { finalizeVoiceProfileSession } from "./lib/voice/finalize-voice-profile";
 import Anthropic from "@anthropic-ai/sdk";
 
 // dotenv is loaded via --require dotenv/config in the npm script
@@ -762,7 +763,7 @@ wss.on("connection", async (ws: WebSocket, req) => {
       if (mode === "onboarding") {
         await finalizeOnboardingSession({ ws, clientId, lang, transcript, durationSeconds });
       } else if (mode === "voice-profile" && voiceProfileStep) {
-        await finalizeVoiceProfileSession({ ws, clientId, lang, transcript, durationSeconds, step: voiceProfileStep });
+        await finalizeVoiceProfileSession({ ws, clientId, transcript, durationSeconds, step: voiceProfileStep });
       } else {
         await finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds });
       }
@@ -883,68 +884,6 @@ async function enrichOnboardingInBackground(args: {
   } else {
     console.log("[onboarding-bg] browser already disconnected — enrichment saved to DB only");
   }
-}
-
-async function finalizeVoiceProfileSession(
-  args: FinalizeArgs & { step: VoiceProfileStep },
-): Promise<void> {
-  const { ws, clientId, transcript, durationSeconds, step } = args;
-  // Extract only the user's spoken lines — this is the actual voice sample.
-  // Keep model lines minimal (topic-mode questions are useful context for the
-  // voice-profile extraction prompt, but scenarios should be user-only).
-  const userLines = transcript.filter((t) => t.role === "user").map((t) => t.text.trim()).filter(Boolean);
-  const combined = userLines.join("\n\n");
-
-  if (combined.length < 30) {
-    console.warn(`[voice-profile] step ${step.id}: sample too short (${combined.length} chars), skipping save`);
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: "voice_profile_summary",
-        stepId: step.id,
-        saved: false,
-        durationSeconds,
-        reason: "Sample zu kurz",
-      }));
-    }
-    return;
-  }
-
-  // Persist the transcript as a training sample — feeds voice-profile extraction.
-  const id = crypto.randomUUID();
-  const { error } = await supabase.from("training_scripts").insert({
-    id,
-    client_id: clientId,
-    format: `voice-profile-${step.id}`,
-    text_hook: "",
-    visual_hook: "",
-    audio_hook: "",
-    script: combined,
-    cta: "",
-    source_id: `voice-profile-${step.id}`,
-    created_at: new Date().toISOString().split("T")[0],
-  });
-  if (error) {
-    console.error("[voice-profile] save failed:", error.message);
-  } else {
-    console.log(`[voice-profile] saved sample for step ${step.id} (${combined.length} chars)`);
-  }
-
-  // Save voice session record for replay/debug.
-  await saveVoiceSession(clientId, transcript, 0, durationSeconds).catch((err) => {
-    console.error("[voice-profile] saveVoiceSession failed:", err);
-  });
-
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      type: "voice_profile_summary",
-      stepId: step.id,
-      saved: !error,
-      durationSeconds,
-      transcriptLength: transcript.length,
-      sampleChars: combined.length,
-    }));
-  }
-  console.log(`[voice-profile] step ${step.id} finalized: ${durationSeconds}s, ${combined.length} chars sample`);
 }
 
 async function finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds }: FinalizeArgs): Promise<void> {

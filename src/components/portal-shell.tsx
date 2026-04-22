@@ -3,6 +3,8 @@
 import { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { PageHeader } from "@/components/ui/page-header";
+import { motion } from "motion/react";
 
 interface PortalShellProps {
   icon: LucideIcon;
@@ -14,45 +16,56 @@ interface PortalShellProps {
   /** Optional extra UI rendered between the title block and the content
    *  (e.g. a tab switcher). Always visible, even in empty state. */
   header?: ReactNode;
+  /** Buttons / links rendered in the page header action slot. */
+  actions?: ReactNode;
   children: ReactNode;
 }
 
 /**
- * Common wrapper for read-only portal pages: header with icon + title,
- * loading state, empty state. Replaces the repeated h1 + subtitle + if/else
- * empty-card pattern across scripts, videos, analyses, strategy.
+ * Common wrapper for read-only portal pages: premium hero header with
+ * icon + title + optional actions, loading skeleton, empty state.
  */
 export function PortalShell({
-  icon: Icon,
+  icon,
   title,
   subtitle,
   loading,
   emptyMessage,
   isEmpty,
   header,
+  actions,
   children,
 }: PortalShellProps) {
   const { t } = useI18n();
   const resolvedEmpty = emptyMessage ?? t("portal.shell.noData");
+
   if (loading) {
-    return <div className="text-center py-20 text-ocean/50">{t("portal.shell.loading")}</div>;
+    return (
+      <div className="space-y-6">
+        <div className="h-24 rounded-2xl bg-ocean/[0.04] animate-pulse" />
+        <div className="h-48 rounded-2xl bg-ocean/[0.04] animate-pulse" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 animate-in-up">
-      <div>
-        <h1 className="text-xl font-light text-ocean flex items-center gap-2">
-          <Icon className="h-5 w-5" /> {title}
-        </h1>
-        {subtitle && <p className="text-xs text-ocean/50 mt-1">{subtitle}</p>}
-      </div>
-
-      {header}
+    <div className="space-y-5">
+      <PageHeader
+        icon={icon}
+        title={title}
+        subtitle={subtitle}
+        actions={actions}
+        footer={header}
+      />
 
       {isEmpty ? (
-        <div className="glass rounded-2xl p-8 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border-2 border-dashed border-ocean/[0.1] bg-warm-white/50 p-8 sm:p-12 text-center"
+        >
           <p className="text-sm text-ocean/50">{resolvedEmpty}</p>
-        </div>
+        </motion.div>
       ) : (
         children
       )}
