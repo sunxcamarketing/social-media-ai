@@ -9,6 +9,7 @@ import { supabase } from "./supabase";
 import { readTrainingScripts, readConfigs } from "./csv";
 import { buildPrompt, VOICE_PROFILE_TOOL, SCRIPT_STRUCTURE_TOOL } from "@prompts";
 import type { VoiceProfile, ScriptStructureProfile } from "./types";
+import { trackClaudeCost, type Initiator } from "./cost-tracking";
 
 const BATCH_SIZE = 15; // docs per Claude call
 const MODEL = "claude-sonnet-4-6";
@@ -72,6 +73,7 @@ export async function generateVoiceProfile(
   clientId: string,
   clientName: string,
   lang: "de" | "en" = "de",
+  initiator: Initiator = "admin",
 ): Promise<VoiceProfile | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
@@ -84,7 +86,7 @@ export async function generateVoiceProfile(
   // Single batch — fits in one call
   if (trainingScripts.length <= BATCH_SIZE) {
     const transcriptBlock = trainingScripts.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const profile = await extractVoiceProfileSingle(client, clientName, transcriptBlock, lang);
+    const profile = await extractVoiceProfileSingle(client, clientName, transcriptBlock, lang, clientId, initiator);
     if (profile) await saveVoiceProfile(clientId, profile);
     return profile;
   }
@@ -95,7 +97,7 @@ export async function generateVoiceProfile(
 
   for (const chunk of chunks) {
     const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const partial = await extractVoiceProfileSingle(client, clientName, transcriptBlock, lang);
+    const partial = await extractVoiceProfileSingle(client, clientName, transcriptBlock, lang, clientId, initiator);
     if (partial) partialProfiles.push(partial);
   }
 
@@ -106,7 +108,7 @@ export async function generateVoiceProfile(
   }
 
   // Merge step — consolidate partial profiles into one
-  const merged = await mergeVoiceProfiles(client, clientName, partialProfiles, lang);
+  const merged = await mergeVoiceProfiles(client, clientName, partialProfiles, lang, clientId, initiator);
   if (merged) await saveVoiceProfile(clientId, merged);
   return merged;
 }
@@ -116,6 +118,8 @@ async function extractVoiceProfileSingle(
   clientName: string,
   transcriptBlock: string,
   lang: "de" | "en" = "de",
+  clientId: string,
+  initiator: Initiator,
 ): Promise<VoiceProfile | null> {
   const userPrompt = lang === "en"
     ? `Analyze these transcripts from ${clientName} and produce a voice profile.\n\n${transcriptBlock}`
@@ -128,6 +132,7 @@ async function extractVoiceProfileSingle(
     tool_choice: { type: "tool", name: "submit_voice_profile" },
     messages: [{ role: "user", content: userPrompt }],
   });
+  trackClaudeCost({ usage: message.usage, model: MODEL, clientId, operation: "voice_profile_extract", initiator });
 
   const toolUse = message.content.find(b => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") return null;
@@ -139,6 +144,8 @@ async function mergeVoiceProfiles(
   clientName: string,
   profiles: VoiceProfile[],
   lang: "de" | "en" = "de",
+  clientId: string,
+  initiator: Initiator,
 ): Promise<VoiceProfile | null> {
   const profileSummaries = profiles.map((p, i) =>
     `--- Batch ${i + 1} ---
@@ -167,6 +174,7 @@ Beispielsätze: ${p.exampleSentences.map(s => `"${s}"`).join(" | ")}`
     tool_choice: { type: "tool", name: "submit_voice_profile" },
     messages: [{ role: "user", content: mergeUser }],
   });
+  trackClaudeCost({ usage: message.usage, model: MODEL, clientId, operation: "voice_profile_merge", initiator });
 
   const toolUse = message.content.find(b => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") return null;
@@ -208,6 +216,7 @@ export async function generateScriptStructure(
   clientId: string,
   clientName: string,
   lang: "de" | "en" = "de",
+  initiator: Initiator = "admin",
 ): Promise<ScriptStructureProfile | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
@@ -219,7 +228,7 @@ export async function generateScriptStructure(
 
   if (trainingScripts.length <= BATCH_SIZE) {
     const transcriptBlock = trainingScripts.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const structure = await extractScriptStructureSingle(client, clientName, transcriptBlock, lang);
+    const structure = await extractScriptStructureSingle(client, clientName, transcriptBlock, lang, clientId, initiator);
     if (structure) await saveScriptStructure(clientId, structure);
     return structure;
   }
@@ -230,7 +239,7 @@ export async function generateScriptStructure(
 
   for (const chunk of chunks) {
     const transcriptBlock = chunk.map((ts, i) => formatTranscript(ts, i)).join("\n\n");
-    const partial = await extractScriptStructureSingle(client, clientName, transcriptBlock, lang);
+    const partial = await extractScriptStructureSingle(client, clientName, transcriptBlock, lang, clientId, initiator);
     if (partial) partials.push(partial);
   }
 
@@ -240,7 +249,7 @@ export async function generateScriptStructure(
     return partials[0];
   }
 
-  const merged = await mergeScriptStructures(client, clientName, partials, lang);
+  const merged = await mergeScriptStructures(client, clientName, partials, lang, clientId, initiator);
   if (merged) await saveScriptStructure(clientId, merged);
   return merged;
 }
@@ -250,6 +259,8 @@ async function extractScriptStructureSingle(
   clientName: string,
   transcriptBlock: string,
   lang: "de" | "en" = "de",
+  clientId: string,
+  initiator: Initiator,
 ): Promise<ScriptStructureProfile | null> {
   const userPrompt = lang === "en"
     ? `Analyze the CONSTRUCTION and STRUCTURE of these scripts from ${clientName}. How are they built? What patterns repeat?\n\n${transcriptBlock}`
@@ -262,6 +273,7 @@ async function extractScriptStructureSingle(
     tool_choice: { type: "tool", name: "submit_script_structure" },
     messages: [{ role: "user", content: userPrompt }],
   });
+  trackClaudeCost({ usage: message.usage, model: MODEL, clientId, operation: "script_structure_extract", initiator });
 
   const toolUse = message.content.find(b => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") return null;
@@ -273,6 +285,8 @@ async function mergeScriptStructures(
   clientName: string,
   structures: ScriptStructureProfile[],
   lang: "de" | "en" = "de",
+  clientId: string,
+  initiator: Initiator,
 ): Promise<ScriptStructureProfile | null> {
   const summaries = structures.map((s, i) =>
     `--- Batch ${i + 1} ---
@@ -300,6 +314,7 @@ Regeln: ${s.keyRules.join(" | ")}`
     tool_choice: { type: "tool", name: "submit_script_structure" },
     messages: [{ role: "user", content: mergeUser }],
   });
+  trackClaudeCost({ usage: message.usage, model: MODEL, clientId, operation: "script_structure_merge", initiator });
 
   const toolUse = message.content.find(b => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") return null;

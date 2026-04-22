@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideosByConfig, readTrainingScripts, readScripts, readStrategyConfig } from "@/lib/csv";
+import { getCurrentUser } from "@/lib/auth";
+import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 import { getVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
 import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
@@ -97,6 +99,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const user = await getCurrentUser();
+  const initiator: Initiator = user?.role === "client" ? "client" : "admin";
+  const userId = user?.id || null;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
 
@@ -112,7 +118,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Returns a single "script" field — the complete spoken text.
   // ══════════════════════════════════════════════════════════════════════════
   if (topicOverride) {
-    return handleTopicScript(id, config, topicOverride, hint, apiKey);
+    return handleTopicScript(id, config, topicOverride, hint, apiKey, initiator, userId);
   }
 
   // ── Client brand context ──────────────────────────────────────────────────
@@ -287,6 +293,7 @@ ${dayOverrideBlock}`;
     tool_choice: { type: "tool", name: "submit_script" },
     messages: [{ role: "user", content: userPrompt }],
   });
+  trackClaudeCost({ usage: message.usage, model: "claude-sonnet-4-6", clientId: id, userId, operation: "script_gen", initiator });
 
   const toolUse = message.content.find((b) => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") {
@@ -329,6 +336,7 @@ ${dayOverrideBlock}`;
           },
         ],
       });
+      trackClaudeCost({ usage: shortenMsg.usage, model: "claude-sonnet-4-6", clientId: id, userId, operation: "script_shorten", initiator });
 
       const shortenedTool = shortenMsg.content.find((b) => b.type === "tool_use");
       if (shortenedTool && shortenedTool.type === "tool_use") {
@@ -370,6 +378,8 @@ async function handleTopicScript(
   topic: { day: string; pillar: string; contentType: string; format: string; title: string; description: string },
   hint: string,
   apiKey: string,
+  initiator: Initiator,
+  userId: string | null,
 ) {
   const dreamCustomer = safeJsonParse(config.dreamCustomer);
   const clientContext = [
@@ -464,6 +474,7 @@ Schreibe jetzt das Skript zu genau diesem Thema.`;
     tool_choice: { type: "tool", name: "submit_script" },
     messages: [{ role: "user", content: userPrompt }],
   });
+  trackClaudeCost({ usage: message.usage, model: "claude-sonnet-4-6", clientId, userId, operation: "script_gen_topic", initiator });
 
   const toolUse = message.content.find((b) => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") {
@@ -493,6 +504,7 @@ Schreibe jetzt das Skript zu genau diesem Thema.`;
         },
       ],
     });
+    trackClaudeCost({ usage: shortenMsg.usage, model: "claude-sonnet-4-6", clientId, userId, operation: "script_shorten_topic", initiator });
     const shortened = shortenMsg.content.find((b) => b.type === "tool_use");
     if (shortened && shortened.type === "tool_use") {
       scriptText = (shortened.input as { script: string }).script || scriptText;

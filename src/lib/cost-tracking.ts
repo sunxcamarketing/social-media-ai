@@ -42,6 +42,10 @@ interface TrackBase {
   clientId: string | null;
   operation: string;
   initiator: Initiator;
+  /** Supabase auth user id — WHICH admin/client triggered this call. Optional
+   *  because background jobs (cron) have no user. Enables per-user splits on
+   *  the /costs page (e.g. "Aysun vs. Team-Member" once other admins exist). */
+  userId?: string | null;
 }
 
 async function saveCost(entry: {
@@ -56,6 +60,7 @@ async function saveCost(entry: {
   try {
     await supabase.from("api_costs").insert({
       client_id: entry.clientId,
+      user_id: entry.userId || null,
       provider: entry.provider,
       operation: entry.operation,
       model: entry.model || null,
@@ -104,6 +109,7 @@ export async function trackClaudeCost(opts: TrackBase & {
     cacheWriteTokens,
     costUsd,
     clientId: opts.clientId,
+    userId: opts.userId,
     operation: opts.operation,
     initiator: opts.initiator,
   });
@@ -131,6 +137,7 @@ export async function trackGeminiCost(opts: TrackBase & {
     outputTokens,
     costUsd,
     clientId: opts.clientId,
+    userId: opts.userId,
     operation: opts.operation,
     initiator: opts.initiator,
   });
@@ -146,6 +153,7 @@ export async function trackBraveCost(opts: TrackBase & { queryCount: number }) {
     provider: "brave",
     costUsd,
     clientId: opts.clientId,
+    userId: opts.userId,
     operation: opts.operation,
     initiator: opts.initiator,
   });
@@ -161,6 +169,48 @@ export async function trackApifyCost(opts: TrackBase & { itemCount: number }) {
     provider: "apify",
     costUsd,
     clientId: opts.clientId,
+    userId: opts.userId,
+    operation: opts.operation,
+    initiator: opts.initiator,
+  });
+}
+
+// Estimated per-call cost for Gemini video analysis (upload + analyze).
+// Exact token counts aren't returned by the analyze call, so we estimate.
+// ~5-10s video ≈ 2000 input tokens + 500 output tokens at Flash rates.
+const GEMINI_VIDEO_ANALYSIS_COST = 0.02;
+
+/**
+ * Track a Gemini video analysis call with a fixed estimated cost.
+ */
+export async function trackGeminiVideoAnalysis(opts: TrackBase) {
+  await saveCost({
+    provider: "gemini",
+    model: "gemini-2.0-flash-video",
+    costUsd: GEMINI_VIDEO_ANALYSIS_COST,
+    clientId: opts.clientId,
+    userId: opts.userId,
+    operation: opts.operation,
+    initiator: opts.initiator,
+  });
+}
+
+// Gemini Live audio: ~5000 tokens/minute bidirectional. Cost ≈ duration × rate.
+// Avg of input ($0.30/M) and output ($2.00/M) audio rates applied to ~5k tok/min.
+const GEMINI_LIVE_COST_PER_SECOND = (5000 / 60) * ((GEMINI_PRICING.audioInput + GEMINI_PRICING.audioOutput) / 2) / 1_000_000;
+
+/**
+ * Track a Gemini Live voice session by its duration in seconds.
+ */
+export async function trackGeminiLiveSession(opts: TrackBase & { durationSeconds: number }) {
+  if (opts.durationSeconds <= 0) return;
+  const costUsd = opts.durationSeconds * GEMINI_LIVE_COST_PER_SECOND;
+  await saveCost({
+    provider: "gemini",
+    model: "gemini-2.0-flash-live",
+    costUsd,
+    clientId: opts.clientId,
+    userId: opts.userId,
     operation: opts.operation,
     initiator: opts.initiator,
   });

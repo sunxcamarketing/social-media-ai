@@ -12,6 +12,7 @@ import { buildPrompt, WEEKLY_IDEAS_TOOL } from "@prompts";
 import type { PipelineContext, VoiceContext, ResearchContext } from "./weekly-steps";
 import { getLatestSnapshot } from "@/lib/intelligence";
 import { buildPerformanceMemoBlock, type PerformanceMemo } from "@/lib/jobs/performance-memo";
+import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -110,6 +111,7 @@ export async function generateWeekIdeas(
   voice: VoiceContext,
   research: ResearchContext,
   claude: Anthropic,
+  initiator: Initiator = "admin",
 ): Promise<{ ideas: WeeklyIdea[]; weekReasoning: string }> {
   const numIdeas = ctx.activeDays.length;
 
@@ -141,6 +143,14 @@ export async function generateWeekIdeas(
     messages: [{ role: "user", content: userPrompt }],
     tools: [tool],
     tool_choice: { type: "tool", name: tool.name },
+  });
+
+  trackClaudeCost({
+    usage: response.usage,
+    model: "claude-opus-4-7",
+    clientId: ctx.config.id,
+    operation: "weekly_ideas",
+    initiator,
   });
 
   const toolUseBlock = response.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");

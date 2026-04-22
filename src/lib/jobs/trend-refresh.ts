@@ -5,6 +5,7 @@ import { readConfig } from "../csv";
 import { searchTrendsDeep } from "../brave-search";
 import { safeJsonParse } from "../safe-json";
 import { saveSnapshot } from "../intelligence";
+import { trackBraveCost } from "../cost-tracking";
 
 export async function refreshTrends(clientId: string): Promise<{ totalResults: number }> {
   const config = await readConfig(clientId);
@@ -20,6 +21,7 @@ export async function refreshTrends(clientId: string): Promise<{ totalResults: n
     brandProblem: config.brandProblem || undefined,
     businessContext: config.businessContext || undefined,
   });
+  trackBraveCost({ clientId, operation: "trend_refresh_job", initiator: "admin", queryCount: results.length });
 
   const totalResults = results.reduce((sum, r) => sum + r.results.length, 0);
 

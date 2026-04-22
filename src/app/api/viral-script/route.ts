@@ -12,6 +12,8 @@ import {
 } from "@prompts";
 import { sendEvent, sseResponse } from "@/lib/sse";
 import { buildFullClientContext } from "@/lib/client-context";
+import { getCurrentUser } from "@/lib/auth";
+import { trackClaudeCost, trackGeminiVideoAnalysis, trackApifyCost, type Initiator } from "@/lib/cost-tracking";
 
 export const maxDuration = 300;
 
@@ -29,6 +31,12 @@ export async function POST(request: Request) {
 
   const config = await readConfig(clientId);
   if (!config) return new Response(JSON.stringify({ error: "Client not found" }), { status: 404 });
+
+  const user = await getCurrentUser();
+  const initiator: Initiator = user?.role === "client" ? "client" : "admin";
+  const userId = user?.id || null;
+  const track = (usage: Parameters<typeof trackClaudeCost>[0]["usage"], operation: string) =>
+    trackClaudeCost({ usage, model: MODEL, clientId, userId, operation, initiator });
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -72,6 +80,7 @@ export async function POST(request: Request) {
           sendEvent(controller, { step: "reference", status: "loading", message: "Video wird geladen..." });
 
           const post = await scrapeSinglePost(videoUrl);
+          trackApifyCost({ clientId, userId, operation: "viral_scrape", initiator, itemCount: 1 });
           referenceCreator = post.ownerUsername || "";
           referenceViews = post.videoPlayCount || 0;
 
@@ -87,6 +96,7 @@ export async function POST(request: Request) {
           // Upload to Gemini + analyze
           const { uri, mimeType } = await uploadVideo(buffer, "video/mp4");
           referenceAnalysis = await analyzeVideo(uri, mimeType, VIRAL_SCRIPT_ANALYSIS_PROMPT);
+          trackGeminiVideoAnalysis({ clientId, userId, operation: "viral_analysis", initiator });
 
           sendEvent(controller, { step: "reference", status: "done" });
         }
@@ -107,6 +117,7 @@ export async function POST(request: Request) {
             content: `Analysiere die PSYCHOLOGISCHE MECHANIK dieses viralen Videos (${referenceCreator ? `@${referenceCreator}, ` : ""}${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : ""}):\n\n${referenceAnalysis}`,
           }],
         });
+        track(structureMsg.usage, "viral_structure");
 
         const structureTool = structureMsg.content.find(b => b.type === "tool_use");
         if (!structureTool || structureTool.type !== "tool_use") throw new Error("Psychologie-Analyse fehlgeschlagen");
@@ -138,6 +149,7 @@ export async function POST(request: Request) {
             content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_hook>\nOriginal-Hook: "${refHookSentence}"\nHook-Typ: ${refStructure.hookType}\nWarum er funktioniert: ${refStructure.hookAnalysis}\n</reference_hook>\n\nErstelle 3 Hook-Varianten für ${clientName} (Nische: ${(config as unknown as Record<string, string>).creatorsCategory || "unbekannt"}).\n\nMethode: Nutze den gleichen PSYCHOLOGISCHEN TRIGGER wie das Original (${refStructure.hookType}), aber erstelle einen NEUEN Hook der sich für die Nische des Kunden original anfühlt. Nicht die Wörter tauschen — den gleichen EFFEKT erzeugen.\n\nJede Variante soll einen anderen Ansatz wählen, den gleichen Trigger zu aktivieren.`,
           }],
         });
+        track(hookMsg.usage, "viral_hooks");
 
         const hookTool = hookMsg.content.find(b => b.type === "tool_use");
         if (!hookTool || hookTool.type !== "tool_use") throw new Error("Hook-Generierung fehlgeschlagen");
@@ -176,6 +188,7 @@ export async function POST(request: Request) {
             content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n${structureBlock}\n${auditBlock}\n\n<reference_video>\nDieses Video hat ${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : "viral performt"}${referenceCreator ? ` von @${referenceCreator}` : ""}. Es ist BEWIESENER Erfolg.\n</reference_video>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<psychological_mechanics>\n${psychologyBlock}\n</psychological_mechanics>\n\n<selected_hook>\n${selectedHook}\n</selected_hook>\n\nDEIN AUFTRAG:\n1. Nutze die gleiche PSYCHOLOGISCHE MECHANIK wie das Original (gleicher Hook-Trigger, gleiche Retention-Mechanik, gleicher Share-Trigger)\n2. Aber schreibe ein NEUES Skript das sich original anfühlt — nicht wie eine Kopie mit ausgetauschten Wörtern\n3. Finde das ÄQUIVALENT in der Nische von ${clientName}: Welche Überzeugung kann angegriffen werden? Welche Zahl schockiert? Welche Geschichte löst die gleiche Emotion aus?\n4. Sei KONKRETER als das Original — echte Zahlen, echte Beispiele aus der Nische\n5. Klarer Meinungs-Winkel der polarisiert`,
           }],
         });
+        track(adaptMsg.usage, "viral_adapt");
 
         const adaptTool = adaptMsg.content.find(b => b.type === "tool_use");
         if (!adaptTool || adaptTool.type !== "tool_use") throw new Error("Skript-Adaption fehlgeschlagen");
@@ -225,6 +238,7 @@ export async function POST(request: Request) {
               content: `<reference_psychology>\nHook-Trigger: ${refStructure.hookType}\nWarum der Hook funktioniert: ${refStructure.hookAnalysis}\nEmotionale Reise: ${refStructure.pattern}\nVideo-Format: ${refStructure.videoType}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n${voiceBlock}\n\n<adapted_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</adapted_script>\n\nBewerte dieses adaptierte Skript. Fühlt es sich ORIGINAL an oder wie ein Template? Nutzt es die gleiche PSYCHOLOGISCHE WIRKUNG wie das Referenz-Video? Sei streng.`,
             }],
           });
+          track(criticMsg.usage, "viral_critic");
 
           const criticTool = criticMsg.content.find(b => b.type === "tool_use");
           if (!criticTool || criticTool.type !== "tool_use") break;
@@ -285,6 +299,7 @@ export async function POST(request: Request) {
               content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_psychology>\nHook-Trigger: ${refStructure.hookType}\nWarum der Hook funktioniert: ${refStructure.hookAnalysis}\nEmotionale Reise: ${refStructure.pattern}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<current_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</current_script>\n\n<critic_feedback>\nScore Kurz: ${critique.scoreShort}/10 | Score Lang: ${critique.scoreLong}/10\n\n${feedbackForWriter}\n</critic_feedback>\n\nÜberarbeite das Skript basierend auf dem Critic-Feedback. Behebe JEDES genannte Problem. Behalte alles bei was gut ist. Das Skript muss sich ORIGINAL anfühlen und die gleiche PSYCHOLOGISCHE WIRKUNG wie das Referenz-Video erzeugen.`,
             }],
           });
+          track(reviseMsg.usage, "viral_revise");
 
           const reviseTool = reviseMsg.content.find(b => b.type === "tool_use");
           if (!reviseTool || reviseTool.type !== "tool_use") break;
@@ -335,6 +350,7 @@ export async function POST(request: Request) {
             content: `Erstelle eine einfache Shot-Liste für dieses Skript. Welche Shots müssen aufgenommen werden?\n\n--- KURZE VERSION ---\nText-Hook: ${finalShort.textHook}\nHook: ${finalShort.hook}\nBody: ${finalShort.body}\nCTA: ${finalShort.cta}\n\n--- LANGE VERSION ---\nText-Hook: ${finalLong.textHook}\nHook: ${finalLong.hook}\nBody: ${finalLong.body}\nCTA: ${finalLong.cta}\n\nErstelle die Shot-Liste basierend auf der LANGEN Version. Der erste Shot sollte den Text-Hook als On-Screen-Text enthalten.`,
           }],
         });
+        track(productionMsg.usage, "viral_production");
 
         const productionTool = productionMsg.content.find(b => b.type === "tool_use");
         const rawProduction = productionTool && productionTool.type === "tool_use"

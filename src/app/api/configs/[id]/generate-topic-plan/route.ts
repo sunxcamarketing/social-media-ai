@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfigs, readVideosByConfig, readScripts, readStrategyConfig } from "@/lib/csv";
+import { getCurrentUser } from "@/lib/auth";
+import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt } from "@prompts";
@@ -17,6 +19,8 @@ function parseInsights(raw: string): PerformanceInsights | null {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await getCurrentUser();
+  const initiator: Initiator = user?.role === "client" ? "client" : "admin";
   const configs = await readConfigs();
   const config = configs.find((c) => c.id === id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -168,6 +172,7 @@ Erstelle den Themenplan für diese Woche. ${activeDays.length} Videos, eines pro
     tool_choice: { type: "tool", name: "submit_topic_plan" },
     messages: [{ role: "user", content: userPrompt }],
   });
+  trackClaudeCost({ usage: message.usage, model: "claude-sonnet-4-6", clientId: id, userId: user?.id || null, operation: "topic_plan", initiator });
 
   const toolUse = message.content.find((b) => b.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") {

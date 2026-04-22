@@ -9,6 +9,7 @@ import { refreshCompetitors } from "@/lib/jobs/competitor-refresh";
 import { analyzePerformanceFeedback } from "@/lib/jobs/performance-feedback";
 import { generatePerformanceMemo } from "@/lib/jobs/performance-memo";
 import { detectVoiceDrift } from "@/lib/jobs/voice-drift";
+import { refreshClientPosts } from "@/lib/jobs/refresh-posts";
 
 export const maxDuration = 120;
 
@@ -33,20 +34,22 @@ export async function POST(request: Request) {
     clientIds = configs.map(c => c.id);
   }
 
-  const results: Record<string, { trends: string; competitors: string; feedback: string; memo: string; voiceDrift: string }> = {};
+  const results: Record<string, { trends: string; competitors: string; feedback: string; memo: string; voiceDrift: string; posts: string }> = {};
 
   for (const clientId of clientIds) {
-    const result = { trends: "skipped", competitors: "skipped", feedback: "skipped", memo: "skipped", voiceDrift: "skipped" };
+    const result = { trends: "skipped", competitors: "skipped", feedback: "skipped", memo: "skipped", voiceDrift: "skipped", posts: "skipped" };
 
     const jobs = await Promise.allSettled([
       refreshTrends(clientId).then(r => { result.trends = `done (${r.totalResults} results)`; }),
       refreshCompetitors(clientId).then(r => { result.competitors = `done (${r.totalVideos} videos)`; }),
       analyzePerformanceFeedback(clientId).then(r => { result.feedback = `done (${r.matchedCount} matched, ${r.learningsExtracted} learnings)`; }),
+      refreshClientPosts(clientId).then(r => { result.posts = r.status === "refreshed" ? `done (${r.posts} posts)` : r.status + (r.reason ? ` — ${r.reason}` : ""); }),
     ]);
 
     if (jobs[0].status === "rejected") result.trends = `error: ${(jobs[0].reason as Error).message}`;
     if (jobs[1].status === "rejected") result.competitors = `error: ${(jobs[1].reason as Error).message}`;
     if (jobs[2].status === "rejected") result.feedback = `error: ${(jobs[2].reason as Error).message}`;
+    if (jobs[3].status === "rejected") result.posts = `error: ${(jobs[3].reason as Error).message}`;
 
     // Performance memo runs AFTER feedback so it sees freshly-extracted learnings.
     try {

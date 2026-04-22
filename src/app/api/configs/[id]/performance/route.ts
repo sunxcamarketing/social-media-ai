@@ -32,11 +32,25 @@ export interface VideoInsight {
   howToReplicate: string;
 }
 
+/** Lightweight record of every post in the scrape — no Gemini analysis,
+ *  just date + url + views. Used by activity widgets that need the full
+ *  post history, not just the 2 top-performing analyzed videos. */
+export interface RecentPost {
+  url: string;
+  datePosted: string;
+  views: number;
+  likes: number;
+}
+
 export interface PerformanceInsights {
   scrapedAt: string;
   scrapeWindowDays: number;
   top30Days: VideoInsight[];
   topAllTime: VideoInsight[];
+  /** All posts from the scrape (last scrapeWindowDays). Lightweight — no
+   *  script analysis, just metadata. Populated for activity/cadence widgets.
+   *  Optional for backward compat with pre-existing insights JSON. */
+  recentPosts?: RecentPost[];
 }
 
 function parseAnalysis(raw: string): Pick<VideoInsight, "topic" | "audioHook" | "textHook" | "scriptSummary" | "whyItWorked" | "howToReplicate"> {
@@ -132,11 +146,21 @@ export async function POST(
     );
   }
 
+  // Lightweight record of every scraped post — feeds activity widgets that
+  // need the full cadence, not just the top-N analyzed highlights.
+  const recentPosts: RecentPost[] = allVideos.map((v) => ({
+    url: v.url,
+    datePosted: v.datePosted,
+    views: v.views,
+    likes: v.likes,
+  }));
+
   const insights: PerformanceInsights = {
     scrapedAt: new Date().toISOString().slice(0, 10),
     scrapeWindowDays: SCRAPE_WINDOW_DAYS,
     top30Days: top30Results,
     topAllTime: topAllResults,
+    recentPosts,
   };
 
   // Persist

@@ -202,6 +202,7 @@ export async function POST(request: Request) {
             usage: response.usage,
             model: "claude-opus-4-7",
             clientId: scopedClientId,
+            userId: user.id,
             operation: "chat",
             initiator: user.role,
           });

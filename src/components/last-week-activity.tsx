@@ -1,15 +1,20 @@
 "use client";
 
-import { Calendar, Film, TrendingUp, Info } from "lucide-react";
+import { useState } from "react";
+import { Calendar, Film, TrendingUp, Info, RefreshCw, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 
 type PostDate = { datePosted?: string };
 
 interface LastWeekActivityProps {
-  /** Client's own scraped posts (e.g. from performanceInsights.top30Days). */
+  /** Client's own scraped posts (e.g. from performanceInsights.recentPosts). */
   posts: PostDate[];
   /** Optional scrape date — to tell the user how fresh the numbers are. */
   scrapedAt?: string | null;
+  /** Admin-only: client id for the refresh button. If set, renders "Aktualisieren". */
+  clientId?: string;
+  /** Called after a successful refresh so the parent can re-fetch client data. */
+  onRefreshed?: () => void;
 }
 
 const DAY_SHORT_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -46,7 +51,31 @@ function parseIsoDate(s: string | undefined): Date | null {
   return isNaN(d.getTime()) ? null : startOfDay(d);
 }
 
-export function LastWeekActivity({ posts, scrapedAt }: LastWeekActivityProps) {
+const STALE_SCRAPE_DAYS = 10;
+
+export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: LastWeekActivityProps) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+
+  const handleRefresh = async () => {
+    if (!clientId || refreshing) return;
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      const res = await fetch(`/api/configs/${clientId}/refresh-posts`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setRefreshError(data.error || "Refresh fehlgeschlagen");
+      } else {
+        onRefreshed?.();
+      }
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : "Refresh fehlgeschlagen");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const days = last7Days();
   const postedDates = new Set<number>();
   for (const p of posts) {
@@ -56,6 +85,15 @@ export function LastWeekActivity({ posts, scrapedAt }: LastWeekActivityProps) {
 
   const hits = days.filter((d) => postedDates.has(d.getTime())).length;
   const ratio = hits / 7;
+
+  // If the scrape is older than the display window, the "0 posts" reading
+  // is almost certainly a data-freshness artifact, not a real signal. Flag
+  // it so the user doesn't misread the widget as "client isn't posting".
+  const scrapeDate = parseIsoDate(scrapedAt || undefined);
+  const daysSinceScrape = scrapeDate
+    ? Math.floor((startOfDay(new Date()).getTime() - scrapeDate.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isStale = daysSinceScrape !== null && daysSinceScrape >= STALE_SCRAPE_DAYS;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -71,7 +109,7 @@ export function LastWeekActivity({ posts, scrapedAt }: LastWeekActivityProps) {
               <p className="text-[11px] text-ocean/55">letzte 7 Tage</p>
             </div>
           </div>
-          {posts.length > 0 && (
+          {posts.length > 0 && !isStale && (
             <span className={`text-[10px] border rounded-md px-1.5 py-0.5 font-medium ${
               ratio >= 0.71 ? "bg-green-50 text-green-700 border-green-200"
               : ratio >= 0.43 ? "bg-amber-50 text-amber-700 border-amber-200"
@@ -79,6 +117,22 @@ export function LastWeekActivity({ posts, scrapedAt }: LastWeekActivityProps) {
             }`}>
               {ratio >= 0.71 ? "Stark" : ratio >= 0.43 ? "Okay" : "Wenig"}
             </span>
+          )}
+          {isStale && (
+            <span className="text-[10px] border rounded-md px-1.5 py-0.5 font-medium bg-ocean/[0.04] text-ocean/60 border-ocean/[0.08]">
+              veraltet
+            </span>
+          )}
+          {clientId && (
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Posts neu scrapen"
+              className="text-[10px] flex items-center gap-1 rounded-md border border-ocean/[0.08] bg-white hover:bg-warm-white/60 px-1.5 py-0.5 text-ocean/60 hover:text-ocean transition-colors disabled:opacity-50"
+            >
+              {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Aktualisieren
+            </button>
           )}
         </div>
 
@@ -123,6 +177,18 @@ export function LastWeekActivity({ posts, scrapedAt }: LastWeekActivityProps) {
           <p className="mt-3 text-[11px] text-ocean/40 flex items-center gap-1.5">
             <Info className="h-3 w-3" />
             Keine Post-Daten verfügbar — wurde der Audit schon gemacht?
+          </p>
+        )}
+        {isStale && posts.length > 0 && (
+          <p className="mt-3 text-[11px] text-amber-700/80 bg-amber-50/80 border border-amber-200/50 rounded-lg px-2.5 py-2 flex items-start gap-1.5 leading-relaxed">
+            <Info className="h-3 w-3 shrink-0 mt-0.5" />
+            <span>Daten sind {daysSinceScrape} Tage alt — die Zahl der Posts stimmt wahrscheinlich nicht. Klick &quot;Aktualisieren&quot; für frische Werte.</span>
+          </p>
+        )}
+        {refreshError && (
+          <p className="mt-3 text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-2 flex items-start gap-1.5 leading-relaxed">
+            <Info className="h-3 w-3 shrink-0 mt-0.5" />
+            <span>{refreshError}</span>
           </p>
         )}
         {scrapedAt && posts.length > 0 && (

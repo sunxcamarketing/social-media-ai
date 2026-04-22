@@ -59,7 +59,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
         // One-shot idea generation — Opus sees full context, plans the week
         sendEvent(controller, { step: "generate", status: "loading", total: ctx.activeDays.length });
-        const { ideas, weekReasoning } = await generateWeekIdeas(ctx, voice, research, claude);
+        const { ideas, weekReasoning } = await generateWeekIdeas(ctx, voice, research, claude, initiator);
         sendEvent(controller, {
           step: "generate", status: "done",
           weekReasoning,

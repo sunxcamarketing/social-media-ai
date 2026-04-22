@@ -58,6 +58,10 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const reloadClient = () => {
+    fetch(`/api/configs/${clientId}`).then(r => r.json()).then(c => setClient(c || null)).catch(() => {});
+  };
+
   useEffect(() => {
     if (!clientId) return;
     Promise.all([
@@ -156,8 +160,17 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
       {/* Last-week post activity */}
       <Section title="Post-Aktivität" icon={CheckCircle2}>
         <LastWeekActivity
-          posts={parseInsights(client?.performanceInsights || "")?.top30Days || []}
+          posts={
+            // Prefer full post history when available; fall back to top30Days
+            // for backward-compat with insights generated before recentPosts
+            // was added to the scrape output.
+            parseInsights(client?.performanceInsights || "")?.recentPosts
+            || parseInsights(client?.performanceInsights || "")?.top30Days
+            || []
+          }
           scrapedAt={parseInsights(client?.performanceInsights || "")?.scrapedAt || null}
+          clientId={mode === "admin" ? clientId : undefined}
+          onRefreshed={reloadClient}
         />
       </Section>
 

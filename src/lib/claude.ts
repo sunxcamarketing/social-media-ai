@@ -1,8 +1,10 @@
 import { getAnthropicClient } from "./anthropic";
+import { trackClaudeCost, type Initiator } from "./cost-tracking";
 
 export async function generateNewConcepts(
   videoAnalysis: string,
-  newConceptsPrompt: string
+  newConceptsPrompt: string,
+  costMeta?: { clientId: string | null; initiator: Initiator },
 ): Promise<string> {
   const client = getAnthropicClient();
 
@@ -32,6 +34,16 @@ ${newConceptsPrompt}
       },
     ],
   });
+
+  if (costMeta) {
+    trackClaudeCost({
+      usage: message.usage,
+      model: "claude-sonnet-4-6",
+      clientId: costMeta.clientId,
+      operation: "video_concept_adapt",
+      initiator: costMeta.initiator,
+    });
+  }
 
   const block = message.content[0];
   return block.type === "text" ? block.text : "";

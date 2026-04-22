@@ -15,6 +15,7 @@ import type { DeepTrendContext } from "@/lib/brave-search";
 import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 import type { PlatformId } from "@/lib/platforms";
 import { getLatestSnapshot, getSnapshotFreshness, buildTrendBlockFromSnapshot } from "@/lib/intelligence";
+import { trackClaudeCost, trackBraveCost, type Initiator } from "@/lib/cost-tracking";
 import { getHighConfidenceLearnings, buildLearningsBlock } from "@/lib/client-learnings";
 import type { ClientLearning } from "@/lib/client-learnings";
 import { buildClientProfile, buildBrandContext } from "@/lib/client-context";
@@ -315,6 +316,7 @@ export async function runResearch(
   claude: Anthropic,
   rng?: () => number,
   lang: "de" | "en" = "de",
+  initiator: Initiator = "admin",
 ): Promise<ResearchContext> {
   const [trendSnapshot, freshness, learnings] = await Promise.all([
     getLatestSnapshot(configId, "web_trends"),
@@ -359,6 +361,7 @@ export async function runResearch(
     const deepStartedAt = Date.now();
     try {
       const deepResults = await searchTrendsDeep(deepCtx, { rng });
+      trackBraveCost({ clientId: configId, operation: "trend_research", initiator, queryCount: deepResults.length });
       const totalResults = deepResults.reduce((sum, r) => sum + r.results.length, 0);
       if (totalResults > 0) {
         webTrendContext = formatDeepTrendResults(deepResults);
@@ -398,6 +401,13 @@ export async function runResearch(
 
     const trendMsg = await Promise.race([trendPromise, new Promise<null>((r) => setTimeout(() => r(null), 45000))]);
     if (trendMsg) {
+      trackClaudeCost({
+        usage: trendMsg.usage,
+        model: "claude-sonnet-4-6",
+        clientId: configId,
+        operation: "trend_synthesis",
+        initiator,
+      });
       const tu = trendMsg.content.find(b => b.type === "tool_use");
       if (tu && tu.type === "tool_use") {
         const result = tu.input as {

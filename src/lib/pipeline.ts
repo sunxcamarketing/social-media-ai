@@ -5,6 +5,7 @@ import { uploadVideo, analyzeVideo } from "./gemini";
 import { generateNewConcepts } from "./claude";
 import { ANALYSIS_PROMPT, buildConceptsPrompt } from "@prompts";
 import { persistImage } from "./persist-image";
+import { trackApifyCost, trackGeminiVideoAnalysis } from "./cost-tracking";
 import type { PipelineParams, PipelineProgress, Video, ActiveTask } from "./types";
 
 const VIDEO_CONCURRENCY = 3;
@@ -105,6 +106,7 @@ export async function runPipeline(
         addTask({ id: taskId, creator: creator.username, step: "Scraping reels" });
 
         const reels = await scrapeReels(creator.username, params.maxVideos, params.nDays);
+        trackApifyCost({ clientId: config.id, operation: "video_scrape", initiator: "admin", itemCount: reels.length });
         updateTask(taskId, `Found ${reels.length} reels`);
 
         const videos = reels
@@ -186,11 +188,16 @@ export async function runPipeline(
           fileData.mimeType,
           ANALYSIS_PROMPT
         );
+        trackGeminiVideoAnalysis({ clientId: config.id, operation: "video_analysis", initiator: "admin" });
 
         updateTask(taskId, "Claude generating concepts");
         log(`@${video.username} (${label}): Claude generating concepts`);
 
-        const newConcepts = await generateNewConcepts(analysis, buildConceptsPrompt(config));
+        const newConcepts = await generateNewConcepts(
+          analysis,
+          buildConceptsPrompt(config),
+          { clientId: config.id, initiator: "admin" },
+        );
 
         updateTask(taskId, "Saving thumbnail");
         const videoId = uuid();

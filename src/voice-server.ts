@@ -27,6 +27,7 @@ import { getStep, type VoiceProfileStep } from "./lib/voice-profile-scenarios";
 import { finalizeVoiceProfileSession } from "./lib/voice/finalize-voice-profile";
 import { finalizeOnboardingSession } from "./lib/voice/finalize-onboarding";
 import { finalizeContentIdeasSession } from "./lib/voice/finalize-content-ideas";
+import { trackGeminiLiveSession } from "./lib/cost-tracking";
 
 // dotenv is loaded via --require dotenv/config in the npm script
 
@@ -453,6 +454,14 @@ wss.on("connection", async (ws: WebSocket, req) => {
 
     const durationSeconds = Math.round((Date.now() - sessionStart) / 1000);
     const { transcript } = await geminiSession.close();
+
+    trackGeminiLiveSession({
+      clientId,
+      userId: auth?.userId || null,
+      operation: mode === "onboarding" ? "voice_onboarding" : mode === "voice-profile" ? "voice_profile_interview" : "voice_content_ideas",
+      initiator: "client",
+      durationSeconds,
+    });
 
     try {
       if (mode === "onboarding") {

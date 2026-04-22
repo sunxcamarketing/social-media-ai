@@ -15,6 +15,8 @@ interface CostsResponse {
   byClient: Record<string, { admin: number; client: number; total: number }>;
   byOperation: Record<string, number>;
   byProvider: Record<string, number>;
+  byAdminUser: Record<string, { total: number; calls: number }>;
+  userLabels: Record<string, string>;
 }
 
 interface Config { id: string; configName?: string; name?: string }
@@ -54,6 +56,9 @@ export default function CostsPage() {
     : [];
   const providerRows = data
     ? Object.entries(data.byProvider).sort((a, b) => b[1] - a[1])
+    : [];
+  const adminUserRows = data
+    ? Object.entries(data.byAdminUser).sort((a, b) => b[1].total - a[1].total)
     : [];
 
   const periodSelector = (
@@ -102,6 +107,36 @@ export default function CostsPage() {
           accent="amber"
         />
       </div>
+
+      {/* Per admin user — only meaningful once there's >1 admin or >0 admin calls */}
+      {adminUserRows.length > 0 && (
+        <Section title="Pro Admin-User">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b border-ocean/10 text-ocean/55">
+                  <th className="py-2 font-medium">Admin</th>
+                  <th className="text-right font-medium">Calls</th>
+                  <th className="text-right font-medium">Kosten</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminUserRows.map(([uid, stats]) => (
+                  <tr key={uid} className="border-b border-ocean/[0.04] last:border-0">
+                    <td className="py-2.5 text-ocean">
+                      {uid === "__unknown_admin__"
+                        ? <span className="text-ocean/50">(Background-Job / kein User)</span>
+                        : data?.userLabels[uid] || uid.slice(0, 8)}
+                    </td>
+                    <td className="text-right tabular-nums text-ocean/70">{stats.calls}</td>
+                    <td className="text-right tabular-nums font-medium text-ocean">{fmtUsd(stats.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
 
       {/* Per client */}
       <Section title="Pro Client">

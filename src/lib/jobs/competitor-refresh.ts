@@ -5,6 +5,7 @@ import { readConfig } from "../csv";
 import { scrapeReels } from "../apify";
 import { saveSnapshot } from "../intelligence";
 import { supabase } from "../supabase";
+import { trackApifyCost } from "../cost-tracking";
 
 export async function refreshCompetitors(clientId: string): Promise<{ totalVideos: number }> {
   const config = await readConfig(clientId);
@@ -33,6 +34,7 @@ export async function refreshCompetitors(clientId: string): Promise<{ totalVideo
   for (const creator of creators) {
     try {
       const reels = await scrapeReels(creator.username, 5, 7);
+      trackApifyCost({ clientId, operation: "competitor_refresh_job", initiator: "admin", itemCount: reels.length });
       results.push({
         creator: creator.username,
         videos: reels.map(r => ({
