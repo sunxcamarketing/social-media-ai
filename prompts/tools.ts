@@ -25,48 +25,6 @@ export interface StrategyOutput {
   weekly: Record<string, { type: string; format: string; reason: string }>;
 }
 
-// ── Topic Selection ───────────────────────────────────────────────────────
-
-export const TOPIC_SELECTION_TOOL = (days: string[], pillarNames: string[], contentTypeNames: string[], formatNames: string[]) => ({
-  name: "submit_topics",
-  description: "Die ausgewählten Wochenthemen einreichen",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      topics: {
-        type: "array" as const,
-        items: {
-          type: "object" as const,
-          properties: {
-            day: { type: "string", enum: days },
-            pillar: { type: "string", ...(pillarNames.length > 0 ? { enum: pillarNames } : {}) },
-            contentType: { type: "string", ...(contentTypeNames.length > 0 ? { enum: contentTypeNames } : {}) },
-            format: { type: "string", ...(formatNames.length > 0 ? { enum: formatNames } : {}) },
-            patternType: { type: "string", enum: ["STORY", "HOW_TO", "MISTAKES", "PROOF", "HOT_TAKE"], description: "Story-Pattern wie im Wochenplan vorgegeben — übernehmen, nicht ändern." },
-            postType: {
-              type: "string",
-              enum: ["core", "variant", "test"],
-              description: "core = direkte Adaption eines Winner-Videos/Learnings (anchorRef MUSS gesetzt sein). variant = neuer Winkel auf ein Winner-Thema (anchorRef empfohlen). test = komplett neue Idee ohne direkte Performance-Basis.",
-            },
-            anchorRef: {
-              type: "string",
-              description: "Bei core/variant: Titel/Thema des Winner-Videos oder Learnings das die Basis ist. Bei test: leerer String.",
-            },
-            title: { type: "string", description: "Konkreter Arbeitstitel (max 10 Wörter). SPEZIFISCH, nicht generisch. Muss zum patternType passen." },
-            description: { type: "string", description: "Kernaussage in 1 Satz — was lernt/fühlt der Zuschauer?" },
-            reasoning: { type: "string", description: "Welche konkreten Daten aus Audit/Performance stützen diese Wahl? 1-2 Sätze." },
-            trendRef: { type: "string", description: "Welcher Trend aus den Trend-Daten war die Basis? (Trend-Topic zitieren)" },
-          },
-          required: ["day", "pillar", "contentType", "format", "patternType", "postType", "anchorRef", "title", "description", "reasoning", "trendRef"],
-        },
-        minItems: days.length,
-        maxItems: days.length,
-      },
-    },
-    required: ["topics"],
-  },
-});
-
 // ── Hook Generation ───────────────────────────────────────────────────────
 
 export const HOOK_GENERATION_TOOL = {
@@ -101,67 +59,83 @@ export const HOOK_GENERATION_TOOL = {
   },
 };
 
-// ── Body Writing ──────────────────────────────────────────────────────────
+// ── Weekly Scripts (One-Shot) ─────────────────────────────────────────────
+// Single Opus call produces the entire week — topics, hooks, bodies, CTAs —
+// in one coherent output. Replaces the old 4-step pipeline
+// (topic-selection → hook-generation → body-writing → quality-review).
 
-export const BODY_WRITING_TOOL = (maxWords: number) => ({
-  name: "submit_body",
-  description: "Body und CTA des Skripts einreichen",
+export const WEEKLY_SCRIPTS_TOOL = (numScripts: number) => ({
+  name: "submit_weekly_scripts",
+  description: "Reiche die fertige Content-Woche ein. Alle Skripte auf einmal — Themen, Hooks, Bodies, CTAs kohärent über die ganze Woche geplant.",
   input_schema: {
     type: "object" as const,
     properties: {
-      body: {
+      week_reasoning: {
         type: "string",
-        description: `Der Hauptteil als gesprochener Text. Absätze mit \\n trennen. Jeder Absatz = ein Gedanke.${maxWords > 0 ? ` MAX ${maxWords} Wörter für Body+CTA zusammen.` : ""}`,
+        description: "2-3 Sätze: Welcher strategische Winkel für die Woche, welche Variation ist bewusst geplant.",
       },
-      cta: {
-        type: "string",
-        description: "Call to Action — max 1-2 Sätze. Konkrete Handlungsaufforderung die Interaktion erzwingt.",
-      },
-    },
-    required: ["body", "cta"],
-  },
-});
-
-// ── Quality Review ────────────────────────────────────────────────────────
-
-export const QUALITY_REVIEW_TOOL = (numScripts: number) => ({
-  name: "submit_review",
-  description: "Das Review-Ergebnis für alle Skripte einreichen",
-  input_schema: {
-    type: "object" as const,
-    properties: {
       scripts: {
         type: "array" as const,
+        minItems: numScripts,
+        maxItems: numScripts,
         items: {
           type: "object" as const,
           properties: {
-            index: { type: "number", description: "Index des Skripts (0-basiert)" },
-            issues: {
-              type: "array" as const,
-              items: { type: "string" },
-              description: "Gefundene Probleme (leer wenn keine)",
+            day: {
+              type: "string",
+              description: "Mon/Tue/Wed/Thu/Fri/Sat/Sun — aus dem Wochenplan",
             },
-            revised: {
-              type: "object" as const,
-              properties: {
-                hook: { type: "string", description: "Korrigierter Hook (nur wenn nötig)" },
-                body: { type: "string", description: "Korrigierter Body (nur wenn nötig)" },
-                cta: { type: "string", description: "Korrigierter CTA (nur wenn nötig)" },
-              },
-              description: "Korrigierte Version — null/undefined wenn keine Korrektur nötig",
+            pillar: {
+              type: "string",
+              description: "Content-Pillar aus der Strategie",
+            },
+            content_type: {
+              type: "string",
+              description: "Content-Typ aus dem Wochenplan (z.B. Education, Authority, Story)",
+            },
+            format: {
+              type: "string",
+              description: "Format aus dem Wochenplan (z.B. Face-to-camera, Storytelling)",
+            },
+            title: {
+              type: "string",
+              description: "Titel, max 10 Wörter, exakt was das Video behandelt",
+            },
+            text_hook: {
+              type: "string",
+              description: "Text-Hook für Screen-Overlay — 3-5 Wörter, komprimierte Version des gesprochenen Hooks",
+            },
+            hook: {
+              type: "string",
+              description: "Gesprochener Hook, 1-2 Sätze. Erster Satz vor der Kamera.",
+            },
+            hook_pattern: {
+              type: "string",
+              description: "Eins der 8 Muster: Kontrast, Provokation, Neugier-Gap, Enttarnung, Direkt-Ansprache, Persönliche Szene, Listicle, Kontroverse Meinung",
+            },
+            body: {
+              type: "string",
+              description: "Gesprochener Body. Absätze mit \\n trennen. Jeder Absatz ein Gedanke. Zielwortzahl aus dem Prompt.",
+            },
+            cta: {
+              type: "string",
+              description: "Call to Action, 1-2 Sätze, eine konkrete Aktion.",
+            },
+            post_type: {
+              type: "string",
+              enum: ["core", "variant", "test"],
+              description: "core = Haupt-These der Woche, variant = alternativer Winkel zu einer core-These, test = Experiment",
+            },
+            reasoning: {
+              type: "string",
+              description: "1-2 Sätze: Warum dieses Thema + warum dieser Hook basierend auf Audit/Performance/Strategie.",
             },
           },
-          required: ["index", "issues"],
+          required: ["day", "pillar", "content_type", "format", "title", "text_hook", "hook", "hook_pattern", "body", "cta", "post_type", "reasoning"],
         },
-        minItems: numScripts,
-        maxItems: numScripts,
-      },
-      weekCoherence: {
-        type: "string",
-        description: "Bewertung der Woche als Ganzes: Abwechslung, Balance, Verbesserungsvorschläge (1-2 Sätze)",
       },
     },
-    required: ["scripts", "weekCoherence"],
+    required: ["week_reasoning", "scripts"],
   },
 });
 

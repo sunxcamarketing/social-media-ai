@@ -33,7 +33,6 @@ import {
   Zap,
   PenTool,
   Shield,
-  CalendarDays,
 } from "lucide-react";
 import { BookOpen } from "lucide-react";
 import type { Script, Config, TrainingScript } from "@/lib/types";
@@ -42,108 +41,7 @@ import { useClientData } from "@/context/client-data-context";
 import { BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentFormat } from "@/lib/strategy";
 import { fmtDuration } from "@/lib/format";
-import { safeJsonParse } from "@/lib/safe-json";
 import { useI18n } from "@/lib/i18n";
-
-const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const TYPE_COLORS: Record<string, string> = {
-  "Authority":                 "bg-blush/20 text-blush-dark border-blush/40",
-  "Story / Personality":       "bg-pink-500/10 text-pink-400 border-pink-500/20",
-  "Social Proof":              "bg-green-50 text-green-600 border-green-200",
-  "Education":                 "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  "Education / Value":         "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  "Polarisation":              "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  "Opinion / Polarisation":    "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  "Behind the Scenes":         "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  "Inspiration / Motivation":  "bg-blush/20 text-blush-dark border-blush/40",
-  "Entertainment":             "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  "Community / Interaction":   "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  "Promotion / Offer":         "bg-blush/20 text-blush-dark border-blush/40",
-};
-
-interface DaySlot { type: string; format: string; pillar?: string; reason?: string; }
-type WeeklyStructure = Record<string, DaySlot>;
-
-function WeeklyCalendar({ config, onPostsPerWeekChange }: {
-  config: Config | null;
-  onPostsPerWeekChange: (val: string) => Promise<void>;
-}) {
-  const { t } = useI18n();
-  if (!config?.strategyWeekly) return null;
-  const weeklyRaw = safeJsonParse<WeeklyStructure>(config.strategyWeekly, {});
-  const { _reasoning, ...weekly } = weeklyRaw as WeeklyStructure & { _reasoning?: string };
-  void _reasoning;
-  const postsPerWeek = Math.min(7, Math.max(1, parseInt(config.postsPerWeek || "5", 10)));
-  const activeDays = ALL_DAYS.slice(0, postsPerWeek);
-  if (!activeDays.some(d => weekly[d]?.type)) return null;
-
-  return (
-    <div className="rounded-2xl border border-ocean/[0.06] bg-white/50 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] text-ocean uppercase tracking-wider">{t("strategy.weeklyCalendar")}</p>
-        <span className="flex items-center gap-1 text-[11px] text-ocean/60">
-          <CalendarDays className="h-3 w-3" />
-          <select
-            value={postsPerWeek}
-            onChange={(e) => onPostsPerWeekChange(e.target.value)}
-            className="bg-transparent border-none text-ocean font-semibold cursor-pointer focus:outline-none hover:text-ocean/80 transition-colors"
-          >
-            {[1,2,3,4,5,6,7].map((n) => (
-              <option key={n} value={n} className="bg-white text-ocean">{n}</option>
-            ))}
-          </select>
-          <span>{t("strategy.postsPerWeek")}</span>
-        </span>
-      </div>
-      <div className="rounded-2xl border border-ocean/[0.06] overflow-hidden">
-        {activeDays.map((day, i) => {
-          const slot = weekly[day];
-          if (!slot?.type) return null;
-          const colorClass = TYPE_COLORS[slot.type] || "bg-ocean/[0.02] text-ocean border-ocean/[0.06]";
-          return (
-            <div
-              key={day}
-              className={`flex items-center gap-4 px-5 py-3.5 ${
-                i > 0 ? "border-t border-ocean/[0.06]" : ""
-              } hover:bg-ocean/[0.01] transition-colors`}
-            >
-              <span className="w-10 text-sm font-semibold text-ocean shrink-0">{day}</span>
-              <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-medium shrink-0 ${colorClass}`}>
-                {slot.type}
-              </span>
-              <span className="text-xs text-ocean/50 shrink-0">
-                {slot.format || ""}
-              </span>
-              <span className="text-xs text-ocean/70 font-medium flex-1 text-right truncate">
-                {slot.pillar || ""}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      {activeDays.some(d => weekly[d]?.reason) && (
-        <details className="mt-3">
-          <summary className="text-[11px] text-ocean/40 cursor-pointer hover:text-ocean/60 transition-colors">
-            Begründungen anzeigen
-          </summary>
-          <div className="mt-2 space-y-2">
-            {activeDays.map((day) => {
-              const slot = weekly[day];
-              if (!slot?.reason) return null;
-              return (
-                <div key={day} className="flex gap-2 text-[11px]">
-                  <span className="font-medium text-ocean/60 w-10 shrink-0">{day}</span>
-                  <span className="text-ocean/45 leading-relaxed">{slot.reason}</span>
-                </div>
-              );
-            })}
-          </div>
-        </details>
-      )}
-    </div>
-  );
-}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -220,16 +118,13 @@ type GenerationMeta = {
   reviewIssuesFixed: number;
 };
 
-type PipelineStep = "idle" | "context" | "voice" | "trends" | "topics" | "hooks" | "bodies" | "review" | "done" | "error";
+type PipelineStep = "idle" | "context" | "voice" | "trends" | "generate" | "done" | "error";
 
 const PIPELINE_STEPS: { key: PipelineStep; label: string; icon: React.ElementType }[] = [
   { key: "context", label: "Kontext laden", icon: FileText },
   { key: "voice", label: "Stimmprofil", icon: Mic },
   { key: "trends", label: "Trend-Recherche", icon: Lightbulb },
-  { key: "topics", label: "Themen auswählen", icon: Target },
-  { key: "hooks", label: "Hooks generieren", icon: Zap },
-  { key: "bodies", label: "Skripte schreiben", icon: PenTool },
-  { key: "review", label: "Qualitätsprüfung", icon: Shield },
+  { key: "generate", label: "Woche schreiben (Opus)", icon: PenTool },
 ];
 
 const STATUS_OPTIONS = [
@@ -246,16 +141,10 @@ function statusColor(s: string) {
 
 function PipelineProgress({
   currentStep,
-  hooksProgress,
-  bodiesProgress,
-  totalScripts,
   topics,
   error,
 }: {
   currentStep: PipelineStep;
-  hooksProgress: number;
-  bodiesProgress: number;
-  totalScripts: number;
   topics: { day: string; title: string; pillar: string }[];
   error: string | null;
 }) {
@@ -269,11 +158,6 @@ function PipelineProgress({
           const Icon = step.icon;
           const isActive = step.key === currentStep;
           const isDone = currentIdx > i || currentStep === "done";
-          const isPending = currentIdx < i && currentStep !== "done";
-
-          let progressText = "";
-          if (step.key === "hooks" && isActive) progressText = ` (${hooksProgress}/${totalScripts})`;
-          if (step.key === "bodies" && isActive) progressText = ` (${bodiesProgress}/${totalScripts})`;
 
           return (
             <div key={step.key} className="flex items-center gap-1.5">
@@ -287,7 +171,7 @@ function PipelineProgress({
               <span className={`text-xs font-medium ${
                 isDone ? "text-green-600" : isActive ? "text-ocean" : "text-ocean/30"
               }`}>
-                {step.label}{progressText}
+                {step.label}
               </span>
               {i < PIPELINE_STEPS.length - 1 && (
                 <span className="text-ocean/15 mx-1">→</span>
@@ -297,8 +181,8 @@ function PipelineProgress({
         })}
       </div>
 
-      {/* Show selected topics once available */}
-      {topics.length > 0 && (currentStep === "hooks" || currentStep === "bodies" || currentStep === "review" || currentStep === "done") && (
+      {/* Show titles once the one-shot generator returns them */}
+      {topics.length > 0 && (currentStep === "generate" || currentStep === "done") && (
         <div className="flex flex-wrap gap-2">
           {topics.map((t, i) => (
             <span key={i} className="text-[10px] bg-white/80 border border-ocean/[0.06] rounded-lg px-2.5 py-1 text-ocean/70">
@@ -744,9 +628,6 @@ export default function ClientScriptsPage() {
 
   // Pipeline progress
   const [pipelineStep, setPipelineStep] = useState<PipelineStep>("idle");
-  const [hooksProgress, setHooksProgress] = useState(0);
-  const [bodiesProgress, setBodiesProgress] = useState(0);
-  const [totalScripts, setTotalScripts] = useState(0);
   const [selectedTopics, setSelectedTopics] = useState<{ day: string; title: string; pillar: string }[]>([]);
 
   // Saved scripts
@@ -779,9 +660,6 @@ export default function ClientScriptsPage() {
     setSavedSet(new Set());
     setWeekMeta(null);
     setPipelineStep("context");
-    setHooksProgress(0);
-    setBodiesProgress(0);
-    setTotalScripts(0);
     setSelectedTopics([]);
 
     try {
@@ -809,7 +687,7 @@ export default function ClientScriptsPage() {
           let data;
           try { data = JSON.parse(line.slice(6)); } catch { continue; }
 
-          // Handle pipeline events
+          // Handle pipeline events (one-shot pipeline: context → voice → trends → generate → done)
           if (data.step === "error") {
             setWeekError(data.message || "Unbekannter Fehler");
             setPipelineStep("error");
@@ -818,23 +696,9 @@ export default function ClientScriptsPage() {
           } else if (data.step === "voice" && data.status === "done") {
             setPipelineStep("trends");
           } else if (data.step === "trends" && data.status === "done") {
-            setPipelineStep("topics");
-          } else if (data.step === "topics" && data.status === "done") {
-            setPipelineStep("hooks");
-            setSelectedTopics(data.topics || []);
-            setTotalScripts(data.topics?.length || 0);
-          } else if (data.step === "hooks" && data.status === "loading") {
-            setTotalScripts(data.total || 0);
-          } else if (data.step === "hooks" && data.status === "done" && data.index !== undefined) {
-            setHooksProgress(prev => prev + 1);
-          } else if (data.step === "hooks" && data.status === "all_done") {
-            setPipelineStep("bodies");
-          } else if (data.step === "bodies" && data.status === "done" && data.index !== undefined) {
-            setBodiesProgress(prev => prev + 1);
-          } else if (data.step === "bodies" && data.status === "all_done") {
-            setPipelineStep("review");
-          } else if (data.step === "review" && data.status === "done") {
-            setPipelineStep("done");
+            setPipelineStep("generate");
+          } else if (data.step === "generate" && data.status === "done") {
+            setSelectedTopics(data.scriptTitles || []);
           } else if (data.step === "done") {
             setPipelineStep("done");
             setWeekScripts(data.scripts || []);
@@ -994,20 +858,6 @@ export default function ClientScriptsPage() {
         <ClientTrainingTab clientId={id} />
       ) : (
       <>
-      {/* ── Weekly Editorial Calendar ─────────────────────────────────────── */}
-      <WeeklyCalendar
-        config={client}
-        onPostsPerWeekChange={async (val) => {
-          if (!client) return;
-          await fetch("/api/configs", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...client, postsPerWeek: val }),
-          });
-          setClient((c) => c ? { ...c, postsPerWeek: val } : c);
-        }}
-      />
-
       {/* ── Generate Week Panel ───────────────────────────────────────────── */}
       <div className="rounded-2xl border border-blush/40 bg-gradient-to-br from-blush-light/20 to-white p-6 space-y-5">
         <div className="flex items-start justify-between gap-4">
@@ -1053,9 +903,6 @@ export default function ClientScriptsPage() {
         {(isPipelineActive || pipelineStep === "done" || pipelineStep === "error") && (
           <PipelineProgress
             currentStep={pipelineStep}
-            hooksProgress={hooksProgress}
-            bodiesProgress={bodiesProgress}
-            totalScripts={totalScripts}
             topics={selectedTopics}
             error={weekError}
           />

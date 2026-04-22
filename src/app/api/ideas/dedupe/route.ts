@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { readIdeasByClient, writeIdeas, readIdeas } from "@/lib/csv";
+import { readIdeasByClient } from "@/lib/csv";
+import { supabase } from "@/lib/supabase";
 
 function normalizeTitle(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,;:!?]+$/, "");
@@ -19,24 +20,25 @@ export async function POST(request: Request) {
     groups.get(key)!.push(idea);
   }
 
-  const toDelete = new Set<string>();
+  const toDelete: string[] = [];
   for (const group of groups.values()) {
     if (group.length <= 1) continue;
     const sorted = [...group].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
     const keeper = sorted[0];
-    for (const idea of group) if (idea.id !== keeper.id) toDelete.add(idea.id);
+    for (const idea of group) if (idea.id !== keeper.id) toDelete.push(idea.id);
   }
 
-  if (toDelete.size === 0) {
+  if (toDelete.length === 0) {
     return NextResponse.json({ removed: 0, remaining: clientIdeas.length });
   }
 
-  const allIdeas = await readIdeas();
-  const filtered = allIdeas.filter((i) => !toDelete.has(i.id));
-  await writeIdeas(filtered);
+  const { error } = await supabase.from("ideas").delete().in("id", toDelete);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({
-    removed: toDelete.size,
-    remaining: clientIdeas.length - toDelete.size,
+    removed: toDelete.length,
+    remaining: clientIdeas.length - toDelete.length,
   });
 }
