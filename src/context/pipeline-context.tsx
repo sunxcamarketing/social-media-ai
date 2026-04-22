@@ -5,6 +5,43 @@ import { useInngestSubscription } from "@inngest/realtime/hooks";
 import { fetchPipelineToken } from "@/app/actions/inngest-token";
 import type { PipelineProgress } from "@/lib/types";
 
+// Pipeline runs happen on Inngest and survive tab close. We persist the
+// handle so that when the user comes back, we can re-subscribe and restore
+// the log/progress UI instead of showing an empty panel.
+const STORAGE_KEY = "pipeline:active-run";
+const MAX_RUN_AGE_MS = 30 * 60 * 1000; // 30 min — runs longer than this are treated as stale
+
+interface PersistedRun {
+  eventId: string;
+  configName: string;
+  startedAt: number;
+  progress: PipelineProgress | null;
+  log: string[];
+}
+
+function readPersistedRun(): PersistedRun | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedRun;
+    if (!parsed.eventId || !parsed.startedAt) return null;
+    if (Date.now() - parsed.startedAt > MAX_RUN_AGE_MS) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedRun(run: PersistedRun | null) {
+  if (typeof window === "undefined") return;
+  if (!run) window.localStorage.removeItem(STORAGE_KEY);
+  else window.localStorage.setItem(STORAGE_KEY, JSON.stringify(run));
+}
+
 interface PipelineContextValue {
   running: boolean;
   progress: PipelineProgress | null;
@@ -20,11 +57,67 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState<PipelineProgress | null>(null);
   const [eta, setEta] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
+  const [configName, setConfigName] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<number>(0);
   const logRef = useRef<string[]>([]);
   const startTimeRef = useRef<number>(0);
   const scrapeStartRef = useRef<number>(0);
   const analyzeStartRef = useRef<number>(0);
   const lastUpdateRef = useRef<number>(0);
+
+  // On mount: restore any in-flight run from localStorage so the UI
+  // reconnects instead of showing an empty panel after reload/tab-reopen.
+  const restoredAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    const persisted = readPersistedRun();
+    if (!persisted) return;
+
+    logRef.current = persisted.log;
+    startTimeRef.current = persisted.startedAt;
+    setEventId(persisted.eventId);
+    setConfigName(persisted.configName);
+    setStartedAt(persisted.startedAt);
+    setRunning(true);
+    restoredAtRef.current = Date.now();
+    lastUpdateRef.current = Date.now();
+    setProgress(persisted.progress ?? {
+      status: "running",
+      phase: "scraping",
+      activeTasks: [],
+      creatorsCompleted: 0,
+      creatorsTotal: 0,
+      creatorsScraped: 0,
+      videosAnalyzed: 0,
+      videosTotal: 0,
+      errors: [],
+      log: persisted.log,
+    });
+    setEta("Reconnecting to background run...");
+  }, []);
+
+  // Reconnect fallback: Inngest Realtime does NOT replay past events. If the
+  // user returns after the run already finished (or after a long gap), the
+  // subscription stays silent forever. After 20s of silence following a
+  // restore, we assume the run has completed and flip the UI to "completed"
+  // so consumers (videos page) refetch from the DB, which is the source of
+  // truth since videos are persisted on every analyze step.
+  useEffect(() => {
+    if (!running || !restoredAtRef.current) return;
+    const RECONNECT_TIMEOUT_MS = 20_000;
+    const interval = setInterval(() => {
+      const silenceMs = Date.now() - (lastUpdateRef.current || restoredAtRef.current || 0);
+      if (silenceMs > RECONNECT_TIMEOUT_MS) {
+        clearInterval(interval);
+        setProgress((p) => p ? { ...p, status: "completed", phase: "done" } : p);
+        setRunning(false);
+        setEventId(null);
+        setEta(null);
+        writePersistedRun(null);
+        restoredAtRef.current = null;
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [running]);
 
   const tokenFetcher = useCallback(async () => {
     if (!eventId) return null;
@@ -94,7 +187,7 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
       ? "completed"
       : status;
 
-    setProgress({
+    const nextProgress: PipelineProgress = {
       status: effectiveStatus as PipelineProgress["status"],
       phase: effectiveStatus === "completed" ? "done" : phase as PipelineProgress["phase"],
       activeTasks: d.activeVideo
@@ -112,7 +205,8 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
       videosTotal,
       errors: [],
       log: [...logRef.current],
-    });
+    };
+    setProgress(nextProgress);
 
     // Detect completion: either explicit status or all videos analyzed
     const isComplete = status === "completed" || status === "failed"
@@ -122,18 +216,31 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
       setRunning(false);
       setEventId(null);
       setEta(null);
+      writePersistedRun(null);
+    } else if (eventId && configName) {
+      // Keep the persisted snapshot fresh so a reload mid-run shows accurate progress.
+      writePersistedRun({
+        eventId,
+        configName,
+        startedAt: startedAt || startTimeRef.current || Date.now(),
+        progress: nextProgress,
+        log: [...logRef.current],
+      });
     }
-  }, [realtimeMessages]);
+  }, [realtimeMessages, eventId, configName, startedAt]);
 
   const runPipeline = useCallback(async (params: { configName: string; maxVideos: number; topK: number; nDays: number }) => {
     if (running) return;
+    const now = Date.now();
     setRunning(true);
-    startTimeRef.current = Date.now();
+    setConfigName(params.configName);
+    setStartedAt(now);
+    startTimeRef.current = now;
     scrapeStartRef.current = 0;
     analyzeStartRef.current = 0;
     logRef.current = ["Starting pipeline..."];
     setEta("Estimating...");
-    setProgress({
+    const initialProgress: PipelineProgress = {
       status: "running",
       phase: "scraping",
       activeTasks: [],
@@ -144,7 +251,8 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
       videosTotal: 0,
       errors: [],
       log: ["Starting pipeline..."],
-    });
+    };
+    setProgress(initialProgress);
 
     try {
       const response = await fetch("/api/pipeline", {
@@ -157,8 +265,15 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
         throw new Error(`Failed to start pipeline: ${response.status}`);
       }
 
-      const { eventId } = await response.json();
-      setEventId(eventId);
+      const { eventId: newEventId } = await response.json();
+      setEventId(newEventId);
+      writePersistedRun({
+        eventId: newEventId,
+        configName: params.configName,
+        startedAt: now,
+        progress: initialProgress,
+        log: ["Starting pipeline..."],
+      });
     } catch (err) {
       logRef.current = [];
       setEta(null);
@@ -175,6 +290,7 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
         log: [`Error: ${err instanceof Error ? err.message : "Unknown error"}`],
       });
       setRunning(false);
+      writePersistedRun(null);
     }
   }, [running]);
 
@@ -183,7 +299,10 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
     setProgress(null);
     setEta(null);
     setEventId(null);
+    setConfigName(null);
+    setStartedAt(0);
     logRef.current = [];
+    writePersistedRun(null);
   }, []);
 
   return (
