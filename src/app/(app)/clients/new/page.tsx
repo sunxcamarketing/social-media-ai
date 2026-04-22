@@ -13,7 +13,7 @@ import {
   Mic,
   SkipForward,
 } from "lucide-react";
-import { invalidateClientsCache } from "@/hooks/use-clients-cache";
+import { addClientToCache } from "@/hooks/use-clients-cache";
 import { useI18n } from "@/lib/i18n";
 import { VoiceAgent } from "@/components/voice-agent";
 
@@ -710,7 +710,7 @@ export default function NewClientOnboarding() {
         throw new Error(err.error || pick(lang, "Fehler beim Speichern", "Failed to save"));
       }
       const created = await res.json();
-      invalidateClientsCache();
+      addClientToCache(created);
       if (startVoice) {
         setCreatedClientId(created.id);
         setSaving(false);

@@ -55,7 +55,6 @@ export function ContentAgentChat({
     search_scripts: t("chat.tools.searchScripts"),
     check_performance: t("chat.tools.checkPerformance"),
     load_audit: t("chat.tools.loadAudit"),
-    generate_script: t("chat.tools.generateScript"),
     check_competitors: t("chat.tools.checkCompetitors"),
     check_learnings: t("chat.tools.checkLearnings"),
     search_web: t("chat.tools.searchWeb"),
@@ -153,19 +152,6 @@ export function ContentAgentChat({
                   return updated;
                 }
                 return [...prev, { tool: data.tool, status: data.status }];
-              });
-            } else if (data.type === "script_progress") {
-              // Append sub-step to the generate_script tool status
-              setToolStatuses((prev) => {
-                const idx = prev.findIndex((t) => t.tool === "generate_script");
-                if (idx < 0) return prev;
-                const updated = [...prev];
-                const existing = updated[idx];
-                const subSteps = [...(existing.subSteps || [])];
-                const detail = data.detail || data.step;
-                if (!subSteps.includes(detail)) subSteps.push(detail);
-                updated[idx] = { ...existing, subSteps };
-                return updated;
               });
             }
             if (data.error) {

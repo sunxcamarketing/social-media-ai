@@ -22,7 +22,7 @@ import {
   Grid3x3,
   X,
 } from "lucide-react";
-import { useClientsCache } from "@/hooks/use-clients-cache";
+import { useClientsCache, removeClientFromCache } from "@/hooks/use-clients-cache";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useI18n } from "@/lib/i18n";
 import { useMobileNav } from "@/components/mobile-nav-context";
@@ -105,6 +105,7 @@ export function AppSidebar() {
   const deleteClient = async (clientId: string, clientName: string) => {
     if (!confirm(t("sidebar.confirmDelete", { name: clientName }))) return;
     await fetch(`/api/configs?id=${clientId}`, { method: "DELETE" });
+    removeClientFromCache(clientId);
     if (activeClientId === clientId) router.push("/admin");
     router.refresh();
   };

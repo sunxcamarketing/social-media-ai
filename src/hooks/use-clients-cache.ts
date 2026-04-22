@@ -28,6 +28,20 @@ async function load(): Promise<Config[]> {
 
 export function invalidateClientsCache() {
   cache = null;
+  inflight = null;
+  load();
+}
+
+export function removeClientFromCache(id: string) {
+  if (!cache) return;
+  cache = cache.filter((c) => c.id !== id);
+  subscribers.forEach((fn) => fn(cache!));
+}
+
+export function updateClientInCache(client: Config) {
+  if (!cache) return;
+  cache = cache.map((c) => (c.id === client.id ? client : c));
+  subscribers.forEach((fn) => fn(cache!));
 }
 
 export function useClientsCache(): Config[] {

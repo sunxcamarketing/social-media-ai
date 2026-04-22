@@ -10,7 +10,6 @@ import {
   AGENT_SEARCH_SCRIPTS_TOOL,
   AGENT_CHECK_PERFORMANCE_TOOL,
   AGENT_LOAD_AUDIT_TOOL,
-  AGENT_GENERATE_SCRIPT_TOOL,
   AGENT_CHECK_COMPETITORS_TOOL,
   AGENT_CHECK_LEARNINGS_TOOL,
   AGENT_SEARCH_WEB_TOOL,
@@ -35,7 +34,6 @@ const SHARED_TOOLS = [
   AGENT_SEARCH_SCRIPTS_TOOL,
   AGENT_CHECK_PERFORMANCE_TOOL,
   AGENT_LOAD_AUDIT_TOOL,
-  AGENT_GENERATE_SCRIPT_TOOL,
   AGENT_CHECK_COMPETITORS_TOOL,
   AGENT_CHECK_LEARNINGS_TOOL,
   AGENT_SEARCH_WEB_TOOL,
@@ -173,7 +171,7 @@ export async function POST(request: Request) {
 
         for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
           const response = await client.messages.create({
-            model: "claude-sonnet-4-6",
+            model: "claude-opus-4-7",
             max_tokens: 4096,
             system: cachedSystem,
             messages: currentMessages,
@@ -214,23 +212,10 @@ export async function POST(request: Request) {
 
           const toolResults = await Promise.all(
             toolUseBlocks.map(async (toolBlock) => {
-              // For generate_script, pass a progress callback that streams
-              // sub-steps back to the client so the connection stays alive.
-              const scriptProgress = toolBlock.name === "generate_script"
-                ? (evt: { step: string; detail?: string }) => {
-                    sendEvent(controller, {
-                      type: "script_progress",
-                      step: evt.step,
-                      detail: evt.detail,
-                    });
-                  }
-                : undefined;
-
               const result = await executeAgentTool(
                 scopedClientId,
                 toolBlock.name,
                 toolBlock.input as Record<string, unknown>,
-                scriptProgress,
               );
               sendEvent(controller, { type: "tool_status", tool: toolBlock.name, status: "done" });
               return {
