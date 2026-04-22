@@ -44,6 +44,38 @@ async function safeJson(r: Response) {
   catch { throw new Error(`Invalid response from server (${r.status}): ${text.slice(0, 100)}`); }
 }
 
+// Consume an SSE stream (`data: {...}\n\n` frames) until a terminal event.
+// Resolves on `{ step: "done" }`, rejects on `{ step: "error", message }`.
+// Per-step `status: "loading"|"done"` frames are ignored.
+async function consumeSse(r: Response): Promise<void> {
+  if (!r.ok || !r.body) throw new Error(`Server returned ${r.status}`);
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf("\n\n")) !== -1) {
+      const frame = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      const line = frame.split("\n").find(l => l.startsWith("data:"));
+      if (!line) continue;
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      try {
+        const ev = JSON.parse(payload) as { step?: string; message?: string };
+        if (ev.step === "done") return;
+        if (ev.step === "error") throw new Error(ev.message || "Generation failed");
+      } catch (e) {
+        if (e instanceof SyntaxError) continue;
+        throw e;
+      }
+    }
+  }
+}
+
 // ── Factory for simple fire-and-forget generation tasks ───────────────────
 function useGenTask<S extends TaskState = TaskState>() {
   const [map, setMap] = useState<Map<string, S>>(new Map());
@@ -86,10 +118,13 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const startStrategyGeneration = useCallback(
-    (clientId: string) => launchTask(strategy, `/api/configs/{id}/generate-strategy`)(clientId),
-    [launchTask, strategy],
-  );
+  const startStrategyGeneration = useCallback((clientId: string) => {
+    strategy.set(clientId, { status: "running" });
+    fetch(`/api/configs/${clientId}/generate-strategy`, { method: "POST" })
+      .then(consumeSse)
+      .then(() => strategy.set(clientId, { status: "done" }))
+      .catch((e: Error) => strategy.set(clientId, { status: "error", error: e.message }));
+  }, [strategy]);
 
   const startAnalysis = useCallback(
     (clientId: string) => launchTask(analysis, `/api/configs/{id}/performance`)(clientId),
