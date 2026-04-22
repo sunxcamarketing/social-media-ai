@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { readIdeas, readIdeasByClient, writeIdeas } from "@/lib/csv";
 
+function normalizeTitle(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,;:!?]+$/, "");
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
@@ -11,11 +15,23 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json();
+  const clientId = body.clientId || "";
+  const title = body.title || "";
+  const normalized = normalizeTitle(title);
+
   const ideas = await readIdeas();
+
+  if (clientId && normalized) {
+    const dup = ideas.find(
+      (i) => i.clientId === clientId && normalizeTitle(i.title) === normalized,
+    );
+    if (dup) return NextResponse.json(dup, { status: 200 });
+  }
+
   const newIdea = {
     id: uuid(),
-    clientId: body.clientId || "",
-    title: body.title || "",
+    clientId,
+    title,
     description: body.description || "",
     contentType: body.contentType || "",
     status: body.status || "idea",

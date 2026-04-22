@@ -73,6 +73,7 @@ export default function ClientIdeasPage() {
   const [form, setForm] = useState(emptyForm);
   const [filterStatus, setFilterStatus] = useState("all");
   const [chatIdea, setChatIdea] = useState<Idea | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const loadIdeas = () => {
     fetch(`/api/ideas?clientId=${id}`).then((r) => r.json()).then(setIdeas);
@@ -93,21 +94,27 @@ export default function ClientIdeasPage() {
   };
 
   const handleSave = async () => {
-    if (editing) {
-      await fetch("/api/ideas", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editing.id, ...form }),
-      });
-    } else {
-      await fetch("/api/ideas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: id, ...form }),
-      });
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (editing) {
+        await fetch("/api/ideas", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editing.id, ...form }),
+        });
+      } else {
+        await fetch("/api/ideas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId: id, ...form }),
+        });
+      }
+      setDialogOpen(false);
+      loadIdeas();
+    } finally {
+      setSaving(false);
     }
-    setDialogOpen(false);
-    loadIdeas();
   };
 
   const handleDelete = async (ideaId: string) => {
@@ -205,10 +212,10 @@ export default function ClientIdeasPage() {
               </div>
               <Button
                 onClick={handleSave}
-                disabled={!form.title}
+                disabled={!form.title || saving}
                 className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0"
               >
-                {editing ? "Save Changes" : "Add Idea"}
+                {saving ? "Speichern…" : editing ? "Save Changes" : "Add Idea"}
               </Button>
             </div>
           </DialogContent>

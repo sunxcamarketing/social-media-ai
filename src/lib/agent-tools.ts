@@ -487,7 +487,21 @@ async function resolveClientId(
 
 // ── Save Idea Tool ────────────────────────────────────────────────────────
 
+// Per-client serialization: prevents races when the agent emits multiple
+// save_idea tool_use blocks in one turn (they execute in parallel).
+const saveIdeaLocks = new Map<string, Promise<unknown>>();
+
 async function toolSaveIdea(
+  clientId: string,
+  input: { title: string; description: string; content_type?: string },
+): Promise<string> {
+  const previous = saveIdeaLocks.get(clientId) ?? Promise.resolve();
+  const next = previous.then(() => saveIdeaInner(clientId, input));
+  saveIdeaLocks.set(clientId, next.catch(() => undefined));
+  return next;
+}
+
+async function saveIdeaInner(
   clientId: string,
   input: { title: string; description: string; content_type?: string },
 ): Promise<string> {
