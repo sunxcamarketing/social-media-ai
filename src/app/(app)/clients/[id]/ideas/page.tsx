@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Lightbulb, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, Lightbulb } from "lucide-react";
 import type { Idea } from "@/lib/types";
 import { ContentAgentChat } from "@/components/content-agent-chat";
 
@@ -127,37 +127,18 @@ export default function ClientIdeasPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
+      <div className="flex items-end justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Ideas</h1>
           <p className="mt-1 text-sm text-ocean/60">Video concepts and content ideas for this client</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              if (!confirm("Duplikate (gleicher Titel) zusammenführen? Die älteren werden gelöscht.")) return;
-              const res = await fetch("/api/ideas/dedupe", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ clientId: id }),
-              });
-              const data = await res.json();
-              alert(`${data.removed} Duplikate entfernt. Noch ${data.remaining} Ideen.`);
-              loadIdeas();
-            }}
-            className="rounded-xl gap-1.5 text-ocean/70 hover:text-ocean"
-          >
-            <Sparkles className="h-4 w-4" />
-            Duplikate entfernen
-          </Button>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openNew} className="rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-1.5">
-                <Plus className="h-4 w-4" />
-                Add Idea
-              </Button>
-            </DialogTrigger>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={openNew} className="rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-1.5">
+              <Plus className="h-4 w-4" />
+              Add Idea
+            </Button>
+          </DialogTrigger>
           <DialogContent className="max-w-lg glass-strong rounded-2xl border-ocean/[0.06]">
             <DialogHeader>
               <DialogTitle>{editing ? "Edit Idea" : "New Idea"}</DialogTitle>
@@ -219,8 +200,7 @@ export default function ClientIdeasPage() {
               </Button>
             </div>
           </DialogContent>
-          </Dialog>
-        </div>
+        </Dialog>
       </div>
 
       {/* Status filter */}

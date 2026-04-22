@@ -25,6 +25,7 @@ import {
   synthesizeVoiceOnboarding,
 } from "./lib/voice-onboarding";
 import { VOICE_BLOCK_ORDER, type VoiceBlockId, type Config } from "./lib/types";
+import { VOICE_PROFILE_STEPS, getStep, type VoiceProfileStep } from "./lib/voice-profile-scenarios";
 import Anthropic from "@anthropic-ai/sdk";
 
 // dotenv is loaded via --require dotenv/config in the npm script
@@ -361,13 +362,34 @@ interface SystemPromptContext {
   performanceContext: string;
   learningsContext: string;
   onboardingProgress: Awaited<ReturnType<typeof loadVoiceOnboarding>> | null;
+  voiceProfileStep: VoiceProfileStep | null;
 }
 
 function buildSessionSystemPrompt(
-  mode: "onboarding" | "content-ideas",
+  mode: "onboarding" | "content-ideas" | "voice-profile",
   lang: "de" | "en",
   ctx: SystemPromptContext,
 ): string {
+  // Voice-profile mode: use the step-specific prompt, skip onboarding progress.
+  // Scenarios get the passive-listener prompt with the scenario text inlined;
+  // the topic step gets the guided-interview prompt.
+  if (mode === "voice-profile" && ctx.voiceProfileStep) {
+    const step = ctx.voiceProfileStep;
+    const promptName = step.kind === "scenario" ? "voice-profile-scenario" : "voice-profile-topic";
+    const scenarioText = lang === "en" ? step.promptEn : step.promptDe;
+    const basePrompt = buildPrompt(promptName, { scenario_text: scenarioText }, lang);
+    // Still inline client context — helps the topic interviewer pick questions
+    // that fit the client's niche.
+    const headers = lang === "en"
+      ? { context: "# PRE-LOADED CLIENT CONTEXT\n\nUse this to personalize questions, but never quiz the client about it.", clientProfile: "## CLIENT PROFILE" }
+      : { context: "# VORAB GELADENER CLIENT-KONTEXT\n\nNutze das um Fragen zu personalisieren, aber frag den Client nicht darüber ab.", clientProfile: "## CLIENT-PROFIL" };
+    const sections: string[] = [];
+    if (ctx.clientContext) sections.push(`${headers.clientProfile}\n${ctx.clientContext}`);
+    return sections.length > 0
+      ? `${basePrompt}\n\n${headers.context}\n\n${sections.join("\n\n")}`
+      : basePrompt;
+  }
+
   const basePromptName = mode === "onboarding" ? "voice-agent-onboarding" : "voice-agent";
   const basePrompt = buildPrompt(basePromptName, {}, lang);
 
@@ -434,7 +456,17 @@ wss.on("connection", async (ws: WebSocket, req) => {
   const token = url.searchParams.get("token");
   const clientIdOverride = url.searchParams.get("clientId"); // For admin testing
   const modeParam = url.searchParams.get("mode");
-  const mode: "onboarding" | "content-ideas" = modeParam === "onboarding" ? "onboarding" : "content-ideas";
+  const mode: "onboarding" | "content-ideas" | "voice-profile" =
+    modeParam === "onboarding" ? "onboarding"
+    : modeParam === "voice-profile" ? "voice-profile"
+    : "content-ideas";
+  const stepParam = url.searchParams.get("step");
+  const voiceProfileStep: VoiceProfileStep | null =
+    mode === "voice-profile" && stepParam ? getStep(stepParam) || null : null;
+  if (mode === "voice-profile" && !voiceProfileStep) {
+    ws.close(4007, "Invalid voice-profile step");
+    return;
+  }
 
   if (!token) {
     ws.close(4001, "Missing token");
@@ -485,9 +517,9 @@ wss.on("connection", async (ws: WebSocket, req) => {
 
   let onboardingProgress = mode === "onboarding" ? await loadVoiceOnboarding(clientId) : null;
   const systemPrompt = buildSessionSystemPrompt(mode, lang, {
-    clientContext, auditContext, performanceContext, learningsContext, onboardingProgress,
+    clientContext, auditContext, performanceContext, learningsContext, onboardingProgress, voiceProfileStep,
   });
-  console.log(`[voice-server] system prompt: ${systemPrompt.length} chars (context pre-loaded, NO tools, mode=${mode})`);
+  console.log(`[voice-server] system prompt: ${systemPrompt.length} chars (context pre-loaded, NO tools, mode=${mode}${voiceProfileStep ? `, step=${voiceProfileStep.id}` : ""})`);
 
   // Create Gemini Live session
   const geminiSession = new GeminiLiveSession();
@@ -641,25 +673,49 @@ wss.on("connection", async (ws: WebSocket, req) => {
     // 30s of sending the greeting trigger, something's wrong — bail out with
     // a clear error instead of leaving the browser stuck on "Lade Kontext...".
     // The onAudioOutput callback clears this when the first chunk arrives.
-    firstChunkTimeout = setTimeout(() => {
-      if (!firstChunkSent && ws.readyState === WebSocket.OPEN) {
-        console.error("[voice-server] ⚠️ no audio from Gemini within 30s — aborting");
-        ws.send(JSON.stringify({
-          type: "error",
-          message: "Gemini antwortet nicht. Bitte in 10 Sek. nochmal versuchen.",
-        }));
-        try { ws.close(4006, "Gemini audio timeout"); } catch (err) {
-          console.warn("[voice-server] ws.close failed during timeout:", err);
+    // SKIP for voice-profile scenario mode — the agent is meant to stay silent
+    // until the client finishes talking, so no audio is expected upfront.
+    const isPassiveListenMode = mode === "voice-profile" && voiceProfileStep?.kind === "scenario";
+    if (isPassiveListenMode) {
+      // Passive mode: no greeting, activate UI immediately so the client can
+      // start recording without waiting for agent audio.
+      ws.send(JSON.stringify({ type: "speaking" }));
+    } else {
+      firstChunkTimeout = setTimeout(() => {
+        if (!firstChunkSent && ws.readyState === WebSocket.OPEN) {
+          console.error("[voice-server] ⚠️ no audio from Gemini within 30s — aborting");
+          ws.send(JSON.stringify({
+            type: "error",
+            message: "Gemini antwortet nicht. Bitte in 10 Sek. nochmal versuchen.",
+          }));
+          try { ws.close(4006, "Gemini audio timeout"); } catch (err) {
+            console.warn("[voice-server] ws.close failed during timeout:", err);
+          }
         }
-      }
-    }, 30_000);
+      }, 30_000);
+    }
 
     // Trigger the first agent turn. System prompt already includes full context.
     // recordInTranscript:false keeps the internal trigger out of the summary.
     console.log("[voice-server] sending greeting trigger to Gemini...");
-    const greetingTrigger = lang === "en"
-      ? "Greet me now with ONE short, casual English sentence — feel free to use my name or my niche."
-      : "Begrüße mich jetzt mit EINEM kurzen, lockeren deutschen Satz — nutze gerne meinen Namen oder meine Nische.";
+    let greetingTrigger: string;
+    if (mode === "voice-profile" && voiceProfileStep?.kind === "scenario") {
+      // Scenario mode: the client just read the scenario and is about to start
+      // talking. Agent must STAY SILENT and wait. Send a silent-trigger so the
+      // session is active but no greeting plays.
+      greetingTrigger = lang === "en"
+        ? "The client is about to start talking. DO NOT speak. DO NOT greet. Stay completely silent until you hear the client start their story. Only speak if they fall silent mid-story or signal they're done."
+        : "Der Client fängt gleich an zu erzählen. SPRICH NICHT. BEGRÜSSE NICHT. Bleib komplett still bis du den Client anfangen hörst. Sprich nur wenn er mitten drin verstummt oder signalisiert dass er fertig ist.";
+    } else if (mode === "voice-profile" && voiceProfileStep?.kind === "topic") {
+      // Topic mode: agent opens with one short question.
+      greetingTrigger = lang === "en"
+        ? "Start now with ONE short opening question like 'Okay — tell me, what exactly do you do?'. Don't introduce yourself. Don't explain. Just ask."
+        : "Starte jetzt mit EINER kurzen Eröffnungsfrage wie 'Okay — erzähl mal, was machst du genau?'. Stell dich nicht vor. Erklär nichts. Frag einfach.";
+    } else {
+      greetingTrigger = lang === "en"
+        ? "Greet me now with ONE short, casual English sentence — feel free to use my name or my niche."
+        : "Begrüße mich jetzt mit EINEM kurzen, lockeren deutschen Satz — nutze gerne meinen Namen oder meine Nische.";
+    }
     await geminiSession.sendText(greetingTrigger, { recordInTranscript: false });
     console.log("[voice-server] greeting trigger sent — waiting for first audio chunk");
   } catch (err) {
@@ -705,6 +761,8 @@ wss.on("connection", async (ws: WebSocket, req) => {
     try {
       if (mode === "onboarding") {
         await finalizeOnboardingSession({ ws, clientId, lang, transcript, durationSeconds });
+      } else if (mode === "voice-profile" && voiceProfileStep) {
+        await finalizeVoiceProfileSession({ ws, clientId, lang, transcript, durationSeconds, step: voiceProfileStep });
       } else {
         await finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds });
       }
@@ -825,6 +883,68 @@ async function enrichOnboardingInBackground(args: {
   } else {
     console.log("[onboarding-bg] browser already disconnected — enrichment saved to DB only");
   }
+}
+
+async function finalizeVoiceProfileSession(
+  args: FinalizeArgs & { step: VoiceProfileStep },
+): Promise<void> {
+  const { ws, clientId, transcript, durationSeconds, step } = args;
+  // Extract only the user's spoken lines — this is the actual voice sample.
+  // Keep model lines minimal (topic-mode questions are useful context for the
+  // voice-profile extraction prompt, but scenarios should be user-only).
+  const userLines = transcript.filter((t) => t.role === "user").map((t) => t.text.trim()).filter(Boolean);
+  const combined = userLines.join("\n\n");
+
+  if (combined.length < 30) {
+    console.warn(`[voice-profile] step ${step.id}: sample too short (${combined.length} chars), skipping save`);
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "voice_profile_summary",
+        stepId: step.id,
+        saved: false,
+        durationSeconds,
+        reason: "Sample zu kurz",
+      }));
+    }
+    return;
+  }
+
+  // Persist the transcript as a training sample — feeds voice-profile extraction.
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from("training_scripts").insert({
+    id,
+    client_id: clientId,
+    format: `voice-profile-${step.id}`,
+    text_hook: "",
+    visual_hook: "",
+    audio_hook: "",
+    script: combined,
+    cta: "",
+    source_id: `voice-profile-${step.id}`,
+    created_at: new Date().toISOString().split("T")[0],
+  });
+  if (error) {
+    console.error("[voice-profile] save failed:", error.message);
+  } else {
+    console.log(`[voice-profile] saved sample for step ${step.id} (${combined.length} chars)`);
+  }
+
+  // Save voice session record for replay/debug.
+  await saveVoiceSession(clientId, transcript, 0, durationSeconds).catch((err) => {
+    console.error("[voice-profile] saveVoiceSession failed:", err);
+  });
+
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: "voice_profile_summary",
+      stepId: step.id,
+      saved: !error,
+      durationSeconds,
+      transcriptLength: transcript.length,
+      sampleChars: combined.length,
+    }));
+  }
+  console.log(`[voice-profile] step ${step.id} finalized: ${durationSeconds}s, ${combined.length} chars sample`);
 }
 
 async function finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds }: FinalizeArgs): Promise<void> {
