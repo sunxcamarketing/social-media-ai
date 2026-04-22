@@ -20,9 +20,10 @@ import { motion } from "motion/react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { Section } from "@/components/ui/section";
-import { DailyPostCheck } from "@/components/daily-post-check";
+import { LastWeekActivity } from "@/components/last-week-activity";
 import { safeJsonParse } from "@/lib/safe-json";
 import { fmt } from "@/lib/format";
+import { parseInsights } from "@/lib/performance-helpers";
 import type { Script, Idea, Config, Analysis } from "@/lib/types";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -152,9 +153,12 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
         }
       />
 
-      {/* Daily post check */}
-      <Section title="Heute" icon={CheckCircle2}>
-        <DailyPostCheck clientId={clientId} />
+      {/* Last-week post activity */}
+      <Section title="Post-Aktivität" icon={CheckCircle2}>
+        <LastWeekActivity
+          posts={parseInsights(client?.performanceInsights || "")?.top30Days || []}
+          scrapedAt={parseInsights(client?.performanceInsights || "")?.scrapedAt || null}
+        />
       </Section>
 
       {/* Stats row */}
