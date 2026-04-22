@@ -28,13 +28,11 @@ import {
   AlertTriangle,
   Mic,
 } from "lucide-react";
-import { BookOpen } from "lucide-react";
-import type { Script, Config, TrainingScript } from "@/lib/types";
+import type { Script, Config } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
 import { ContentAgentChat } from "@/components/content-agent-chat";
 import { useClientData } from "@/context/client-data-context";
-import { BUILT_IN_FORMATS } from "@/lib/strategy";
-import type { ContentFormat } from "@/lib/strategy";
+import { ClientIdeasTab } from "@/components/client-ideas-tab";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -214,9 +212,15 @@ function PipelineProgress({
 function GeneratedIdeaCard({
   idea,
   onDevelop,
+  onSaveAsIdea,
+  ideaSaved,
+  ideaSaving,
 }: {
   idea: WeekIdea;
   onDevelop: () => void;
+  onSaveAsIdea: () => void;
+  ideaSaved: boolean;
+  ideaSaving: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
 
@@ -250,6 +254,20 @@ function GeneratedIdeaCard({
         </div>
 
         <div className="flex gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+          {ideaSaved ? (
+            <span className="h-8 flex items-center gap-1.5 px-3 text-xs text-green-600">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Als Idee gespeichert
+            </span>
+          ) : (
+            <button
+              onClick={onSaveAsIdea}
+              disabled={ideaSaving}
+              className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs text-ocean/70 border border-ocean/[0.08] bg-white hover:bg-warm-white/60 hover:text-ocean transition-colors disabled:opacity-50"
+            >
+              {ideaSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Lightbulb className="h-3 w-3" />}
+              Als Idee speichern
+            </button>
+          )}
           <button
             onClick={onDevelop}
             className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs text-white bg-ocean hover:bg-ocean-light transition-colors"
@@ -355,240 +373,6 @@ function ScriptCell({ script }: { script?: Script }) {
   );
 }
 
-// ── Training Tab ────────────────────────────────────────────────────────────
-
-const EMPTY_TRAINING: Omit<TrainingScript, "id" | "createdAt"> = {
-  clientId: "", format: "", textHook: "", visualHook: "", audioHook: "", script: "", cta: "", sourceId: "",
-};
-
-function formatTrainingDate(iso: string) {
-  if (!iso) return "";
-  try { return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" }); }
-  catch { return iso.split("T")[0]; }
-}
-
-function ClientTrainingTab({ clientId }: { clientId: string }) {
-  const [scripts, setScripts] = useState<TrainingScript[]>([]);
-  const [allFormats, setAllFormats] = useState<ContentFormat[]>(BUILT_IN_FORMATS);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<TrainingScript | null>(null);
-  const [form, setForm] = useState<Omit<TrainingScript, "id" | "createdAt">>({ ...EMPTY_TRAINING, clientId });
-  const [saving, setSaving] = useState(false);
-  const { voiceProfileGen, startVoiceProfileGen, clearVoiceProfileGen } = useGeneration();
-  const voiceState = voiceProfileGen.get(clientId);
-  const generatingVoice = voiceState?.status === "running";
-  const voiceGenDone = voiceState?.status === "done";
-
-  function regenerateVoiceProfile() {
-    startVoiceProfileGen(clientId);
-  }
-
-  // Auto-clear "done" status after 30 seconds (long enough to notice)
-  useEffect(() => {
-    if (voiceGenDone) {
-      const t = setTimeout(() => clearVoiceProfileGen(clientId), 30000);
-      return () => clearTimeout(t);
-    }
-  }, [voiceGenDone, clientId, clearVoiceProfileGen]);
-
-  useEffect(() => {
-    Promise.all([
-      fetch(`/api/training-scripts?clientId=${clientId}`).then(r => r.json()),
-      fetch("/api/strategy").then(r => r.json()),
-    ]).then(([clientScripts, strategy]) => {
-      setScripts(clientScripts as TrainingScript[]);
-      setAllFormats([...BUILT_IN_FORMATS, ...(strategy.customFormats || [])]);
-    }).finally(() => setLoading(false));
-  }, [clientId]);
-
-  function openAdd() { setEditing(null); setForm({ ...EMPTY_TRAINING, clientId }); setDialogOpen(true); }
-  function openEdit(s: TrainingScript) {
-    setEditing(s);
-    setForm({ clientId: s.clientId, format: s.format, textHook: s.textHook, visualHook: s.visualHook, audioHook: s.audioHook, script: s.script, cta: s.cta, sourceId: s.sourceId || "" });
-    setDialogOpen(true);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      if (editing) {
-        const updated = await fetch("/api/training-scripts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, id: editing.id, createdAt: editing.createdAt }) }).then(r => r.json());
-        setScripts(prev => prev.map(s => s.id === updated.id ? updated : s));
-      } else {
-        const created = await fetch("/api/training-scripts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }).then(r => r.json());
-        setScripts(prev => [created, ...prev]);
-      }
-      setDialogOpen(false);
-      fetch(`/api/configs/${clientId}/generate-voice-profile`, { method: "POST" }).catch(() => {});
-    } finally { setSaving(false); }
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm("Training-Skript löschen?")) return;
-    await fetch(`/api/training-scripts?id=${id}`, { method: "DELETE" });
-    setScripts(prev => prev.filter(s => s.id !== id));
-    fetch(`/api/configs/${clientId}/generate-voice-profile`, { method: "POST" }).catch(() => {});
-  }
-
-  if (loading) return <div className="flex items-center justify-center py-20 text-ocean/60 text-sm">Laden…</div>;
-
-  return (
-    <>
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-ocean/60">{scripts.length} Training-Skripte für Voice Profile & Stilanalyse</p>
-        <div className="flex items-center gap-2">
-          {scripts.length > 0 && (
-            <Button
-              onClick={regenerateVoiceProfile}
-              disabled={generatingVoice}
-              variant="outline"
-              className="rounded-xl h-9 px-4 border-ocean/[0.06] text-[13px] gap-1.5"
-            >
-              {generatingVoice ? <><Loader2 className="h-4 w-4 animate-spin" /> Generiert...</> : voiceGenDone ? <><CheckCircle2 className="h-4 w-4 text-green-500" /> Gespeichert</> : <><Mic className="h-4 w-4" /> Voice Profile generieren</>}
-            </Button>
-          )}
-          <Button onClick={openAdd} className="rounded-xl h-9 px-4 bg-ocean hover:bg-ocean-light border-0 gap-1.5 text-[13px]">
-            <Plus className="h-4 w-4" /> Neues Skript
-          </Button>
-        </div>
-      </div>
-
-      {/* Voice Profile Status Banner */}
-      {generatingVoice && (
-        <div className="flex items-center gap-2 rounded-xl bg-ocean/[0.03] border border-ocean/[0.06] px-4 py-3 mb-4 text-sm text-ocean/70">
-          <Loader2 className="h-4 w-4 animate-spin text-ocean/50 shrink-0" />
-          Voice Profile wird generiert... Du kannst den Tab wechseln, es läuft im Hintergrund weiter.
-        </div>
-      )}
-      {voiceGenDone && (
-        <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-4 py-3 mb-4 text-sm text-green-700">
-          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-          Voice Profile erfolgreich generiert und gespeichert.
-        </div>
-      )}
-      {voiceState?.status === "error" && (
-        <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 mb-4 text-sm text-red-700">
-          <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
-          Voice Profile Generierung fehlgeschlagen: {voiceState.error || "Unbekannter Fehler"}
-        </div>
-      )}
-
-      {scripts.length === 0 ? (
-        <div className="rounded-2xl border border-ocean/5 bg-ocean/[0.01] p-12 text-center">
-          <BookOpen className="mx-auto h-8 w-8 text-ocean/15 mb-3" />
-          <p className="text-sm text-ocean/50">Noch keine Training-Skripte.</p>
-          <p className="text-xs text-ocean/40 mt-1">Füge Beispiel-Skripte hinzu, damit die KI den Stil lernt.</p>
-          <Button onClick={openAdd} variant="outline" className="rounded-xl border-ocean/[0.06] text-[13px] gap-1.5 mt-4">
-            <Plus className="h-4 w-4" /> Erstes Skript hinzufügen
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {scripts.map(s => (
-            <div key={s.id} className="glass rounded-2xl border border-ocean/[0.06] p-5 flex flex-col gap-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {s.format && (
-                    <Badge className="rounded-lg border text-[11px] font-medium px-2 py-0.5 bg-ocean/[0.02] text-ocean/60 border-ocean/5">
-                      {s.format}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg text-ocean/60 hover:text-ocean hover:bg-warm-white transition-colors">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button onClick={() => handleDelete(s.id)} className="p-1.5 rounded-lg text-ocean/60 hover:text-red-500 hover:bg-red-50 transition-colors">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {s.textHook && (
-                  <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Text Hook</p>
-                    <p className="text-[13px] text-ocean/80 leading-relaxed">{s.textHook}</p>
-                  </div>
-                )}
-                {s.audioHook && (
-                  <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Audio Hook</p>
-                    <p className="text-[13px] text-ocean/80 leading-relaxed">{s.audioHook}</p>
-                  </div>
-                )}
-                {s.script && (
-                  <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Skript</p>
-                    <p className="text-[13px] text-ocean/80 leading-relaxed whitespace-pre-wrap line-clamp-5">{s.script}</p>
-                  </div>
-                )}
-                {s.cta && (
-                  <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">CTA</p>
-                    <p className="text-[13px] text-ocean/80 leading-relaxed">{s.cta}</p>
-                  </div>
-                )}
-              </div>
-              <div className="pt-1 border-t border-ocean/5">
-                <span className="text-[11px] text-ocean/70">{formatTrainingDate(s.createdAt)}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Dialog open={dialogOpen} onOpenChange={v => { if (!v) setDialogOpen(false); }}>
-        <DialogContent className="sm:max-w-xl glass border-ocean/[0.06] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">{editing ? "Training-Skript bearbeiten" : "Neues Training-Skript"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Format</Label>
-              <div className="relative">
-                <select value={form.format} onChange={e => setForm({ ...form, format: e.target.value })}
-                  className="w-full h-10 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-3 pr-8 text-[13px] text-ocean appearance-none cursor-pointer focus:outline-none">
-                  <option value="">Auswählen…</option>
-                  {allFormats.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ocean/60 pointer-events-none" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Text Hook</Label>
-              <Input placeholder="Text der in den ersten Sekunden erscheint" value={form.textHook}
-                onChange={e => setForm({ ...form, textHook: e.target.value })}
-                className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Audio Hook</Label>
-              <Input placeholder="Erste gesprochene Worte" value={form.audioHook}
-                onChange={e => setForm({ ...form, audioHook: e.target.value })}
-                className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">Skript / Transkript</Label>
-              <Textarea rows={8} placeholder="Vollständiges Skript oder Transkript" value={form.script}
-                onChange={e => setForm({ ...form, script: e.target.value })}
-                className="rounded-xl bg-ocean/[0.02] border-ocean/[0.06] resize-y" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-ocean/60">CTA</Label>
-              <Input placeholder="Call to Action" value={form.cta}
-                onChange={e => setForm({ ...form, cta: e.target.value })}
-                className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
-            </div>
-            <Button onClick={handleSave} disabled={saving}
-              className="w-full rounded-xl h-10 bg-ocean hover:bg-ocean-light border-0 mt-1">
-              {saving ? "Speichern…" : editing ? "Änderungen speichern" : "Skript hinzufügen"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
 
 // ── Main Page ───────────────────────────────────────────────────────────────
 
@@ -597,7 +381,7 @@ const emptyForm = {
   hook: "", body: "", cta: "", status: "entwurf", fullScript: "",
 };
 
-type ScriptTab = "scripts" | "training";
+type ScriptTab = "scripts" | "ideas";
 
 export default function ClientScriptsPage() {
   const { id } = useParams<{ id: string }>();
@@ -615,6 +399,8 @@ export default function ClientScriptsPage() {
   const [weekMeta, setWeekMeta] = useState<GenerationMeta | null>(null);
   const [weekReasoning, setWeekReasoning] = useState<string>("");
   const [developIdea, setDevelopIdea] = useState<WeekIdea | null>(null);
+  const [savedIdeaIndexes, setSavedIdeaIndexes] = useState<Set<number>>(new Set());
+  const [savingIdeaIndex, setSavingIdeaIndex] = useState<number | null>(null);
 
   // Pipeline progress
   const [pipelineStep, setPipelineStep] = useState<PipelineStep>("idle");
@@ -642,6 +428,44 @@ export default function ClientScriptsPage() {
     fetch(`/api/analyses?clientId=${id}`).then(r => r.json()).then((analyses: unknown[]) => setHasAudit(analyses.length > 0));
   }, [id, loadScripts]);
 
+  // ── Save a generated idea to the Ideas tab ──────────────────────────────
+  const saveIdeaToTab = async (index: number) => {
+    const idea = weekIdeas[index];
+    if (!idea || savedIdeaIndexes.has(index)) return;
+    setSavingIdeaIndex(index);
+    try {
+      const descParts: string[] = [];
+      if (idea.angle) descParts.push(`Winkel: ${idea.angle}`);
+      if (idea.hookDirection) descParts.push(`Hook-Richtung: ${idea.hookDirection}`);
+      if (idea.keyPoints.length > 0) descParts.push(`Kernpunkte:\n${idea.keyPoints.map(p => `- ${p}`).join("\n")}`);
+      if (idea.whyNow) descParts.push(`Warum jetzt: ${idea.whyNow}`);
+      if (idea.emotion) descParts.push(`Emotion: ${idea.emotion}`);
+      if (idea.day || idea.pillar || idea.format) {
+        descParts.push(`Wochenplan: ${idea.day || "?"} · ${idea.pillar || "?"} · ${idea.format || "?"}`);
+      }
+      const description = descParts.join("\n\n");
+
+      const res = await fetch("/api/ideas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: id,
+          title: idea.title,
+          description,
+          contentType: idea.contentType,
+          status: "idea",
+        }),
+      });
+      if (!res.ok) throw new Error("Fehler beim Speichern");
+      setSavedIdeaIndexes(prev => new Set(prev).add(index));
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Fehler beim Speichern");
+    } finally {
+      setSavingIdeaIndex(null);
+    }
+  };
+
   // ── Generate full week of IDEAS (SSE streaming) ─────────────────────────
   const generateWeek = async () => {
     setWeekLoading(true);
@@ -651,6 +475,8 @@ export default function ClientScriptsPage() {
     setWeekMeta(null);
     setPipelineStep("context");
     setSelectedTopics([]);
+    setSavedIdeaIndexes(new Set());
+    setSavingIdeaIndex(null);
 
     try {
       const res = await fetch(`/api/configs/${id}/generate-week-scripts`, {
@@ -794,15 +620,15 @@ export default function ClientScriptsPage() {
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium transition-all ${activeTab === "scripts" ? "bg-warm-white text-ocean" : "text-ocean/60 hover:text-ocean"}`}>
             <FileText className="h-3.5 w-3.5" /> Skripte
           </button>
-          <button onClick={() => setActiveTab("training")}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium transition-all ${activeTab === "training" ? "bg-warm-white text-ocean" : "text-ocean/60 hover:text-ocean"}`}>
-            <BookOpen className="h-3.5 w-3.5" /> Training
+          <button onClick={() => setActiveTab("ideas")}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-medium transition-all ${activeTab === "ideas" ? "bg-warm-white text-ocean" : "text-ocean/60 hover:text-ocean"}`}>
+            <Lightbulb className="h-3.5 w-3.5" /> Ideen
           </button>
         </div>
       </div>
 
-      {activeTab === "training" ? (
-        <ClientTrainingTab clientId={id} />
+      {activeTab === "ideas" ? (
+        <ClientIdeasTab clientId={id} />
       ) : (
       <>
       {/* ── Generate Week Panel ───────────────────────────────────────────── */}
@@ -882,7 +708,7 @@ export default function ClientScriptsPage() {
             )}
 
             <p className="text-[11px] text-ocean/50 pt-1">
-              {weekIdeas.length} Ideen für die Woche. Klick auf &quot;Zu Skript ausformulieren&quot; um eine Idee mit dem Chat-Agent zu einem kompletten Skript zu entwickeln. Ungewählte Ideen verwerfen sich einfach beim Neugenerieren.
+              {weekIdeas.length} Ideen für die Woche. Entweder direkt zu einem Skript ausformulieren, oder als Idee für später im Ideen-Tab speichern. Was du nicht aufnimmst, verwirfst sich beim Neugenerieren.
             </p>
 
             {/* Idea cards */}
@@ -891,6 +717,9 @@ export default function ClientScriptsPage() {
                 key={`${idea.day}-${i}`}
                 idea={idea}
                 onDevelop={() => setDevelopIdea(idea)}
+                onSaveAsIdea={() => saveIdeaToTab(i)}
+                ideaSaved={savedIdeaIndexes.has(i)}
+                ideaSaving={savingIdeaIndex === i}
               />
             ))}
           </div>

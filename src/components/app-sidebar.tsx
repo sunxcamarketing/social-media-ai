@@ -10,7 +10,6 @@ import {
   Video,
   MessageSquare,
   Mic,
-  Lightbulb,
   BookOpen,
   ChevronDown,
   Plus,
@@ -39,9 +38,8 @@ interface NavLink {
 const CLIENT_TABS: NavLink[] = [
   { titleKey: "sidebar.dashboard", path: "dashboard", icon: LayoutDashboard },
   { titleKey: "sidebar.profile", path: "information", icon: BookOpen },
-  { titleKey: "sidebar.scripts", path: "scripts", icon: FileText },
   { titleKey: "sidebar.strategy", path: "strategy", icon: BarChart2 },
-  { titleKey: "sidebar.ideas", path: "ideas", icon: Lightbulb },
+  { titleKey: "sidebar.scripts", path: "scripts", icon: FileText },
   { titleKey: "sidebar.chat", path: "chat", icon: MessageSquare },
   { titleKey: "sidebar.voice", path: "voice", icon: Mic },
   { titleKey: "sidebar.carousel", path: "carousel", icon: Grid3x3, adminOnly: true },

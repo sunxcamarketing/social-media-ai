@@ -11,6 +11,9 @@ interface PortalShellProps {
   loading?: boolean;
   emptyMessage?: string;
   isEmpty?: boolean;
+  /** Optional extra UI rendered between the title block and the content
+   *  (e.g. a tab switcher). Always visible, even in empty state. */
+  header?: ReactNode;
   children: ReactNode;
 }
 
@@ -26,6 +29,7 @@ export function PortalShell({
   loading,
   emptyMessage,
   isEmpty,
+  header,
   children,
 }: PortalShellProps) {
   const { t } = useI18n();
@@ -42,6 +46,8 @@ export function PortalShell({
         </h1>
         {subtitle && <p className="text-xs text-ocean/50 mt-1">{subtitle}</p>}
       </div>
+
+      {header}
 
       {isEmpty ? (
         <div className="glass rounded-2xl p-8 text-center">
