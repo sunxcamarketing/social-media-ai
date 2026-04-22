@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import {
   LogOut,
   Menu,
-  UserCircle2,
   CalendarDays,
   Mail,
   Check,
+  BookOpen,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useI18n } from "@/lib/i18n";
@@ -166,6 +167,14 @@ export function PortalTopbar({ clientName, email, invitedAt }: PortalTopbarProps
 
               {/* Actions */}
               <div className="p-1.5">
+                <Link
+                  href="/portal/profil"
+                  onClick={() => setMenuOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ocean/70 hover:bg-ocean/[0.03] hover:text-ocean transition-colors"
+                >
+                  <BookOpen className="h-4 w-4 text-ocean/45" />
+                  {lang === "de" ? "Mein Profil" : "My profile"}
+                </Link>
                 <button
                   onClick={signOut}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-ocean/70 hover:bg-ocean/[0.03] hover:text-ocean transition-colors"

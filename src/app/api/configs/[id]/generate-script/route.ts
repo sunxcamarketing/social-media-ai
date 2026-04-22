@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideosByConfig, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { readConfigs, readVideosByConfig, readTrainingScripts, readScripts, readStrategyConfig } from "@/lib/csv";
 import { getVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
 import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
