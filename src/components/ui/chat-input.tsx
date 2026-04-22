@@ -73,6 +73,16 @@ export function ChatInput({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!onAttachmentsChange) return;
+    const files = Array.from(e.clipboardData.files);
+    if (files.length === 0) return;
+    e.preventDefault();
+    const dt = new DataTransfer();
+    for (const f of files) dt.items.add(f);
+    handleFiles(dt.files);
+  };
+
   const handleFiles = async (files: FileList | null) => {
     if (!files || !onAttachmentsChange) return;
     setUploadError(null);
@@ -181,6 +191,7 @@ export function ChatInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           disabled={disabled || isStreaming}

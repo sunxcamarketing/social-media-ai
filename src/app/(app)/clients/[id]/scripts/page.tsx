@@ -20,16 +20,13 @@ import {
   ChevronDown,
   Copy,
   Check,
-  Save,
   Lightbulb,
   Pencil,
   Trash2,
-  Clock,
   Plus,
   CheckCircle2,
   AlertTriangle,
   Mic,
-  PenTool,
 } from "lucide-react";
 import { BookOpen } from "lucide-react";
 import type { Script, Config, TrainingScript } from "@/lib/types";
@@ -38,7 +35,6 @@ import { ContentAgentChat } from "@/components/content-agent-chat";
 import { useClientData } from "@/context/client-data-context";
 import { BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentFormat } from "@/lib/strategy";
-import { fmtDuration } from "@/lib/format";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1091,6 +1087,36 @@ export default function ClientScriptsPage() {
                 Speichern
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Develop idea → script chat dialog */}
+      <Dialog open={!!developIdea} onOpenChange={(open) => { if (!open) { setDevelopIdea(null); loadScripts(); } }}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 glass-strong rounded-2xl border-ocean/[0.06] overflow-hidden flex flex-col">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-ocean/[0.06] shrink-0">
+            <DialogTitle className="flex items-start gap-2 text-left">
+              <Sparkles className="h-4 w-4 text-blush-dark mt-1 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-snug break-words">{developIdea?.title}</p>
+                {developIdea?.angle && (
+                  <p className="text-xs text-ocean/60 leading-relaxed mt-1 font-normal line-clamp-2 break-words">
+                    {developIdea.angle}
+                  </p>
+                )}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {developIdea && (
+              <ContentAgentChat
+                key={`${developIdea.day}-${developIdea.title}`}
+                clientId={id}
+                layout="embedded"
+                title="Content Agent"
+                initialUserMessage={buildIdeaChatSeed(developIdea)}
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
