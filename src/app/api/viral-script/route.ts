@@ -1,5 +1,5 @@
 import { getAnthropicClient } from "@/lib/anthropic";
-import { readConfig, readVideos } from "@/lib/csv";
+import { readConfig, readVideo } from "@/lib/csv";
 import { scrapeSinglePost } from "@/lib/apify";
 import { uploadVideo, analyzeVideo } from "@/lib/gemini";
 import {
@@ -62,9 +62,7 @@ export async function POST(request: Request) {
         let referenceViews = 0;
 
         if (videoId) {
-          // Use existing video from database
-          const videos = await readVideos();
-          const video = videos.find(v => v.id === videoId);
+          const video = await readVideo(videoId);
           if (!video) throw new Error("Video nicht gefunden");
           referenceAnalysis = video.analysis || "";
           referenceCreator = video.creator || "";

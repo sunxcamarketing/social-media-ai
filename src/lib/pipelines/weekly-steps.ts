@@ -14,7 +14,7 @@ import { searchTrendsDeep, formatDeepTrendResults, countDistinctCategoriesWithRe
 import type { DeepTrendContext } from "@/lib/brave-search";
 import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 import type { PlatformId } from "@/lib/platforms";
-import { getLatestSnapshot, buildTrendBlockFromSnapshot } from "@/lib/intelligence";
+import { getLatestSnapshot, getSnapshotFreshness, buildTrendBlockFromSnapshot } from "@/lib/intelligence";
 import { getHighConfidenceLearnings, buildLearningsBlock } from "@/lib/client-learnings";
 import type { ClientLearning } from "@/lib/client-learnings";
 import { buildClientProfile, buildBrandContext } from "@/lib/client-context";
@@ -316,8 +316,9 @@ export async function runResearch(
   rng?: () => number,
   lang: "de" | "en" = "de",
 ): Promise<ResearchContext> {
-  const [trendSnapshot, learnings] = await Promise.all([
+  const [trendSnapshot, freshness, learnings] = await Promise.all([
     getLatestSnapshot(configId, "web_trends"),
+    getSnapshotFreshness(configId),
     getHighConfidenceLearnings(configId),
   ]);
 
@@ -325,49 +326,56 @@ export async function runResearch(
   let trendBlock = "";
   let webTrendContext = "";
 
-  // Build deep search context from client data
-  const pillars: { name: string }[] = safeJsonParse(config.strategyPillars, []);
-  const customerProblems = safeJsonParse<{
-    mental?: string; emotional?: string; practical?: string; financial?: string; social?: string;
-  }>(config.customerProblems, {});
-  const deepCtx: DeepTrendContext = {
-    niche: config.creatorsCategory || "Social Media",
-    pillars: pillars.map(p => p.name).slice(0, 5),
-    customerProblems: [customerProblems.mental, customerProblems.emotional, customerProblems.practical].filter(Boolean).join(". "),
-    customerProblemsByDim: {
-      mental: customerProblems.mental,
-      emotional: customerProblems.emotional,
-      practical: customerProblems.practical,
-      financial: customerProblems.financial,
-      social: customerProblems.social,
-    },
-    brandProblem: config.brandProblem || undefined,
-    businessContext: config.businessContext || undefined,
-    coreOffer: config.coreOffer || undefined,
-  };
+  // If the web_trends snapshot is fresh (< 3 days old), reuse it and skip the
+  // 15-20 Brave HTTP calls. The background research-cycle job refreshes these
+  // snapshots regularly, so fresh == usable.
+  if (trendSnapshot && freshness.web_trends?.fresh) {
+    webTrendContext = buildTrendBlockFromSnapshot(trendSnapshot.data);
+    console.log(`[weekly-research] client=${configId} trends=snapshot age=${freshness.web_trends.createdAt} → deep search skipped`);
+  } else {
+    // Build deep search context from client data
+    const pillars: { name: string }[] = safeJsonParse(config.strategyPillars, []);
+    const customerProblems = safeJsonParse<{
+      mental?: string; emotional?: string; practical?: string; financial?: string; social?: string;
+    }>(config.customerProblems, {});
+    const deepCtx: DeepTrendContext = {
+      niche: config.creatorsCategory || "Social Media",
+      pillars: pillars.map(p => p.name).slice(0, 5),
+      customerProblems: [customerProblems.mental, customerProblems.emotional, customerProblems.practical].filter(Boolean).join(". "),
+      customerProblemsByDim: {
+        mental: customerProblems.mental,
+        emotional: customerProblems.emotional,
+        practical: customerProblems.practical,
+        financial: customerProblems.financial,
+        social: customerProblems.social,
+      },
+      brandProblem: config.brandProblem || undefined,
+      businessContext: config.businessContext || undefined,
+      coreOffer: config.coreOffer || undefined,
+    };
 
-  // Deep search: 15-20 targeted queries across 9 categories (~2s parallel)
-  // Week-rng rotates sub-angles/pillar order so each week surfaces different results
-  try {
-    const deepResults = await searchTrendsDeep(deepCtx, { rng });
-    const totalResults = deepResults.reduce((sum, r) => sum + r.results.length, 0);
-    const distinctCategories = countDistinctCategoriesWithResults(deepResults);
-    if (totalResults > 0 && distinctCategories >= 3) {
-      webTrendContext = formatDeepTrendResults(deepResults);
-    } else if (totalResults > 0) {
-      // Categories too concentrated — still use, but log for monitoring
-      webTrendContext = formatDeepTrendResults(deepResults);
-    }
-  } catch {
-    // Live search failed — fall back to snapshot
-    if (trendSnapshot) {
-      webTrendContext = buildTrendBlockFromSnapshot(trendSnapshot.data);
+    // Deep search: 15-20 targeted queries across 9 categories (~2s parallel)
+    // Week-rng rotates sub-angles/pillar order so each week surfaces different results
+    const deepStartedAt = Date.now();
+    try {
+      const deepResults = await searchTrendsDeep(deepCtx, { rng });
+      const totalResults = deepResults.reduce((sum, r) => sum + r.results.length, 0);
+      if (totalResults > 0) {
+        webTrendContext = formatDeepTrendResults(deepResults);
+      }
+      console.log(`[weekly-research] client=${configId} trends=deep deepMs=${Date.now() - deepStartedAt} results=${totalResults} categories=${countDistinctCategoriesWithResults(deepResults)}`);
+    } catch {
+      // Live search failed — fall back to snapshot even if stale
+      if (trendSnapshot) {
+        webTrendContext = buildTrendBlockFromSnapshot(trendSnapshot.data);
+      }
+      console.log(`[weekly-research] client=${configId} trends=fallback deepMs=${Date.now() - deepStartedAt} (stale snapshot used)`);
     }
   }
 
   // Claude synthesizes trends from real search data (does NOT invent)
   try {
-    const niche = deepCtx.niche;
+    const niche = config.creatorsCategory || "Social Media";
     const currentDate = new Date().toISOString().split("T")[0];
     const monthLabel = new Date(currentDate).toLocaleString("de-DE", { month: "long", year: "numeric" });
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
+import { readConfigs, readVideosByConfig, readTrainingScripts, readScripts, readAnalyses, readStrategyConfig } from "@/lib/csv";
 import { getVoiceProfile, voiceProfileToPromptBlock, getScriptStructure, scriptStructureToPromptBlock } from "@/lib/voice-profile";
 import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
@@ -164,10 +164,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ...(insights?.topAllTime || []),
   ];
 
-  const allVideos = await readVideos();
-  const creatorVideos = allVideos
-    .filter(v => v.configName === config.configName && v.views > 0)
-    .sort((a, b) => b.views - a.views)
+  const creatorVideos = (await readVideosByConfig(config.configName))
+    .filter(v => v.views > 0)
     .slice(0, 6);
 
   // ── Duration: compute hard word limit ────────────────────────────────────
@@ -407,9 +405,8 @@ async function handleTopicScript(
   // Duration
   const insights = parseInsights(config.performanceInsights || "");
   const ownTopVideos: VideoInsight[] = [...(insights?.top30Days || []), ...(insights?.topAllTime || [])];
-  const creatorVideos = (await readVideos())
-    .filter(v => v.configName === config.configName && v.views > 0)
-    .sort((a, b) => b.views - a.views)
+  const creatorVideos = (await readVideosByConfig(config.configName))
+    .filter(v => v.views > 0)
     .slice(0, 6);
   const allDurations = [
     ...ownTopVideos.filter(v => v.durationSeconds > 0).map(v => v.durationSeconds),

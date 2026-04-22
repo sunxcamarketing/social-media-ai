@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { readConfigs, readCreators, readVideos, writeVideos } from "./csv";
+import { readConfigs, readCreators, writeVideos } from "./csv";
 import { scrapeReels } from "./apify";
 import { uploadVideo, analyzeVideo } from "./gemini";
 import { generateNewConcepts } from "./claude";
@@ -227,10 +227,9 @@ export async function runPipeline(
       }
     });
 
-    // Write all new videos at once
+    // writeVideos upserts on id — no need to read existing first
     if (newVideos.length > 0) {
-      const existing = await readVideos();
-      await writeVideos([...existing, ...newVideos]);
+      await writeVideos(newVideos);
     }
 
     progress.phase = "done";

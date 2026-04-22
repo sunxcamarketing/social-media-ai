@@ -10,6 +10,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildPrompt, WEEKLY_IDEAS_TOOL } from "@prompts";
 import type { PipelineContext, VoiceContext, ResearchContext } from "./weekly-steps";
+import { getLatestSnapshot } from "@/lib/intelligence";
+import { buildPerformanceMemoBlock, type PerformanceMemo } from "@/lib/jobs/performance-memo";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -50,6 +52,7 @@ function buildUserPrompt(
   ctx: PipelineContext,
   voice: VoiceContext,
   research: ResearchContext,
+  performanceMemoBlock: string,
 ): string {
   const lang = ctx.lang;
   const header = lang === "en"
@@ -90,6 +93,7 @@ function buildUserPrompt(
   // Research
   if (research.trendBlock) sections.push(research.trendBlock);
   if (research.learningsBlock) sections.push(research.learningsBlock);
+  if (performanceMemoBlock) sections.push(`## PERFORMANCE MEMO (what worked, what didn't)\n${performanceMemoBlock}`);
 
   const closingHeader = lang === "en"
     ? `## NOW DELIVER IDEAS\nCall submit_weekly_ideas with exactly ${ctx.activeDays.length} ideas, one per day in order (${ctx.activeDays.join(", ")}). Follow the week schedule — day, pillar, content_type and format must match exactly. Each idea must be SPECIFIC (number, named thing, contrarian marker, or concrete scene).`
@@ -114,7 +118,19 @@ export async function generateWeekIdeas(
     num_ideas: String(numIdeas),
   }, ctx.lang);
 
-  const userPrompt = buildUserPrompt(ctx, voice, research);
+  // Load the latest performance memo (written by the nightly performance-memo job).
+  // Silent fallback: if none exists yet, we proceed with raw learnings only.
+  let performanceMemoBlock = "";
+  try {
+    const snap = await getLatestSnapshot(ctx.config.id, "performance_memo");
+    if (snap?.data) {
+      performanceMemoBlock = buildPerformanceMemoBlock(snap.data as unknown as PerformanceMemo);
+    }
+  } catch (err) {
+    console.warn("[weekly-oneshot] performance memo load failed:", err);
+  }
+
+  const userPrompt = buildUserPrompt(ctx, voice, research, performanceMemoBlock);
 
   const tool = WEEKLY_IDEAS_TOOL(numIdeas);
 

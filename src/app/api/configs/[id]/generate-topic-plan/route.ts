@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs, readVideos, readScripts, readStrategyConfig } from "@/lib/csv";
+import { readConfigs, readVideosByConfig, readScripts, readStrategyConfig } from "@/lib/csv";
 import { getAuditBlock } from "@/lib/audit";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
 import { buildPrompt } from "@prompts";
@@ -78,10 +78,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     ...(insights?.topAllTime || []),
   ].slice(0, 3);
 
-  const allVideos = await readVideos();
-  const creatorVideos = allVideos
-    .filter(v => v.configName === config.configName && v.views > 0)
-    .sort((a, b) => b.views - a.views)
+  const creatorVideos = (await readVideosByConfig(config.configName))
+    .filter(v => v.views > 0)
     .slice(0, 4);
 
   const performanceBlock = [

@@ -4,7 +4,7 @@
 
 import { supabase } from "./supabase";
 
-export type SnapshotType = "competitor_refresh" | "web_trends" | "performance_feedback";
+export type SnapshotType = "competitor_refresh" | "web_trends" | "performance_feedback" | "performance_memo" | "voice_drift";
 
 export interface IntelligenceSnapshot {
   id: string;
@@ -83,6 +83,8 @@ export async function getSnapshotFreshness(clientId: string, platform = "instagr
     competitor_refresh: 5,
     web_trends: 3,
     performance_feedback: 7,
+    performance_memo: 14,
+    voice_drift: 30,
   };
 
   const results = await Promise.all(
