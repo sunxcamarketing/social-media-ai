@@ -2,15 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClientNav } from "@/components/client-nav";
+import { PortalSidebar } from "@/components/portal-sidebar";
+import { PortalTopbar } from "@/components/portal-topbar";
 import { ImpersonateBanner } from "@/components/impersonate-banner";
 import { NavProgress } from "@/components/nav-progress";
+import { MobileNavProvider } from "@/components/mobile-nav-context";
 import { useI18n, type Lang } from "@/lib/i18n";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { setClientLang, t } = useI18n();
   const [clientName, setClientName] = useState("");
+  const [email, setEmail] = useState<string | undefined>(undefined);
+  const [invitedAt, setInvitedAt] = useState<string | null>(null);
   const [impersonating, setImpersonating] = useState<{ clientName: string } | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -28,6 +32,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           router.push("/");
           return;
         }
+
+        setEmail(data.email);
+        setInvitedAt(data.invitedAt ?? null);
 
         if (data.impersonating) {
           setImpersonating({ clientName: data.impersonating.clientName });
@@ -56,13 +63,18 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div className="min-h-screen bg-warm-white">
-      <NavProgress />
-      {impersonating && <ImpersonateBanner clientName={impersonating.clientName} />}
-      <ClientNav clientName={clientName} />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {children}
-      </main>
-    </div>
+    <MobileNavProvider>
+      <div className="min-h-screen bg-warm-white flex">
+        <NavProgress />
+        <PortalSidebar clientName={clientName} />
+        <div className="flex-1 min-w-0 flex flex-col">
+          {impersonating && <ImpersonateBanner clientName={impersonating.clientName} />}
+          <PortalTopbar clientName={clientName} email={email} invitedAt={invitedAt} />
+          <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 md:px-8 py-6 md:py-8">
+            {children}
+          </main>
+        </div>
+      </div>
+    </MobileNavProvider>
   );
 }

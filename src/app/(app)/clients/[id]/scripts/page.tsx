@@ -33,6 +33,7 @@ import {
   Zap,
   PenTool,
   Shield,
+  CalendarDays,
 } from "lucide-react";
 import { BookOpen } from "lucide-react";
 import type { Script, Config, TrainingScript } from "@/lib/types";
@@ -41,6 +42,108 @@ import { useClientData } from "@/context/client-data-context";
 import { BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentFormat } from "@/lib/strategy";
 import { fmtDuration } from "@/lib/format";
+import { safeJsonParse } from "@/lib/safe-json";
+import { useI18n } from "@/lib/i18n";
+
+const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const TYPE_COLORS: Record<string, string> = {
+  "Authority":                 "bg-blush/20 text-blush-dark border-blush/40",
+  "Story / Personality":       "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  "Social Proof":              "bg-green-50 text-green-600 border-green-200",
+  "Education":                 "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  "Education / Value":         "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  "Polarisation":              "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  "Opinion / Polarisation":    "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  "Behind the Scenes":         "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  "Inspiration / Motivation":  "bg-blush/20 text-blush-dark border-blush/40",
+  "Entertainment":             "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  "Community / Interaction":   "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+  "Promotion / Offer":         "bg-blush/20 text-blush-dark border-blush/40",
+};
+
+interface DaySlot { type: string; format: string; pillar?: string; reason?: string; }
+type WeeklyStructure = Record<string, DaySlot>;
+
+function WeeklyCalendar({ config, onPostsPerWeekChange }: {
+  config: Config | null;
+  onPostsPerWeekChange: (val: string) => Promise<void>;
+}) {
+  const { t } = useI18n();
+  if (!config?.strategyWeekly) return null;
+  const weeklyRaw = safeJsonParse<WeeklyStructure>(config.strategyWeekly, {});
+  const { _reasoning, ...weekly } = weeklyRaw as WeeklyStructure & { _reasoning?: string };
+  void _reasoning;
+  const postsPerWeek = Math.min(7, Math.max(1, parseInt(config.postsPerWeek || "5", 10)));
+  const activeDays = ALL_DAYS.slice(0, postsPerWeek);
+  if (!activeDays.some(d => weekly[d]?.type)) return null;
+
+  return (
+    <div className="rounded-2xl border border-ocean/[0.06] bg-white/50 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] text-ocean uppercase tracking-wider">{t("strategy.weeklyCalendar")}</p>
+        <span className="flex items-center gap-1 text-[11px] text-ocean/60">
+          <CalendarDays className="h-3 w-3" />
+          <select
+            value={postsPerWeek}
+            onChange={(e) => onPostsPerWeekChange(e.target.value)}
+            className="bg-transparent border-none text-ocean font-semibold cursor-pointer focus:outline-none hover:text-ocean/80 transition-colors"
+          >
+            {[1,2,3,4,5,6,7].map((n) => (
+              <option key={n} value={n} className="bg-white text-ocean">{n}</option>
+            ))}
+          </select>
+          <span>{t("strategy.postsPerWeek")}</span>
+        </span>
+      </div>
+      <div className="rounded-2xl border border-ocean/[0.06] overflow-hidden">
+        {activeDays.map((day, i) => {
+          const slot = weekly[day];
+          if (!slot?.type) return null;
+          const colorClass = TYPE_COLORS[slot.type] || "bg-ocean/[0.02] text-ocean border-ocean/[0.06]";
+          return (
+            <div
+              key={day}
+              className={`flex items-center gap-4 px-5 py-3.5 ${
+                i > 0 ? "border-t border-ocean/[0.06]" : ""
+              } hover:bg-ocean/[0.01] transition-colors`}
+            >
+              <span className="w-10 text-sm font-semibold text-ocean shrink-0">{day}</span>
+              <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-medium shrink-0 ${colorClass}`}>
+                {slot.type}
+              </span>
+              <span className="text-xs text-ocean/50 shrink-0">
+                {slot.format || ""}
+              </span>
+              <span className="text-xs text-ocean/70 font-medium flex-1 text-right truncate">
+                {slot.pillar || ""}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {activeDays.some(d => weekly[d]?.reason) && (
+        <details className="mt-3">
+          <summary className="text-[11px] text-ocean/40 cursor-pointer hover:text-ocean/60 transition-colors">
+            Begründungen anzeigen
+          </summary>
+          <div className="mt-2 space-y-2">
+            {activeDays.map((day) => {
+              const slot = weekly[day];
+              if (!slot?.reason) return null;
+              return (
+                <div key={day} className="flex gap-2 text-[11px]">
+                  <span className="font-medium text-ocean/60 w-10 shrink-0">{day}</span>
+                  <span className="text-ocean/45 leading-relaxed">{slot.reason}</span>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -891,6 +994,20 @@ export default function ClientScriptsPage() {
         <ClientTrainingTab clientId={id} />
       ) : (
       <>
+      {/* ── Weekly Editorial Calendar ─────────────────────────────────────── */}
+      <WeeklyCalendar
+        config={client}
+        onPostsPerWeekChange={async (val) => {
+          if (!client) return;
+          await fetch("/api/configs", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...client, postsPerWeek: val }),
+          });
+          setClient((c) => c ? { ...c, postsPerWeek: val } : c);
+        }}
+      />
+
       {/* ── Generate Week Panel ───────────────────────────────────────────── */}
       <div className="rounded-2xl border border-blush/40 bg-gradient-to-br from-blush-light/20 to-white p-6 space-y-5">
         <div className="flex items-start justify-between gap-4">

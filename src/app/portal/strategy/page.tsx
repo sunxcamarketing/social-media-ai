@@ -9,7 +9,6 @@ import { useI18n } from "@/lib/i18n";
 import type { Config } from "@/lib/types";
 
 interface Pillar { name: string; subtopics?: string[]; videoIdeas?: { title: string }[]; }
-interface WeeklyEntry { day: string; pillar?: string; contentType?: string; format?: string; title?: string; }
 
 export default function PortalStrategy() {
   const { t } = useI18n();
@@ -28,7 +27,6 @@ export default function PortalStrategy() {
 
   const hasStrategy = Boolean(client?.strategyGoal || client?.strategyPillars);
   const pillars = safeJsonParse<Pillar[]>(client?.strategyPillars, []);
-  const weekly = safeJsonParse<WeeklyEntry[]>(client?.strategyWeekly, []);
 
   return (
     <PortalShell
@@ -75,23 +73,6 @@ export default function PortalStrategy() {
           </div>
         )}
 
-        {weekly.length > 0 && (
-          <div className="glass rounded-2xl p-4 sm:p-6">
-            <h2 className="text-sm font-semibold mb-4">{t("portal.strategy.weeklyPlan")}</h2>
-            <div className="space-y-2">
-              {weekly.map((w, i) => (
-                <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-sm py-2 border-b border-ocean/[0.04] last:border-0">
-                  <span className="text-xs font-medium text-ocean/50 sm:w-20 shrink-0">{w.day}</span>
-                  <span className="text-ocean flex-1 break-words">{w.title || w.contentType || "-"}</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {w.pillar && <span className="text-[10px] bg-ocean/5 text-ocean/60 px-2 py-0.5 rounded">{w.pillar}</span>}
-                    {w.format && <span className="text-[10px] bg-blush-light/60 text-ocean/60 px-2 py-0.5 rounded">{w.format}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </PortalShell>
   );

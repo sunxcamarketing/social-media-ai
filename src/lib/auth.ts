@@ -9,6 +9,7 @@ export interface AppUser {
   email: string;
   role: UserRole;
   clientId: string | null;
+  invitedAt?: string | null;
   impersonating?: { clientId: string; clientName: string };
 }
 
@@ -24,19 +25,19 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 
   const { data: clientUser, error } = await supabase
     .from("client_users")
-    .select("role, client_id")
+    .select("role, client_id, invited_at")
     .eq("user_id", user.id)
     .limit(1)
     .single();
 
   if (!clientUser && error?.code !== NO_ROWS_FOUND) {
-    return buildAppUser(user.id, user.email, "admin", null);
+    return buildAppUser(user.id, user.email, "admin", null, null);
   }
 
   if (!clientUser) return null;
 
   const role = clientUser.role as UserRole;
-  const base = buildAppUser(user.id, user.email, role, clientUser.client_id);
+  const base = buildAppUser(user.id, user.email, role, clientUser.client_id, clientUser.invited_at ?? null);
 
   if (role === "admin") {
     const impersonating = await readImpersonation();
@@ -66,8 +67,9 @@ function buildAppUser(
   email: string | undefined,
   role: UserRole,
   clientId: string | null,
+  invitedAt: string | null = null,
 ): AppUser {
-  return { id, email: email || "", role, clientId };
+  return { id, email: email || "", role, clientId, invitedAt };
 }
 
 /**

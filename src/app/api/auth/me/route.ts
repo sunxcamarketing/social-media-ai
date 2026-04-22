@@ -14,6 +14,7 @@ export async function GET() {
     email: user.email,
     role: user.role,
     clientId: effectiveClientId,
+    invitedAt: user.invitedAt ?? null,
     impersonating: user.impersonating ?? null,
   });
 }

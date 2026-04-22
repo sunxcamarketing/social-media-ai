@@ -1075,69 +1075,6 @@ export default function ClientStrategyPage() {
               </div>
             )}
 
-            {/* Weekly Editorial Calendar */}
-            {activeDays.some(d => weekly[d]?.type) && (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-[11px] text-ocean uppercase tracking-wider">{t("strategy.weeklyCalendar")}</p>
-                  <span className="flex items-center gap-1 text-[11px] text-ivory/80">
-                    <CalendarDays className="h-3 w-3" />
-                    {postsPerWeek} {t("strategy.postsPerWeek")}
-                  </span>
-                </div>
-                <div className="rounded-2xl border border-ocean/[0.06] overflow-hidden">
-                  {activeDays.map((day, i) => {
-                    const slot = weekly[day];
-                    if (!slot?.type) return null;
-                    const colorClass = TYPE_COLORS[slot.type] || "bg-ocean/[0.02] text-ocean border-ocean/[0.06]";
-                    return (
-                      <div
-                        key={day}
-                        className={`flex items-center gap-4 px-5 py-3.5 ${
-                          i > 0 ? "border-t border-ocean/[0.06]" : ""
-                        } hover:bg-ocean/[0.01] transition-colors`}
-                      >
-                        {/* Day */}
-                        <span className="w-10 text-sm font-semibold text-ocean shrink-0">{day}</span>
-                        {/* Type badge */}
-                        <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-medium shrink-0 ${colorClass}`}>
-                          {slot.type}
-                        </span>
-                        {/* Format */}
-                        <span className="text-xs text-ocean/50 shrink-0">
-                          {slot.format || ""}
-                        </span>
-                        {/* Pillar */}
-                        <span className="text-xs text-ocean/70 font-medium flex-1 text-right truncate">
-                          {slot.pillar || ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Reasoning toggle — hidden by default, expandable */}
-                {activeDays.some(d => weekly[d]?.reason) && (
-                  <details className="mt-3">
-                    <summary className="text-[11px] text-ocean/40 cursor-pointer hover:text-ocean/60 transition-colors">
-                      Begründungen anzeigen
-                    </summary>
-                    <div className="mt-2 space-y-2">
-                      {activeDays.map((day) => {
-                        const slot = weekly[day];
-                        if (!slot?.reason) return null;
-                        return (
-                          <div key={day} className="flex gap-2 text-[11px]">
-                            <span className="font-medium text-ocean/60 w-10 shrink-0">{day}</span>
-                            <span className="text-ocean/45 leading-relaxed">{slot.reason}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </details>
-                )}
-              </div>
-            )}
-
             {/* Used Content Types — from the framework */}
             {usedTypeObjects.length > 0 && (
               <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 p-4 space-y-3">

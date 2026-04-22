@@ -745,6 +745,7 @@ type Substitutions = Record<string, string | number>;
 interface I18nContextType {
   lang: Lang;
   toggleLang: () => void;
+  setLang: (lang: Lang) => void;
   setClientLang: (lang: Lang) => void;
   t: (key: string, subs?: Substitutions) => string;
 }
@@ -752,6 +753,7 @@ interface I18nContextType {
 const I18nContext = createContext<I18nContextType>({
   lang: "de",
   toggleLang: () => {},
+  setLang: () => {},
   setClientLang: () => {},
   t: (key: string) => key,
 });
@@ -782,6 +784,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setLangExplicit = useCallback((next: Lang) => {
+    localStorage.setItem("sunxca-lang", next);
+    setLang(next);
+  }, []);
+
   // Precedence: user override (localStorage) > client default > "de".
   // Only applies client default when user hasn't explicitly set a language.
   const setClientLang = useCallback((clientLang: Lang) => {
@@ -799,7 +806,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <I18nContext.Provider value={{ lang, toggleLang, setClientLang, t }}>
+    <I18nContext.Provider value={{ lang, toggleLang, setLang: setLangExplicit, setClientLang, t }}>
       {children}
     </I18nContext.Provider>
   );
