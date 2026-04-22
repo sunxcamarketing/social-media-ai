@@ -491,6 +491,19 @@ async function toolSaveIdea(
   clientId: string,
   input: { title: string; description: string; content_type?: string },
 ): Promise<string> {
+  const normalizedTitle = normalizeTitle(input.title);
+  if (!normalizedTitle) return "Titel fehlt. Gib einen kurzen Titel mit.";
+
+  const { data: existing } = await supabase
+    .from("ideas")
+    .select("id, title")
+    .eq("client_id", clientId);
+
+  const duplicate = existing?.find((i) => normalizeTitle(i.title) === normalizedTitle);
+  if (duplicate) {
+    return `Idee "${input.title}" existiert bereits (id=${duplicate.id}) — nicht erneut gespeichert.`;
+  }
+
   const { error } = await supabase.from("ideas").insert({
     id: uuid(),
     client_id: clientId,
@@ -502,6 +515,44 @@ async function toolSaveIdea(
   });
   if (error) return `Fehler beim Speichern: ${error.message}`;
   return `Video-Idee gespeichert: "${input.title}". Du findest sie im Ideen-Tab des Clients.`;
+}
+
+function normalizeTitle(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,;:!?]+$/, "");
+}
+
+// ── List Ideas Tool ───────────────────────────────────────────────────────
+
+async function toolListIdeas(
+  clientId: string,
+  input: { status?: string; query?: string },
+): Promise<string> {
+  const { data, error } = await supabase
+    .from("ideas")
+    .select("id, title, description, content_type, status, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) return `Fehler beim Laden: ${error.message}`;
+  if (!data || data.length === 0) return "Keine Ideen gespeichert für diesen Client.";
+
+  let ideas = data;
+  if (input.status) ideas = ideas.filter(i => i.status === input.status);
+  if (input.query) {
+    const q = input.query.toLowerCase();
+    ideas = ideas.filter(i =>
+      (i.title || "").toLowerCase().includes(q) ||
+      (i.description || "").toLowerCase().includes(q),
+    );
+  }
+  if (ideas.length === 0) return "Keine Ideen gefunden die dem Filter entsprechen.";
+
+  const lines = ideas.map(i => {
+    const desc = (i.description || "").replace(/\s+/g, " ").trim();
+    const descShort = desc.length > 180 ? desc.slice(0, 180) + "..." : desc;
+    return `- [${i.status}] "${i.title}"${i.content_type ? ` (${i.content_type})` : ""} — ${descShort || "(keine Beschreibung)"}  [id: ${i.id}]`;
+  });
+  return `Ideen (${ideas.length}):\n${lines.join("\n")}`;
 }
 
 // ── Update Profile Tool ───────────────────────────────────────────────────
@@ -591,6 +642,8 @@ export async function executeAgentTool(
       return toolCheckLearnings(clientId);
     case "save_idea":
       return toolSaveIdea(clientId, toolInput as { title: string; description: string; content_type?: string });
+    case "list_ideas":
+      return toolListIdeas(clientId, toolInput as { status?: string; query?: string });
     case "save_script":
       return toolSaveScript(clientId, toolInput as Parameters<typeof toolSaveScript>[1]);
     case "update_profile":

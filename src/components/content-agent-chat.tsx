@@ -37,6 +37,16 @@ interface ContentAgentChatProps {
   title?: string;
   /** Subtitle copy in the empty state. */
   emptyStateSubtitle?: string;
+  /**
+   * If set, auto-sends this as the first user message when the component
+   * mounts with an empty conversation. Use this to seed a chat with context
+   * (e.g. "Lass uns folgende Idee ausformulieren: ..."). Parent should pass
+   * a `key` tied to the context (e.g. idea id) so the chat remounts when
+   * switching between contexts.
+   */
+  initialUserMessage?: string;
+  /** Fires when a save_script tool call completes. */
+  onScriptSaved?: () => void;
 }
 
 export function ContentAgentChat({
@@ -46,6 +56,8 @@ export function ContentAgentChat({
   layout = "fullscreen",
   title,
   emptyStateSubtitle,
+  initialUserMessage,
+  onScriptSaved,
 }: ContentAgentChatProps) {
   const { t } = useI18n();
   const TOOL_LABELS: Record<string, string> = {
@@ -77,8 +89,20 @@ export function ContentAgentChat({
 
   useEffect(() => { scrollToBottom(); }, [messages, toolStatuses, scrollToBottom]);
 
-  async function handleSend() {
-    const text = input.trim();
+  // Auto-send initial user message on mount (one-shot per mount).
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    if (!initialUserMessage || !initialUserMessage.trim()) return;
+    if (messages.length > 0 || streaming) return;
+    autoSentRef.current = true;
+    handleSend(initialUserMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUserMessage]);
+
+  async function handleSend(textOverride?: string) {
+    const usingOverride = textOverride !== undefined;
+    const text = (usingOverride ? textOverride : input).trim();
     if ((!text && attachments.length === 0) || streaming) return;
 
     const userAttachmentMeta = attachments.map((a) => ({ name: a.name, type: a.mediaType }));
@@ -92,7 +116,7 @@ export function ContentAgentChat({
     const assistantMsg: ChatMessage = { id: msgId(), role: "assistant", content: "" };
     const newMessages = [...messages, userMsg];
     setMessages([...newMessages, assistantMsg]);
-    setInput("");
+    if (!usingOverride) setInput("");
     const attachmentsToSend = attachments;
     setAttachments([]);
     setStreaming(true);
@@ -153,6 +177,9 @@ export function ContentAgentChat({
                 }
                 return [...prev, { tool: data.tool, status: data.status }];
               });
+              if (data.tool === "save_script" && data.status === "done") {
+                onScriptSaved?.();
+              }
             }
             if (data.error) {
               fullText += `\n\n${t("chat.errorMsg", { error: data.error })}`;

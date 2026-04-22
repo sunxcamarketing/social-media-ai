@@ -995,6 +995,20 @@ export const AGENT_SAVE_IDEA_TOOL = {
   },
 };
 
+export const AGENT_LIST_IDEAS_TOOL = {
+  name: "list_ideas",
+  description: "Liste alle gespeicherten Video-Ideen des Clients. Nutze das wenn der User auf eine bestehende Idee zurückgreifen will ('zeig mir meine Ideen', 'ich will die Idee von letzter Woche ausformulieren'). Optional nach Status filtern (idea, in-progress, done).",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      status: { type: "string" as const, description: "Optional: Status-Filter (idea, in-progress, done). Leer lassen für alle." },
+      query: { type: "string" as const, description: "Optional: Stichwortsuche in Titel oder Beschreibung." },
+    },
+    required: [] as string[],
+  },
+};
+
 export const AGENT_SAVE_SCRIPT_TOOL = {
   name: "save_script",
   description: "Speichere ein fertiges Skript direkt in den Skripte-Tab des Clients (NICHT nur als Idee). Nutze das nachdem du ein Skript im Chat ausgeschrieben hast und der User es behalten will, oder wenn der User selbst einen Skript-Text liefert und sagt 'speicher das'. Immer beide Versionen (short_script + long_script) mitgeben wenn vorhanden.",

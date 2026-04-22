@@ -21,8 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Lightbulb } from "lucide-react";
+import { Plus, Pencil, Trash2, Lightbulb, Sparkles } from "lucide-react";
 import type { Idea } from "@/lib/types";
+import { ContentAgentChat } from "@/components/content-agent-chat";
 
 const CONTENT_TYPES = [
   "Face-to-camera",
@@ -49,6 +50,21 @@ function statusLabel(status: string) {
 
 const emptyForm = { title: "", description: "", contentType: "", status: "idea" };
 
+function buildChatSeed(idea: Idea): string {
+  const parts = [
+    `Ich will die folgende gespeicherte Idee zu einem Skript ausformulieren:`,
+    ``,
+    `**Titel:** ${idea.title}`,
+  ];
+  if (idea.description) parts.push(`**Beschreibung:** ${idea.description}`);
+  if (idea.contentType) parts.push(`**Content-Typ:** ${idea.contentType}`);
+  parts.push(
+    ``,
+    `Schreib mir daraus ein Skript in zwei Versionen (kurz 30-40 Sek + lang 60+ Sek). Bleib bei meinem Winkel, erfinde keinen neuen. Wenn etwas unklar ist, frag vorher. Wenn das Skript fertig ist, frag ob du es unter "Skripte" speichern sollst.`,
+  );
+  return parts.join("\n");
+}
+
 export default function ClientIdeasPage() {
   const { id } = useParams<{ id: string }>();
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -56,6 +72,7 @@ export default function ClientIdeasPage() {
   const [editing, setEditing] = useState<Idea | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [chatIdea, setChatIdea] = useState<Idea | null>(null);
 
   const loadIdeas = () => {
     fetch(`/api/ideas?clientId=${id}`).then((r) => r.json()).then(setIdeas);
@@ -69,7 +86,7 @@ export default function ClientIdeasPage() {
     setDialogOpen(true);
   };
 
-  const openEdit = (idea: Idea) => {
+  const openEditMetadata = (idea: Idea) => {
     setEditing(idea);
     setForm({ title: idea.title, description: idea.description, contentType: idea.contentType, status: idea.status });
     setDialogOpen(true);
@@ -103,18 +120,37 @@ export default function ClientIdeasPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Ideas</h1>
           <p className="mt-1 text-sm text-ocean/60">Video concepts and content ideas for this client</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openNew} className="rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-1.5">
-              <Plus className="h-4 w-4" />
-              Add Idea
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={async () => {
+              if (!confirm("Duplikate (gleicher Titel) zusammenführen? Die älteren werden gelöscht.")) return;
+              const res = await fetch("/api/ideas/dedupe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ clientId: id }),
+              });
+              const data = await res.json();
+              alert(`${data.removed} Duplikate entfernt. Noch ${data.remaining} Ideen.`);
+              loadIdeas();
+            }}
+            className="rounded-xl gap-1.5 text-ocean/70 hover:text-ocean"
+          >
+            <Sparkles className="h-4 w-4" />
+            Duplikate entfernen
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew} className="rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-1.5">
+                <Plus className="h-4 w-4" />
+                Add Idea
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-lg glass-strong rounded-2xl border-ocean/[0.06]">
             <DialogHeader>
               <DialogTitle>{editing ? "Edit Idea" : "New Idea"}</DialogTitle>
@@ -176,7 +212,8 @@ export default function ClientIdeasPage() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Status filter */}
@@ -202,16 +239,32 @@ export default function ClientIdeasPage() {
       {/* Ideas grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((idea) => (
-          <div key={idea.id} className="group glass rounded-2xl p-5 space-y-3 transition-all duration-300 hover:bg-warm-white hover:border-ocean/5">
+          <div
+            key={idea.id}
+            onClick={() => setChatIdea(idea)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setChatIdea(idea); } }}
+            role="button"
+            tabIndex={0}
+            className="group glass rounded-2xl p-5 space-y-3 transition-all duration-300 hover:bg-warm-white hover:border-ocean/5 cursor-pointer"
+          >
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm font-semibold leading-snug">{idea.title}</p>
               <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="sm" onClick={() => openEdit(idea)}
-                  className="h-7 w-7 p-0 rounded-lg text-ocean/60 hover:text-ocean">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); openEditMetadata(idea); }}
+                  title="Edit metadata"
+                  className="h-7 w-7 p-0 rounded-lg text-ocean/60 hover:text-ocean"
+                >
                   <Pencil className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(idea.id)}
-                  className="h-7 w-7 p-0 rounded-lg text-ocean/60 hover:text-red-500">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(idea.id); }}
+                  className="h-7 w-7 p-0 rounded-lg text-ocean/60 hover:text-red-500"
+                >
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -246,6 +299,41 @@ export default function ClientIdeasPage() {
           </div>
         )}
       </div>
+
+      {/* Chat dialog — develop idea into a script */}
+      <Dialog open={!!chatIdea} onOpenChange={(open) => { if (!open) setChatIdea(null); }}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 glass-strong rounded-2xl border-ocean/[0.06] overflow-hidden flex flex-col">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-ocean/[0.06] shrink-0">
+            <DialogTitle className="flex items-start gap-2 text-left">
+              <Lightbulb className="h-4 w-4 text-blush-dark mt-1 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-snug break-words">{chatIdea?.title}</p>
+                {chatIdea?.description && (
+                  <p className="text-xs text-ocean/60 leading-relaxed mt-1 font-normal line-clamp-2 break-words">
+                    {chatIdea.description}
+                  </p>
+                )}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {chatIdea && (
+              <ContentAgentChat
+                key={chatIdea.id}
+                clientId={id}
+                layout="embedded"
+                title="Content Agent"
+                initialUserMessage={buildChatSeed(chatIdea)}
+                onScriptSaved={async () => {
+                  const ideaId = chatIdea.id;
+                  setIdeas((prev) => prev.filter((i) => i.id !== ideaId));
+                  await fetch(`/api/ideas?id=${ideaId}`, { method: "DELETE" }).catch(() => {});
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
