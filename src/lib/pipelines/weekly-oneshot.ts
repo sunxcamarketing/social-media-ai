@@ -1,42 +1,47 @@
-// ── Weekly Script Pipeline — One-Shot (Opus) ──────────────────────────────
-// Replaces the 4-step pipeline (topic → hook → body → review) with a single
-// Opus call. The model sees ALL context and decides the entire week coherently:
-// topics, hooks, bodies, CTAs all in one output. Better coherence, fewer
-// handoffs, no context loss between steps.
+// ── Weekly Ideas Pipeline — One-Shot (Opus) ───────────────────────────────
+// Single Opus call produces the full week's *ideas* (not scripts). The
+// model sees ALL context and decides the entire week coherently: topics,
+// angles, hook directions, key points — all in one output.
+//
+// Ideas are NOT persisted to the Ideas tab. They appear inline on the
+// Scripts page; the user chooses which ones to develop into full scripts
+// via the Content Agent chat (see ideas/page.tsx for the chat-dialog pattern).
 
 import Anthropic from "@anthropic-ai/sdk";
-import { buildPrompt, WEEKLY_SCRIPTS_TOOL } from "@prompts";
-import type {
-  PipelineContext,
-  VoiceContext,
-  ResearchContext,
-  AssembledScript,
-  PostType,
-  CtaType,
-  FunnelStage,
-} from "./weekly-steps";
-import type { PatternType } from "@/lib/week-seed";
+import { buildPrompt, WEEKLY_IDEAS_TOOL } from "@prompts";
+import type { PipelineContext, VoiceContext, ResearchContext } from "./weekly-steps";
 
-// ── Output schema (what Opus returns via tool_use) ──────────────────────
+// ── Types ───────────────────────────────────────────────────────────────
 
-interface RawWeeklyScript {
+export interface WeeklyIdea {
+  day: string;
+  pillar: string;
+  contentType: string;
+  format: string;
+  title: string;
+  angle: string;
+  hookDirection: string;
+  keyPoints: string[];
+  whyNow: string;
+  emotion: string;
+}
+
+interface RawWeeklyIdea {
   day: string;
   pillar: string;
   content_type: string;
   format: string;
   title: string;
-  text_hook: string;
-  hook: string;
-  hook_pattern: string;
-  body: string;
-  cta: string;
-  post_type: string; // "core" | "variant" | "test"
-  reasoning: string;
+  angle: string;
+  hook_direction: string;
+  key_points: string[];
+  why_now: string;
+  emotion: string;
 }
 
 interface RawWeeklyOutput {
   week_reasoning: string;
-  scripts: RawWeeklyScript[];
+  ideas: RawWeeklyIdea[];
 }
 
 // ── Build the user-prompt block — dense context dump ────────────────────
@@ -48,38 +53,31 @@ function buildUserPrompt(
 ): string {
   const lang = ctx.lang;
   const header = lang === "en"
-    ? `# WEEK TO WRITE\n\nYou are writing ${ctx.activeDays.length} scripts for ${ctx.clientName}. One script per day, pillar + content type + format are fixed (see schedule). Everything else is yours to decide.`
-    : `# WOCHE DIE DU SCHREIBST\n\nDu schreibst ${ctx.activeDays.length} Skripte für ${ctx.clientName}. Ein Skript pro Tag, Pillar + Content-Typ + Format sind fix (siehe Zeitplan). Alles andere entscheidest du.`;
+    ? `# WEEK TO PLAN\n\nYou are planning ${ctx.activeDays.length} video ideas for ${ctx.clientName}. One idea per day, pillar + content type + format are fixed (see schedule). Angle, title, hook direction are yours to decide.`
+    : `# WOCHE DIE DU PLANST\n\nDu planst ${ctx.activeDays.length} Video-Ideen für ${ctx.clientName}. Eine Idee pro Tag, Pillar + Content-Typ + Format sind fix (siehe Zeitplan). Winkel, Titel, Hook-Richtung entscheidest du.`;
 
   const scheduleHeader = lang === "en" ? "## WEEK SCHEDULE (fixed)" : "## WOCHENPLAN (fix)";
   const schedule = ctx.weekSchedule.map(s =>
-    `- **${s.day}** — Pillar: "${s.pillar}"${s.pillarType ? ` [${s.pillarType}]` : ""} · Type: ${s.contentType} · Format: ${s.format} · CTA-Style: ${s.ctaType}/${s.funnelStage}${s.ctaExample ? ` (Beispiel: ${s.ctaExample})` : ""}`
+    `- **${s.day}** — Pillar: "${s.pillar}"${s.pillarType ? ` [${s.pillarType}]` : ""} · Type: ${s.contentType} · Format: ${s.format}`
   ).join("\n");
 
   const sections: string[] = [header, `\n${scheduleHeader}\n${schedule}`];
 
-  // Client profile + brand
   if (ctx.clientContext) sections.push(`## CLIENT\n${ctx.clientContext}`);
   if (ctx.brandContext) sections.push(`## BRAND\n${ctx.brandContext}`);
-
-  // Strategy
   if (ctx.pillarBlock) sections.push(`## CONTENT PILLARS\n${ctx.pillarBlock}`);
 
-  // Voice
-  if (voice.voiceBlock) sections.push(`## VOICE PROFILE\n${voice.voiceBlock}`);
-  if (voice.structureBlock) sections.push(`## SCRIPT STRUCTURE PROFILE\n${voice.structureBlock}`);
-  if (voice.voiceOnboardingBlock) sections.push(voice.voiceOnboardingBlock);
+  // Voice (lighter — ideas don't need to voice-match, scripts do)
+  if (voice.voiceToneBlock) sections.push(`## VOICE SUMMARY\n${voice.voiceToneBlock}`);
 
-  // Audit
+  // Audit + performance
   if (ctx.auditBlock) sections.push(`## AUDIT\n${ctx.auditBlock}`);
-
-  // Performance
   if (ctx.ownPerformanceBlock) sections.push(`## PERFORMANCE (own top videos)\n${ctx.ownPerformanceBlock}`);
   if (ctx.competitorHooksBlock) sections.push(`## COMPETITOR HOOKS\n${ctx.competitorHooksBlock}`);
   if (ctx.crossNicheBlock) sections.push(ctx.crossNicheBlock);
   if (ctx.anchorBlock) sections.push(ctx.anchorBlock);
 
-  // Recent scripts (to avoid recycling)
+  // Recent scripts (to avoid recycling ideas)
   if (ctx.recentBlock) sections.push(`## RECENT SCRIPTS\n${ctx.recentBlock}`);
   if (ctx.usedPatternsBlock) {
     sections.push(
@@ -93,21 +91,9 @@ function buildUserPrompt(
   if (research.trendBlock) sections.push(research.trendBlock);
   if (research.learningsBlock) sections.push(research.learningsBlock);
 
-  // Duration constraint
-  if (ctx.avgDuration > 0) {
-    const durationNote = ctx.durationIsAuditOverride
-      ? (lang === "en"
-        ? `## DURATION TARGET (from audit)\nTarget ~${ctx.avgDuration}s per video (${ctx.maxWords} words body+CTA max). Audit-defined — respect as hard ceiling.`
-        : `## DAUER-ZIEL (aus Audit)\nZiel ~${ctx.avgDuration}s pro Video (${ctx.maxWords} Wörter Body+CTA max). Audit-definiert — als harte Obergrenze beachten.`)
-      : (lang === "en"
-        ? `## DURATION TARGET\nTarget ~${ctx.avgDuration}s per video (${ctx.maxWords} words body+CTA max).`
-        : `## DAUER-ZIEL\nZiel ~${ctx.avgDuration}s pro Video (${ctx.maxWords} Wörter Body+CTA max).`);
-    sections.push(durationNote);
-  }
-
   const closingHeader = lang === "en"
-    ? `## NOW WRITE\nCall submit_weekly_scripts with exactly ${ctx.activeDays.length} scripts, one per day in order (${ctx.activeDays.join(", ")}). Follow the week schedule — day, pillar, content_type and format must match exactly.`
-    : `## JETZT SCHREIBEN\nRufe submit_weekly_scripts mit exakt ${ctx.activeDays.length} Skripten auf, eins pro Tag in Reihenfolge (${ctx.activeDays.join(", ")}). Folge dem Wochenplan — day, pillar, content_type und format müssen exakt übereinstimmen.`;
+    ? `## NOW DELIVER IDEAS\nCall submit_weekly_ideas with exactly ${ctx.activeDays.length} ideas, one per day in order (${ctx.activeDays.join(", ")}). Follow the week schedule — day, pillar, content_type and format must match exactly. Each idea must be SPECIFIC (number, named thing, contrarian marker, or concrete scene).`
+    : `## JETZT IDEEN LIEFERN\nRufe submit_weekly_ideas mit exakt ${ctx.activeDays.length} Ideen auf, eine pro Tag in Reihenfolge (${ctx.activeDays.join(", ")}). Folge dem Wochenplan — day, pillar, content_type und format müssen exakt übereinstimmen. Jede Idee muss SPEZIFISCH sein (Zahl, Named-Thing, Contrarian-Marker oder konkrete Szene).`;
   sections.push(closingHeader);
 
   return sections.join("\n\n");
@@ -115,28 +101,26 @@ function buildUserPrompt(
 
 // ── Main entry point ────────────────────────────────────────────────────
 
-export async function generateWeekScripts(
+export async function generateWeekIdeas(
   ctx: PipelineContext,
   voice: VoiceContext,
   research: ResearchContext,
   claude: Anthropic,
-): Promise<{ scripts: AssembledScript[]; weekReasoning: string }> {
-  const numScripts = ctx.activeDays.length;
-  const targetWords = ctx.maxWords || 180;
+): Promise<{ ideas: WeeklyIdea[]; weekReasoning: string }> {
+  const numIdeas = ctx.activeDays.length;
 
-  const systemPrompt = buildPrompt("weekly-scripts", {
+  const systemPrompt = buildPrompt("weekly-ideas", {
     platform_context: ctx.platformContext,
-    num_scripts: String(numScripts),
-    target_words: String(targetWords),
+    num_ideas: String(numIdeas),
   }, ctx.lang);
 
   const userPrompt = buildUserPrompt(ctx, voice, research);
 
-  const tool = WEEKLY_SCRIPTS_TOOL(numScripts);
+  const tool = WEEKLY_IDEAS_TOOL(numIdeas);
 
   const response = await claude.messages.create({
     model: "claude-opus-4-7",
-    max_tokens: 16000, // Enough for ~5 full scripts with reasoning
+    max_tokens: 6000, // Ideas are much smaller than full scripts
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
     tools: [tool],
@@ -149,40 +133,25 @@ export async function generateWeekScripts(
   }
 
   const output = toolUseBlock.input as unknown as RawWeeklyOutput;
-  if (!output.scripts || !Array.isArray(output.scripts)) {
-    throw new Error("Opus tool output missing scripts array");
-  }
-  if (output.scripts.length !== numScripts) {
-    console.warn(`[weekly-oneshot] expected ${numScripts} scripts, got ${output.scripts.length} — using what we have`);
+  if (!output.ideas || !Array.isArray(output.ideas)) {
+    throw new Error("Opus tool output missing ideas array");
   }
 
-  // Map raw output onto AssembledScript — enrich with metadata from week schedule
-  // (ctaType, funnelStage, patternType) that the schedule defines, not the model.
-  const scripts: AssembledScript[] = output.scripts.map((raw, i) => {
-    const scheduleSlot = ctx.weekSchedule[i];
-    const normalizedPostType: PostType =
-      raw.post_type === "core" || raw.post_type === "variant" || raw.post_type === "test"
-        ? raw.post_type
-        : "core";
-
+  const ideas: WeeklyIdea[] = output.ideas.map((raw, i) => {
+    const slot = ctx.weekSchedule[i];
     return {
-      day: raw.day || scheduleSlot?.day || ctx.activeDays[i] || "",
-      pillar: raw.pillar || scheduleSlot?.pillar || "",
-      contentType: raw.content_type || scheduleSlot?.contentType || "",
-      format: raw.format || scheduleSlot?.format || "",
-      patternType: (scheduleSlot?.patternType || "contrast") as PatternType,
-      postType: normalizedPostType,
-      anchorRef: "",
-      ctaType: (scheduleSlot?.ctaType || "soft") as CtaType,
-      funnelStage: (scheduleSlot?.funnelStage || "MOF") as FunnelStage,
+      day: raw.day || slot?.day || ctx.activeDays[i] || "",
+      pillar: raw.pillar || slot?.pillar || "",
+      contentType: raw.content_type || slot?.contentType || "",
+      format: raw.format || slot?.format || "",
       title: raw.title || "",
-      hook: raw.hook || "",
-      hookPattern: raw.hook_pattern || "",
-      body: raw.body || "",
-      cta: raw.cta || "",
-      reasoning: raw.reasoning || "",
+      angle: raw.angle || "",
+      hookDirection: raw.hook_direction || "",
+      keyPoints: Array.isArray(raw.key_points) ? raw.key_points.slice(0, 5) : [],
+      whyNow: raw.why_now || "",
+      emotion: raw.emotion || "",
     };
   });
 
-  return { scripts, weekReasoning: output.week_reasoning || "" };
+  return { ideas, weekReasoning: output.week_reasoning || "" };
 }

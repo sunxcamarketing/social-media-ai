@@ -10,7 +10,7 @@ export type { Lang } from "./loader";
 // Tool schemas
 export {
   HOOK_GENERATION_TOOL,
-  WEEKLY_SCRIPTS_TOOL,
+  WEEKLY_IDEAS_TOOL,
   VOICE_PROFILE_TOOL,
   SCRIPT_STRUCTURE_TOOL,
   TREND_RESEARCH_TOOL,

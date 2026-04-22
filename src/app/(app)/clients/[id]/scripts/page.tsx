@@ -29,19 +29,16 @@ import {
   CheckCircle2,
   AlertTriangle,
   Mic,
-  Target,
-  Zap,
   PenTool,
-  Shield,
 } from "lucide-react";
 import { BookOpen } from "lucide-react";
 import type { Script, Config, TrainingScript } from "@/lib/types";
 import { useGeneration } from "@/context/generation-context";
+import { ContentAgentChat } from "@/components/content-agent-chat";
 import { useClientData } from "@/context/client-data-context";
 import { BUILT_IN_FORMATS } from "@/lib/strategy";
 import type { ContentFormat } from "@/lib/strategy";
 import { fmtDuration } from "@/lib/format";
-import { useI18n } from "@/lib/i18n";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -88,24 +85,44 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function buildIdeaChatSeed(idea: WeekIdea): string {
+  const parts = [
+    `Ich will die folgende Wochenidee zu einem kompletten Skript ausformulieren:`,
+    ``,
+    `**Titel:** ${idea.title}`,
+    `**Tag:** ${idea.day}`,
+    `**Pillar:** ${idea.pillar}`,
+    `**Content-Typ:** ${idea.contentType}`,
+    `**Format:** ${idea.format}`,
+    ``,
+    `**Winkel:** ${idea.angle}`,
+  ];
+  if (idea.hookDirection) parts.push(`**Hook-Richtung:** ${idea.hookDirection}`);
+  if (idea.keyPoints.length > 0) {
+    parts.push(`**Kernpunkte:**`);
+    idea.keyPoints.forEach(p => parts.push(`- ${p}`));
+  }
+  if (idea.emotion) parts.push(``, `**Emotion:** ${idea.emotion}`);
+  parts.push(
+    ``,
+    `Schreib mir daraus ein Skript in zwei Versionen (kurz 30-40 Sek + lang 60+ Sek). Bleib beim Winkel, erfinde keinen neuen. Wenn das Skript fertig ist, frag ob du es unter "Skripte" speichern sollst.`,
+  );
+  return parts.join("\n");
+}
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
-type WeekScript = {
+type WeekIdea = {
   day: string;
   pillar: string;
   contentType: string;
   format: string;
   title: string;
-  hook: string;
-  hookPattern: string;
-  body: string;
-  cta: string;
-  reasoning: string;
-  patternType?: string;
-  postType?: string;
-  anchorRef?: string;
-  ctaType?: string;
-  funnelStage?: string;
+  angle: string;
+  hookDirection: string;
+  keyPoints: string[];
+  whyNow: string;
+  emotion: string;
 };
 
 type GenerationMeta = {
@@ -113,9 +130,6 @@ type GenerationMeta = {
   hasVoiceProfile: boolean;
   ownVideosUsed: number;
   creatorVideosUsed: number;
-  avgViralDurationSeconds: number | null;
-  targetWords: number | null;
-  reviewIssuesFixed: number;
 };
 
 type PipelineStep = "idle" | "context" | "voice" | "trends" | "generate" | "done" | "error";
@@ -124,7 +138,7 @@ const PIPELINE_STEPS: { key: PipelineStep; label: string; icon: React.ElementTyp
   { key: "context", label: "Kontext laden", icon: FileText },
   { key: "voice", label: "Stimmprofil", icon: Mic },
   { key: "trends", label: "Trend-Recherche", icon: Lightbulb },
-  { key: "generate", label: "Woche schreiben (Opus)", icon: PenTool },
+  { key: "generate", label: "Ideen entwickeln (Opus)", icon: Lightbulb },
 ];
 
 const STATUS_OPTIONS = [
@@ -199,38 +213,16 @@ function PipelineProgress({
   );
 }
 
-// ── Generated Script Card ───────────────────────────────────────────────────
+// ── Generated Idea Card ─────────────────────────────────────────────────────
 
-function GeneratedScriptCard({
-  script,
-  onSave,
-  saved,
+function GeneratedIdeaCard({
+  idea,
+  onDevelop,
 }: {
-  script: WeekScript;
-  onSave: () => Promise<void>;
-  saved: boolean;
+  idea: WeekIdea;
+  onDevelop: () => void;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const fullText = [script.hook, script.body, script.cta].filter(Boolean).join("\n\n");
-  const words = wordCount(fullText);
-  const dur = fmtDuration(Math.round((words / 125) * 60));
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await navigator.clipboard.writeText(fullText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSave = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSaving(true);
-    await onSave();
-    setSaving(false);
-  };
 
   return (
     <div className="rounded-2xl border border-ocean/[0.08] overflow-hidden bg-white/50">
@@ -242,71 +234,72 @@ function GeneratedScriptCard({
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-warm-white/50 transition-colors cursor-pointer"
       >
         <span className="text-xs font-bold text-blush-dark bg-blush/25 rounded-lg px-2.5 py-1 shrink-0">
-          {DAY_SHORT[script.day] || script.day}
+          {DAY_SHORT[idea.day] || idea.day}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 text-ocean/50 shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
 
         <div className="flex-1 min-w-0">
-          <span className="text-sm font-semibold block truncate">{script.title}</span>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-ocean/50">{script.contentType}</span>
+          <span className="text-sm font-semibold block truncate">{idea.title}</span>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className="text-[10px] text-ocean/50">{idea.contentType}</span>
             <span className="text-[10px] text-ocean/30">·</span>
-            <span className="text-[10px] text-ocean/50">{script.format}</span>
-            <span className="text-[10px] text-ocean/30">·</span>
-            <span className="text-[10px] text-ocean/50 flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{dur}</span>
+            <span className="text-[10px] text-ocean/50">{idea.format}</span>
+            {idea.emotion && (
+              <>
+                <span className="text-[10px] text-ocean/30">·</span>
+                <span className="text-[10px] text-blush-dark/60">{idea.emotion}</span>
+              </>
+            )}
           </div>
         </div>
 
         <div className="flex gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-          <button onClick={handleCopy} className="h-8 w-8 flex items-center justify-center rounded-lg text-ocean/50 hover:text-ocean hover:bg-ocean/5 transition-colors">
-            {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+          <button
+            onClick={onDevelop}
+            className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs text-white bg-ocean hover:bg-ocean-light transition-colors"
+          >
+            <Sparkles className="h-3 w-3" />
+            Zu Skript ausformulieren
           </button>
-          {!saved ? (
-            <button onClick={handleSave} disabled={saving} className="h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs text-green-600 hover:bg-green-50 border border-green-200 transition-colors">
-              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Speichern
-            </button>
-          ) : (
-            <span className="h-8 flex items-center gap-1.5 px-3 text-xs text-green-600">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Gespeichert
-            </span>
-          )}
         </div>
       </div>
 
       {expanded && (
         <div className="px-5 pb-5 space-y-3 border-t border-ocean/5">
-          {script.reasoning && (
-            <div className="flex gap-2.5 mt-3 rounded-xl bg-amber-50/80 border border-amber-200/50 px-4 py-3">
-              <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-800/80 leading-relaxed">{script.reasoning}</p>
+          <div className="mt-3 rounded-xl bg-ocean/[0.02] border border-ocean/5 overflow-hidden">
+            <div className="px-4 py-3 border-b border-ocean/5">
+              <p className="text-[9px] uppercase tracking-wider text-blush-dark/60 font-medium mb-1.5">Winkel</p>
+              <p className="text-sm text-ocean/90 leading-relaxed">{idea.angle}</p>
             </div>
-          )}
-
-          <div className="rounded-xl bg-ocean/[0.02] border border-ocean/5 overflow-hidden">
-            {script.hook && (
+            {idea.hookDirection && (
               <div className="px-4 py-3 border-b border-ocean/5">
-                <p className="text-[9px] uppercase tracking-wider text-blush-dark/60 font-medium mb-1.5">Hook</p>
-                <p className="text-sm text-ocean/90 leading-relaxed font-medium">{script.hook}</p>
+                <p className="text-[9px] uppercase tracking-wider text-ocean/40 font-medium mb-1.5">Hook-Richtung</p>
+                <p className="text-sm text-ocean/75 leading-relaxed italic">{idea.hookDirection}</p>
               </div>
             )}
-            {script.body && (
+            {idea.keyPoints.length > 0 && (
               <div className="px-4 py-3 border-b border-ocean/5">
-                <p className="text-[9px] uppercase tracking-wider text-ocean/40 font-medium mb-1.5">Skript</p>
-                <p className="text-sm text-ocean/75 leading-relaxed whitespace-pre-wrap">{script.body}</p>
+                <p className="text-[9px] uppercase tracking-wider text-ocean/40 font-medium mb-2">Kernpunkte</p>
+                <ul className="space-y-1">
+                  {idea.keyPoints.map((p, i) => (
+                    <li key={i} className="text-sm text-ocean/75 leading-relaxed flex gap-2">
+                      <span className="text-ocean/30 shrink-0">·</span>
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-            {script.cta && (
+            {idea.whyNow && (
               <div className="px-4 py-3">
-                <p className="text-[9px] uppercase tracking-wider text-green-600/60 font-medium mb-1.5">CTA</p>
-                <p className="text-sm text-ocean/75 leading-relaxed">{script.cta}</p>
+                <p className="text-[9px] uppercase tracking-wider text-green-600/60 font-medium mb-1.5">Warum jetzt</p>
+                <p className="text-sm text-ocean/75 leading-relaxed">{idea.whyNow}</p>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-blush-dark/60 rounded-md bg-blush/20 border border-blush/30 px-2 py-0.5">{script.pillar}</span>
-            <span className="text-[10px] text-ocean/50">{words} Wörter · ~{dur}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] text-blush-dark/60 rounded-md bg-blush/20 border border-blush/30 px-2 py-0.5">{idea.pillar}</span>
           </div>
         </div>
       )}
@@ -620,11 +613,12 @@ export default function ClientScriptsPage() {
   const [hasAudit, setHasAudit] = useState<boolean | null>(null);
 
   // Week generation — pipeline state
-  const [weekScripts, setWeekScripts] = useState<WeekScript[]>([]);
+  const [weekIdeas, setWeekIdeas] = useState<WeekIdea[]>([]);
   const [weekLoading, setWeekLoading] = useState(false);
   const [weekError, setWeekError] = useState<string | null>(null);
   const [weekMeta, setWeekMeta] = useState<GenerationMeta | null>(null);
-  const [savedSet, setSavedSet] = useState<Set<number>>(new Set());
+  const [weekReasoning, setWeekReasoning] = useState<string>("");
+  const [developIdea, setDevelopIdea] = useState<WeekIdea | null>(null);
 
   // Pipeline progress
   const [pipelineStep, setPipelineStep] = useState<PipelineStep>("idle");
@@ -652,12 +646,12 @@ export default function ClientScriptsPage() {
     fetch(`/api/analyses?clientId=${id}`).then(r => r.json()).then((analyses: unknown[]) => setHasAudit(analyses.length > 0));
   }, [id, loadScripts]);
 
-  // ── Generate full week (SSE streaming) ──────────────────────────────────
+  // ── Generate full week of IDEAS (SSE streaming) ─────────────────────────
   const generateWeek = async () => {
     setWeekLoading(true);
     setWeekError(null);
-    setWeekScripts([]);
-    setSavedSet(new Set());
+    setWeekIdeas([]);
+    setWeekReasoning("");
     setWeekMeta(null);
     setPipelineStep("context");
     setSelectedTopics([]);
@@ -687,7 +681,6 @@ export default function ClientScriptsPage() {
           let data;
           try { data = JSON.parse(line.slice(6)); } catch { continue; }
 
-          // Handle pipeline events (one-shot pipeline: context → voice → trends → generate → done)
           if (data.step === "error") {
             setWeekError(data.message || "Unbekannter Fehler");
             setPipelineStep("error");
@@ -698,10 +691,11 @@ export default function ClientScriptsPage() {
           } else if (data.step === "trends" && data.status === "done") {
             setPipelineStep("generate");
           } else if (data.step === "generate" && data.status === "done") {
-            setSelectedTopics(data.scriptTitles || []);
+            setSelectedTopics(data.ideaTitles || []);
           } else if (data.step === "done") {
             setPipelineStep("done");
-            setWeekScripts(data.scripts || []);
+            setWeekIdeas(data.ideas || []);
+            setWeekReasoning(data.weekReasoning || "");
             setWeekMeta(data._meta || null);
           }
         }
@@ -713,49 +707,6 @@ export default function ClientScriptsPage() {
       setWeekLoading(false);
     }
   };
-
-  // ── Save individual script ──────────────────────────────────────────────
-  const saveScript = async (index: number) => {
-    const s = weekScripts[index];
-    if (!s) return;
-    await fetch("/api/scripts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        clientId: id,
-        title: s.title,
-        pillar: s.pillar,
-        contentType: s.contentType,
-        format: s.format,
-        hook: s.hook,
-        hookPattern: s.hookPattern || "",
-        body: s.body,
-        cta: s.cta,
-        status: "entwurf",
-        patternType: s.patternType || "",
-        postType: s.postType || "",
-        anchorRef: s.anchorRef || "",
-        ctaType: s.ctaType || "",
-        funnelStage: s.funnelStage || "",
-      }),
-    });
-    setSavedSet(prev => new Set(prev).add(index));
-    loadScripts();
-  };
-
-  // ── Save all scripts ────────────────────────────────────────────────────
-  const [savingAll, setSavingAll] = useState(false);
-  const saveAll = async () => {
-    setSavingAll(true);
-    for (let i = 0; i < weekScripts.length; i++) {
-      if (!savedSet.has(i)) {
-        await saveScript(i);
-      }
-    }
-    setSavingAll(false);
-  };
-
-  const allSaved = weekScripts.length > 0 && weekScripts.every((_, i) => savedSet.has(i));
 
   // ── Saved scripts CRUD ──────────────────────────────────────────────────
   const openEdit = (script: Script) => {
@@ -866,9 +817,9 @@ export default function ClientScriptsPage() {
               <Sparkles className="h-5 w-5 text-blush-dark" />
             </div>
             <div>
-              <p className="text-base font-semibold">Woche generieren</p>
+              <p className="text-base font-semibold">Wochenideen generieren</p>
               <p className="text-xs text-ocean/60 mt-0.5">
-                Multi-Step Pipeline: Themen → Hooks → Skripte → Qualitätsprüfung
+                Opus plant 5 spezifische Video-Ideen für die Woche. Du wählst welche du zum Skript ausformulierst.
               </p>
             </div>
           </div>
@@ -894,9 +845,9 @@ export default function ClientScriptsPage() {
         >
           {weekLoading
             ? <><Loader2 className="h-4 w-4 animate-spin" /> Pipeline läuft...</>
-            : weekScripts.length > 0
-              ? <><Sparkles className="h-4 w-4" /> Neue Woche generieren</>
-              : <><Sparkles className="h-4 w-4" /> Woche generieren</>}
+            : weekIdeas.length > 0
+              ? <><Sparkles className="h-4 w-4" /> Neue Wochenideen</>
+              : <><Sparkles className="h-4 w-4" /> Wochenideen generieren</>}
         </Button>
 
         {/* Pipeline Progress */}
@@ -913,8 +864,8 @@ export default function ClientScriptsPage() {
           <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{weekError}</p>
         )}
 
-        {/* Generated scripts */}
-        {weekScripts.length > 0 && (
+        {/* Generated ideas */}
+        {weekIdeas.length > 0 && (
           <div className="space-y-3">
             {/* Meta info */}
             {weekMeta && (
@@ -923,40 +874,29 @@ export default function ClientScriptsPage() {
                 {weekMeta.hasVoiceProfile && <span className="flex items-center gap-1"><Mic className="h-3 w-3 text-green-500" /> Stimmprofil aktiv</span>}
                 {weekMeta.ownVideosUsed > 0 && <span>{weekMeta.ownVideosUsed} eigene Top-Videos</span>}
                 {weekMeta.creatorVideosUsed > 0 && <span>{weekMeta.creatorVideosUsed} Competitor-Videos</span>}
-                {weekMeta.targetWords && <span>Ziel: ~{weekMeta.targetWords} Wörter/Skript</span>}
-                {weekMeta.reviewIssuesFixed > 0 && <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-green-500" /> {weekMeta.reviewIssuesFixed} Korrekturen</span>}
               </div>
             )}
 
-            {/* Script cards */}
-            {weekScripts.map((script, i) => (
-              <GeneratedScriptCard
-                key={`${script.day}-${i}`}
-                script={script}
-                onSave={() => saveScript(i)}
-                saved={savedSet.has(i)}
+            {/* Week reasoning */}
+            {weekReasoning && (
+              <div className="flex gap-2.5 rounded-xl bg-amber-50/80 border border-amber-200/50 px-4 py-3">
+                <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800/80 leading-relaxed">{weekReasoning}</p>
+              </div>
+            )}
+
+            <p className="text-[11px] text-ocean/50 pt-1">
+              {weekIdeas.length} Ideen für die Woche. Klick auf &quot;Zu Skript ausformulieren&quot; um eine Idee mit dem Chat-Agent zu einem kompletten Skript zu entwickeln. Ungewählte Ideen verwerfen sich einfach beim Neugenerieren.
+            </p>
+
+            {/* Idea cards */}
+            {weekIdeas.map((idea, i) => (
+              <GeneratedIdeaCard
+                key={`${idea.day}-${i}`}
+                idea={idea}
+                onDevelop={() => setDevelopIdea(idea)}
               />
             ))}
-
-            {/* Save all button */}
-            {!allSaved && (
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={saveAll}
-                  disabled={savingAll}
-                  className="h-10 px-6 rounded-xl bg-green-600 hover:bg-green-700 border-0 gap-2 text-white text-sm"
-                >
-                  {savingAll
-                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Wird gespeichert...</>
-                    : <><Save className="h-4 w-4" /> Alle speichern ({weekScripts.length - savedSet.size})</>}
-                </Button>
-              </div>
-            )}
-            {allSaved && (
-              <div className="flex items-center justify-center gap-2 py-3 text-green-600 text-sm">
-                <CheckCircle2 className="h-4 w-4" /> Alle {weekScripts.length} Skripte gespeichert
-              </div>
-            )}
           </div>
         )}
       </div>

@@ -5,15 +5,16 @@ import {
   loadVoiceProfiles,
   runResearch,
 } from "@/lib/pipelines/weekly-steps";
-import { generateWeekScripts } from "@/lib/pipelines/weekly-oneshot";
+import { generateWeekIdeas } from "@/lib/pipelines/weekly-oneshot";
 import { acquirePipelineLock, releasePipelineLock } from "@/lib/pipeline-lock";
 
 export const maxDuration = 300;
 
-// ── Weekly Script Pipeline — One-Shot Orchestrator ─────────────────────────
-// Single Opus call generates the entire coherent content week. The heavy
-// context prep (audit, voice, performance, research) still runs upstream so
-// Opus sees the full picture in one pass.
+// ── Weekly Ideas Pipeline — One-Shot Orchestrator ──────────────────────────
+// Single Opus call generates {{num_ideas}} coherent video ideas for the week.
+// Ideas are returned to the client and displayed inline — NOT persisted.
+// The user picks which ideas to develop into full scripts via the Content
+// Agent chat (see idea dialog in /clients/[id]/ideas/page.tsx).
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,7 +35,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       try {
         const claude = getAnthropicClient();
 
-        // ── Step 1+2: Context + Voice Profiles (parallel) ───────────────
         sendEvent(controller, { step: "context", status: "loading" });
         sendEvent(controller, { step: "voice", status: "loading" });
 
@@ -48,38 +48,33 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           hasVoice: !!voice.voiceProfile, hasStructure: !!voice.scriptStructure,
         });
 
-        // ── Step 3: Research (trends, learnings) ────────────────────────
         sendEvent(controller, { step: "trends", status: "loading" });
         const research = await runResearch(id, ctx.config, ctx.clientName, ctx.recentBlock, ctx.platformContext, claude, ctx.weekRng, ctx.lang);
         sendEvent(controller, { step: "trends", status: "done", count: research.trendBlock ? 1 : 0 });
 
-        // ── Step 4: One-Shot Script Generation (Opus) ───────────────────
+        // One-shot idea generation — Opus sees full context, plans the week
         sendEvent(controller, { step: "generate", status: "loading", total: ctx.activeDays.length });
-        const { scripts, weekReasoning } = await generateWeekScripts(ctx, voice, research, claude);
+        const { ideas, weekReasoning } = await generateWeekIdeas(ctx, voice, research, claude);
         sendEvent(controller, {
           step: "generate", status: "done",
           weekReasoning,
-          scriptTitles: scripts.map(s => ({ day: s.day, title: s.title, pillar: s.pillar })),
+          ideaTitles: ideas.map(i => ({ day: i.day, title: i.title, pillar: i.pillar })),
         });
 
-        // ── Step 5: Done ────────────────────────────────────────────────
         sendEvent(controller, {
           step: "done",
-          scripts,
+          ideas,
+          weekReasoning,
           _meta: {
             hasAudit: ctx.auditBlock.length > 0,
             hasVoiceProfile: !!voice.voiceProfile,
             ownVideosUsed: ctx.ownTopVideos.length,
             creatorVideosUsed: ctx.competitorHooksBlock ? 1 : 0,
-            avgViralDurationSeconds: ctx.avgDuration || null,
-            targetWords: ctx.maxWords || null,
-            reviewIssuesFixed: 0,
             hasLearnings: research.learnings.length,
             hasTrendSnapshot: research.hasTrendSnapshot,
           },
         });
 
-        // Fire-and-forget: trigger background research for next run
         if (process.env.NEXT_PUBLIC_APP_URL && process.env.JOB_SECRET) {
           fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/jobs/research-cycle`, {
             method: "POST",

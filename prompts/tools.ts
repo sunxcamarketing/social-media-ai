@@ -59,14 +59,15 @@ export const HOOK_GENERATION_TOOL = {
   },
 };
 
-// ── Weekly Scripts (One-Shot) ─────────────────────────────────────────────
-// Single Opus call produces the entire week — topics, hooks, bodies, CTAs —
-// in one coherent output. Replaces the old 4-step pipeline
-// (topic-selection → hook-generation → body-writing → quality-review).
+// ── Weekly Ideas (One-Shot) ───────────────────────────────────────────────
+// Single Opus call produces {{num_ideas}} sharp video ideas for the week.
+// These are NOT full scripts — just titles + angles + hook directions + key
+// points. The user picks which ideas to develop into full scripts via the
+// Content Agent chat. Ideas that aren't developed are discarded (not saved).
 
-export const WEEKLY_SCRIPTS_TOOL = (numScripts: number) => ({
-  name: "submit_weekly_scripts",
-  description: "Reiche die fertige Content-Woche ein. Alle Skripte auf einmal — Themen, Hooks, Bodies, CTAs kohärent über die ganze Woche geplant.",
+export const WEEKLY_IDEAS_TOOL = (numIdeas: number) => ({
+  name: "submit_weekly_ideas",
+  description: "Reiche die fertigen Wochen-Ideen ein. Jede Idee ist eine scharfe, spezifische Video-Idee — kein ausgeschriebenes Skript. Der User wählt später welche Ideen er im Chat zu einem Skript ausformuliert.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -74,16 +75,16 @@ export const WEEKLY_SCRIPTS_TOOL = (numScripts: number) => ({
         type: "string",
         description: "2-3 Sätze: Welcher strategische Winkel für die Woche, welche Variation ist bewusst geplant.",
       },
-      scripts: {
+      ideas: {
         type: "array" as const,
-        minItems: numScripts,
-        maxItems: numScripts,
+        minItems: numIdeas,
+        maxItems: numIdeas,
         items: {
           type: "object" as const,
           properties: {
             day: {
               type: "string",
-              description: "Mon/Tue/Wed/Thu/Fri/Sat/Sun — aus dem Wochenplan",
+              description: "Mon/Tue/Wed/Thu/Fri/Sat/Sun — aus dem Wochenplan, in Reihenfolge",
             },
             pillar: {
               type: "string",
@@ -91,51 +92,45 @@ export const WEEKLY_SCRIPTS_TOOL = (numScripts: number) => ({
             },
             content_type: {
               type: "string",
-              description: "Content-Typ aus dem Wochenplan (z.B. Education, Authority, Story)",
+              description: "Content-Typ aus dem Wochenplan",
             },
             format: {
               type: "string",
-              description: "Format aus dem Wochenplan (z.B. Face-to-camera, Storytelling)",
+              description: "Format aus dem Wochenplan",
             },
             title: {
               type: "string",
-              description: "Titel, max 10 Wörter, exakt was das Video behandelt",
+              description: "Titel, max 10 Wörter, SPEZIFISCH (Zahl, Named-Thing, Contrarian-Marker oder konkrete Szene nötig)",
             },
-            text_hook: {
+            angle: {
               type: "string",
-              description: "Text-Hook für Screen-Overlay — 3-5 Wörter, komprimierte Version des gesprochenen Hooks",
+              description: "DIE These/Position der Idee in 1-2 Sätzen. Was ist das Kern-Argument?",
             },
-            hook: {
+            hook_direction: {
               type: "string",
-              description: "Gesprochener Hook, 1-2 Sätze. Erster Satz vor der Kamera.",
+              description: "Hook-Muster + kurze Richtung (z.B. 'Kontrast: Viele glauben X, Wahrheit ist Y'). KEIN ausformulierter Hook — nur die Richtung.",
             },
-            hook_pattern: {
-              type: "string",
-              description: "Eins der 8 Muster: Kontrast, Provokation, Neugier-Gap, Enttarnung, Direkt-Ansprache, Persönliche Szene, Listicle, Kontroverse Meinung",
+            key_points: {
+              type: "array" as const,
+              items: { type: "string" },
+              minItems: 2,
+              maxItems: 5,
+              description: "2-5 Stichpunkte was im Video vorkommen soll. Wird später der Skript-Leitfaden.",
             },
-            body: {
+            why_now: {
               type: "string",
-              description: "Gesprochener Body. Absätze mit \\n trennen. Jeder Absatz ein Gedanke. Zielwortzahl aus dem Prompt.",
+              description: "1 Satz: datenbasierte Begründung aus Audit/Performance/Trends warum gerade DIESE Idee.",
             },
-            cta: {
+            emotion: {
               type: "string",
-              description: "Call to Action, 1-2 Sätze, eine konkrete Aktion.",
-            },
-            post_type: {
-              type: "string",
-              enum: ["core", "variant", "test"],
-              description: "core = Haupt-These der Woche, variant = alternativer Winkel zu einer core-These, test = Experiment",
-            },
-            reasoning: {
-              type: "string",
-              description: "1-2 Sätze: Warum dieses Thema + warum dieser Hook basierend auf Audit/Performance/Strategie.",
+              description: "Primäre Emotion: Frust/Neugier/Überraschung/Empathie/Stolz/Klarheit (oder eine andere wenn passender)",
             },
           },
-          required: ["day", "pillar", "content_type", "format", "title", "text_hook", "hook", "hook_pattern", "body", "cta", "post_type", "reasoning"],
+          required: ["day", "pillar", "content_type", "format", "title", "angle", "hook_direction", "key_points", "why_now", "emotion"],
         },
       },
     },
-    required: ["week_reasoning", "scripts"],
+    required: ["week_reasoning", "ideas"],
   },
 });
 
