@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "voice-server": "npx tsx --require dotenv/config src/voice-server.ts"
+    "voice-server": "npx tsx --require dotenv/config src/voice-server.ts",
+    "inngest": "npx inngest-cli@latest dev -u http://localhost:4000/api/inngest",
+    "all": "concurrently --kill-others-on-fail --names 'NEXT,VOICE,INNGEST' --prefix-colors 'blue,magenta,yellow' 'npm run dev' 'npm run voice-server' 'npm run inngest'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -43,6 +45,7 @@
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "puppeteer": "^24.41.0",
