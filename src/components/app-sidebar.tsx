@@ -19,6 +19,7 @@ import {
   Eye,
   Trash2,
   Grid3x3,
+  DollarSign,
   X,
 } from "lucide-react";
 import { useClientsCache, removeClientFromCache } from "@/hooks/use-clients-cache";
@@ -52,6 +53,7 @@ const ADMIN_LINKS: NavLink[] = [
   { titleKey: "sidebar.globalAudit", path: "/analyse", icon: Search },
   { titleKey: "sidebar.training", path: "/training", icon: BookOpen },
   { titleKey: "sidebar.transcribe", path: "/transcribe", icon: Mic },
+  { titleKey: "sidebar.costs", path: "/costs", icon: DollarSign },
 ];
 
 export function AppSidebar() {

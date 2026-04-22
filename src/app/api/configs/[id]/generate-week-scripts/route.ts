@@ -7,6 +7,8 @@ import {
 } from "@/lib/pipelines/weekly-steps";
 import { generateWeekIdeas } from "@/lib/pipelines/weekly-oneshot";
 import { acquirePipelineLock, releasePipelineLock } from "@/lib/pipeline-lock";
+import { getCurrentUser } from "@/lib/auth";
+import type { Initiator } from "@/lib/cost-tracking";
 
 export const maxDuration = 300;
 
@@ -30,6 +32,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     );
   }
 
+  const user = await getCurrentUser();
+  const initiator: Initiator = user?.role === "client" ? "client" : "admin";
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
@@ -49,7 +54,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         });
 
         sendEvent(controller, { step: "trends", status: "loading" });
-        const research = await runResearch(id, ctx.config, ctx.clientName, ctx.recentBlock, ctx.platformContext, claude, ctx.weekRng, ctx.lang);
+        const research = await runResearch(id, ctx.config, ctx.clientName, ctx.recentBlock, ctx.platformContext, claude, ctx.weekRng, ctx.lang, initiator);
         sendEvent(controller, { step: "trends", status: "done", count: research.trendBlock ? 1 : 0 });
 
         // One-shot idea generation — Opus sees full context, plans the week

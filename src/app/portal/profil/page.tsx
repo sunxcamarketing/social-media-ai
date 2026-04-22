@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Users, UserCheck, Film, Building2, MapPin, Briefcase, Target, Heart, Lightbulb, Globe, Instagram, Linkedin, Youtube, Music2 } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
@@ -35,6 +35,11 @@ export default function PortalProfil() {
   const profileComplete = Boolean(
     client && (client.businessContext || client.brandingStatement || client.coreOffer),
   );
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const avatarInitials = useMemo(() => {
+    const source = displayName || client?.configName || client?.company || "";
+    return source.slice(0, 2).toUpperCase() || "??";
+  }, [displayName, client?.configName, client?.company]);
 
   return (
     <PortalShell
@@ -49,8 +54,18 @@ export default function PortalProfil() {
           {/* Header */}
           <div className="rounded-2xl bg-gradient-to-br from-ocean via-ocean to-ocean-light p-6 text-white relative overflow-hidden">
             <div className="relative flex items-start gap-4">
-              {client.igProfilePicUrl && (
-                <img src={client.igProfilePicUrl} alt="" className="h-16 w-16 rounded-full border-2 border-white/20 object-cover shrink-0" />
+              {client.igProfilePicUrl && !avatarFailed ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/proxy-image?url=${encodeURIComponent(client.igProfilePicUrl)}`}
+                  alt=""
+                  onError={() => setAvatarFailed(true)}
+                  className="h-16 w-16 rounded-full border-2 border-white/20 object-cover shrink-0"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full border-2 border-white/20 bg-white/[0.08] flex items-center justify-center shrink-0 text-lg font-semibold text-white/90">
+                  {avatarInitials}
+                </div>
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-xl font-semibold break-words">{displayName}</p>

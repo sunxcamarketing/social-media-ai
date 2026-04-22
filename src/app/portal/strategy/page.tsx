@@ -56,6 +56,7 @@ export default function PortalStrategy() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   useEffect(() => {
     if (!effectiveClientId) return;
@@ -120,13 +121,18 @@ export default function PortalStrategy() {
                 aria-expanded={auditOpen}
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  {analysis.profilePicUrl && (
+                  {analysis.profilePicUrl && !avatarFailed ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={`/api/proxy-image?url=${encodeURIComponent(analysis.profilePicUrl)}`}
                       alt=""
-                      className="h-9 w-9 rounded-full object-cover shrink-0"
+                      onError={() => setAvatarFailed(true)}
+                      className="h-9 w-9 rounded-full object-cover shrink-0 bg-blush-light/40"
                     />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blush-light to-blush/40 flex items-center justify-center shrink-0 text-[11px] font-semibold text-blush-dark">
+                      {(analysis.instagramHandle || "IG").slice(0, 2).toUpperCase()}
+                    </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">

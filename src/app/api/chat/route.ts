@@ -23,6 +23,7 @@ import { executeAgentTool, toolLoadClientContext } from "@/lib/agent-tools";
 import { sendEvent, sseResponse } from "@/lib/sse";
 import { readConfig } from "@/lib/csv";
 import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
+import { trackClaudeCost } from "@/lib/cost-tracking";
 
 export const maxDuration = 300;
 
@@ -195,6 +196,14 @@ export async function POST(request: Request) {
             system: cachedSystem,
             messages: currentMessages,
             tools,
+          });
+
+          trackClaudeCost({
+            usage: response.usage,
+            model: "claude-opus-4-7",
+            clientId: scopedClientId,
+            operation: "chat",
+            initiator: user.role,
           });
 
           const toolUseBlocks = response.content.filter(

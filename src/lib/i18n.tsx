@@ -597,6 +597,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "sidebar.globalAudit": { de: "Globales Audit", en: "Global Audit" },
   "sidebar.training": { de: "Training", en: "Training" },
   "sidebar.transcribe": { de: "Transkribieren", en: "Transcribe" },
+  "sidebar.costs": { de: "Kosten", en: "Costs" },
 
   // ── Command Palette ──────────────────────────────────────────────────────
   "cmdk.openDashboard": { de: "Dashboard öffnen", en: "Open dashboard" },
