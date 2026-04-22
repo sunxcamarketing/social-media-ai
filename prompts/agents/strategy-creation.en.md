@@ -49,14 +49,16 @@ The analysis identified the target audience's beliefs. Every pillar must address
 {{themen-spezifizitaet}}
 
 # PART 7: WEEKLY PLAN RULES (70/20/10 + CTA FUNNEL)
+
+**IMPORTANT — No pillar-to-weekday mapping.** The weekly plan describes only the **rhythm**: type (goal like Reach/Trust/Education) + format (execution) + CTA + funnelStage per day. Which pillar plays on which day is decided by the script generator at runtime based on relevance, timeliness, and variety. Pillars belong in Part 6; days have no pillar assignment.
+
 - **70% proven**: Topics and formats that work according to performance data.
 - **20% variants**: New angles on proven topics (different hook types, different format).
 - **10% experiments**: Completely new topics or formats not yet tested.
 - Use the EXACT names from content types and formats (don't invent your own).
 - Formats can be combined with " + " (e.g. "Talking Head + B-Roll").
-- Each pillar must appear at least once in the week.
 - No same content type on consecutive days.
-- Each day needs a SHORT rationale (1 sentence, not 3).
+- Each day needs a SHORT rationale (1 sentence, not 3) — strictly about the rhythm (why this type/format today), NOT which pillar plays today.
 
 ## CTA Funnel Distribution (MANDATORY per week)
 Each day gets `ctaType`, `ctaExample`, and `funnelStage`:

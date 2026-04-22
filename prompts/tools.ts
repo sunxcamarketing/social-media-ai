@@ -520,10 +520,6 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
                   type: "string" as const,
                   description: "Exakter Name aus der Formate-Liste. Mehrere mit ' + ' kombinierbar.",
                 },
-                pillar: {
-                  type: "string" as const,
-                  description: "Welcher Pillar wird an diesem Tag bedient",
-                },
                 ctaType: {
                   type: "string" as const,
                   enum: ["soft", "lead", "authority", "none"],
@@ -531,7 +527,7 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
                 },
                 ctaExample: {
                   type: "string" as const,
-                  description: "Konkreter CTA-Satz auf Deutsch (max 2 Sätze). Muss zum ctaType passen und auf Deutsch formuliert sein.",
+                  description: "Konkreter CTA-Satz in der Ziel-Content-Sprache (max 2 Sätze). Muss zum ctaType passen.",
                 },
                 funnelStage: {
                   type: "string" as const,
@@ -540,10 +536,10 @@ export const STRATEGY_CREATION_TOOL = (activeDays: string[], contentTypes: strin
                 },
                 reason: {
                   type: "string" as const,
-                  description: "Datengestützte Begründung: Warum dieser Type/Format/CTA an diesem Tag? 1-2 Sätze.",
+                  description: "Datengestützte Begründung: Warum dieser Type/Format/CTA an diesem Tag? 1-2 Sätze. WICHTIG: Nenne NICHT welcher Pillar an diesem Tag gespielt wird — Pillars rotieren frei zur Laufzeit.",
                 },
               },
-              required: ["type", "format", "pillar", "ctaType", "ctaExample", "funnelStage", "reason"],
+              required: ["type", "format", "ctaType", "ctaExample", "funnelStage", "reason"],
             },
           ])
         ),
@@ -652,16 +648,12 @@ export const STRATEGY_REVIEW_TOOL = (activeDays: string[]) => ({
                   type: "string" as const,
                   description: "Format(e) für diesen Tag",
                 },
-                pillar: {
-                  type: "string" as const,
-                  description: "Welcher Pillar wird bedient",
-                },
                 reason: {
                   type: "string" as const,
-                  description: "Datengestützte Begründung",
+                  description: "Datengestützte Begründung (Pillars werden nicht an Tage gebunden)",
                 },
               },
-              required: ["type", "format", "pillar", "reason"],
+              required: ["type", "format", "reason"],
             },
           ])
         ),

@@ -49,14 +49,16 @@ Die Analyse hat Glaubenssätze der Zielgruppe identifiziert. Jeder Pillar muss m
 {{themen-spezifizitaet}}
 
 # PART 7: WOCHENPLAN-REGELN (70/20/10 + CTA-FUNNEL)
+
+**WICHTIG — Kein Pillar-Wochentag-Mapping.** Der Wochenplan beschreibt nur den **Rhythmus**: type (Ziel wie Reach/Trust/Education) + format (Umsetzung) + CTA + funnelStage pro Tag. Welcher Pillar an welchem Tag gespielt wird, entscheidet der Script-Generator zur Laufzeit basierend auf Relevanz, Aktualität und Abwechslung. Pillars gehören in Part 6; Tage haben keine Pillar-Zuweisung.
+
 - **70% Bewährtes**: Themen und Formate die laut Performance-Daten funktionieren.
 - **20% Varianten**: Neue Winkel auf bewährte Themen (andere Hook-Typen, anderes Format).
 - **10% Experimente**: Komplett neue Themen oder Formate die noch nicht getestet wurden.
 - Nutze EXAKT die Namen aus Content-Types und Formate (keine eigenen erfinden).
 - Formate können kombiniert werden mit " + " (z.B. "Talking Head + B-Roll").
-- Jeder Pillar muss mindestens 1x in der Woche vorkommen.
 - Kein gleicher Content-Type an aufeinanderfolgenden Tagen.
-- Jeder Tag braucht eine KURZE Begründung (1 Satz, nicht 3).
+- Jeder Tag braucht eine KURZE Begründung (1 Satz, nicht 3) — rein zum Rhythmus (warum dieser type/format heute), NICHT welcher Pillar heute gespielt wird.
 
 ## CTA-Funnel-Verteilung (PFLICHT pro Woche)
 Jeder Tag bekommt `ctaType`, `ctaExample` und `funnelStage`:
