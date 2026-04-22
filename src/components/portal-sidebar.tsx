@@ -9,6 +9,7 @@ import {
   Video,
   MessageSquare,
   Mic,
+  BookOpen,
   LayoutDashboard,
   X,
 } from "lucide-react";
@@ -24,6 +25,7 @@ type PortalTab = {
 
 const PORTAL_TABS: PortalTab[] = [
   { titleKey: "portalNav.dashboard", href: "/portal", icon: LayoutDashboard, exact: true },
+  { titleKey: "portalNav.profile", href: "/portal/profil", icon: BookOpen },
   { titleKey: "portalNav.strategy", href: "/portal/strategy", icon: BarChart2 },
   { titleKey: "portalNav.scripts", href: "/portal/scripts", icon: FileText },
   { titleKey: "portalNav.audit", href: "/portal/analyse", icon: Search },

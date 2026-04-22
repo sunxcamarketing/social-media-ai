@@ -7,6 +7,8 @@ export type Lang = "de" | "en";
 const translations: Record<string, { de: string; en: string }> = {
   // Portal Navigation
   "portalNav.dashboard": { de: "Dashboard", en: "Dashboard" },
+  "portalNav.profile": { de: "Profil", en: "Profile" },
+  "portal.dash.profile": { de: "Profil", en: "Profile" },
   "portalNav.scripts": { de: "Skripte", en: "Scripts" },
   "portalNav.strategy": { de: "Strategie", en: "Strategy" },
   "portalNav.ideas": { de: "Ideen", en: "Ideas" },

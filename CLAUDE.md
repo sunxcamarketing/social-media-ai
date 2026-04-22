@@ -60,21 +60,39 @@ npm run dev
 
 Key endpoint: `POST /api/configs/[id]/generate-strategy` (SSE stream)
 
-### Script Generation Pipeline (Weekly) — Multi-Step SSE Pipeline
+### Weekly Ideas Pipeline — One-Shot Opus
 
-1. **Load Context** — Client profile, brand positioning, strategy, audit, performance, competitors, platform config
-2. **Voice Profile** — Extract/cache structured voice profile from training transcripts
-3. **Research** — Load pre-computed trend snapshots + client learnings; live Brave Search as primary, snapshot as fallback
-4. **Topic Selection** — Select N strategic topics based on audit + performance + trends + learnings
-5. **Hook Generation** — N parallel calls, each producing 3 hook options and selecting the best
-6. **Body Writing** — N parallel calls, each writing body + CTA with voice matching
-7. **Quality Review** — Single call reviewing all scripts for AI language, voice match, week coherence
-8. **Background Trigger** — Fire-and-forget research cycle for next run
+Note: despite the endpoint name `generate-week-scripts`, this flow produces **ideas, not scripts**. Scripts are generated on-demand from an idea (see next section).
 
-Pipeline steps extracted into `src/lib/pipelines/weekly-steps.ts` — route is a ~95-line orchestrator.
+1. **Lock** — `acquirePipelineLock()` prevents parallel week runs per client (returns 409 on collision)
+2. **Parallel Context Load** — `loadPipelineContext()` + `loadVoiceProfiles()`:
+   - Client/brand/audit/performance/competitor/cross-niche context
+   - Week-seeded schedule (same configId + same ISO week → same day/pillar/type/format rotation, different week → different offset)
+   - Winner anchors (own top videos + competitor winners for core/variant posts)
+   - Recent scripts + hook-pattern history (to avoid recycling)
+   - Audit-preferred duration as hard ceiling
+   - Voice profile + script structure + voice onboarding block (all cached in DB, regenerated on miss)
+3. **Research** — `runResearch()`: Brave deep search (15-20 queries across 9 categories, week-RNG rotates angles) → Sonnet synthesizes 6-12 real trends via `TREND_RESEARCH_TOOL` (plus high-confidence client learnings from Supabase)
+4. **One-Shot Idea Generation** — single **Opus** call (`claude-opus-4-7`) with the `weekly-ideas` agent + `WEEKLY_IDEAS_TOOL`. Sees full context and returns N coherent ideas (one per active day) with `title`, `angle`, `hookDirection`, `keyPoints`, `whyNow`, `emotion`, plus a `weekReasoning`
+5. **Return Inline, Don't Persist** — ideas stream back to the UI. The user picks which to develop into full scripts via the Content Agent chat or single-script generator
+6. **Fire-and-Forget** — triggers `/api/jobs/research-cycle` to refresh snapshots/learnings for the next run
 
-Key endpoint: `POST /api/configs/[id]/generate-week-scripts` (SSE stream)
+Entry point: `src/lib/pipelines/weekly-oneshot.ts` (`generateWeekIdeas`)
+Shared setup: `src/lib/pipelines/weekly-steps.ts` (`loadPipelineContext`, `loadVoiceProfiles`, `runResearch`)
+Route orchestrator: ~95 lines — `POST /api/configs/[id]/generate-week-scripts` (SSE stream)
 Voice profile: `POST /api/configs/[id]/generate-voice-profile`
+
+### Single Script Generation — From Idea to Full Script
+
+Scripts are always generated **per-idea**, not in batch. Two paths:
+
+**Via Content Agent chat** (`POST /api/chat`, SSE): the agent calls its `generate_script` tool which runs the Script Writer (`script-writer.md`) → regex quality check → Reviewer (`script-reviewer.md`) only if issues found. Always returns short (30-40s) + long (60+s) versions.
+
+**Via direct endpoint** (`POST /api/configs/[id]/generate-script`): accepts a `topicOverride` (from a weekly idea or topic plan) or `dayOverride`; builds full context (voice profile, script structure, audit, performance, banned phrases, hook patterns) and calls Claude with the `submit_script` tool → returns `{ title, hook, body, cta, reasoning }`. Used by the "generate script" buttons on ideas and the 2-step topic-plan → script flow.
+
+Related endpoints:
+- `POST /api/configs/[id]/generate-topic-plan` — Opus generates a topic plan for a day
+- `POST /api/configs/[id]/generate-week` — older week-level endpoint (distinct from `generate-week-scripts`)
 
 ### Viral Script Builder — Psychology-First Pipeline
 
@@ -169,27 +187,29 @@ API Route calls:  buildPrompt("hook-generation", { client_name: "Max" })
 
 Mother prompts — one per pipeline step. Each contains the full structure with `{{placeholder}}` slots.
 
-| Agent | Pipeline Step | Key Placeholders |
-|-------|---------------|------------------|
-| `topic-selection.md` | Weekly: Topic Selection | `{{num_days}}`, `{{platform_context}}`, auto: themen-spezifizitaet, audit-nutzung, anti-muster |
-| `trend-research.md` | Weekly: Trend Research | `{{niche}}`, `{{current_date}}`, `{{month_label}}`, `{{platform_context}}` |
-| `hook-generation.md` | Weekly: Hook Generation | `{{platform_context}}`, auto: hook-regeln, hook-muster, hook-framework, verboten-ai-sprache, natuerliche-satzstruktur |
-| `body-writing.md` | Weekly: Body Writing | `{{laenge_regeln}}`, `{{stimm_matching}}`, `{{skript_struktur}}`, `{{skript_beispiele}}`, auto: rolle-skriptschreiber, hook-framework, body-regeln, cta-regeln, konkretion-regeln, sprach-stil, verboten-ai-sprache, anti-ai-checkliste, anti-monotone-formatierung, natuerliche-satzstruktur |
-| `quality-review.md` | Weekly: Quality Review | auto: verboten-ai-sprache, anti-ai-checkliste, anti-monotone-formatierung, natuerliche-satzstruktur |
-| `voice-profile.md` | Voice Profile Extraction | (no placeholders — standalone) |
-| `script-structure.md` | Script Structure Extraction | (no placeholders — standalone) |
-| `strategy-analysis.md` | Strategy: Data Analysis | auto: audit-nutzung |
-| `strategy-creation.md` | Strategy: Pillar Creation | `{{posts_per_week}}`, `{{active_days}}`, `{{content_types}}`, `{{formats}}`, auto: themen-spezifizitaet, konkretion-regeln |
-| `strategy-review.md` | Strategy: Review | (no placeholders — standalone) |
-| `content-agent.md` | Content Agent (Portal Chat) | `{{platform_context}}` (script rules removed, delegated to Script Agent) |
-| `script-writer.md` | Script Agent: Creative Writing | `{{platform_context}}`, auto: hook-regeln, hook-muster, body-regeln, cta-regeln, konkretion-regeln, storytelling-formel, text-hook-regeln |
-| `script-reviewer.md` | Script Agent: Quality Gate | auto: verboten-ai-sprache, anti-ai-checkliste, anti-monotone-formatierung, natuerliche-satzstruktur, sprach-stil |
-| `viral-script-structure.md` | Viral: Psychology Extraction | (standalone) |
-| `viral-hook-generation.md` | Viral: Hook Generation | `{{platform_context}}` |
-| `viral-script-adapt.md` | Viral: Script Adaptation | auto: rolle-skriptschreiber, verboten-ai-sprache, natuerliche-satzstruktur, anti-monotone-formatierung, stimm-matching |
-| `viral-script-critic.md` | Viral: Quality Critique | `{{platform_context}}`, auto: verboten-ai-sprache |
-| `viral-script-production.md` | Viral: Production Notes | `{{platform_context}}` |
-| `voice-agent.md` | Voice Interview Agent | auto: konkretion-regeln, themen-spezifizitaet |
+| Agent | Pipeline Step |
+|-------|---------------|
+| `weekly-ideas.md` | Weekly: One-Shot Idea Generation (Opus) |
+| `trend-research.md` | Weekly: Trend Research (synthesizes Brave search results) |
+| `topic-plan.md` | Topic Plan (per-day topic planning) |
+| `topic-script.md` | Script Generation from a topic/idea |
+| `single-script.md` | Direct single-script generation |
+| `script-writer.md` | Script Agent: Creative Writing (used by Content Agent `generate_script` tool) |
+| `script-reviewer.md` | Script Agent: Quality Gate (banned phrases, voice match) |
+| `hook-generation.md` | Hook-only generation (reference; used standalone/from chat) |
+| `carousel-generator.md` | Carousel slide generation |
+| `content-agent.md` | Content Agent (Portal Chat) — 12 tools, script rules delegated to script-writer |
+| `chat-assistant.md` | Lightweight chat assistant (non-agent chat surfaces) |
+| `voice-profile.md` | Voice Profile Extraction from training transcripts |
+| `voice-profile-topic.md` / `voice-profile-scenario.md` | Voice Agent voice-profile sub-prompts |
+| `voice-agent.md` | Voice Interview Agent |
+| `voice-agent-onboarding.md` | Voice Onboarding (8-block interview) |
+| `script-structure.md` | Script Structure Extraction |
+| `strategy-analysis.md` | Strategy: Data Analysis |
+| `strategy-creation.md` | Strategy: Pillar Creation |
+| `strategy-review.md` | Strategy: Review |
+
+Viral Script Builder prompts are inlined in `src/app/api/viral-script/route.ts` (no standalone `.md`). Tools still in `prompts/tools.ts`: `VIRAL_STRUCTURE_TOOL`, `VIRAL_ADAPT_TOOL`, `VIRAL_PRODUCTION_TOOL`, `VIRAL_CRITIC_TOOL`, `VIRAL_REVISE_TOOL`.
 
 ### Foundational Sub-Prompts (`prompts/foundational/`)
 
@@ -200,19 +220,23 @@ Single-concern markdown files. Each covers ONE aspect of script quality. Reused 
 |------|-----------------|
 | `rolle-skriptschreiber.md` | Role definition — "you are an elite scriptwriter for Instagram Reels" |
 | `hook-regeln.md` | Core hook rules — first sentence must grab, open loop, no fluff |
-| `hook-muster.md` | 8 proven hook patterns — Kontrast, Provokation, Neugier, etc. |
+| `hook-muster.md` | Proven hook patterns — Kontrast, Provokation, Neugier, etc. |
 | `hook-framework.md` | Hook/Retain/Reward psychological framework for scroll-stopping content |
+| `text-hook-regeln.md` | On-screen text hook rules (separate from spoken audio hook) |
 | `body-regeln.md` | Body rules — one idea per paragraph, no repetition, progressive value |
 | `cta-regeln.md` | CTA rules — clear action, max 1-2 sentences |
 | `konkretion-regeln.md` | Concreteness rules — specific examples, real numbers, no vague claims |
 | `abwechslung-regeln.md` | Variety rules — vary hooks, emotions, formats across the week |
 | `titel-regeln.md` | Title rules — max 10 words, describes exact content |
+| `storytelling-formel.md` | Story structure formula for narrative scripts |
+| `sekunden-regie.md` | Second-by-second script direction (seconds-based timing) |
+| `meinungs-injektion.md` | Opinion injection — how to insert contrarian POV into scripts |
 
 **Anti-AI & Language Quality:**
 | File | What It Controls |
 |------|-----------------|
-| `verboten-ai-sprache.md` | **100+ banned German AI phrases** across 12 categories (the flagship prompt) |
-| `anti-ai-checkliste.md` | 7-point post-generation checklist — "does this sound like a human?" |
+| `verboten-ai-sprache.md` | **100+ banned German AI phrases** (`.en.md` is a hand-curated English list, not a translation) |
+| `anti-ai-checkliste.md` | Post-generation checklist — "does this sound like a human?" |
 | `sprach-stil.md` | Language style — spoken German, short sentences, direct, raw, real |
 | `anti-monotone-formatierung.md` | Bans the "one sentence → blank line → one sentence" AI pattern |
 | `natuerliche-satzstruktur.md` | Variable sentence structure — mix short/long, strategic punctuation |
@@ -222,6 +246,13 @@ Single-concern markdown files. Each covers ONE aspect of script quality. Reused 
 |------|-----------------|
 | `stimm-matching.md` | Voice matching template — uses `{{client_name}}` for personalization |
 | `skript-beispiele.md` | Script examples wrapper — uses `{{beispiel_skripte}}` for training scripts |
+
+**Chat Surfaces:**
+| File | What It Controls |
+|------|-----------------|
+| `chat-admin-mode.md` | Admin-mode banner/context for Content Agent |
+| `chat-admin-scoped.md` | Admin chat scoped to a single client |
+| `chat-client-scoped.md` | Client-portal chat scope (client sees only own data) |
 
 **Strategy & Data:**
 | File | What It Controls |
@@ -238,16 +269,17 @@ All Anthropic tool schemas in one file. Used with `tool_choice: { type: "tool" }
 
 | Tool | Used By | Output |
 |------|---------|--------|
-| `TOPIC_SELECTION_TOOL` | topic-selection | Array of day/pillar/type/format/title/description/reasoning |
-| `TREND_RESEARCH_TOOL` | trend-research | Array of topic/angle/whyNow/hookIdea |
+| `WEEKLY_IDEAS_TOOL(n)` | weekly-ideas | N coherent ideas for the week (title/angle/hookDirection/keyPoints/whyNow/emotion) + weekReasoning |
+| `TREND_RESEARCH_TOOL` | trend-research | Array of topic/angle/whyNow/hookIdea + sourceUrls + category |
 | `HOOK_GENERATION_TOOL` | hook-generation | 3 hook options + selected index + reason |
-| `BODY_WRITING_TOOL` | body-writing | body + cta text |
-| `QUALITY_REVIEW_TOOL` | quality-review | Per-script issues + optional revised text |
 | `VOICE_PROFILE_TOOL` | voice-profile | Structured voice profile (tone, energy, words, patterns) |
 | `SCRIPT_STRUCTURE_TOOL` | script-structure | Dramaturgic flow, hook/body/CTA patterns |
 | `STRATEGY_ANALYSIS_TOOL` | strategy-analysis | Insights + goal (reach/trust/revenue) |
 | `STRATEGY_CREATION_TOOL` | strategy-creation | Pillars with subtopics + weekly schedule |
 | `STRATEGY_REVIEW_TOOL` | strategy-review | Issues + optional revised pillars/weekly |
+| `VIRAL_STRUCTURE_TOOL`, `VIRAL_ADAPT_TOOL`, `VIRAL_PRODUCTION_TOOL`, `VIRAL_CRITIC_TOOL`, `VIRAL_REVISE_TOOL` | viral-script route (inlined prompts) | Psychology extraction, adaptation, production notes, critique, revision |
+| `AGENT_*_TOOL` (15+) | Content Agent tool-use loop | Tool-specific payloads (load context, search scripts, generate script, save idea, etc.) |
+| `VOICE_AGENT_GEMINI_TOOLS` | Voice Agent (Gemini Live) | Live function-calling schemas for voice session |
 
 ### Editing Prompts
 
@@ -330,18 +362,30 @@ The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `
 │   │       ├── auth/                      # Auth routes (invite, me, impersonate)
 │   │       ├── chat/                      # Content Agent chat (SSE)
 │   │       ├── configs/[id]/
-│   │       │   ├── generate-week-scripts/ # Weekly script pipeline (SSE)
+│   │       │   ├── generate-week-scripts/ # Weekly IDEAS pipeline — one-shot Opus (SSE)
+│   │       │   ├── generate-week/         # (older week-level endpoint)
+│   │       │   ├── generate-topic-plan/   # Per-day topic planning
+│   │       │   ├── generate-script/       # Single script from idea/topic override
 │   │       │   ├── generate-strategy/     # Strategy pipeline (SSE)
 │   │       │   ├── generate-voice-profile/# Voice profile extraction
-│   │       │   └── performance/           # Performance data
-│   │       ├── viral-script/              # Viral script builder (SSE)
+│   │       │   ├── performance/           # Performance data
+│   │       │   ├── voice-sessions/        # Voice agent session storage
+│   │       │   └── sync-drive/            # Google Drive sync
+│   │       ├── viral-script/              # Viral script builder (SSE; prompts inlined)
+│   │       ├── carousel/                  # Carousel generator
+│   │       ├── ideas/                     # Ideas CRUD
+│   │       ├── inngest/                   # Inngest background jobs
 │   │       └── jobs/
 │   │           └── research-cycle/        # Background research orchestrator
 │   ├── lib/                               # Core logic
 │   │   ├── auth.ts                       # Auth helpers (getCurrentUser, requireAdmin, etc.)
 │   │   ├── pipeline.ts                   # Video analysis pipeline orchestration
-│   │   ├── pipelines/weekly-steps.ts     # Weekly pipeline steps (extracted)
+│   │   ├── pipelines/
+│   │   │   ├── weekly-oneshot.ts         # One-shot Opus weekly idea generator
+│   │   │   └── weekly-steps.ts           # Shared context/voice/research loaders
+│   │   ├── pipeline-lock.ts              # Per-client pipeline lock (prevents parallel runs)
 │   │   ├── voice-profile.ts              # Voice + script structure extraction
+│   │   ├── voice-onboarding.ts           # Voice onboarding synthesis
 │   │   ├── agent-tools.ts               # Content Agent tool implementations (12 tools)
 │   │   ├── gemini-live.ts              # Gemini Live API client (WebSocket, audio streaming)
 │   │   ├── platforms.ts                  # Platform abstraction (IG, TikTok, LinkedIn)
@@ -364,46 +408,38 @@ The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `
 │   ├── loader.ts                         # buildPrompt() — loads agent + resolves {{placeholders}}
 │   ├── tools.ts                          # All Anthropic tool schemas (pipeline + agent)
 │   ├── analysis.ts                       # Gemini video analysis prompts
-│   ├── agents/                           # Agent templates (mother prompts)
-│   │   ├── topic-selection.md
-│   │   ├── trend-research.md
-│   │   ├── hook-generation.md
-│   │   ├── body-writing.md
-│   │   ├── quality-review.md
-│   │   ├── voice-profile.md
-│   │   ├── script-structure.md
+│   ├── agents/                           # Agent templates (each exists as foo.md = de + foo.en.md = en)
+│   │   ├── weekly-ideas.md               # One-shot Opus week idea generator
+│   │   ├── trend-research.md             # Sonnet trend synthesis
+│   │   ├── topic-plan.md                 # Per-day topic planning
+│   │   ├── topic-script.md               # Script from topic
+│   │   ├── single-script.md              # Direct single-script generation
+│   │   ├── script-writer.md              # Script Agent: creative writing
+│   │   ├── script-reviewer.md            # Script Agent: quality gate
+│   │   ├── hook-generation.md            # Hook-only generation
+│   │   ├── carousel-generator.md         # Carousel slides
+│   │   ├── content-agent.md              # Content Agent system prompt
+│   │   ├── chat-assistant.md             # Lightweight chat assistant
+│   │   ├── voice-profile.md              # Voice profile extraction
+│   │   ├── voice-profile-topic.md        # Voice agent topic sub-prompt
+│   │   ├── voice-profile-scenario.md     # Voice agent scenario sub-prompt
+│   │   ├── voice-agent.md                # Voice interview agent
+│   │   ├── voice-agent-onboarding.md     # Voice onboarding (8-block interview)
+│   │   ├── script-structure.md           # Script structure extraction
 │   │   ├── strategy-analysis.md
 │   │   ├── strategy-creation.md
-│   │   ├── strategy-review.md
-│   │   ├── content-agent.md              # Content Agent system prompt (12 tools + rules)
-│   │   ├── script-agent.md              # Script Agent (nested in chat generate_script tool)
-│   │   ├── viral-script-structure.md    # Viral: Psychology extraction
-│   │   ├── viral-hook-generation.md     # Viral: Hook generation
-│   │   ├── viral-script-adapt.md        # Viral: Script adaptation (psychology-first)
-│   │   ├── viral-script-critic.md       # Viral: Quality critique
-│   │   └── viral-script-production.md   # Viral: Production notes
-│   └── foundational/                     # 21 sub-prompts (single-concern .md)
+│   │   └── strategy-review.md
+│   └── foundational/                     # 27+ sub-prompts (single-concern .md, de + .en.md pairs)
 │       ├── rolle-skriptschreiber.md
-│       ├── hook-regeln.md
-│       ├── hook-muster.md
-│       ├── hook-framework.md
-│       ├── body-regeln.md
-│       ├── cta-regeln.md
-│       ├── konkretion-regeln.md
-│       ├── abwechslung-regeln.md
-│       ├── titel-regeln.md
-│       ├── verboten-ai-sprache.md
-│       ├── anti-ai-checkliste.md
-│       ├── sprach-stil.md
-│       ├── anti-monotone-formatierung.md
-│       ├── natuerliche-satzstruktur.md
-│       ├── stimm-matching.md
-│       ├── skript-beispiele.md
-│       ├── reasoning-regeln.md
-│       ├── audit-nutzung.md
-│       ├── themen-spezifizitaet.md
-│       ├── wochen-koherenz.md
-│       └── anti-muster.md
+│       ├── hook-regeln.md · hook-muster.md · hook-framework.md · text-hook-regeln.md
+│       ├── body-regeln.md · cta-regeln.md · konkretion-regeln.md · titel-regeln.md
+│       ├── abwechslung-regeln.md · storytelling-formel.md · sekunden-regie.md · meinungs-injektion.md
+│       ├── verboten-ai-sprache.md · anti-ai-checkliste.md · sprach-stil.md
+│       ├── anti-monotone-formatierung.md · natuerliche-satzstruktur.md
+│       ├── stimm-matching.md · skript-beispiele.md
+│       ├── chat-admin-mode.md · chat-admin-scoped.md · chat-client-scoped.md
+│       ├── reasoning-regeln.md · audit-nutzung.md
+│       └── themen-spezifizitaet.md · wochen-koherenz.md · anti-muster.md
 ├── data/                                  # CSV data storage (legacy)
 ├── context/                               # Background context for Claude
 ├── plans/                                 # Implementation plans
