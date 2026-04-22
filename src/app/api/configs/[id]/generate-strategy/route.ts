@@ -58,6 +58,56 @@ function buildFullCompetitorBlock(videos: { creator: string; views: number; like
   return `<competitor_data>\nTOP COMPETITOR VIDEOS (sortiert nach Views):\n\n${formatted}\n</competitor_data>`;
 }
 
+// ── Language-aware prompt helpers ──────────────────────────────────────────
+// All user prompts carry a strong language directive at the top so Claude
+// doesn't drift to German just because the tool-schema descriptions are in
+// German. The directive is the first thing the model sees — it overrides any
+// linguistic cues from the schema.
+
+function languageDirective(lang: "de" | "en"): string {
+  return lang === "en"
+    ? "LANGUAGE — CRITICAL: Every string you return via the tool (pillar names, why, subTopics titles/angles, ctaExample, reason, goal, goalReasoning, hooks, assessment, issues) MUST be in ENGLISH. Ignore any German phrasing in the schema descriptions — they are meta-instructions, not output-language signals."
+    : "SPRACHE — WICHTIG: Alle Strings die du über das Tool zurückgibst (Pillar-Namen, why, subTopics Titel/angle, ctaExample, reason, goal, goalReasoning, Hooks, Assessment, Issues) MÜSSEN auf DEUTSCH sein.";
+}
+
+type UserLabels = {
+  analyzeInstruction: string;
+  strategicGoal: string;
+  reasoning: string;
+  createInstruction: (posts: number, days: string) => string;
+  availableContentTypes: string;
+  availableFormats: string;
+  goalLabel: string;
+  pillarsLabel: string;
+  reviewInstruction: string;
+};
+
+function userLabels(lang: "de" | "en"): UserLabels {
+  return lang === "en"
+    ? {
+        analyzeInstruction: "Analyze ALL the data and determine the strategic goal.",
+        strategicGoal: "STRATEGIC GOAL",
+        reasoning: "REASONING",
+        createInstruction: (posts, days) => `Create 3-5 content pillars and a weekly plan for ${posts}×/week (${days}).`,
+        availableContentTypes: "AVAILABLE CONTENT TYPES:",
+        availableFormats: "AVAILABLE FORMATS:",
+        goalLabel: "GOAL",
+        pillarsLabel: "PILLARS",
+        reviewInstruction: "Review this strategy.",
+      }
+    : {
+        analyzeInstruction: "Analysiere ALLE Daten und bestimme das strategische Ziel.",
+        strategicGoal: "STRATEGISCHES ZIEL",
+        reasoning: "BEGRÜNDUNG",
+        createInstruction: (posts, days) => `Erstelle 3-5 Content Pillars und einen Wochenplan für ${posts}×/Woche (${days}).`,
+        availableContentTypes: "VERFÜGBARE CONTENT TYPES:",
+        availableFormats: "VERFÜGBARE FORMATE:",
+        goalLabel: "ZIEL",
+        pillarsLabel: "PILLARS",
+        reviewInstruction: "Prüfe diese Strategie.",
+      };
+}
+
 // ── Main endpoint — Multi-Step SSE Pipeline ─────────────────────────────────
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -167,8 +217,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
           goalReasoning: string;
         };
 
+        const labels = userLabels(lang);
+        const langHeader = languageDirective(lang);
+
         if (hasData) {
-          const analysisUserPrompt = `<client>
+          const analysisUserPrompt = `${langHeader}
+
+<client>
 ${clientContext}
 </client>
 
@@ -178,7 +233,7 @@ ${performanceBlock}
 
 ${competitorBlock}
 
-Analysiere ALLE Daten und bestimme das strategische Ziel.`;
+${labels.analyzeInstruction}`;
 
           const analysisMsg = await claude.messages.create({
             model: "claude-sonnet-4-6",
@@ -206,7 +261,9 @@ Analysiere ALLE Daten und bestimme das strategische Ziel.`;
             avgViralDuration: null,
             nichePatterns: "",
             goal: "reach",
-            goalReasoning: `Keine Performance-Daten oder Audit vorhanden. Für ${clientName} empfehlen wir als Start-Ziel "reach" um Sichtbarkeit aufzubauen.`,
+            goalReasoning: lang === "en"
+              ? `No performance data or audit available. For ${clientName}, we recommend "reach" as a starting goal to build visibility.`
+              : `Keine Performance-Daten oder Audit vorhanden. Für ${clientName} empfehlen wir als Start-Ziel "reach" um Sichtbarkeit aufzubauen.`,
           };
         }
 
@@ -244,8 +301,10 @@ ${analysisResult.nichePatterns ? `Nischen-Muster: ${analysisResult.nichePatterns
 
         const creationTool = STRATEGY_CREATION_TOOL(activeDays, contentTypeNames, formatNames);
 
-        const creationUserPrompt = `STRATEGISCHES ZIEL: ${analysisResult.goal}
-BEGRÜNDUNG: ${analysisResult.goalReasoning}
+        const creationUserPrompt = `${langHeader}
+
+${labels.strategicGoal}: ${analysisResult.goal}
+${labels.reasoning}: ${analysisResult.goalReasoning}
 
 ${insightsBlock}
 
@@ -253,13 +312,13 @@ ${insightsBlock}
 ${brandContext}
 </client_brand>
 
-VERFÜGBARE CONTENT TYPES:
+${labels.availableContentTypes}
 ${contentTypeList}
 
-VERFÜGBARE FORMATE:
+${labels.availableFormats}
 ${formatList}
 
-Erstelle 3-5 Content Pillars und einen Wochenplan für ${postsPerWeek}×/Woche (${activeDays.join(", ")}).`;
+${labels.createInstruction(postsPerWeek, activeDays.join(", "))}`;
 
         const creationMsg = await claude.messages.create({
           model: "claude-sonnet-4-6",
@@ -279,11 +338,11 @@ Erstelle 3-5 Content Pillars und einen Wochenplan für ${postsPerWeek}×/Woche (
 
         const creationRaw = creationTu.input as {
           pillars?: Array<{ name: string; why: string; subTopics: Array<{ title: string; angle: string }> }>;
-          weekly?: Record<string, { type: string; format: string; pillar: string; reason: string }>;
+          weekly?: Record<string, { type: string; format: string; reason: string }>;
         };
         let creationResult = {
           pillars: creationRaw.pillars || [],
-          weekly: creationRaw.weekly || {} as Record<string, { type: string; format: string; pillar: string; reason: string }>,
+          weekly: creationRaw.weekly || {} as Record<string, { type: string; format: string; reason: string }>,
         };
 
         sendEvent(controller, {
@@ -300,18 +359,20 @@ Erstelle 3-5 Content Pillars und einen Wochenplan für ${postsPerWeek}×/Woche (
 
         const voiceBlock = voiceProfile ? voiceProfileToPromptBlock(voiceProfile, clientName) : "";
 
-        const reviewUserPrompt = `ZIEL: ${analysisResult.goal} — ${analysisResult.goalReasoning}
+        const reviewUserPrompt = `${langHeader}
 
-PILLARS:
+${labels.goalLabel}: ${analysisResult.goal} — ${analysisResult.goalReasoning}
+
+${labels.pillarsLabel}:
 ${creationResult.pillars.map((p, i) => {
   const topics = p.subTopics.map(st => `    • ${st.title} (${st.angle})`).join("\n");
   return `${i + 1}. ${p.name} — ${p.why}\n${topics}`;
 }).join("\n\n")}
 
-WOCHENPLAN:
+WOCHENPLAN (Rhythmus ohne Pillar-Bindung):
 ${activeDays.map(d => {
   const slot = creationResult.weekly[d];
-  return slot ? `${d}: ${slot.type} | ${slot.format} | Pillar: ${slot.pillar} | ${slot.reason}` : `${d}: —`;
+  return slot ? `${d}: ${slot.type} | ${slot.format} | ${slot.reason}` : `${d}: —`;
 }).join("\n")}
 
 ${voiceBlock ? `\n${voiceBlock}` : ""}
@@ -321,7 +382,7 @@ ${voiceOnboardingBlock ? `\n${voiceOnboardingBlock}` : ""}
 ${brandContext}
 </client_brand>
 
-Prüfe diese Strategie.`;
+${labels.reviewInstruction}`;
 
         let reviewIssues: Array<{ area: string; issue: string; suggestion: string }> = [];
         let overallAssessment = "";
