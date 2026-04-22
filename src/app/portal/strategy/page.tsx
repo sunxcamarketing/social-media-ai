@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart2, Target, CalendarDays, Layers, TrendingUp, Eye, Heart, ExternalLink, Search } from "lucide-react";
+import { BarChart2, Target, CalendarDays, Layers, TrendingUp, Eye, Heart, ExternalLink, Search, ChevronDown } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
 import { AuditReport, type ProfileData } from "@/components/audit-report";
@@ -55,6 +55,7 @@ export default function PortalStrategy() {
   const [client, setClient] = useState<Config | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   useEffect(() => {
     if (!effectiveClientId) return;
@@ -111,7 +112,47 @@ export default function PortalStrategy() {
             <h2 className="text-xs font-semibold tracking-wider uppercase text-ocean/60 flex items-center gap-2">
               <Search className="h-3.5 w-3.5" /> Audit
             </h2>
-            <AuditReport report={analysis.report || ""} profile={auditProfile} />
+            <div className="rounded-2xl border border-ocean/[0.06] bg-white overflow-hidden transition-all">
+              <button
+                type="button"
+                onClick={() => setAuditOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 hover:bg-ocean/[0.02] transition-colors text-left"
+                aria-expanded={auditOpen}
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {analysis.profilePicUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/proxy-image?url=${encodeURIComponent(analysis.profilePicUrl)}`}
+                      alt=""
+                      className="h-9 w-9 rounded-full object-cover shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CalendarDays className="h-3 w-3 text-ocean/40 shrink-0" />
+                      <span className="text-xs font-semibold text-ocean truncate">
+                        {analysis.createdAt
+                          ? new Date(analysis.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" })
+                          : "Audit"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] text-ocean/50 mt-0.5 flex-wrap">
+                      {analysis.instagramHandle && <span>@{analysis.instagramHandle}</span>}
+                      <span>{fmt(analysis.profileFollowers || 0)} Follower</span>
+                      <span>{analysis.profileReels30d || 0} Reels</span>
+                      <span>{fmt(analysis.profileAvgViews30d || 0)} Ø Views</span>
+                    </div>
+                  </div>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-ocean/40 shrink-0 transition-transform duration-200 ${auditOpen ? "rotate-180" : ""}`} />
+              </button>
+              {auditOpen && (
+                <div className="border-t border-ocean/[0.06] px-4 py-4 animate-fade">
+                  <AuditReport report={analysis.report || ""} profile={auditProfile} />
+                </div>
+              )}
+            </div>
           </section>
         )}
 

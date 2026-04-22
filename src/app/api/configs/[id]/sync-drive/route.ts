@@ -60,6 +60,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "No documents found in folder. Make sure the folder is shared with the service account." }, { status: 400 });
     }
 
+    const startedAt = Date.now();
     let imported = 0;
     let skipped = 0;
 
@@ -113,15 +114,25 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       }
     }
 
-    // Regenerate both profiles in parallel
+    const upsertMs = Date.now() - startedAt;
+
+    // No new/updated docs → nothing for the voice/structure profile to learn from.
+    // Skip the ~30s Claude regeneration instead of burning tokens on identical training data.
+    if (imported === 0) {
+      console.log(`[sync-drive] client=${id} upsert=${upsertMs}ms imported=0 skipped=${skipped} → profile regen skipped`);
+      return NextResponse.json({ imported, skipped, voiceProfileGenerated: false, scriptStructureGenerated: false });
+    }
+
     const clientName = config.name || config.configName || "Kunde";
     let voiceProfileGenerated = false;
     let scriptStructureGenerated = false;
 
+    const profileStartedAt = Date.now();
     const [voiceResult, structureResult] = await Promise.allSettled([
       generateVoiceProfile(id, clientName),
       generateScriptStructure(id, clientName),
     ]);
+    const profileMs = Date.now() - profileStartedAt;
 
     if (voiceResult.status === "fulfilled" && voiceResult.value) {
       voiceProfileGenerated = true;
@@ -134,6 +145,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     } else if (structureResult.status === "rejected") {
       console.error("Script structure generation failed:", structureResult.reason);
     }
+
+    console.log(`[sync-drive] client=${id} upsert=${upsertMs}ms profile=${profileMs}ms imported=${imported} skipped=${skipped} voice=${voiceProfileGenerated} structure=${scriptStructureGenerated}`);
 
     return NextResponse.json({ imported, skipped, voiceProfileGenerated, scriptStructureGenerated });
   } catch (e) {
