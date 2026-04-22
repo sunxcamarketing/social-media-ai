@@ -157,7 +157,7 @@ export default function ViralityChecklistPage() {
       </div>
 
       {/* Step Navigation */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {STEPS.map((step) => {
           const isActive = step.id === activeStep;
           const progress = getProgress(step.id);
@@ -203,10 +203,10 @@ export default function ViralityChecklistPage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6">
 
         {/* Tips — Left Side (3 cols) */}
-        <div className="col-span-3 space-y-3">
+        <div className="lg:col-span-3 space-y-3">
           <h2 className={`text-sm font-semibold ${currentStep.color} flex items-center gap-2`}>
             <Lightbulb className="h-4 w-4" />
             {t("vc.tipsTitle")} — Step {currentStep.number}: {t(currentStep.titleKey)}
@@ -360,7 +360,7 @@ export default function ViralityChecklistPage() {
         </button>
 
         {showPrinciples && (
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {PRINCIPLE_KEYS.map((key, i) => (
               <div
                 key={i}

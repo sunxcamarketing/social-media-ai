@@ -257,7 +257,7 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
   return (
     <div className={`rounded-2xl border ${style.border} overflow-hidden bg-white`}>
       {/* Section header */}
-      <div className={`${style.headerBg} px-6 py-4 flex items-center gap-3`}>
+      <div className={`${style.headerBg} px-4 sm:px-6 py-4 flex items-center gap-3`}>
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${style.accentBg}`}>
           <Icon className={`h-4.5 w-4.5 ${style.iconColor}`} />
         </div>
@@ -268,7 +268,7 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
       </div>
 
       {/* Section content */}
-      <div className="px-6 py-6">
+      <div className="px-4 sm:px-6 py-4 sm:py-6 overflow-x-auto">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
           {section.content.trim()}
         </ReactMarkdown>
@@ -437,19 +437,19 @@ export function AuditReport({ report, profile, onSave, saved }: AuditReportProps
     <div className="space-y-6">
       {/* Profile header card */}
       {profile && (
-        <div className="rounded-2xl bg-gradient-to-br from-ocean via-ocean to-ocean-light p-6 text-white relative overflow-hidden">
+        <div className="rounded-2xl bg-gradient-to-br from-ocean via-ocean to-ocean-light p-4 sm:p-6 text-white relative overflow-hidden">
           <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/[0.04]" />
           <div className="absolute -right-4 bottom-0 h-20 w-20 rounded-full bg-white/[0.03]" />
 
           <div className="relative">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="text-lg font-semibold">@{profile.username}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 sm:mb-6">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="min-w-0">
+                  <p className="text-lg font-semibold truncate">@{profile.username}</p>
                   <p className="text-xs text-white/40 mt-0.5 tracking-wide uppercase">Instagram Audit Report</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {onSave && !saved && (
                   <Button
                     size="sm"
@@ -513,7 +513,7 @@ export function AuditReport({ report, profile, onSave, saved }: AuditReportProps
 
       {/* Table of contents */}
       {sections.length > 2 && (
-        <div className="rounded-2xl border border-ocean/[0.06] bg-warm-white/50 px-6 py-5">
+        <div className="rounded-2xl border border-ocean/[0.06] bg-warm-white/50 px-4 sm:px-6 py-5">
           <p className="text-[10px] font-bold text-ocean/30 uppercase tracking-widest mb-3">Inhalt</p>
           <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
             {sections.map((section, i) => {

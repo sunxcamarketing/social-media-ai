@@ -40,11 +40,11 @@ export default function PortalScripts() {
             <div key={script.id} className="glass rounded-2xl overflow-hidden card-hover">
               <button
                 onClick={() => setExpandedId(isExpanded ? null : script.id)}
-                className="w-full flex items-center justify-between px-5 py-4 text-left"
+                className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-4 text-left"
               >
-                <div>
-                  <h3 className="text-sm font-medium text-ocean">{script.title || t("portal.scripts.untitled")}</h3>
-                  <div className="flex items-center gap-2 mt-1">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-medium text-ocean break-words">{script.title || t("portal.scripts.untitled")}</h3>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {script.pillar && (
                       <span className="text-[10px] bg-ocean/[0.04] text-ocean/60 px-2 py-0.5 rounded-md font-medium">{script.pillar}</span>
                     )}
@@ -56,11 +56,11 @@ export default function PortalScripts() {
                     )}
                   </div>
                 </div>
-                <ChevronDown className={`h-4 w-4 text-ocean/30 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-4 w-4 text-ocean/30 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
               </button>
 
               {isExpanded && (
-                <div className="px-5 pb-5 space-y-4 border-t border-ocean/[0.06] pt-4 animate-fade">
+                <div className="px-4 sm:px-5 pb-5 space-y-4 border-t border-ocean/[0.06] pt-4 animate-fade">
                   {script.hook && (
                     <ScriptSection label={t("portal.scripts.hook")} text={script.hook} />
                   )}
@@ -94,7 +94,7 @@ function ScriptSection({ label, text }: { label: string; text: string }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wider text-ocean/40 mb-1.5 font-medium">{label}</p>
-      <p className="text-sm text-ocean leading-relaxed whitespace-pre-wrap">{text}</p>
+      <p className="text-sm text-ocean leading-relaxed whitespace-pre-wrap break-words">{text}</p>
     </div>
   );
 }

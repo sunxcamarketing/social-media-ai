@@ -20,10 +20,12 @@ import {
   Eye,
   Trash2,
   Grid3x3,
+  X,
 } from "lucide-react";
 import { useClientsCache } from "@/hooks/use-clients-cache";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useI18n } from "@/lib/i18n";
+import { useMobileNav } from "@/components/mobile-nav-context";
 
 interface NavLink {
   titleKey: string;
@@ -59,6 +61,7 @@ export function AppSidebar() {
   const router = useRouter();
   const { t } = useI18n();
   const { isAdmin } = useCurrentUser();
+  const { isOpen, close } = useMobileNav();
 
   const clients = useClientsCache();
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -107,7 +110,30 @@ export function AppSidebar() {
   };
 
   return (
-    <aside className="w-60 shrink-0 border-r border-ocean/[0.06] bg-white/50 flex flex-col h-screen sticky top-0">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        onClick={close}
+        className={`md:hidden fixed inset-0 z-40 bg-ocean/40 backdrop-blur-sm transition-opacity ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        aria-hidden={!isOpen}
+      />
+    <aside
+      className={`w-64 md:w-60 shrink-0 border-r border-ocean/[0.06] bg-white flex flex-col h-screen z-50
+        fixed inset-y-0 left-0 transition-transform duration-200 ease-out
+        md:sticky md:top-0 md:translate-x-0 md:bg-white/50
+        ${isOpen ? "translate-x-0 shadow-[0_8px_32px_rgba(32,35,69,0.15)]" : "-translate-x-full md:translate-x-0"}`}
+    >
+      {/* Mobile close button */}
+      <button
+        onClick={close}
+        className="md:hidden absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full text-ocean/50 hover:text-ocean hover:bg-ocean/[0.04] transition-colors"
+        aria-label="Close menu"
+      >
+        <X className="h-4 w-4" />
+      </button>
+
       {/* Client switcher */}
       <div className="px-3 pt-5 shrink-0" ref={switcherRef}>
         <div className="relative">
@@ -245,5 +271,6 @@ export function AppSidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

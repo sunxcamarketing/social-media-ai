@@ -547,7 +547,7 @@ function VoiceTrainingTab() {
                 <p className="text-[12px] text-ocean/80 leading-relaxed">{profile.summary}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {profile.tone && (
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-ocean/65 mb-1">Ton</p>

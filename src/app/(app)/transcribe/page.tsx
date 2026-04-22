@@ -250,7 +250,7 @@ export default function TranscribePage() {
                 onChange={e => setSaveForm({ ...saveForm, title: e.target.value })}
                 className="h-10 rounded-xl bg-ocean/[0.02] border-ocean/[0.06]" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-ocean/60">{t("transcribe.contentType")}</Label>
                 <div className="relative">

@@ -85,33 +85,33 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-10 animate-in-up">
       <div>
-        <h1 className="text-2xl font-light text-ocean">Hallo Aysun</h1>
+        <h1 className="text-xl sm:text-2xl font-light text-ocean">Hallo Aysun</h1>
         <p className="text-sm text-ocean/50 mt-1">
           Überblick über deine Agentur
         </p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statCards.map((s) => (
-          <div key={s.label} className="rounded-2xl bg-white border border-ocean/[0.06] p-5 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
+          <div key={s.label} className="rounded-2xl bg-white border border-ocean/[0.06] p-4 sm:p-5 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
             <div className="flex items-center gap-2 mb-3">
-              <s.icon className={`h-4 w-4 ${s.accent}`} />
-              <span className="text-[11px] text-ocean/50 uppercase tracking-wider">{s.label}</span>
+              <s.icon className={`h-4 w-4 ${s.accent} shrink-0`} />
+              <span className="text-[11px] text-ocean/50 uppercase tracking-wider truncate">{s.label}</span>
             </div>
             {s.value === null ? (
               <div className="h-9 w-16 rounded-md bg-ocean/[0.06] animate-pulse" />
             ) : (
-              <p className="text-3xl font-light text-ocean tabular-nums">{s.value}</p>
+              <p className="text-2xl sm:text-3xl font-light text-ocean tabular-nums">{s.value}</p>
             )}
           </div>
         ))}
       </div>
 
       {/* Two-column: Recent scripts + Quick actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         {/* Recent activity (2/3 width) */}
-        <div className="lg:col-span-2 rounded-2xl bg-white border border-ocean/[0.06] p-6 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
+        <div className="lg:col-span-2 rounded-2xl bg-white border border-ocean/[0.06] p-4 sm:p-6 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-sm font-medium text-ocean">Neueste Skripte</h2>
             <span className="text-[11px] text-ocean/40 uppercase tracking-wider">
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick actions (1/3 width) */}
-        <div className="rounded-2xl bg-white border border-ocean/[0.06] p-6 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
+        <div className="rounded-2xl bg-white border border-ocean/[0.06] p-4 sm:p-6 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
           <h2 className="text-sm font-medium text-ocean mb-5">Schnellzugriff</h2>
           <div className="space-y-1">
             {quickActions.map((a) => (

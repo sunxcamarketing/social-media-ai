@@ -207,18 +207,18 @@ export function ContentAgentChat({
   const hasMessages = messages.length > 0;
   const containerClass =
     layout === "fullscreen"
-      ? "-mx-6 -mt-8 -mb-8 flex flex-col"
+      ? "-mx-4 sm:-mx-6 md:-mx-8 -mt-6 md:-mt-8 -mb-6 md:-mb-8 flex flex-col"
       : "flex flex-col h-full";
   const containerStyle = layout === "fullscreen" ? { height: "calc(100vh - 3.5rem)" } : undefined;
 
   return (
     <div className={containerClass} style={containerStyle}>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-ocean/[0.06] shrink-0">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-ivory" />
-          <span className="text-sm font-medium text-ocean">{resolvedTitle}</span>
-          {clientName && <span className="text-xs text-ocean/45">· {clientName}</span>}
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-ocean/[0.06] shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles className="h-4 w-4 text-ivory shrink-0" />
+          <span className="text-sm font-medium text-ocean truncate">{resolvedTitle}</span>
+          {clientName && <span className="hidden sm:inline text-xs text-ocean/45">· {clientName}</span>}
         </div>
         <AnimatePresence>
           {hasMessages && (
@@ -238,7 +238,7 @@ export function ContentAgentChat({
       {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {!hasMessages ? (
-          <div className="flex flex-col items-center justify-center h-full px-6">
+          <div className="flex flex-col items-center justify-center h-full px-4 sm:px-6">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -272,7 +272,7 @@ export function ContentAgentChat({
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-6 py-6 space-y-5">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5">
             <AnimatePresence initial={false}>
               {messages.map((msg) => (
                 <motion.div
@@ -283,10 +283,10 @@ export function ContentAgentChat({
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] ${
+                    className={`max-w-[90%] sm:max-w-[85%] break-words ${
                       msg.role === "user"
-                        ? "rounded-3xl rounded-br-lg bg-ocean text-white text-sm px-5 py-3 shadow-sm"
-                        : "rounded-3xl rounded-bl-lg bg-white border border-ocean/[0.06] px-5 py-3 shadow-[0_1px_8px_rgba(32,35,69,0.04)]"
+                        ? "rounded-3xl rounded-br-lg bg-ocean text-white text-sm px-4 sm:px-5 py-3 shadow-sm"
+                        : "rounded-3xl rounded-bl-lg bg-white border border-ocean/[0.06] px-4 sm:px-5 py-3 shadow-[0_1px_8px_rgba(32,35,69,0.04)]"
                     }`}
                   >
                     {msg.attachments && msg.attachments.length > 0 && (
@@ -377,7 +377,7 @@ export function ContentAgentChat({
       </div>
 
       {hasMessages && (
-        <div className="shrink-0 px-6 pt-3 pb-6 bg-gradient-to-t from-white via-white to-white/80">
+        <div className="shrink-0 px-4 sm:px-6 pt-3 pb-4 sm:pb-6 bg-gradient-to-t from-white via-white to-white/80">
           <div className="max-w-3xl mx-auto">
             <ChatInput
               value={input}

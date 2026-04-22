@@ -1258,7 +1258,7 @@ function ClientInformationContent() {
               <Label className="text-xs text-ocean/70">{t("editBasic.displayName") || "Anzeigename"}</Label>
               <Input value={basicForm.configName} onChange={(e) => setBasicForm({ ...basicForm, configName: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" placeholder="Name in der Sidebar" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(["name", "company", "role", "location"] as const).map((key) => (
                 <div key={key}>
                   <Label className="text-xs text-ocean/70 capitalize">{key === "name" ? t("editBasic.fullName") : key === "company" ? t("editBasic.company") : key === "role" ? t("editBasic.role") : t("editBasic.location")}</Label>
@@ -1294,7 +1294,7 @@ function ClientInformationContent() {
                 />
               </div>
             </div>
-            <div className="border-t border-ocean/[0.06] pt-4 grid grid-cols-2 gap-3">
+            <div className="border-t border-ocean/[0.06] pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(["website", "instagram", "tiktok", "youtube", "linkedin", "twitter"] as const).map((key) => (
                 <div key={key}>
                   <Label className="text-xs text-ocean/70 capitalize">{key === "twitter" ? "X / Twitter" : key.charAt(0).toUpperCase() + key.slice(1)}</Label>
@@ -1325,7 +1325,7 @@ function ClientInformationContent() {
             </div>
             <div className="border-t border-ocean/[0.06] pt-4">
               <p className="text-xs font-medium text-ocean/70 mb-3">{t("editBrand.dreamCustomer")}</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(["tonality", "age", "gender", "income", "country", "profession", "values"] as const).map((key) => (
                   <div key={key}>
                     <Label className="text-xs text-ocean/70 capitalize">{key}</Label>

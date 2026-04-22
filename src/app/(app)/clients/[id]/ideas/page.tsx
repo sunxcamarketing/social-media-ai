@@ -139,7 +139,7 @@ export default function ClientIdeasPage() {
                   className="mt-1.5 rounded-xl glass border-ocean/[0.06] text-sm leading-relaxed"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs text-ocean/60">Content Type</Label>
                   <Select value={form.contentType} onValueChange={(v) => setForm({ ...form, contentType: v })}>

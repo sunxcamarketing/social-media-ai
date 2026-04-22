@@ -223,7 +223,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave }: {
           {/* Primary Goal */}
           <div className="space-y-3">
             <p className="text-xs font-medium text-ocean/60 uppercase tracking-wider">Primary Goal</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {Object.entries(GOAL_LABELS).map(([key, { label, description }]) => (
                 <button key={key} type="button"
                   onClick={() => setForm({ ...form, strategyGoal: form.strategyGoal === key ? "" : key })}
@@ -253,7 +253,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave }: {
             <div className="space-y-2">
               {form.pillars.map((pillar, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input value={pillar.name} onChange={(e) => setPillar(i, "name", e.target.value)}
                       placeholder="Pillar name" className="rounded-xl glass border-ocean/5 h-10 text-sm" />
                     <Input value={pillar.subTopics} onChange={(e) => setPillar(i, "subTopics", e.target.value)}
@@ -565,7 +565,7 @@ export default function ClientDetailPage() {
             {DAYS.some(d => weekly[d]?.type) && (
               <div>
                 <p className="text-[11px] text-ocean/60 uppercase tracking-wider mb-3">Weekly Posting Structure</p>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                   {DAYS.map((day) => {
                     const slot = weekly[day];
                     const colorClass = slot?.type ? TYPE_COLORS[slot.type] || "bg-ocean/[0.02] text-ocean/60 border-ocean/[0.06]" : "";

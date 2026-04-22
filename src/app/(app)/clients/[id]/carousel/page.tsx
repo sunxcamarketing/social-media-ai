@@ -426,7 +426,7 @@ export default function ClientCarouselPage() {
   const slideCount = events.filter((e) => e.stage === "slide").length;
 
   return (
-    <div className="px-8 py-8 max-w-[1400px] mx-auto">
+    <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-3 mb-8">
         <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blush-light to-blush flex items-center justify-center">
           <Grid3x3 className="h-5 w-5 text-white" />

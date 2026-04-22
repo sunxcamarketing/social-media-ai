@@ -1159,7 +1159,7 @@ export default function ClientScriptsPage() {
               <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="mt-1.5 rounded-xl border-ocean/[0.06] h-10 text-sm" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs text-ocean/60">Pillar</Label>
                 <Input value={form.pillar} onChange={(e) => setForm({ ...form, pillar: e.target.value })}

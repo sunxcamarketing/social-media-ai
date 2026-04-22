@@ -8,10 +8,12 @@ import {
   Command as CommandIcon,
   Settings,
   LayoutDashboard,
+  Menu,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useClientsCache } from "@/hooks/use-clients-cache";
 import { useI18n } from "@/lib/i18n";
+import { useMobileNav } from "@/components/mobile-nav-context";
 
 const SECTION_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -46,6 +48,7 @@ export function AppTopbar() {
   const router = useRouter();
   const clients = useClientsCache();
   const { lang, toggleLang } = useI18n();
+  const { toggle: toggleMobileNav } = useMobileNav();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -93,15 +96,24 @@ export function AppTopbar() {
     <header className="h-14 shrink-0 border-b border-ocean/[0.06] bg-white/75 backdrop-blur-xl sticky top-0 z-40">
       <div className="h-0.5 bg-gradient-to-r from-blush-light via-blush to-ocean/60" />
 
-      <div className="h-full flex items-center gap-4 px-6">
+      <div className="h-full flex items-center gap-2 sm:gap-4 px-3 sm:px-6">
+        {/* Mobile hamburger */}
+        <button
+          onClick={toggleMobileNav}
+          className="md:hidden h-9 w-9 flex items-center justify-center rounded-lg text-ocean/70 hover:text-ocean hover:bg-ocean/[0.04] transition-colors shrink-0"
+          aria-label="Open navigation"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
         {/* Logo */}
         <Link href="/admin" className="shrink-0">
-          <h1 className="text-base font-light tracking-[0.3em] uppercase text-ocean hover:text-ocean-light transition-colors">
+          <h1 className="text-sm sm:text-base font-light tracking-[0.2em] sm:tracking-[0.3em] uppercase text-ocean hover:text-ocean-light transition-colors">
             SUN<span className="text-ivory">X</span>CA
           </h1>
         </Link>
 
-        <div className="h-5 w-px bg-ocean/10 shrink-0" />
+        <div className="hidden sm:block h-5 w-px bg-ocean/10 shrink-0" />
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 min-w-0 flex-1 text-sm">
@@ -124,11 +136,11 @@ export function AppTopbar() {
         </nav>
 
         {/* Right: Language toggle + Search + User */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={toggleLang}
             title={lang === "de" ? "Switch to English" : "Auf Deutsch wechseln"}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-ocean/[0.08] bg-white/80 text-xs font-medium text-ocean/60 hover:text-ocean hover:border-ocean/[0.15] transition-all"
+            className="hidden xs:flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-full border border-ocean/[0.08] bg-white/80 text-[11px] sm:text-xs font-medium text-ocean/60 hover:text-ocean hover:border-ocean/[0.15] transition-all"
           >
             <span className={lang === "de" ? "text-ocean" : "text-ocean/30"}>DE</span>
             <span className="text-ocean/20">|</span>

@@ -202,7 +202,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
         <div className="space-y-6 pt-2">
           <div className="space-y-3">
             <p className="text-xs font-medium text-ocean uppercase tracking-wider">{t("strategyEdit.primaryGoal")}</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {Object.entries(GOAL_LABELS).map(([key, { label, description }]) => (
                 <button key={key} type="button"
                   onClick={() => setForm({ ...form, strategyGoal: form.strategyGoal === key ? "" : key })}
@@ -231,7 +231,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
             <div className="space-y-2">
               {form.pillars.map((pillar, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input value={pillar.name} onChange={(e) => setPillar(i, "name", e.target.value)}
                       placeholder="Pillar-Name" className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
                     <Input value={pillar.subTopics} onChange={(e) => setPillar(i, "subTopics", e.target.value)}

@@ -510,7 +510,7 @@ export default function StrategyPage() {
         {/* Example Calendar */}
         <div className="glass rounded-2xl border border-ocean/[0.06] p-5 space-y-4">
           <p className="text-[11px] font-medium text-ocean/60 uppercase tracking-wider">Example Editorial Calendar</p>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
             {EXAMPLE_CALENDAR.map(({ day, type, format }) => {
               const colorClass = TYPE_COLORS[type] || "bg-ocean/[0.02] text-ocean/60 border-ocean/[0.06]";
               return (

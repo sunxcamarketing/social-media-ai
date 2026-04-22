@@ -746,13 +746,13 @@ export default function NewClientOnboarding() {
   // Once the client is created and we're in voice session — render the VoiceAgent full-width.
   if (createdClientId) {
     return (
-      <div className="-mx-8 -mt-8 -mb-8 min-h-[calc(100vh-3.5rem)] flex flex-col">
-        <div className="px-8 pt-8 pb-4 flex items-center justify-between max-w-5xl mx-auto w-full">
-          <div>
+      <div className="-mx-4 sm:-mx-6 md:-mx-8 -mt-6 md:-mt-8 -mb-6 md:-mb-8 min-h-[calc(100vh-3.5rem)] flex flex-col">
+        <div className="px-4 sm:px-6 md:px-8 pt-6 md:pt-8 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-5xl mx-auto w-full">
+          <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-ocean/40 mb-1">
               {pick(lang, "Letzter Schritt", "Final step")}
             </div>
-            <h1 className="text-xl font-light text-ocean">
+            <h1 className="text-lg sm:text-xl font-light text-ocean">
               {pick(lang, "Erzähl uns deine Geschichte.", "Tell us your story.")}
             </h1>
             <p className="text-sm text-ocean/50 mt-1">
@@ -761,13 +761,13 @@ export default function NewClientOnboarding() {
           </div>
           <button
             onClick={finishVoiceSession}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-ocean/[0.12] text-sm text-ocean/70 hover:bg-ocean/[0.03] transition-all"
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full border border-ocean/[0.12] text-sm text-ocean/70 hover:bg-ocean/[0.03] transition-all shrink-0"
           >
             <SkipForward className="h-4 w-4" />
-            {pick(lang, "Fertig — zum Dashboard", "Done — go to dashboard")}
+            <span className="whitespace-nowrap">{pick(lang, "Fertig — zum Dashboard", "Done — go to dashboard")}</span>
           </button>
         </div>
-        <div className="flex-1 px-8 pb-8 max-w-5xl mx-auto w-full">
+        <div className="flex-1 px-4 sm:px-6 md:px-8 pb-6 md:pb-8 max-w-5xl mx-auto w-full">
           <VoiceAgent
             clientIdOverride={createdClientId}
             lang={lang}
@@ -780,9 +780,9 @@ export default function NewClientOnboarding() {
   }
 
   return (
-    <div className="-mx-8 -mt-8 -mb-8 min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-6 py-12">
+    <div className="-mx-4 sm:-mx-6 md:-mx-8 -mt-6 md:-mt-8 -mb-6 md:-mb-8 min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
       {/* Progress bar */}
-      <div className="w-full max-w-2xl mb-10">
+      <div className="w-full max-w-2xl mb-8 sm:mb-10">
         <div className="flex gap-1.5">
           {STEPS.map((s, i) => (
             <button
@@ -816,8 +816,8 @@ export default function NewClientOnboarding() {
             exit={{ opacity: 0, x: direction * -60 }}
             transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            <div className="mb-8">
-              <h1 className="text-2xl font-light text-ocean">{step.title}</h1>
+            <div className="mb-6 sm:mb-8">
+              <h1 className="text-xl sm:text-2xl font-light text-ocean">{step.title}</h1>
               {step.subtitle && (
                 <p className="text-sm text-ocean/50 mt-1.5">{step.subtitle}</p>
               )}
@@ -830,7 +830,7 @@ export default function NewClientOnboarding() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className={field.half ? "w-[calc(50%-0.5rem)]" : "w-full"}
+                  className={field.half ? "w-full sm:w-[calc(50%-0.5rem)]" : "w-full"}
                 >
                   {field.type !== "color-palette" && field.type !== "font-picker" && field.type !== "voice-intro" && field.label && (
                     <label className="block text-xs font-medium text-ocean/60 mb-1.5">

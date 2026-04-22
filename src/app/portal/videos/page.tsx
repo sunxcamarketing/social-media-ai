@@ -42,7 +42,7 @@ export default function PortalVideos() {
       isEmpty={videos.length === 0}
       emptyMessage={t("portal.videos.empty")}
     >
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         {videos.map(video => (
           <div key={video.id} className="glass rounded-xl overflow-hidden group">
             {video.thumbnail && (
