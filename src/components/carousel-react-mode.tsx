@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CarouselReactPreview } from "@/components/carousel-react-preview";
+import { CarouselChat } from "@/components/carousel-chat";
 
 interface ProgressEvent {
   stage: string;
@@ -311,6 +312,16 @@ export function CarouselReactMode({ clientId }: Props) {
                 </li>
               ))}
             </ol>
+          </div>
+        )}
+
+        {/* Chat-Refine — appears once a carousel is loaded/generated */}
+        {currentRunId && tsxCode && !generating && (
+          <div className="h-[420px]">
+            <CarouselChat
+              runId={currentRunId}
+              onTsxUpdate={(newTsx) => setTsxCode(newTsx)}
+            />
           </div>
         )}
 
