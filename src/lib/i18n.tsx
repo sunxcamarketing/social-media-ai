@@ -10,6 +10,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "portalNav.profile": { de: "Profil", en: "Profile" },
   "portal.dash.profile": { de: "Profil", en: "Profile" },
   "portalNav.scripts": { de: "Skripte", en: "Scripts" },
+  "portalNav.stories": { de: "Stories", en: "Stories" },
   "portalNav.strategy": { de: "Strategie", en: "Strategy" },
   "portalNav.ideas": { de: "Ideen", en: "Ideas" },
   "portalNav.audit": { de: "Audit", en: "Audit" },
@@ -423,6 +424,11 @@ const translations: Record<string, { de: string; en: string }> = {
   "audit.error.notFound": { de: "Instagram-Profil konnte nicht gefunden werden. Prüfe den Handle und versuche es erneut.", en: "Instagram profile could not be found. Check the handle and try again." },
   "audit.error.generic": { de: "Ein Fehler ist aufgetreten. Bitte versuche es erneut.", en: "An error occurred. Please try again." },
   "audit.newAudit": { de: "Neuen Strategie-Scan starten", en: "Start new strategy scan" },
+  "audit.runNew": { de: "Neuer Audit", en: "New audit" },
+  "audit.runStart": { de: "Audit starten", en: "Start audit" },
+  "audit.running": { de: "Audit läuft…", en: "Audit running…" },
+  "audit.confirmDelete": { de: "Audit wirklich löschen?", en: "Really delete this audit?" },
+  "strategy.aiReasoning": { de: "AI Begründung", en: "AI Reasoning" },
 
   // Scripts Page extras
   "scripts.regenerate": { de: "Neu generieren", en: "Regenerate" },

@@ -39,9 +39,12 @@ const FONTS_HREF =
   ].join("&") +
   "&display=swap";
 
-const REACT_CDN = "https://unpkg.com/react@19/umd/react.production.min.js";
-const REACT_DOM_CDN = "https://unpkg.com/react-dom@19/umd/react-dom.production.min.js";
-const BABEL_CDN = "https://unpkg.com/@babel/standalone@7/babel.min.js";
+// jsdelivr has reliable CORS headers; unpkg's redirect (react@19 → react@19.x)
+// drops CORS on the redirect target, which blocks iframe script loading.
+// Pin exact versions so there's no redirect to begin with.
+const REACT_CDN = "https://cdn.jsdelivr.net/npm/react@19.2.5/umd/react.production.min.js";
+const REACT_DOM_CDN = "https://cdn.jsdelivr.net/npm/react-dom@19.2.5/umd/react-dom.production.min.js";
+const BABEL_CDN = "https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.9/babel.min.js";
 const TAILWIND_CDN = "https://cdn.tailwindcss.com";
 
 const SLIDE_WIDTH = 1080;
@@ -62,8 +65,8 @@ function buildSrcDoc(tsxCode: string): string {
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="${FONTS_HREF}" rel="stylesheet" />
-<script src="${REACT_CDN}" crossorigin></script>
-<script src="${REACT_DOM_CDN}" crossorigin></script>
+<script src="${REACT_CDN}"></script>
+<script src="${REACT_DOM_CDN}"></script>
 <script src="${BABEL_CDN}"></script>
 <script src="${TAILWIND_CDN}"></script>
 <style>
