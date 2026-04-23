@@ -450,6 +450,12 @@ export default function ClientStrategyPage() {
 
   useEffect(() => { loadClientCached(id).then(setClient); loadAnalyses(); }, [id]);
 
+  // Sync audit language to the client's configured language so English clients
+  // don't silently get German audits. Admin can still override via the dropdown.
+  useEffect(() => {
+    if (client?.language === "en") setAuditLang("en");
+  }, [client?.language]);
+
   // Reload client data when background tasks complete
   useEffect(() => {
     if (analysisState?.status === "done") {

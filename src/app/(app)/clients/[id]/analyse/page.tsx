@@ -23,6 +23,12 @@ export default function ClientAuditPage() {
   const [client, setClient] = useState<Config | null>(null);
   const [lang, setLang] = useState<"de" | "en">("de");
 
+  // Default audit language to the client's configured language as soon as it loads.
+  // Without this, English-only clients silently got German audits.
+  useEffect(() => {
+    if (client?.language === "en") setLang("en");
+  }, [client?.language]);
+
   const { audit, startAudit, clearAudit } = useAudit(`client-${id}`);
 
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
