@@ -53,12 +53,13 @@ function StepIndicator({ steps }: { steps: PipelineStep[] }) {
   );
 }
 
-function ScriptCard({ version, label, color, onUpdate, variant }: {
+function ScriptCard({ version, label, color, onUpdate, variant, clientId }: {
   version: { hook: string; body: string; cta: string; textHook: string };
   label: string;
   color: string;
   onUpdate: (field: "hook" | "body" | "cta" | "textHook", value: string) => void;
   variant: "short" | "long";
+  clientId?: string;
 }) {
   const [editing, setEditing] = useState<"hook" | "body" | "cta" | "textHook" | null>(null);
   const [draft, setDraft] = useState("");
@@ -93,6 +94,7 @@ function ScriptCard({ version, label, color, onUpdate, variant }: {
           hook: version.hook,
           body: version.body,
           cta: version.cta,
+          clientId,
         }),
       });
       const data = await res.json();
@@ -594,6 +596,7 @@ export default function ViralScriptPage() {
               color="border-blue-200 bg-blue-50/30"
               variant="short"
               onUpdate={(field, value) => vs.updateScript("short", field, value)}
+              clientId={vs.clientId}
             />
             <ScriptCard
               version={vs.result.long}
@@ -601,6 +604,7 @@ export default function ViralScriptPage() {
               color="border-purple-200 bg-purple-50/30"
               variant="long"
               onUpdate={(field, value) => vs.updateScript("long", field, value)}
+              clientId={vs.clientId}
             />
           </div>
 

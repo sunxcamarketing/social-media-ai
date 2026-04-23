@@ -42,7 +42,8 @@ export async function POST(request: Request) {
     async start(controller) {
       try {
         const claude = getAnthropicClient();
-        const clientName = config.name || config.configName || "der Kunde";
+        const lang: "de" | "en" = config.language === "en" ? "en" : "de";
+        const clientName = config.name || config.configName || (lang === "en" ? "the client" : "der Kunde");
         const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
         // ── Step 0: Load context ────────────────────────────────────────
@@ -61,7 +62,11 @@ export async function POST(request: Request) {
         sendEvent(controller, {
           step: "context",
           status: "done",
-          ...(missingProfiles ? { warning: "Voice Profile oder Skript-Struktur fehlt. Für bessere Ergebnisse: Client-Seite → Drive verbinden." } : {}),
+          ...(missingProfiles
+            ? { warning: lang === "en"
+                ? "Voice profile or script structure missing. For better results: Client page → Connect Drive."
+                : "Voice Profile oder Skript-Struktur fehlt. Für bessere Ergebnisse: Client-Seite → Drive verbinden." }
+            : {}),
         });
 
         // ── Step 1: Get reference video analysis ────────────────────────
@@ -71,26 +76,26 @@ export async function POST(request: Request) {
 
         if (videoId) {
           const video = await readVideo(videoId);
-          if (!video) throw new Error("Video nicht gefunden");
+          if (!video) throw new Error(lang === "en" ? "Video not found" : "Video nicht gefunden");
           referenceAnalysis = video.analysis || "";
           referenceCreator = video.creator || "";
           referenceViews = video.views || 0;
         } else if (videoUrl) {
           // Scrape + analyze from URL
-          sendEvent(controller, { step: "reference", status: "loading", message: "Video wird geladen..." });
+          sendEvent(controller, { step: "reference", status: "loading", message: lang === "en" ? "Loading video..." : "Video wird geladen..." });
 
           const post = await scrapeSinglePost(videoUrl);
           trackApifyCost({ clientId, userId, operation: "viral_scrape", initiator, itemCount: 1 });
           referenceCreator = post.ownerUsername || "";
           referenceViews = post.videoPlayCount || 0;
 
-          if (!post.videoUrl) throw new Error("Kein Video in diesem Post gefunden. Ist es ein Reel?");
+          if (!post.videoUrl) throw new Error(lang === "en" ? "No video found in this post. Is it a Reel?" : "Kein Video in diesem Post gefunden. Ist es ein Reel?");
 
-          sendEvent(controller, { step: "reference", status: "loading", message: "Video wird analysiert..." });
+          sendEvent(controller, { step: "reference", status: "loading", message: lang === "en" ? "Analyzing video..." : "Video wird analysiert..." });
 
           // Download video
           const videoRes = await fetch(post.videoUrl);
-          if (!videoRes.ok) throw new Error("Video konnte nicht heruntergeladen werden");
+          if (!videoRes.ok) throw new Error(lang === "en" ? "Video could not be downloaded" : "Video konnte nicht heruntergeladen werden");
           const buffer = Buffer.from(await videoRes.arrayBuffer());
 
           // Upload to Gemini + analyze
@@ -101,7 +106,7 @@ export async function POST(request: Request) {
           sendEvent(controller, { step: "reference", status: "done" });
         }
 
-        if (!referenceAnalysis) throw new Error("Keine Analyse für das Referenz-Video verfügbar");
+        if (!referenceAnalysis) throw new Error(lang === "en" ? "No analysis available for the reference video" : "Keine Analyse für das Referenz-Video verfügbar");
 
         // ── Step 2: Extract psychological mechanics ───────────────────
         sendEvent(controller, { step: "structure", status: "loading" });
@@ -109,18 +114,20 @@ export async function POST(request: Request) {
         const structureMsg = await claude.messages.create({
           model: MODEL,
           max_tokens: 4500,
-          system: buildPrompt("viral-script-structure"),
+          system: buildPrompt("viral-script-structure", {}, lang),
           tools: [VIRAL_STRUCTURE_TOOL],
           tool_choice: { type: "tool", name: "submit_structure" },
           messages: [{
             role: "user",
-            content: `Analysiere die PSYCHOLOGISCHE MECHANIK dieses viralen Videos (${referenceCreator ? `@${referenceCreator}, ` : ""}${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : ""}):\n\n${referenceAnalysis}`,
+            content: lang === "en"
+              ? `Analyze the PSYCHOLOGICAL MECHANICS of this viral video (${referenceCreator ? `@${referenceCreator}, ` : ""}${referenceViews > 0 ? `${referenceViews.toLocaleString()} views` : ""}):\n\n${referenceAnalysis}`
+              : `Analysiere die PSYCHOLOGISCHE MECHANIK dieses viralen Videos (${referenceCreator ? `@${referenceCreator}, ` : ""}${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : ""}):\n\n${referenceAnalysis}`,
           }],
         });
         track(structureMsg.usage, "viral_structure");
 
         const structureTool = structureMsg.content.find(b => b.type === "tool_use");
-        if (!structureTool || structureTool.type !== "tool_use") throw new Error("Psychologie-Analyse fehlgeschlagen");
+        if (!structureTool || structureTool.type !== "tool_use") throw new Error(lang === "en" ? "Psychology analysis failed" : "Psychologie-Analyse fehlgeschlagen");
         const rawStructure = structureTool.input as Record<string, unknown>;
         const refStructure = {
           sentences: (rawStructure.sentences as { text: string; role: string; technique: string; contentDescription: string }[]) || [],
@@ -138,21 +145,26 @@ export async function POST(request: Request) {
 
         const refHookSentence = refStructure.sentences.find(s => s.role === "HOOK")?.text || refStructure.sentences[0]?.text || "";
 
+        const niche = (config as unknown as Record<string, string>).creatorsCategory || (lang === "en" ? "unknown" : "unbekannt");
+        const hookUserContent = lang === "en"
+          ? `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_hook>\nOriginal hook: "${refHookSentence}"\nHook type: ${refStructure.hookType}\nWhy it works: ${refStructure.hookAnalysis}\n</reference_hook>\n\nCreate 3 hook variants for ${clientName} (niche: ${niche}).\n\nMethod: Use the same PSYCHOLOGICAL TRIGGER as the original (${refStructure.hookType}), but create a NEW hook that feels original for the client's niche. Don't swap words — create the same EFFECT.\n\nEach variant should take a different approach to activating the same trigger. Write in English.`
+          : `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_hook>\nOriginal-Hook: "${refHookSentence}"\nHook-Typ: ${refStructure.hookType}\nWarum er funktioniert: ${refStructure.hookAnalysis}\n</reference_hook>\n\nErstelle 3 Hook-Varianten für ${clientName} (Nische: ${niche}).\n\nMethode: Nutze den gleichen PSYCHOLOGISCHEN TRIGGER wie das Original (${refStructure.hookType}), aber erstelle einen NEUEN Hook der sich für die Nische des Kunden original anfühlt. Nicht die Wörter tauschen — den gleichen EFFEKT erzeugen.\n\nJede Variante soll einen anderen Ansatz wählen, den gleichen Trigger zu aktivieren.`;
+
         const hookMsg = await claude.messages.create({
           model: MODEL,
           max_tokens: 2500,
-          system: buildPrompt("viral-hook-generation"),
+          system: buildPrompt("viral-hook-generation", {}, lang),
           tools: [HOOK_GENERATION_TOOL],
           tool_choice: { type: "tool", name: "submit_hooks" },
           messages: [{
             role: "user",
-            content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_hook>\nOriginal-Hook: "${refHookSentence}"\nHook-Typ: ${refStructure.hookType}\nWarum er funktioniert: ${refStructure.hookAnalysis}\n</reference_hook>\n\nErstelle 3 Hook-Varianten für ${clientName} (Nische: ${(config as unknown as Record<string, string>).creatorsCategory || "unbekannt"}).\n\nMethode: Nutze den gleichen PSYCHOLOGISCHEN TRIGGER wie das Original (${refStructure.hookType}), aber erstelle einen NEUEN Hook der sich für die Nische des Kunden original anfühlt. Nicht die Wörter tauschen — den gleichen EFFEKT erzeugen.\n\nJede Variante soll einen anderen Ansatz wählen, den gleichen Trigger zu aktivieren.`,
+            content: hookUserContent,
           }],
         });
         track(hookMsg.usage, "viral_hooks");
 
         const hookTool = hookMsg.content.find(b => b.type === "tool_use");
-        if (!hookTool || hookTool.type !== "tool_use") throw new Error("Hook-Generierung fehlgeschlagen");
+        if (!hookTool || hookTool.type !== "tool_use") throw new Error(lang === "en" ? "Hook generation failed" : "Hook-Generierung fehlgeschlagen");
         const rawHook = hookTool.input as Record<string, unknown>;
         const hookResult = {
           options: (rawHook.options as { hook: string; pattern: string }[]) || [],
@@ -160,7 +172,7 @@ export async function POST(request: Request) {
           selectionReason: (rawHook.selectionReason as string) || "",
         };
 
-        if (hookResult.options.length === 0) throw new Error("Hook-Generierung hat keine Optionen erstellt. Bitte erneut versuchen.");
+        if (hookResult.options.length === 0) throw new Error(lang === "en" ? "Hook generation produced no options. Please try again." : "Hook-Generierung hat keine Optionen erstellt. Bitte erneut versuchen.");
 
         sendEvent(controller, { step: "hooks", status: "done", data: hookResult });
 
@@ -169,29 +181,41 @@ export async function POST(request: Request) {
 
         const selectedHook = hookResult.options[hookResult.selected]?.hook || hookResult.options[0]?.hook || "";
         // Build psychology summary from structure analysis
-        const psychologyBlock = [
-          refStructure.hookType && `HOOK-TRIGGER: ${refStructure.hookType}`,
-          refStructure.hookAnalysis && `WARUM DER HOOK FUNKTIONIERT: ${refStructure.hookAnalysis}`,
-          refStructure.pattern && `EMOTIONALE REISE: ${refStructure.pattern}`,
-          refStructure.videoType && `VIDEO-FORMAT: ${refStructure.videoType}`,
-          refStructure.energy && `ENERGIE: ${refStructure.energy}`,
-        ].filter(Boolean).join("\n");
+        const psychologyBlock = lang === "en"
+          ? [
+              refStructure.hookType && `HOOK TRIGGER: ${refStructure.hookType}`,
+              refStructure.hookAnalysis && `WHY THE HOOK WORKS: ${refStructure.hookAnalysis}`,
+              refStructure.pattern && `EMOTIONAL JOURNEY: ${refStructure.pattern}`,
+              refStructure.videoType && `VIDEO FORMAT: ${refStructure.videoType}`,
+              refStructure.energy && `ENERGY: ${refStructure.energy}`,
+            ].filter(Boolean).join("\n")
+          : [
+              refStructure.hookType && `HOOK-TRIGGER: ${refStructure.hookType}`,
+              refStructure.hookAnalysis && `WARUM DER HOOK FUNKTIONIERT: ${refStructure.hookAnalysis}`,
+              refStructure.pattern && `EMOTIONALE REISE: ${refStructure.pattern}`,
+              refStructure.videoType && `VIDEO-FORMAT: ${refStructure.videoType}`,
+              refStructure.energy && `ENERGIE: ${refStructure.energy}`,
+            ].filter(Boolean).join("\n");
+
+        const adaptUserContent = lang === "en"
+          ? `<client>\n${clientContext}\n</client>\n${voiceBlock}\n${structureBlock}\n${auditBlock}\n\n<reference_video>\nThis video ${referenceViews > 0 ? `got ${referenceViews.toLocaleString()} views` : "went viral"}${referenceCreator ? ` from @${referenceCreator}` : ""}. It is PROVEN success.\n</reference_video>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<psychological_mechanics>\n${psychologyBlock}\n</psychological_mechanics>\n\n<selected_hook>\n${selectedHook}\n</selected_hook>\n\nYOUR TASK (write in English):\n1. Use the same PSYCHOLOGICAL MECHANICS as the original (same hook trigger, same retention mechanic, same share trigger)\n2. But write a NEW script that feels original — not like a copy with swapped words\n3. Find the EQUIVALENT in ${clientName}'s niche: Which belief can be challenged? Which number shocks? Which story triggers the same emotion?\n4. Be MORE CONCRETE than the original — real numbers, real examples from the niche\n5. Clear opinion angle that polarizes`
+          : `<client>\n${clientContext}\n</client>\n${voiceBlock}\n${structureBlock}\n${auditBlock}\n\n<reference_video>\nDieses Video hat ${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : "viral performt"}${referenceCreator ? ` von @${referenceCreator}` : ""}. Es ist BEWIESENER Erfolg.\n</reference_video>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<psychological_mechanics>\n${psychologyBlock}\n</psychological_mechanics>\n\n<selected_hook>\n${selectedHook}\n</selected_hook>\n\nDEIN AUFTRAG:\n1. Nutze die gleiche PSYCHOLOGISCHE MECHANIK wie das Original (gleicher Hook-Trigger, gleiche Retention-Mechanik, gleicher Share-Trigger)\n2. Aber schreibe ein NEUES Skript das sich original anfühlt — nicht wie eine Kopie mit ausgetauschten Wörtern\n3. Finde das ÄQUIVALENT in der Nische von ${clientName}: Welche Überzeugung kann angegriffen werden? Welche Zahl schockiert? Welche Geschichte löst die gleiche Emotion aus?\n4. Sei KONKRETER als das Original — echte Zahlen, echte Beispiele aus der Nische\n5. Klarer Meinungs-Winkel der polarisiert`;
 
         const adaptMsg = await claude.messages.create({
           model: MODEL,
           max_tokens: 5000,
-          system: buildPrompt("viral-script-adapt"),
+          system: buildPrompt("viral-script-adapt", {}, lang),
           tools: [VIRAL_ADAPT_TOOL],
           tool_choice: { type: "tool", name: "submit_adapted_script" },
           messages: [{
             role: "user",
-            content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n${structureBlock}\n${auditBlock}\n\n<reference_video>\nDieses Video hat ${referenceViews > 0 ? `${referenceViews.toLocaleString()} Views` : "viral performt"}${referenceCreator ? ` von @${referenceCreator}` : ""}. Es ist BEWIESENER Erfolg.\n</reference_video>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<psychological_mechanics>\n${psychologyBlock}\n</psychological_mechanics>\n\n<selected_hook>\n${selectedHook}\n</selected_hook>\n\nDEIN AUFTRAG:\n1. Nutze die gleiche PSYCHOLOGISCHE MECHANIK wie das Original (gleicher Hook-Trigger, gleiche Retention-Mechanik, gleicher Share-Trigger)\n2. Aber schreibe ein NEUES Skript das sich original anfühlt — nicht wie eine Kopie mit ausgetauschten Wörtern\n3. Finde das ÄQUIVALENT in der Nische von ${clientName}: Welche Überzeugung kann angegriffen werden? Welche Zahl schockiert? Welche Geschichte löst die gleiche Emotion aus?\n4. Sei KONKRETER als das Original — echte Zahlen, echte Beispiele aus der Nische\n5. Klarer Meinungs-Winkel der polarisiert`,
+            content: adaptUserContent,
           }],
         });
         track(adaptMsg.usage, "viral_adapt");
 
         const adaptTool = adaptMsg.content.find(b => b.type === "tool_use");
-        if (!adaptTool || adaptTool.type !== "tool_use") throw new Error("Skript-Adaption fehlgeschlagen");
+        if (!adaptTool || adaptTool.type !== "tool_use") throw new Error(lang === "en" ? "Script adaptation failed" : "Skript-Adaption fehlgeschlagen");
         const rawAdapt = adaptTool.input as {
           textHookShort: string; textHookLong: string;
           hookShort: string; bodyShort: string; ctaShort: string;
@@ -219,13 +243,17 @@ export async function POST(request: Request) {
         let currentShort = { hook: adaptResult.hookShort, body: adaptResult.bodyShort, cta: adaptResult.ctaShort, textHook: adaptResult.textHookShort || "" };
         let currentLong = { hook: adaptResult.hookLong, body: adaptResult.bodyLong, cta: adaptResult.ctaLong, textHook: adaptResult.textHookLong || "" };
 
-        const criticSystemPrompt = buildPrompt("viral-script-critic");
+        const criticSystemPrompt = buildPrompt("viral-script-critic", {}, lang);
         const MAX_ITERATIONS = 3;
         const allCritiqueRounds: { round: number; scoreShort: number; scoreLong: number; issues: string[]; changes?: string }[] = [];
 
         for (let round = 1; round <= MAX_ITERATIONS; round++) {
           // ── Critic bewertet ──
-          sendEvent(controller, { step: "review", status: "loading", message: `Critic Agent bewertet (Runde ${round}/${MAX_ITERATIONS})...` });
+          sendEvent(controller, { step: "review", status: "loading", message: lang === "en" ? `Critic Agent reviewing (round ${round}/${MAX_ITERATIONS})...` : `Critic Agent bewertet (Runde ${round}/${MAX_ITERATIONS})...` });
+
+          const criticUserContent = lang === "en"
+            ? `<reference_psychology>\nHook trigger: ${refStructure.hookType}\nWhy the hook works: ${refStructure.hookAnalysis}\nEmotional journey: ${refStructure.pattern}\nVideo format: ${refStructure.videoType}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n${voiceBlock}\n\n<adapted_script>\n--- SHORT ---\nText hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LONG ---\nText hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</adapted_script>\n\nReview this adapted script. Does it feel ORIGINAL or like a template? Does it use the same PSYCHOLOGICAL EFFECT as the reference video? Be strict.`
+            : `<reference_psychology>\nHook-Trigger: ${refStructure.hookType}\nWarum der Hook funktioniert: ${refStructure.hookAnalysis}\nEmotionale Reise: ${refStructure.pattern}\nVideo-Format: ${refStructure.videoType}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n${voiceBlock}\n\n<adapted_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</adapted_script>\n\nBewerte dieses adaptierte Skript. Fühlt es sich ORIGINAL an oder wie ein Template? Nutzt es die gleiche PSYCHOLOGISCHE WIRKUNG wie das Referenz-Video? Sei streng.`;
 
           const criticMsg = await claude.messages.create({
             model: MODEL,
@@ -235,7 +263,7 @@ export async function POST(request: Request) {
             tool_choice: { type: "tool", name: "submit_critique" },
             messages: [{
               role: "user",
-              content: `<reference_psychology>\nHook-Trigger: ${refStructure.hookType}\nWarum der Hook funktioniert: ${refStructure.hookAnalysis}\nEmotionale Reise: ${refStructure.pattern}\nVideo-Format: ${refStructure.videoType}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n${voiceBlock}\n\n<adapted_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</adapted_script>\n\nBewerte dieses adaptierte Skript. Fühlt es sich ORIGINAL an oder wie ein Template? Nutzt es die gleiche PSYCHOLOGISCHE WIRKUNG wie das Referenz-Video? Sei streng.`,
+              content: criticUserContent,
             }],
           });
           track(criticMsg.usage, "viral_critic");
@@ -254,9 +282,11 @@ export async function POST(request: Request) {
             summary: (rawCritique.summary as string) || "",
           };
 
+          const shortTag = lang === "en" ? "SHORT" : "KURZ";
+          const longTag = lang === "en" ? "LONG" : "LANG";
           const allIssues = [
-            ...critique.issuesShort.map(i => `[KURZ] ${i.what}: ${i.why}`),
-            ...critique.issuesLong.map(i => `[LANG] ${i.what}: ${i.why}`),
+            ...critique.issuesShort.map(i => `[${shortTag}] ${i.what}: ${i.why}`),
+            ...critique.issuesLong.map(i => `[${longTag}] ${i.what}: ${i.why}`),
           ];
 
           allCritiqueRounds.push({ round, scoreShort: critique.scoreShort, scoreLong: critique.scoreLong, issues: allIssues });
@@ -281,22 +311,31 @@ export async function POST(request: Request) {
           if (round === MAX_ITERATIONS) break;
 
           // ── Writer überarbeitet basierend auf Feedback ──
-          sendEvent(controller, { step: "review", status: "loading", message: `Writer Agent überarbeitet (Runde ${round}/${MAX_ITERATIONS})...` });
+          sendEvent(controller, { step: "review", status: "loading", message: lang === "en" ? `Writer Agent revising (round ${round}/${MAX_ITERATIONS})...` : `Writer Agent überarbeitet (Runde ${round}/${MAX_ITERATIONS})...` });
 
-          const feedbackForWriter = [
-            ...critique.issuesShort.map(i => `[KURZ] Problem: ${i.what} — Grund: ${i.why} — Fix: ${i.fix}`),
-            ...critique.issuesLong.map(i => `[LANG] Problem: ${i.what} — Grund: ${i.why} — Fix: ${i.fix}`),
-          ].join("\n");
+          const feedbackForWriter = lang === "en"
+            ? [
+                ...critique.issuesShort.map(i => `[SHORT] Problem: ${i.what} — Reason: ${i.why} — Fix: ${i.fix}`),
+                ...critique.issuesLong.map(i => `[LONG] Problem: ${i.what} — Reason: ${i.why} — Fix: ${i.fix}`),
+              ].join("\n")
+            : [
+                ...critique.issuesShort.map(i => `[KURZ] Problem: ${i.what} — Grund: ${i.why} — Fix: ${i.fix}`),
+                ...critique.issuesLong.map(i => `[LANG] Problem: ${i.what} — Grund: ${i.why} — Fix: ${i.fix}`),
+              ].join("\n");
+
+          const reviseUserContent = lang === "en"
+            ? `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_psychology>\nHook trigger: ${refStructure.hookType}\nWhy the hook works: ${refStructure.hookAnalysis}\nEmotional journey: ${refStructure.pattern}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<current_script>\n--- SHORT ---\nText hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LONG ---\nText hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</current_script>\n\n<critic_feedback>\nScore Short: ${critique.scoreShort}/10 | Score Long: ${critique.scoreLong}/10\n\n${feedbackForWriter}\n</critic_feedback>\n\nRevise the script based on the critic feedback. Fix EVERY issue mentioned. Keep everything that is good. The script must feel ORIGINAL and create the same PSYCHOLOGICAL EFFECT as the reference video. Write in English.`
+            : `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_psychology>\nHook-Trigger: ${refStructure.hookType}\nWarum der Hook funktioniert: ${refStructure.hookAnalysis}\nEmotionale Reise: ${refStructure.pattern}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<current_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</current_script>\n\n<critic_feedback>\nScore Kurz: ${critique.scoreShort}/10 | Score Lang: ${critique.scoreLong}/10\n\n${feedbackForWriter}\n</critic_feedback>\n\nÜberarbeite das Skript basierend auf dem Critic-Feedback. Behebe JEDES genannte Problem. Behalte alles bei was gut ist. Das Skript muss sich ORIGINAL anfühlen und die gleiche PSYCHOLOGISCHE WIRKUNG wie das Referenz-Video erzeugen.`;
 
           const reviseMsg = await claude.messages.create({
             model: MODEL,
             max_tokens: 5000,
-            system: buildPrompt("viral-script-adapt"),
+            system: buildPrompt("viral-script-adapt", {}, lang),
             tools: [VIRAL_REVISE_TOOL],
             tool_choice: { type: "tool", name: "submit_revised_script" },
             messages: [{
               role: "user",
-              content: `<client>\n${clientContext}\n</client>\n${voiceBlock}\n\n<reference_psychology>\nHook-Trigger: ${refStructure.hookType}\nWarum der Hook funktioniert: ${refStructure.hookAnalysis}\nEmotionale Reise: ${refStructure.pattern}\n</reference_psychology>\n\n<video_analysis>\n${referenceAnalysis}\n</video_analysis>\n\n<current_script>\n--- KURZ ---\nText-Hook: ${currentShort.textHook}\nHook: ${currentShort.hook}\nBody: ${currentShort.body}\nCTA: ${currentShort.cta}\n\n--- LANG ---\nText-Hook: ${currentLong.textHook}\nHook: ${currentLong.hook}\nBody: ${currentLong.body}\nCTA: ${currentLong.cta}\n</current_script>\n\n<critic_feedback>\nScore Kurz: ${critique.scoreShort}/10 | Score Lang: ${critique.scoreLong}/10\n\n${feedbackForWriter}\n</critic_feedback>\n\nÜberarbeite das Skript basierend auf dem Critic-Feedback. Behebe JEDES genannte Problem. Behalte alles bei was gut ist. Das Skript muss sich ORIGINAL anfühlen und die gleiche PSYCHOLOGISCHE WIRKUNG wie das Referenz-Video erzeugen.`,
+              content: reviseUserContent,
             }],
           });
           track(reviseMsg.usage, "viral_revise");
@@ -339,15 +378,19 @@ export async function POST(request: Request) {
         // ── Step 6: Production notes ────────────────────────────────────
         sendEvent(controller, { step: "production", status: "loading" });
 
+        const productionUserContent = lang === "en"
+          ? `Create a simple shot list for this script. Which shots need to be recorded?\n\n--- SHORT VERSION ---\nText hook: ${finalShort.textHook}\nHook: ${finalShort.hook}\nBody: ${finalShort.body}\nCTA: ${finalShort.cta}\n\n--- LONG VERSION ---\nText hook: ${finalLong.textHook}\nHook: ${finalLong.hook}\nBody: ${finalLong.body}\nCTA: ${finalLong.cta}\n\nBuild the shot list based on the LONG version. The first shot should contain the text hook as on-screen text. Write in English.`
+          : `Erstelle eine einfache Shot-Liste für dieses Skript. Welche Shots müssen aufgenommen werden?\n\n--- KURZE VERSION ---\nText-Hook: ${finalShort.textHook}\nHook: ${finalShort.hook}\nBody: ${finalShort.body}\nCTA: ${finalShort.cta}\n\n--- LANGE VERSION ---\nText-Hook: ${finalLong.textHook}\nHook: ${finalLong.hook}\nBody: ${finalLong.body}\nCTA: ${finalLong.cta}\n\nErstelle die Shot-Liste basierend auf der LANGEN Version. Der erste Shot sollte den Text-Hook als On-Screen-Text enthalten.`;
+
         const productionMsg = await claude.messages.create({
           model: MODEL,
           max_tokens: 4000,
-          system: buildPrompt("viral-script-production"),
+          system: buildPrompt("viral-script-production", {}, lang),
           tools: [VIRAL_PRODUCTION_TOOL],
           tool_choice: { type: "tool", name: "submit_production_notes" },
           messages: [{
             role: "user",
-            content: `Erstelle eine einfache Shot-Liste für dieses Skript. Welche Shots müssen aufgenommen werden?\n\n--- KURZE VERSION ---\nText-Hook: ${finalShort.textHook}\nHook: ${finalShort.hook}\nBody: ${finalShort.body}\nCTA: ${finalShort.cta}\n\n--- LANGE VERSION ---\nText-Hook: ${finalLong.textHook}\nHook: ${finalLong.hook}\nBody: ${finalLong.body}\nCTA: ${finalLong.cta}\n\nErstelle die Shot-Liste basierend auf der LANGEN Version. Der erste Shot sollte den Text-Hook als On-Screen-Text enthalten.`,
+            content: productionUserContent,
           }],
         });
         track(productionMsg.usage, "viral_production");
@@ -388,7 +431,9 @@ export async function POST(request: Request) {
         });
 
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+        const message = err instanceof Error
+          ? err.message
+          : (config.language === "en" ? "Unknown error" : "Unbekannter Fehler");
         sendEvent(controller, { step: "error", error: message });
       } finally {
         controller.close();

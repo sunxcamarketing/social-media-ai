@@ -20,6 +20,7 @@ import {
   Trash2,
   Grid3x3,
   DollarSign,
+  Film,
   X,
 } from "lucide-react";
 import { useClientsCache, removeClientFromCache } from "@/hooks/use-clients-cache";
@@ -41,9 +42,10 @@ const CLIENT_TABS: NavLink[] = [
   { titleKey: "sidebar.profile", path: "information", icon: BookOpen },
   { titleKey: "sidebar.strategy", path: "strategy", icon: BarChart2 },
   { titleKey: "sidebar.scripts", path: "scripts", icon: FileText },
+  { titleKey: "sidebar.stories", path: "stories", icon: Film },
+  { titleKey: "sidebar.carousel", path: "carousel", icon: Grid3x3, adminOnly: true },
   { titleKey: "sidebar.chat", path: "chat", icon: MessageSquare },
   { titleKey: "sidebar.voice", path: "voice", icon: Mic },
-  { titleKey: "sidebar.carousel", path: "carousel", icon: Grid3x3, adminOnly: true },
   { titleKey: "sidebar.competitorAnalysis", path: "competitors", icon: Video },
 ];
 

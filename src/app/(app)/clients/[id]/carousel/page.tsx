@@ -19,6 +19,7 @@ import {
   Clock,
   Plus as PlusIcon,
   ArrowLeft,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientsCache } from "@/hooks/use-clients-cache";
 import { useI18n } from "@/lib/i18n";
+import { CarouselReactMode } from "@/components/carousel-react-mode";
 
 interface StyleOption {
   id: string;
@@ -97,6 +99,9 @@ export default function ClientCarouselPage() {
 
   // View mode: "list" = show history grid with + button. "create" = new-carousel form. "view" = slide gallery of current result.
   const [viewMode, setViewMode] = useState<"list" | "create" | "view">("list");
+
+  // Top-level mode switch: classic HTML→PNG pipeline vs interactive React preview.
+  const [carouselMode, setCarouselMode] = useState<"classic" | "react">("react");
 
   // Regenerate modal state
   const [regenOpen, setRegenOpen] = useState(false);
@@ -427,24 +432,59 @@ export default function ClientCarouselPage() {
 
   return (
     <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-[1400px] mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blush-light to-blush flex items-center justify-center">
-          <Grid3x3 className="h-5 w-5 text-white" />
+      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blush-light to-blush flex items-center justify-center">
+            <Grid3x3 className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-ocean">
+              {pick("Karussell-Generator", "Carousel Generator")}
+            </h1>
+            <p className="text-sm text-ocean/55">
+              {client
+                ? pick(`Für ${client.configName || client.name} · Admin-Tool`, `For ${client.configName || client.name} · Admin tool`)
+                : pick("Admin-Tool", "Admin tool")}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-ocean">
-            {pick("Karussell-Generator", "Carousel Generator")}
-          </h1>
-          <p className="text-sm text-ocean/55">
-            {client
-              ? pick(`Für ${client.configName || client.name} · Admin-Tool`, `For ${client.configName || client.name} · Admin tool`)
-              : pick("Admin-Tool", "Admin tool")}
-          </p>
+
+        {/* ── Mode switcher (Classic ↔ Interactive) ──────────────── */}
+        <div className="inline-flex items-center rounded-xl border border-ocean/[0.08] bg-white p-0.5 shadow-[0_1px_4px_rgba(32,35,69,0.04)]">
+          <button
+            type="button"
+            onClick={() => setCarouselMode("react")}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              carouselMode === "react"
+                ? "bg-ocean text-white shadow-[0_1px_4px_rgba(32,35,69,0.15)]"
+                : "text-ocean/55 hover:text-ocean"
+            }`}
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Interactive
+          </button>
+          <button
+            type="button"
+            onClick={() => setCarouselMode("classic")}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              carouselMode === "classic"
+                ? "bg-ocean text-white shadow-[0_1px_4px_rgba(32,35,69,0.15)]"
+                : "text-ocean/55 hover:text-ocean"
+            }`}
+          >
+            <FileCode className="h-3.5 w-3.5" />
+            Classic
+          </button>
         </div>
       </div>
 
-      {/* ── Back button when in create/view mode ───────────────── */}
-      {viewMode !== "list" && (
+      {/* ── Interactive (React component) mode ──────────────────── */}
+      {carouselMode === "react" && (
+        <CarouselReactMode clientId={clientId} />
+      )}
+
+      {/* ── Back button when in create/view mode (classic only) ── */}
+      {carouselMode === "classic" && viewMode !== "list" && (
         <button
           onClick={backToList}
           className="mb-5 flex items-center gap-1.5 text-sm text-ocean/60 hover:text-ocean transition-colors"
@@ -455,7 +495,7 @@ export default function ClientCarouselPage() {
       )}
 
       {/* ── LIST MODE: gallery of saved carousels with + tile ──── */}
-      {viewMode === "list" && (
+      {carouselMode === "classic" && viewMode === "list" && (
         <div>
           {loadingHistory ? (
             <p className="text-sm text-ocean/45">{pick("Lade...", "Loading...")}</p>
@@ -552,7 +592,7 @@ export default function ClientCarouselPage() {
       )}
 
       {/* ── CREATE / VIEW mode: form + slides + progress ────── */}
-      {viewMode !== "list" && (
+      {carouselMode === "classic" && viewMode !== "list" && (
       <div className="grid grid-cols-1 lg:grid-cols-[1fr,420px] gap-6">
         {/* ── Main form / slides gallery ─────────────────────────── */}
         <div className="space-y-5">
@@ -906,8 +946,8 @@ export default function ClientCarouselPage() {
       </div>
       )}
 
-      {/* ── Regenerate Modal ──────────────────────── */}
-      {regenOpen && (
+      {/* ── Regenerate Modal (classic only) ──────────────────── */}
+      {carouselMode === "classic" && regenOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
           onClick={closeRegen}

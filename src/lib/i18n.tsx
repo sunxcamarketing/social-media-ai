@@ -598,6 +598,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "sidebar.training": { de: "Training", en: "Training" },
   "sidebar.transcribe": { de: "Transkribieren", en: "Transcribe" },
   "sidebar.costs": { de: "Kosten", en: "Costs" },
+  "sidebar.stories": { de: "Stories", en: "Stories" },
 
   // ── Command Palette ──────────────────────────────────────────────────────
   "cmdk.openDashboard": { de: "Dashboard öffnen", en: "Open dashboard" },
@@ -634,6 +635,30 @@ const translations: Record<string, { de: string; en: string }> = {
   "portal.scripts.cta": { de: "CTA", en: "CTA" },
   "portal.scripts.copied": { de: "Kopiert", en: "Copied" },
   "portal.scripts.copy": { de: "Skript kopieren", en: "Copy script" },
+  "portal.scripts.tabScripts": { de: "Skripte", en: "Scripts" },
+  "portal.scripts.tabIdeas": { de: "Ideen", en: "Ideas" },
+  "portal.scripts.countScripts": { de: "{{count}} Skripte", en: "{{count}} scripts" },
+  "portal.scripts.countIdeas": { de: "{{count}} Ideen", en: "{{count}} ideas" },
+  "portal.scripts.emptyIdeas": { de: "Noch keine Ideen. Leg deine erste Video-Idee an.", en: "No ideas yet. Add your first video idea." },
+  "portal.scripts.feedbackTitle": { de: "Warum gefällt dir das Skript nicht?", en: "Why don't you like this script?" },
+  "portal.scripts.feedbackBody": { de: "Deine Begründung hilft uns, das beim nächsten Skript besser zu machen.", en: "Your reasoning helps us do better on the next script." },
+  "portal.scripts.feedbackTitleImprove": { de: "Was soll verbessert werden?", en: "What should be improved?" },
+  "portal.scripts.feedbackBodyImprove": { de: "Beschreibe konkret was und warum verbessert werden soll.", en: "Describe specifically what and why it should be improved." },
+  "portal.scripts.feedbackPlaceholderReject": { de: "z.B. Hook passt nicht zu meiner Zielgruppe, CTA zu aggressiv…", en: "e.g. Hook doesn't fit my audience, CTA too aggressive…" },
+  "portal.scripts.feedbackPlaceholderImprove": { de: "z.B. Body ist zu lang — kürzer und konkreter; Hook könnte provokanter sein…", en: "e.g. Body too long — shorter and more concrete; hook could be more provocative…" },
+  "portal.scripts.cancel": { de: "Abbrechen", en: "Cancel" },
+  "portal.scripts.saving": { de: "Speichern…", en: "Saving…" },
+  "portal.scripts.submitFeedback": { de: "Feedback absenden", en: "Send feedback" },
+  "portal.scripts.newIdea": { de: "Neue Idee", en: "New idea" },
+  "portal.scripts.editIdea": { de: "Idee bearbeiten", en: "Edit idea" },
+  "portal.scripts.ideaTitle": { de: "Titel", en: "Title" },
+  "portal.scripts.ideaTitlePlaceholder": { de: "Kurzer prägnanter Titel", en: "Short, punchy title" },
+  "portal.scripts.ideaDescription": { de: "Beschreibung", en: "Description" },
+  "portal.scripts.ideaDescriptionPlaceholder": { de: "Konzept, Hook, Kernbotschaft…", en: "Concept, hook, core message…" },
+  "portal.scripts.ideaContentType": { de: "Content-Typ (optional)", en: "Content type (optional)" },
+  "portal.scripts.ideaSelectPlaceholder": { de: "Auswählen…", en: "Select…" },
+  "portal.scripts.save": { de: "Speichern", en: "Save" },
+  "portal.scripts.create": { de: "Anlegen", en: "Create" },
 
   // ── Portal Strategy ──────────────────────────────────────────────────────
   "portal.strategy.empty": { de: "Noch keine Strategie erstellt.", en: "No strategy created yet." },
@@ -741,6 +766,91 @@ const translations: Record<string, { de: string; en: string }> = {
   "voice.applied": { de: "Übernommen", en: "Applied" },
   "voice.applyError": { de: "Fehler beim Speichern", en: "Save failed" },
   "voice.backgroundProcessing": { de: "Wird im Hintergrund analysiert — Profil-Vorschläge erscheinen gleich. Du kannst das Fenster auch schließen, die Daten sind gespeichert.", en: "Analyzing in the background — profile suggestions will appear shortly. You can close this window; your data is saved." },
+
+  // Client Dashboard (portal + admin)
+  "dash.hi": { de: "Hi {{name}} 👋", en: "Hi {{name}} 👋" },
+  "dash.titleFallback": { de: "Dashboard", en: "Dashboard" },
+  "dash.pendingFeedbackOne": { de: "{{count}} Skript wartet auf Feedback.", en: "{{count}} script waiting for feedback." },
+  "dash.pendingFeedbackMany": { de: "{{count}} Skripte warten auf Feedback.", en: "{{count}} scripts waiting for feedback." },
+  "dash.noScriptsSubtitle": { de: "Noch keine Skripte — leg im Chat oder per Voice-Session los.", en: "No scripts yet — start in chat or via voice session." },
+  "dash.summary": { de: "{{scripts}} Skripte · {{ideas}} Ideen · bereit für nächste Woche?", en: "{{scripts}} scripts · {{ideas}} ideas · ready for next week?" },
+  "dash.postActivity": { de: "Post-Aktivität", en: "Post activity" },
+  "dash.stats.scriptsThisWeek": { de: "Skripte diese Woche", en: "Scripts this week" },
+  "dash.stats.ofTotal": { de: "von {{total}} insgesamt", en: "of {{total}} total" },
+  "dash.stats.feedbackOpen": { de: "Feedback offen", en: "Feedback open" },
+  "dash.stats.waitingReaction": { de: "warten auf Reaktion", en: "waiting for reaction" },
+  "dash.stats.allGiven": { de: "alles gegeben ✓", en: "all given ✓" },
+  "dash.stats.approved": { de: "Freigegeben", en: "Approved" },
+  "dash.stats.revisionsOpen": { de: "{{count}} Überarbeitungen offen", en: "{{count}} revisions open" },
+  "dash.stats.readyToRecord": { de: "bereit zur Aufnahme", en: "ready to record" },
+  "dash.stats.contentIdeas": { de: "Content-Ideen", en: "Content ideas" },
+  "dash.stats.poolForFutureWeeks": { de: "Pool für kommende Wochen", en: "Pool for upcoming weeks" },
+  "dash.waitingForFeedback": { de: "Auf Feedback wartend", en: "Waiting for feedback" },
+  "dash.viewAll": { de: "Alle ansehen", en: "View all" },
+  "dash.feedbackPending": { de: "Feedback ausstehend", en: "Feedback pending" },
+  "dash.untitled": { de: "Unbenannt", en: "Untitled" },
+  "dash.latestScripts": { de: "Neueste Skripte", en: "Latest scripts" },
+  "dash.statusApproved": { de: "Freigegeben", en: "Approved" },
+  "dash.statusRejected": { de: "Abgelehnt", en: "Rejected" },
+  "dash.statusRevision": { de: "Überarbeitung", en: "Revision" },
+  "dash.noScriptsTitle": { de: "Noch keine Skripte", en: "No scripts yet" },
+  "dash.noScriptsBody": { de: "Dein Content-Team arbeitet an den ersten Skripten. Oder leg selbst im Chat los.", en: "Your content team is working on the first scripts. Or start in chat yourself." },
+  "dash.openChat": { de: "Chat öffnen", en: "Open chat" },
+  "dash.thisWeek": { de: "Diese Woche", en: "This week" },
+  "dash.today": { de: "Heute", en: "Today" },
+  "dash.fullWeekPlan": { de: "Kompletter Wochenplan", en: "Full week plan" },
+  "dash.lastAudit": { de: "Letztes Audit", en: "Last audit" },
+  "dash.profileAudit": { de: "Profil-Audit", en: "Profile audit" },
+  "dash.followers": { de: "Follower", en: "Followers" },
+  "dash.reels30d": { de: "Reels/30d", en: "Reels/30d" },
+  "dash.avgViews": { de: "Ø Views", en: "Ø Views" },
+  "dash.fullReport": { de: "Zum vollständigen Report", en: "Full report" },
+  "dash.quickStart": { de: "Schnell starten", en: "Quick start" },
+  "dash.scriptsAndIdeas": { de: "Skripte & Ideen", en: "Scripts & ideas" },
+  "dash.scriptsAndIdeasSub": { de: "Feedback geben oder neue Idee", en: "Give feedback or new idea" },
+  "dash.chatAgent": { de: "Chat-Agent", en: "Chat Agent" },
+  "dash.chatAgentSub": { de: "Brainstorming & Skripte", en: "Brainstorming & scripts" },
+  "dash.voiceSession": { de: "Voice-Session", en: "Voice session" },
+  "dash.voiceSessionSub": { de: "Content-Ideen entlocken", en: "Pull out content ideas" },
+  "dash.noStrategyAdmin": { de: "Noch keine Strategie erstellt. Leg auf der Strategie-Seite los.", en: "No strategy yet. Start on the strategy page." },
+  "dash.noStrategyClient": { de: "Deine Strategie wird noch vorbereitet. Sobald sie fertig ist, erscheint sie hier.", en: "Your strategy is being prepared. It'll show up here once it's ready." },
+  "dash.toStrategy": { de: "Zur Strategie", en: "To strategy" },
+  "dash.editProfile": { de: "Profil & Kontext bearbeiten", en: "Edit profile & context" },
+  "dash.viewProfile": { de: "Mein Profil ansehen", en: "View my profile" },
+
+  // Last-week activity widget
+  "activity.reelPost": { de: "Reel / Post", en: "Reel / Post" },
+  "activity.last7Days": { de: "letzte 7 Tage", en: "last 7 days" },
+  "activity.ofSevenDays": { de: "von 7 Tagen", en: "of 7 days" },
+  "activity.story": { de: "Story", en: "Story" },
+  "activity.storyNotAvailable": { de: "Stories-Tracking ist noch nicht automatisch verfügbar — Apify liefert keine Story-Historie.", en: "Story tracking isn't automatically available yet — Apify doesn't return story history." },
+  "activity.storyComingSoon": { de: "Kommt sobald wir eine saubere Datenquelle haben.", en: "Coming as soon as we have a clean data source." },
+  "activity.noData": { de: "Keine Post-Daten verfügbar — wurde der Audit schon gemacht?", en: "No post data available — has the audit been run?" },
+  "activity.scrapedAt": { de: "gescraped {{date}}", en: "scraped {{date}}" },
+  "activity.strong": { de: "Stark", en: "Strong" },
+  "activity.okay": { de: "Okay", en: "Okay" },
+  "activity.few": { de: "Wenig", en: "Few" },
+  "activity.stale": { de: "veraltet", en: "outdated" },
+  "activity.staleWarning": { de: "Daten sind {{days}} Tage alt — die Zahl der Posts stimmt wahrscheinlich nicht. Klick \"Aktualisieren\" für frische Werte.", en: "Data is {{days}} days old — the post count is likely off. Click \"Refresh\" for fresh values." },
+  "activity.refresh": { de: "Aktualisieren", en: "Refresh" },
+  "activity.refreshTitle": { de: "Posts neu scrapen", en: "Re-scrape posts" },
+  "activity.refreshError": { de: "Refresh fehlgeschlagen", en: "Refresh failed" },
+
+  // Story Ideas card (dashboard)
+  "storyIdeas.title": { de: "Story-Ideen", en: "Story Ideas" },
+  "storyIdeas.subtitle": { de: "aus der letzten Strategie", en: "from the latest strategy" },
+  "storyIdeas.loading": { de: "Lädt…", en: "Loading…" },
+  "storyIdeas.empty": { de: "Noch keine Story-Ideen generiert.", en: "No story ideas generated yet." },
+  "storyIdeas.generateCta": { de: "Jetzt generieren", en: "Generate now" },
+  "storyIdeas.viewAll": { de: "Alle ansehen", en: "View all" },
+
+  // Coming soon (portal Chat + Voice)
+  "comingSoon.badge": { de: "Bald", en: "Soon" },
+  "comingSoon.chatTitle": { de: "Chat-Agent kommt bald", en: "Chat agent coming soon" },
+  "comingSoon.chatBody": { de: "Wir feilen noch am Erlebnis. Du bekommst Bescheid, sobald der Agent für dich freigeschaltet ist.", en: "We're still polishing the experience. You'll be notified as soon as the agent is available for you." },
+  "comingSoon.voiceTitle": { de: "Voice-Session kommt bald", en: "Voice session coming soon" },
+  "comingSoon.voiceBody": { de: "Wir finalisieren die Aufnahme- und Analyse-Logik. Du bekommst Bescheid, sobald Voice für dich freigeschaltet ist.", en: "We're finalising the recording + analysis flow. You'll be notified as soon as voice is available for you." },
+  "comingSoon.thanks": { de: "Danke für deine Geduld ✨", en: "Thanks for your patience ✨" },
 };
 
 type Substitutions = Record<string, string | number>;
@@ -792,11 +902,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLang(next);
   }, []);
 
-  // Precedence: user override (localStorage) > client default > "de".
-  // Only applies client default when user hasn't explicitly set a language.
+  // Clients are "fest" bound to a language (config.language is authoritative).
+  // Portal layout calls this on every mount — it forces the client's language
+  // regardless of localStorage, so Katayoon (en) always sees English even if
+  // the admin previously toggled the UI to German in the same browser.
   const setClientLang = useCallback((clientLang: Lang) => {
-    const stored = localStorage.getItem("sunxca-lang") as Lang | null;
-    if (!stored) setLang(clientLang);
+    setLang(clientLang);
   }, []);
 
   const t = useCallback(

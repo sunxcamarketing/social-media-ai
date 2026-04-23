@@ -77,8 +77,13 @@ function loadStyleAssets(styleId: string): { designSpec: string; templateHtml: s
   };
 }
 
-function loadSystemPrompt(): string {
-  return readFileSync(join(projectRoot(), "prompts", "agents", "carousel-generator.md"), "utf8");
+function loadSystemPrompt(lang: "de" | "en" = "de"): string {
+  const dir = join(projectRoot(), "prompts", "agents");
+  if (lang === "en") {
+    const enPath = join(dir, "carousel-generator.en.md");
+    if (existsSync(enPath)) return readFileSync(enPath, "utf8");
+  }
+  return readFileSync(join(dir, "carousel-generator.md"), "utf8");
 }
 
 async function loadPersistentPhotos(clientId: string): Promise<Array<{ filename: string; path: string; buffer: Buffer }>> {
@@ -161,9 +166,10 @@ export async function runCarouselPipeline(input: CarouselPipelineInput): Promise
   await emit({ stage: "photos", status: "done", data: { count: photos.length } });
 
   // ── Step 3: Claude generation ──────────────────────────────
+  const lang: "de" | "en" = (config as Record<string, string>).language === "en" ? "en" : "de";
   await emit({ stage: "claude", status: "loading" });
   const { designSpec, templateHtml } = loadStyleAssets(input.styleId);
-  const systemPrompt = loadSystemPrompt();
+  const systemPrompt = loadSystemPrompt(lang);
 
   const brandBlock = [
     `Brand: ${config.name || config.configName || "—"}`,
@@ -177,18 +183,28 @@ export async function runCarouselPipeline(input: CarouselPipelineInput): Promise
     .filter(Boolean)
     .join("\n");
 
-  const userContent: Anthropic.ContentBlockParam[] = [
-    { type: "text", text: `## INHALT\n\nTopic: ${input.topic}\n\n## CLIENT-BRAND\n\n${brandBlock}` },
-    {
-      type: "text",
-      text: `## DESIGN-STYLE: ${input.styleId}\n\n### Design Spec:\n\n${designSpec}\n\n### HTML Template (nutze dieses als Ausgangspunkt — struktur/CSS übernehmen, Slides reingenerieren):\n\n\`\`\`html\n${templateHtml}\n\`\`\``,
-    },
-  ];
+  const userContent: Anthropic.ContentBlockParam[] = lang === "en"
+    ? [
+        { type: "text", text: `## CONTENT\n\nTopic: ${input.topic}\n\n## CLIENT BRAND\n\n${brandBlock}` },
+        {
+          type: "text",
+          text: `## DESIGN STYLE: ${input.styleId}\n\n### Design Spec:\n\n${designSpec}\n\n### HTML Template (use as starting point — keep structure/CSS, generate slides into it):\n\n\`\`\`html\n${templateHtml}\n\`\`\``,
+        },
+      ]
+    : [
+        { type: "text", text: `## INHALT\n\nTopic: ${input.topic}\n\n## CLIENT-BRAND\n\n${brandBlock}` },
+        {
+          type: "text",
+          text: `## DESIGN-STYLE: ${input.styleId}\n\n### Design Spec:\n\n${designSpec}\n\n### HTML Template (nutze dieses als Ausgangspunkt — struktur/CSS übernehmen, Slides reingenerieren):\n\n\`\`\`html\n${templateHtml}\n\`\`\``,
+        },
+      ];
 
   if (photos.length > 0) {
     userContent.push({
       type: "text",
-      text: `## BILDER-BIBLIOTHEK\n\nVerfügbare Fotos (du siehst sie unten). Embedde passende Fotos in die Slides über:\n<img src="photos/EXAKTER-DATEINAME"> — z.B. <img src="photos/${photos[0].filename}">\n\nNicht jede Slide muss ein Foto haben. Wähle pro Slide das emotional und inhaltlich passendste. Wenn kein Foto passt, nutze <img data-generate="PROMPT"> für AI-generierte Szenen (siehe System-Prompt).`,
+      text: lang === "en"
+        ? `## IMAGE LIBRARY\n\nAvailable photos (shown below). Embed matching photos in slides via:\n<img src="photos/EXACT-FILENAME"> — e.g. <img src="photos/${photos[0].filename}">\n\nNot every slide needs a photo. Choose the most emotionally and contextually fitting one per slide. If none fits, use <img data-generate="PROMPT"> for AI-generated scenes (see system prompt).`
+        : `## BILDER-BIBLIOTHEK\n\nVerfügbare Fotos (du siehst sie unten). Embedde passende Fotos in die Slides über:\n<img src="photos/EXAKTER-DATEINAME"> — z.B. <img src="photos/${photos[0].filename}">\n\nNicht jede Slide muss ein Foto haben. Wähle pro Slide das emotional und inhaltlich passendste. Wenn kein Foto passt, nutze <img data-generate="PROMPT"> für AI-generierte Szenen (siehe System-Prompt).`,
     });
     for (const p of photos) {
       userContent.push({ type: "text", text: `--- photos/${p.filename} ---` });
@@ -200,13 +216,17 @@ export async function runCarouselPipeline(input: CarouselPipelineInput): Promise
   } else {
     userContent.push({
       type: "text",
-      text: `## KEINE CLIENT-FOTOS\n\nDer Client hat keine Foto-Bibliothek angelegt. Nutze AI-generierte Bilder über <img data-generate="PROMPT"> für alle Szenen die ein Bild brauchen (siehe System-Prompt für Prompt-Qualität).`,
+      text: lang === "en"
+        ? `## NO CLIENT PHOTOS\n\nThe client has no photo library. Use AI-generated images via <img data-generate="PROMPT"> for any scenes that need an image (see system prompt for prompt quality).`
+        : `## KEINE CLIENT-FOTOS\n\nDer Client hat keine Foto-Bibliothek angelegt. Nutze AI-generierte Bilder über <img data-generate="PROMPT"> für alle Szenen die ein Bild brauchen (siehe System-Prompt für Prompt-Qualität).`,
     });
   }
 
   userContent.push({
     type: "text",
-    text: `\n## GENERIERE JETZT\n\nGeneriere das komplette Karussell-HTML. **Harte Regel: Minimum 3 Slides** (Hook → Kern → CTA). Alle weiteren Slides sind OPTIONAL — nur wenn der Topic echt mehr eigenständige Aussagen hat. Kein Strecken, kein Filler. Ein 3-Slide-Karussell mit klarer Message schlägt ein 8-Slide-Karussell mit Filler IMMER. Nur HTML zurückgeben, kein Prosa-Kommentar. Starte mit <!DOCTYPE html>.`,
+    text: lang === "en"
+      ? `\n## GENERATE NOW\n\nGenerate the complete carousel HTML. ALL TEXT MUST BE IN ENGLISH. **Hard rule: minimum 3 slides** (Hook → Core → CTA). Additional slides are OPTIONAL — only if the topic actually has more independent points. No stretching, no filler. A 3-slide carousel with a clear message ALWAYS beats an 8-slide carousel with filler. Return HTML only, no prose commentary. Start with <!DOCTYPE html>.`
+      : `\n## GENERIERE JETZT\n\nGeneriere das komplette Karussell-HTML. **Harte Regel: Minimum 3 Slides** (Hook → Kern → CTA). Alle weiteren Slides sind OPTIONAL — nur wenn der Topic echt mehr eigenständige Aussagen hat. Kein Strecken, kein Filler. Ein 3-Slide-Karussell mit klarer Message schlägt ein 8-Slide-Karussell mit Filler IMMER. Nur HTML zurückgeben, kein Prosa-Kommentar. Starte mit <!DOCTYPE html>.`,
   });
 
   const anthropic = getAnthropicClient();
@@ -418,8 +438,9 @@ export async function regenerateCarousel(input: CarouselRegenerateInput): Promis
   }
 
   // ── Step 3: Claude re-generation ───────────────────────────
+  const lang: "de" | "en" = (config as Record<string, string>).language === "en" ? "en" : "de";
   await emit({ stage: "claude", status: "loading" });
-  const systemPrompt = loadSystemPrompt();
+  const systemPrompt = loadSystemPrompt(lang);
   const anthropic = getAnthropicClient();
 
   // Build feedback instructions for Claude

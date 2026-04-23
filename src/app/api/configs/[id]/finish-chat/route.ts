@@ -17,27 +17,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => ({}));
   const messages: ChatMessage[] = body.messages || [];
 
+  const lang: "de" | "en" = config.language === "en" ? "en" : "de";
+
   const transcript = messages
     .filter((m) => m.content)
-    .map((m) => `${m.role === "user" ? "Creator" : "Stratege"}: ${m.content}`)
+    .map((m) => `${m.role === "user" ? "Creator" : lang === "en" ? "Strategist" : "Stratege"}: ${m.content}`)
     .join("\n\n");
 
-  if (!transcript) return NextResponse.json({ error: "Kein Gesprächsinhalt" }, { status: 400 });
+  if (!transcript) return NextResponse.json({ error: lang === "en" ? "No conversation content" : "Kein Gesprächsinhalt" }, { status: 400 });
 
   const clientContext = buildFullClientContext(config as unknown as Record<string, string>);
 
   const pillars = safeJsonParse<{ name: string }[]>(config.strategyPillars, []);
-  const pillarList = pillars.length > 0 ? pillars.map((p) => p.name).join(", ") : "(keine Pillars definiert)";
+  const pillarList = pillars.length > 0
+    ? pillars.map((p) => p.name).join(", ")
+    : (lang === "en" ? "(no pillars defined)" : "(keine Pillars definiert)");
 
   // Load training scripts as few-shot examples
   const trainingScripts = await readTrainingScripts();
+  const trainingHeader = lang === "en"
+    ? "EXAMPLE SCRIPTS (real successful scripts — learn from them for structure, tonality and flow):"
+    : "BEISPIEL-SKRIPTE (echte erfolgreiche Skripte — lerne daraus für Struktur, Tonalität und Aufbau):";
+  const scriptLabel = lang === "en" ? "Script" : "Skript";
   const trainingContext = trainingScripts.length > 0
-    ? `\n\nBEISPIEL-SKRIPTE (echte erfolgreiche Skripte — lerne daraus für Struktur, Tonalität und Aufbau):\n${trainingScripts.map(s => [
+    ? `\n\n${trainingHeader}\n${trainingScripts.map(s => [
         `[Format: ${s.format || "–"}]`,
         s.textHook   && `Text Hook: ${s.textHook}`,
         s.visualHook && `Visual Hook: ${s.visualHook}`,
         s.audioHook  && `Audio Hook: ${s.audioHook}`,
-        s.script     && `Skript: ${s.script}`,
+        s.script     && `${scriptLabel}: ${s.script}`,
         s.cta        && `CTA: ${s.cta}`,
       ].filter(Boolean).join("\n")).join("\n\n---\n\n")}`
     : "";
@@ -63,11 +71,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
                 properties: {
                   title:       { type: "string" },
                   pillar:      { type: "string" },
-                  contentType: { type: "string", description: "z.B. Face-to-camera, Storytelling, Voiceover + B-Roll" },
+                  contentType: { type: "string", description: lang === "en" ? "e.g. Face-to-camera, Storytelling, Voiceover + B-Roll" : "z.B. Face-to-camera, Storytelling, Voiceover + B-Roll" },
                   format:      { type: "string" },
-                  hook:        { type: "string", description: "Eröffnungs-Hook, max 1-2 Sätze" },
-                  body:        { type: "string", description: "Hauptteil des Skripts" },
-                  cta:         { type: "string", description: "Call to Action, max 1-2 Sätze" },
+                  hook:        { type: "string", description: lang === "en" ? "Opening hook, max 1-2 sentences" : "Eröffnungs-Hook, max 1-2 Sätze" },
+                  body:        { type: "string", description: lang === "en" ? "Main body of the script" : "Hauptteil des Skripts" },
+                  cta:         { type: "string", description: lang === "en" ? "Call to Action, max 1-2 sentences" : "Call to Action, max 1-2 Sätze" },
                 },
                 required: ["title", "pillar", "contentType", "format", "hook", "body", "cta"],
               },
@@ -81,7 +89,33 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     messages: [
       {
         role: "user",
-        content: `Du bist ein erfahrener Social-Media-Texter. Erstelle 2-3 starke Video-Skripte aus diesem Gespräch.
+        content: lang === "en"
+          ? `You are an experienced social media copywriter. Create 2-3 strong video scripts from this conversation. WRITE ALL SCRIPTS IN ENGLISH.
+
+CLIENT PROFILE:
+${clientContext}
+
+STRATEGY PILLARS: ${pillarList}
+
+CONVERSATION (raw material):
+${transcript}
+
+TASK:
+Create 2-3 distinct scripts based on concrete details, numbers and experiences from the conversation.
+Each script should take a different approach — e.g.:
+- Personal story (chronological, turning points)
+- Controversial hot take or strong opinion
+- List of concrete tips or learnings
+- Directly addressing a problem of the dream customer
+
+RULES:
+- Authenticity: write how the creator actually speaks
+- Use concrete numbers, names and phrasings from the conversation
+- Hook: max 2 sentences, immediately gripping, no clichés
+- Body: no filler words, spoken English
+- CTA: clear and concrete
+- Each script must stand on its own and be strong${trainingContext}`
+          : `Du bist ein erfahrener Social-Media-Texter. Erstelle 2-3 starke Video-Skripte aus diesem Gespräch.
 
 KUNDENPROFIL:
 ${clientContext}
@@ -112,7 +146,7 @@ REGELN:
 
   const tool = msg.content.find((b) => b.type === "tool_use");
   if (!tool || tool.type !== "tool_use") {
-    return NextResponse.json({ error: "KI hat keine Skripte generiert" }, { status: 500 });
+    return NextResponse.json({ error: lang === "en" ? "AI did not generate scripts" : "KI hat keine Skripte generiert" }, { status: 500 });
   }
 
   const { scripts } = tool.input as {

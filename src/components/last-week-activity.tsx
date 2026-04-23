@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Film, TrendingUp, Info, RefreshCw, Loader2 } from "lucide-react";
+import { Calendar, Film, Info, RefreshCw, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
+import { useI18n } from "@/lib/i18n";
 
 type PostDate = { datePosted?: string };
 
@@ -18,6 +19,7 @@ interface LastWeekActivityProps {
 }
 
 const DAY_SHORT_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const DAY_SHORT_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function mondayOffsetDay(d: Date): number {
   // 0 = Monday ... 6 = Sunday
@@ -54,8 +56,12 @@ function parseIsoDate(s: string | undefined): Date | null {
 const STALE_SCRAPE_DAYS = 10;
 
 export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: LastWeekActivityProps) {
+  const { lang, t } = useI18n();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+
+  const dayShort = lang === "en" ? DAY_SHORT_EN : DAY_SHORT_DE;
+  const dateLocale = lang === "en" ? "en-US" : "de-DE";
 
   const handleRefresh = async () => {
     if (!clientId || refreshing) return;
@@ -65,12 +71,12 @@ export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: La
       const res = await fetch(`/api/configs/${clientId}/refresh-posts`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        setRefreshError(data.error || "Refresh fehlgeschlagen");
+        setRefreshError(data.error || t("activity.refreshError"));
       } else {
         onRefreshed?.();
       }
     } catch (err) {
-      setRefreshError(err instanceof Error ? err.message : "Refresh fehlgeschlagen");
+      setRefreshError(err instanceof Error ? err.message : t("activity.refreshError"));
     } finally {
       setRefreshing(false);
     }
@@ -96,17 +102,15 @@ export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: La
   const isStale = daysSinceScrape !== null && daysSinceScrape >= STALE_SCRAPE_DAYS;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {/* Reels / Posts */}
-      <div className="rounded-2xl bg-white border border-ocean/[0.06] p-4 sm:p-5 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
+    <div className="rounded-2xl bg-white border border-ocean/[0.06] p-4 sm:p-5 shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-blush-light/60 flex items-center justify-center">
               <Film className="h-4 w-4 text-blush-dark" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-ocean/50 font-medium">Reel / Post</p>
-              <p className="text-[11px] text-ocean/55">letzte 7 Tage</p>
+              <p className="text-[10px] uppercase tracking-wider text-ocean/50 font-medium">{t("activity.reelPost")}</p>
+              <p className="text-[11px] text-ocean/55">{t("activity.last7Days")}</p>
             </div>
           </div>
           {posts.length > 0 && !isStale && (
@@ -115,23 +119,23 @@ export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: La
               : ratio >= 0.43 ? "bg-amber-50 text-amber-700 border-amber-200"
               : "bg-red-50 text-red-600 border-red-200"
             }`}>
-              {ratio >= 0.71 ? "Stark" : ratio >= 0.43 ? "Okay" : "Wenig"}
+              {ratio >= 0.71 ? t("activity.strong") : ratio >= 0.43 ? t("activity.okay") : t("activity.few")}
             </span>
           )}
           {isStale && (
             <span className="text-[10px] border rounded-md px-1.5 py-0.5 font-medium bg-ocean/[0.04] text-ocean/60 border-ocean/[0.08]">
-              veraltet
+              {t("activity.stale")}
             </span>
           )}
           {clientId && (
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              title="Posts neu scrapen"
+              title={t("activity.refreshTitle")}
               className="text-[10px] flex items-center gap-1 rounded-md border border-ocean/[0.08] bg-white hover:bg-warm-white/60 px-1.5 py-0.5 text-ocean/60 hover:text-ocean transition-colors disabled:opacity-50"
             >
               {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Aktualisieren
+              {t("activity.refresh")}
             </button>
           )}
         </div>
@@ -144,7 +148,7 @@ export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: La
           >
             {hits}
           </motion.p>
-          <p className="text-sm text-ocean/55">von 7 Tagen</p>
+          <p className="text-sm text-ocean/55">{t("activity.ofSevenDays")}</p>
         </div>
 
         {/* Week heatmap */}
@@ -165,9 +169,9 @@ export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: La
                       ? "bg-green-500/90 border-green-500"
                       : "bg-ocean/[0.03] border-ocean/[0.06]"
                   }`}
-                  title={d.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long" })}
+                  title={d.toLocaleDateString(dateLocale, { weekday: "long", day: "2-digit", month: "long" })}
                 />
-                <span className="text-[9px] text-ocean/40 font-medium">{DAY_SHORT_DE[mondayOffsetDay(d)]}</span>
+                <span className="text-[9px] text-ocean/40 font-medium">{dayShort[mondayOffsetDay(d)]}</span>
               </motion.div>
             );
           })}
@@ -176,13 +180,13 @@ export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: La
         {posts.length === 0 && (
           <p className="mt-3 text-[11px] text-ocean/40 flex items-center gap-1.5">
             <Info className="h-3 w-3" />
-            Keine Post-Daten verfügbar — wurde der Audit schon gemacht?
+            {t("activity.noData")}
           </p>
         )}
         {isStale && posts.length > 0 && (
           <p className="mt-3 text-[11px] text-amber-700/80 bg-amber-50/80 border border-amber-200/50 rounded-lg px-2.5 py-2 flex items-start gap-1.5 leading-relaxed">
             <Info className="h-3 w-3 shrink-0 mt-0.5" />
-            <span>Daten sind {daysSinceScrape} Tage alt — die Zahl der Posts stimmt wahrscheinlich nicht. Klick &quot;Aktualisieren&quot; für frische Werte.</span>
+            <span>{t("activity.staleWarning", { days: daysSinceScrape ?? 0 })}</span>
           </p>
         )}
         {refreshError && (
@@ -191,35 +195,12 @@ export function LastWeekActivity({ posts, scrapedAt, clientId, onRefreshed }: La
             <span>{refreshError}</span>
           </p>
         )}
-        {scrapedAt && posts.length > 0 && (
-          <p className="mt-3 text-[10px] text-ocean/35 flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            gescraped {scrapedAt}
-          </p>
-        )}
-      </div>
-
-      {/* Stories — placeholder until we have a tracking source */}
-      <div className="rounded-2xl bg-warm-white/60 border border-dashed border-ocean/[0.1] p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-ocean/[0.04] flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-ocean/50" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-ocean/50 font-medium">Story</p>
-              <p className="text-[11px] text-ocean/55">letzte 7 Tage</p>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-sm text-ocean/55 leading-relaxed">
-          Stories-Tracking ist noch nicht automatisch verfügbar — Apify liefert keine Story-Historie.
+      {scrapedAt && posts.length > 0 && (
+        <p className="mt-3 text-[10px] text-ocean/35 flex items-center gap-1">
+          <Calendar className="h-3 w-3" />
+          {t("activity.scrapedAt", { date: scrapedAt })}
         </p>
-        <p className="mt-2 text-[11px] text-ocean/40 leading-relaxed">
-          Kommt sobald wir eine saubere Datenquelle haben.
-        </p>
-      </div>
+      )}
     </div>
   );
 }

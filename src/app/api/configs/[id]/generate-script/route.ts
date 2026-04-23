@@ -331,7 +331,9 @@ ${dayOverrideBlock}`;
             role: "user", content: [{
               type: "tool_result",
               tool_use_id: toolUse.id,
-              content: `Akzeptiert, aber zu lang: ${totalWords} Wörter (max ${maxWords}). Kürze es radikal. Streiche Wiederholungen und Füllwörter. Behalte Titel, Hook-Ansatz und CTA.`,
+              content: lang === "en"
+              ? `Accepted, but too long: ${totalWords} words (max ${maxWords}). Shorten it radically. Cut repetition and filler. Keep title, hook angle and CTA.`
+              : `Akzeptiert, aber zu lang: ${totalWords} Wörter (max ${maxWords}). Kürze es radikal. Streiche Wiederholungen und Füllwörter. Behalte Titel, Hook-Ansatz und CTA.`,
             }],
           },
         ],
@@ -499,7 +501,9 @@ Schreibe jetzt das Skript zu genau diesem Thema.`;
           role: "user", content: [{
             type: "tool_result",
             tool_use_id: toolUse.id,
-            content: `Zu lang: ${countWords(scriptText)} Wörter (max ${maxWords}). Kürze radikal.`,
+            content: topicLang === "en"
+              ? `Too long: ${countWords(scriptText)} words (max ${maxWords}). Shorten radically.`
+              : `Zu lang: ${countWords(scriptText)} Wörter (max ${maxWords}). Kürze radikal.`,
           }],
         },
       ],

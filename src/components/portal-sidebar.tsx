@@ -18,14 +18,15 @@ type PortalTab = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
+  comingSoon?: boolean;
 };
 
 const PORTAL_TABS: PortalTab[] = [
   { titleKey: "portalNav.dashboard", href: "/portal", icon: LayoutDashboard, exact: true },
   { titleKey: "portalNav.strategy", href: "/portal/strategy", icon: BarChart2 },
   { titleKey: "portalNav.scripts", href: "/portal/scripts", icon: FileText },
-  { titleKey: "portalNav.chat", href: "/portal/chat", icon: MessageSquare },
-  { titleKey: "portalNav.voice", href: "/portal/voice", icon: Mic },
+  { titleKey: "portalNav.chat", href: "/portal/chat", icon: MessageSquare, comingSoon: true },
+  { titleKey: "portalNav.voice", href: "/portal/voice", icon: Mic, comingSoon: true },
 ];
 
 export function PortalSidebar({ clientName }: { clientName?: string }) {
@@ -78,11 +79,22 @@ export function PortalSidebar({ clientName }: { clientName?: string }) {
                   className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-all ${
                     isActive
                       ? "bg-ocean text-white font-medium shadow-[0_2px_8px_rgba(32,35,69,0.15)]"
-                      : "text-ocean/60 hover:text-ocean hover:bg-ocean/[0.04]"
+                      : tab.comingSoon
+                        ? "text-ocean/40 hover:text-ocean/60 hover:bg-ocean/[0.03]"
+                        : "text-ocean/60 hover:text-ocean hover:bg-ocean/[0.04]"
                   }`}
                 >
                   <tab.icon className="h-4 w-4 shrink-0" />
-                  <span>{t(tab.titleKey)}</span>
+                  <span className="flex-1">{t(tab.titleKey)}</span>
+                  {tab.comingSoon && (
+                    <span className={`text-[9px] uppercase tracking-wider font-medium rounded-full px-1.5 py-0.5 border ${
+                      isActive
+                        ? "bg-white/15 text-white/80 border-white/20"
+                        : "bg-blush-light/40 text-blush-dark border-blush/20"
+                    }`}>
+                      {t("comingSoon.badge")}
+                    </span>
+                  )}
                 </Link>
               );
             })}

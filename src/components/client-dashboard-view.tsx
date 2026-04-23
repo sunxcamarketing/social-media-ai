@@ -21,9 +21,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { Section } from "@/components/ui/section";
 import { LastWeekActivity } from "@/components/last-week-activity";
+import { StoryIdeasCard } from "@/components/story-ideas-card";
 import { safeJsonParse } from "@/lib/safe-json";
 import { fmt } from "@/lib/format";
 import { parseInsights } from "@/lib/performance-helpers";
+import { useI18n } from "@/lib/i18n";
 import type { Script, Idea, Config, Analysis } from "@/lib/types";
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -52,6 +54,7 @@ interface ClientDashboardViewProps {
 }
 
 export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboardViewProps) {
+  const { lang, t } = useI18n();
   const [client, setClient] = useState<Config | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -135,10 +138,12 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
   const hasStrategy = Boolean(client?.strategyGoal || plannedDays.length > 0);
 
   const quickActions = [
-    { href: scriptsUrl, label: "Skripte & Ideen", sub: "Feedback geben oder neue Idee", icon: Lightbulb, accent: "from-blush-light/40 to-blush/20 border-blush/30" },
-    { href: chatUrl, label: "Chat-Agent", sub: "Brainstorming & Skripte", icon: MessageSquare, accent: "from-ocean/[0.04] to-ocean/[0.08] border-ocean/[0.1]" },
-    { href: voiceUrl, label: "Voice-Session", sub: "Content-Ideen entlocken", icon: Mic, accent: "from-ocean/[0.04] to-ivory/[0.08] border-ivory/15" },
+    { href: scriptsUrl, label: t("dash.scriptsAndIdeas"), sub: t("dash.scriptsAndIdeasSub"), icon: Lightbulb, accent: "from-blush-light/40 to-blush/20 border-blush/30" },
+    { href: chatUrl, label: t("dash.chatAgent"), sub: t("dash.chatAgentSub"), icon: MessageSquare, accent: "from-ocean/[0.04] to-ocean/[0.08] border-ocean/[0.1]" },
+    { href: voiceUrl, label: t("dash.voiceSession"), sub: t("dash.voiceSessionSub"), icon: Mic, accent: "from-ocean/[0.04] to-ivory/[0.08] border-ivory/15" },
   ];
+
+  const locale = lang === "en" ? "en-US" : "de-DE";
 
   return (
     <div className="space-y-6">
@@ -146,63 +151,66 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
       <PageHeader
         tone="hero"
         icon={Sparkles}
-        eyebrow={new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
-        title={firstName ? `Hi ${firstName} 👋` : clientName || "Dashboard"}
+        eyebrow={new Date().toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" })}
+        title={firstName ? t("dash.hi", { name: firstName }) : clientName || t("dash.titleFallback")}
         subtitle={
           pendingFeedback.length > 0
-            ? `${pendingFeedback.length} Skript${pendingFeedback.length === 1 ? "" : "e"} warten auf Feedback.`
+            ? t(pendingFeedback.length === 1 ? "dash.pendingFeedbackOne" : "dash.pendingFeedbackMany", { count: pendingFeedback.length })
             : scripts.length === 0
-              ? "Noch keine Skripte — leg im Chat oder per Voice-Session los."
-              : `${scripts.length} Skripte · ${ideas.length} Ideen · bereit für nächste Woche?`
+              ? t("dash.noScriptsSubtitle")
+              : t("dash.summary", { scripts: scripts.length, ideas: ideas.length })
         }
       />
 
-      {/* Last-week post activity */}
-      <Section title="Post-Aktivität" icon={CheckCircle2}>
-        <LastWeekActivity
-          posts={
-            // Prefer full post history when available; fall back to top30Days
-            // for backward-compat with insights generated before recentPosts
-            // was added to the scrape output.
-            parseInsights(client?.performanceInsights || "")?.recentPosts
-            || parseInsights(client?.performanceInsights || "")?.top30Days
-            || []
-          }
-          scrapedAt={parseInsights(client?.performanceInsights || "")?.scrapedAt || null}
-          clientId={mode === "admin" ? clientId : undefined}
-          onRefreshed={reloadClient}
-        />
+      {/* Last-week post activity + Story ideas */}
+      <Section title={t("dash.postActivity")} icon={CheckCircle2}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <LastWeekActivity
+            posts={
+              // Prefer full post history when available; fall back to top30Days
+              // for backward-compat with insights generated before recentPosts
+              // was added to the scrape output.
+              parseInsights(client?.performanceInsights || "")?.recentPosts
+              || parseInsights(client?.performanceInsights || "")?.top30Days
+              || []
+            }
+            scrapedAt={parseInsights(client?.performanceInsights || "")?.scrapedAt || null}
+            clientId={mode === "admin" ? clientId : undefined}
+            onRefreshed={reloadClient}
+          />
+          <StoryIdeasCard clientId={clientId} mode={mode} />
+        </div>
       </Section>
 
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatTile
-          label="Skripte diese Woche"
+          label={t("dash.stats.scriptsThisWeek")}
           value={scriptsThisWeek}
-          sublabel={`von ${scripts.length} insgesamt`}
+          sublabel={t("dash.stats.ofTotal", { total: scripts.length })}
           icon={<FileText className="h-3.5 w-3.5" />}
           accent="ocean"
           href={scriptsUrl}
         />
         <StatTile
-          label="Feedback offen"
+          label={t("dash.stats.feedbackOpen")}
           value={pendingFeedback.length}
-          sublabel={pendingFeedback.length > 0 ? "warten auf Reaktion" : "alles gegeben ✓"}
+          sublabel={pendingFeedback.length > 0 ? t("dash.stats.waitingReaction") : t("dash.stats.allGiven")}
           icon={<Clock className="h-3.5 w-3.5" />}
           accent={pendingFeedback.length > 0 ? "amber" : "green"}
           href={scriptsUrl}
         />
         <StatTile
-          label="Freigegeben"
+          label={t("dash.stats.approved")}
           value={approvedCount}
-          sublabel={revisionCount > 0 ? `${revisionCount} Überarbeitungen offen` : "bereit zur Aufnahme"}
+          sublabel={revisionCount > 0 ? t("dash.stats.revisionsOpen", { count: revisionCount }) : t("dash.stats.readyToRecord")}
           icon={<ThumbsUp className="h-3.5 w-3.5" />}
           accent="green"
         />
         <StatTile
-          label="Content-Ideen"
+          label={t("dash.stats.contentIdeas")}
           value={ideas.length}
-          sublabel="Pool für kommende Wochen"
+          sublabel={t("dash.stats.poolForFutureWeeks")}
           icon={<Lightbulb className="h-3.5 w-3.5" />}
           accent="blush"
           href={scriptsUrl}
@@ -214,11 +222,11 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
         <div className="lg:col-span-2 space-y-6">
           {openFeedback.length > 0 && (
             <Section
-              title="Auf Feedback wartend"
+              title={t("dash.waitingForFeedback")}
               icon={Clock}
               action={
                 <Link href={scriptsUrl} className="text-[11px] text-ocean/50 hover:text-ocean transition-colors flex items-center gap-1">
-                  Alle ansehen <ArrowRight className="h-3 w-3" />
+                  {t("dash.viewAll")} <ArrowRight className="h-3 w-3" />
                 </Link>
               }
             >
@@ -239,12 +247,12 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-ocean break-words line-clamp-2">
-                          {s.title || "Unbenannt"}
+                          {s.title || t("dash.untitled")}
                         </p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {s.pillar && <span className="text-[10px] bg-ocean/[0.04] text-ocean/60 px-2 py-0.5 rounded-md">{s.pillar}</span>}
                           {s.format && <span className="text-[10px] bg-blush-light/40 text-ocean/60 px-2 py-0.5 rounded-md">{s.format}</span>}
-                          <span className="text-[10px] text-amber-600/80 font-medium">Feedback ausstehend</span>
+                          <span className="text-[10px] text-amber-600/80 font-medium">{t("dash.feedbackPending")}</span>
                         </div>
                       </div>
                       <ArrowRight className="h-4 w-4 text-ocean/20 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
@@ -257,11 +265,11 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
 
           {latestScripts.length > 0 && (
             <Section
-              title="Neueste Skripte"
+              title={t("dash.latestScripts")}
               icon={FileText}
               action={
                 <Link href={scriptsUrl} className="text-[11px] text-ocean/50 hover:text-ocean transition-colors flex items-center gap-1">
-                  Alle ansehen <ArrowRight className="h-3 w-3" />
+                  {t("dash.viewAll")} <ArrowRight className="h-3 w-3" />
                 </Link>
               }
               delay={0.1}
@@ -284,11 +292,11 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-medium text-ocean break-words line-clamp-1 flex-1 min-w-0">
-                              {s.title || "Unbenannt"}
+                              {s.title || t("dash.untitled")}
                             </p>
-                            {fb === "approved" && <Dot tone="green" label="Freigegeben" />}
-                            {fb === "rejected" && <Dot tone="red" label="Abgelehnt" />}
-                            {fb === "revision_requested" && <Dot tone="amber" label="Überarbeitung" />}
+                            {fb === "approved" && <Dot tone="green" label={t("dash.statusApproved")} />}
+                            {fb === "rejected" && <Dot tone="red" label={t("dash.statusRejected")} />}
+                            {fb === "revision_requested" && <Dot tone="amber" label={t("dash.statusRevision")} />}
                           </div>
                           {preview && (
                             <p className="text-xs text-ocean/55 mt-1 line-clamp-1 break-words">{preview}…</p>
@@ -312,15 +320,15 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
               <div className="h-12 w-12 rounded-2xl bg-blush-light/40 flex items-center justify-center mx-auto mb-4">
                 <Sparkles className="h-6 w-6 text-blush-dark" />
               </div>
-              <h3 className="text-sm font-semibold text-ocean mb-1">Noch keine Skripte</h3>
+              <h3 className="text-sm font-semibold text-ocean mb-1">{t("dash.noScriptsTitle")}</h3>
               <p className="text-xs text-ocean/55 mb-5 max-w-md mx-auto">
-                Dein Content-Team arbeitet an den ersten Skripten. Oder leg selbst im Chat los.
+                {t("dash.noScriptsBody")}
               </p>
               <Link
                 href={chatUrl}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-ocean hover:bg-ocean-light text-white text-xs font-medium px-4 py-2.5 transition-colors"
               >
-                <MessageSquare className="h-3.5 w-3.5" /> Chat öffnen
+                <MessageSquare className="h-3.5 w-3.5" /> {t("dash.openChat")}
               </Link>
             </div>
           )}
@@ -329,7 +337,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
         {/* Right sidebar */}
         <div className="space-y-5">
           {upcoming.length > 0 && (
-            <Section title="Diese Woche" icon={BarChart2} delay={0.05}>
+            <Section title={t("dash.thisWeek")} icon={BarChart2} delay={0.05}>
               <div className="rounded-2xl bg-white border border-ocean/[0.06] p-4 space-y-3">
                 {upcoming.map((day) => {
                   const slot = weekly[day];
@@ -344,7 +352,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                         <p className="text-xs font-medium text-ocean leading-snug break-words">{slot.type}</p>
                         {slot.format && <p className="text-[11px] text-ocean/50 mt-0.5 break-words">{slot.format}</p>}
                         {slot.pillar && <p className="text-[10px] text-blush-dark/70 mt-0.5 break-words">{slot.pillar}</p>}
-                        {isToday && <p className="text-[10px] text-ivory font-medium mt-0.5">· Heute</p>}
+                        {isToday && <p className="text-[10px] text-ivory font-medium mt-0.5">· {t("dash.today")}</p>}
                       </div>
                     </div>
                   );
@@ -353,14 +361,14 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                   href={strategyUrl}
                   className="flex items-center justify-center gap-1 text-[11px] text-ocean/50 hover:text-ocean transition-colors pt-2 border-t border-ocean/[0.04]"
                 >
-                  Kompletter Wochenplan <ArrowRight className="h-3 w-3" />
+                  {t("dash.fullWeekPlan")} <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
             </Section>
           )}
 
           {analysis && (
-            <Section title="Letztes Audit" icon={Search} delay={0.1}>
+            <Section title={t("dash.lastAudit")} icon={Search} delay={0.1}>
               <Link
                 href={strategyUrl}
                 className="block rounded-2xl bg-gradient-to-br from-ocean via-ocean to-ocean-light p-4 text-white relative overflow-hidden group hover:shadow-[0_8px_32px_rgba(32,35,69,0.15)] transition-shadow"
@@ -368,22 +376,22 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                 <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/[0.04]" />
                 <div className="relative">
                   <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2">
-                    {analysis.instagramHandle ? `@${analysis.instagramHandle}` : "Profil-Audit"}
+                    {analysis.instagramHandle ? `@${analysis.instagramHandle}` : t("dash.profileAudit")}
                   </p>
                   <div className="grid grid-cols-3 gap-2">
-                    <MiniStat label="Follower" value={fmt(analysis.profileFollowers || 0)} />
-                    <MiniStat label="Reels/30d" value={analysis.profileReels30d || 0} />
-                    <MiniStat label="Ø Views" value={fmt(analysis.profileAvgViews30d || 0)} />
+                    <MiniStat label={t("dash.followers")} value={fmt(analysis.profileFollowers || 0)} />
+                    <MiniStat label={t("dash.reels30d")} value={analysis.profileReels30d || 0} />
+                    <MiniStat label={t("dash.avgViews")} value={fmt(analysis.profileAvgViews30d || 0)} />
                   </div>
                   <p className="text-[10px] text-white/50 mt-3 flex items-center gap-1 group-hover:text-white/80 transition-colors">
-                    Zum vollständigen Report <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+                    {t("dash.fullReport")} <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
                   </p>
                 </div>
               </Link>
             </Section>
           )}
 
-          <Section title="Schnell starten" icon={Sparkles} delay={0.15}>
+          <Section title={t("dash.quickStart")} icon={Sparkles} delay={0.15}>
             <div className="space-y-2">
               {quickActions.map((a, i) => (
                 <motion.div
@@ -414,13 +422,11 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
             <div className="rounded-2xl border-2 border-dashed border-blush/30 bg-blush-light/20 p-4 text-center">
               <RotateCcw className="h-5 w-5 text-blush-dark mx-auto mb-2" />
               <p className="text-xs text-ocean/65 leading-relaxed">
-                {mode === "admin"
-                  ? "Noch keine Strategie erstellt. Leg auf der Strategie-Seite los."
-                  : "Deine Strategie wird noch vorbereitet. Sobald sie fertig ist, erscheint sie hier."}
+                {mode === "admin" ? t("dash.noStrategyAdmin") : t("dash.noStrategyClient")}
               </p>
               {mode === "admin" && (
                 <Link href={strategyUrl} className="inline-block mt-3 text-xs font-medium text-blush-dark hover:text-ocean">
-                  Zur Strategie →
+                  {t("dash.toStrategy")} →
                 </Link>
               )}
             </div>
@@ -431,7 +437,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
             className="block rounded-2xl bg-white border border-ocean/[0.06] p-4 hover:border-ocean/[0.15] hover:shadow-sm transition-all text-center"
           >
             <p className="text-[11px] text-ocean/55">
-              {mode === "admin" ? "Profil & Kontext bearbeiten" : "Mein Profil ansehen"}
+              {mode === "admin" ? t("dash.editProfile") : t("dash.viewProfile")}
             </p>
           </Link>
         </div>

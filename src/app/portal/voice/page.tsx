@@ -5,15 +5,28 @@ import { Mic, Sparkles, ArrowRight } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { VoiceAgent } from "@/components/voice-agent";
 import { VoiceProfileRecorder } from "@/components/voice-profile-recorder";
+import { ComingSoonPanel } from "@/components/coming-soon-panel";
 
 type Mode = "hub" | "content-ideas" | "voice-profile";
 
 export default function PortalVoice() {
-  const { loading: authLoading } = usePortalClient();
+  const { user, loading: authLoading } = usePortalClient();
   const [mode, setMode] = useState<Mode>("hub");
 
   if (authLoading) {
     return <div className="text-center py-20 text-ocean/50">Laden...</div>;
+  }
+
+  // Clients see a friendly coming-soon gate. Admins (including when
+  // impersonating) keep the real experience so they can test.
+  if (user?.role === "client") {
+    return (
+      <ComingSoonPanel
+        icon={Mic}
+        titleKey="comingSoon.voiceTitle"
+        bodyKey="comingSoon.voiceBody"
+      />
+    );
   }
 
   if (mode === "content-ideas") {

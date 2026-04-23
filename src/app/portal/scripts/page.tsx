@@ -194,7 +194,7 @@ export default function PortalScripts() {
     <PortalShell
       icon={FileText}
       title={t("portal.dash.scripts")}
-      subtitle={tab === "scripts" ? `${scripts.length} Skripte` : `${ideas.length} Ideen`}
+      subtitle={tab === "scripts" ? t("portal.scripts.countScripts", { count: scripts.length }) : t("portal.scripts.countIdeas", { count: ideas.length })}
       loading={authLoading || loading}
       isEmpty={isEmpty && tab === "scripts"}
       emptyMessage={t("portal.scripts.empty")}
@@ -207,7 +207,7 @@ export default function PortalScripts() {
                 tab === "scripts" ? "bg-warm-white text-ocean" : "text-ocean/55 hover:text-ocean"
               }`}
             >
-              <FileText className="h-3.5 w-3.5" /> Skripte
+              <FileText className="h-3.5 w-3.5" /> {t("portal.scripts.tabScripts")}
             </button>
             <button
               onClick={() => setTab("ideas")}
@@ -215,13 +215,13 @@ export default function PortalScripts() {
                 tab === "ideas" ? "bg-warm-white text-ocean" : "text-ocean/55 hover:text-ocean"
               }`}
             >
-              <Lightbulb className="h-3.5 w-3.5" /> Ideen
+              <Lightbulb className="h-3.5 w-3.5" /> {t("portal.scripts.tabIdeas")}
             </button>
           </div>
 
           {tab === "ideas" && (
             <Button onClick={openNewIdea} className="rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-1.5 h-9">
-              <Plus className="h-4 w-4" /> Neue Idee
+              <Plus className="h-4 w-4" /> {t("portal.scripts.newIdea")}
             </Button>
           )}
         </div>
@@ -312,7 +312,7 @@ export default function PortalScripts() {
           {sortedIdeas.length === 0 ? (
             <div className="glass rounded-2xl p-8 text-center">
               <Lightbulb className="mx-auto h-8 w-8 text-ocean/30 mb-2" />
-              <p className="text-sm text-ocean/50">Noch keine Ideen. Leg deine erste Video-Idee an.</p>
+              <p className="text-sm text-ocean/50">{t("portal.scripts.emptyIdeas")}</p>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
@@ -368,22 +368,22 @@ export default function PortalScripts() {
           <DialogHeader>
             <DialogTitle>
               {feedbackDialog?.status === "rejected"
-                ? "Warum gefällt dir das Skript nicht?"
-                : "Was soll verbessert werden?"}
+                ? t("portal.scripts.feedbackTitle")
+                : t("portal.scripts.feedbackTitleImprove")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <p className="text-xs text-ocean/60 leading-relaxed">
               {feedbackDialog?.status === "rejected"
-                ? "Deine Begründung hilft uns, das beim nächsten Skript besser zu machen."
-                : "Beschreibe konkret was und warum verbessert werden soll."}
+                ? t("portal.scripts.feedbackBody")
+                : t("portal.scripts.feedbackBodyImprove")}
             </p>
             <Textarea
               autoFocus
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               rows={5}
-              placeholder={feedbackDialog?.status === "rejected" ? "z.B. Hook passt nicht zu meiner Zielgruppe, CTA zu aggressiv…" : "z.B. Body ist zu lang — kürzer und konkreter; Hook könnte provokanter sein…"}
+              placeholder={feedbackDialog?.status === "rejected" ? t("portal.scripts.feedbackPlaceholderReject") : t("portal.scripts.feedbackPlaceholderImprove")}
               className="rounded-xl glass border-ocean/[0.06] text-sm leading-relaxed"
             />
             <div className="flex items-center gap-2 justify-end">
@@ -392,14 +392,14 @@ export default function PortalScripts() {
                 onClick={() => { setFeedbackDialog(null); setFeedbackText(""); }}
                 className="rounded-xl"
               >
-                Abbrechen
+                {t("portal.scripts.cancel")}
               </Button>
               <Button
                 onClick={submitFeedback}
                 disabled={!feedbackText.trim() || feedbackSaving}
                 className="rounded-xl bg-ocean hover:bg-ocean-light border-0"
               >
-                {feedbackSaving ? "Speichern…" : "Feedback absenden"}
+                {feedbackSaving ? t("portal.scripts.saving") : t("portal.scripts.submitFeedback")}
               </Button>
             </div>
           </div>
@@ -410,34 +410,34 @@ export default function PortalScripts() {
       <Dialog open={ideaDialogOpen} onOpenChange={setIdeaDialogOpen}>
         <DialogContent className="max-w-lg glass-strong rounded-2xl border-ocean/[0.06]">
           <DialogHeader>
-            <DialogTitle>{ideaEditing ? "Idee bearbeiten" : "Neue Idee"}</DialogTitle>
+            <DialogTitle>{ideaEditing ? t("portal.scripts.editIdea") : t("portal.scripts.newIdea")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label className="text-xs text-ocean/60">Titel</Label>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.ideaTitle")}</Label>
               <Input
                 autoFocus
                 value={ideaForm.title}
                 onChange={(e) => setIdeaForm({ ...ideaForm, title: e.target.value })}
-                placeholder="Kurzer prägnanter Titel"
+                placeholder={t("portal.scripts.ideaTitlePlaceholder")}
                 className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11"
               />
             </div>
             <div>
-              <Label className="text-xs text-ocean/60">Beschreibung</Label>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.ideaDescription")}</Label>
               <Textarea
                 value={ideaForm.description}
                 onChange={(e) => setIdeaForm({ ...ideaForm, description: e.target.value })}
                 rows={4}
-                placeholder="Konzept, Hook, Kernbotschaft…"
+                placeholder={t("portal.scripts.ideaDescriptionPlaceholder")}
                 className="mt-1.5 rounded-xl glass border-ocean/[0.06] text-sm leading-relaxed"
               />
             </div>
             <div>
-              <Label className="text-xs text-ocean/60">Content-Typ (optional)</Label>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.ideaContentType")}</Label>
               <Select value={ideaForm.contentType} onValueChange={(v) => setIdeaForm({ ...ideaForm, contentType: v })}>
                 <SelectTrigger className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-11">
-                  <SelectValue placeholder="Auswählen…" />
+                  <SelectValue placeholder={t("portal.scripts.ideaSelectPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {CONTENT_TYPES.map((c) => (
@@ -448,14 +448,14 @@ export default function PortalScripts() {
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
               <Button variant="ghost" onClick={() => setIdeaDialogOpen(false)} className="rounded-xl">
-                Abbrechen
+                {t("portal.scripts.cancel")}
               </Button>
               <Button
                 onClick={saveIdea}
                 disabled={!ideaForm.title || ideaSaving}
                 className="rounded-xl bg-ocean hover:bg-ocean-light border-0"
               >
-                {ideaSaving ? "Speichern…" : ideaEditing ? "Speichern" : "Anlegen"}
+                {ideaSaving ? t("portal.scripts.saving") : ideaEditing ? t("portal.scripts.save") : t("portal.scripts.create")}
               </Button>
             </div>
           </div>
