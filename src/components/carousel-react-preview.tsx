@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Loader2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, Loader2, AlertCircle, ChevronLeft, ChevronRight, Code2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -39,11 +39,13 @@ const FONTS_HREF =
   ].join("&") +
   "&display=swap";
 
-// jsdelivr has reliable CORS headers; unpkg's redirect (react@19 → react@19.x)
-// drops CORS on the redirect target, which blocks iframe script loading.
-// Pin exact versions so there's no redirect to begin with.
-const REACT_CDN = "https://cdn.jsdelivr.net/npm/react@19.2.5/umd/react.production.min.js";
-const REACT_DOM_CDN = "https://cdn.jsdelivr.net/npm/react-dom@19.2.5/umd/react-dom.production.min.js";
+// React 19 removed UMD bundles — `/umd/react.production.min.js` returns 404 on
+// any version ≥ 19. The preview iframe is a visual sandbox (PNG export only),
+// so it doesn't have to match the host app's React version. We pin React 18 UMD,
+// which still ships `createRoot` (API parity for our use case) and is rock-solid
+// on jsdelivr's CDN.
+const REACT_CDN = "https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js";
+const REACT_DOM_CDN = "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js";
 const BABEL_CDN = "https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.9/babel.min.js";
 const TAILWIND_CDN = "https://cdn.tailwindcss.com";
 
@@ -53,10 +55,14 @@ const SLIDE_HEIGHT = 1440;
 function buildSrcDoc(tsxCode: string): string {
   // Inline the TSX as a JS string literal so the iframe's Babel can compile it.
   // Backticks escaped so the template literal stays intact.
+  // </script> must be broken up — otherwise the browser HTML parser closes
+  // our boot <script> at that exact byte and nothing runs (silent failure,
+  // no console error, iframe loads forever).
   const safeCode = tsxCode
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
-    .replace(/\$\{/g, "\\${");
+    .replace(/\$\{/g, "\\${")
+    .replace(/<\/script/gi, "<\\/script");
 
   return `<!doctype html>
 <html>
@@ -65,10 +71,11 @@ function buildSrcDoc(tsxCode: string): string {
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="${FONTS_HREF}" rel="stylesheet" />
-<script src="${REACT_CDN}"></script>
-<script src="${REACT_DOM_CDN}"></script>
-<script src="${BABEL_CDN}"></script>
-<script src="${TAILWIND_CDN}"></script>
+<script>window.__cdnErr = null;</script>
+<script src="${REACT_CDN}" onerror="window.__cdnErr='react'"></script>
+<script src="${REACT_DOM_CDN}" onerror="window.__cdnErr='react-dom'"></script>
+<script src="${BABEL_CDN}" onerror="window.__cdnErr='babel'"></script>
+<script src="${TAILWIND_CDN}" onerror="window.__cdnErr='tailwind'"></script>
 <style>
   html, body { margin: 0; padding: 0; background: #fafafa; overflow: hidden; }
   #root { display: flex; align-items: flex-start; justify-content: center; }
@@ -84,29 +91,72 @@ function buildSrcDoc(tsxCode: string): string {
 <div id="root"></div>
 <script>
 (function(){
+  function reportError(err) {
+    var msg = String(err && err.stack ? err.stack : (err && err.message) || err);
+    var pre = document.getElementById('__carousel_err') || document.createElement('pre');
+    pre.id = '__carousel_err';
+    pre.className = '__error';
+    pre.textContent = msg;
+    if (!pre.isConnected) document.body.appendChild(pre);
+    window.parent.postMessage({ type: 'carousel-error', message: String(err && err.message ? err.message : err) }, '*');
+  }
+
+  // Catch runtime errors from the rendered component too (not just our boot)
+  window.addEventListener('error', function(e){ reportError(e.error || e.message); });
+  window.addEventListener('unhandledrejection', function(e){ reportError(e.reason); });
+
+  var startedAt = Date.now();
+  var TIMEOUT_MS = 15000;
+
   function boot(){
     try {
       if (!window.Babel || !window.React || !window.ReactDOM) {
+        if (window.__cdnErr) {
+          reportError(new Error('Failed to load CDN script: ' + window.__cdnErr + '. URL likely 404 or blocked.'));
+          return;
+        }
+        if (Date.now() - startedAt > TIMEOUT_MS) {
+          var missing = [];
+          if (!window.React) missing.push('React');
+          if (!window.ReactDOM) missing.push('ReactDOM');
+          if (!window.Babel) missing.push('Babel');
+          reportError(new Error('Timeout after 15s. Missing: ' + missing.join(', ') + '. Check browser console / Network tab for failed script loads.'));
+          return;
+        }
         setTimeout(boot, 50);
         return;
       }
-      var src = \`${safeCode}\n\nreturn Carousel;\`;
-      var out = window.Babel.transform(src, { presets: ['react'] }).code;
+
+      // Inject hooks as destructured locals so the generated component can call
+      // useState(...) directly as well as React.useState(...). Safer against
+      // Claude forgetting the 'React.' prefix.
+      var hookPrelude = 'var useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,useMemo=React.useMemo,useCallback=React.useCallback,useReducer=React.useReducer,Fragment=React.Fragment;';
+
+      // allowReturnOutsideFunction: the trailing "return Carousel;" is inside
+      // new Function() at runtime, but Babel parses the raw source first and
+      // would reject the top-level return without this opt-in.
+      var src = hookPrelude + '\\n' + \`${safeCode}\` + '\\n\\nreturn Carousel;';
+      var out = window.Babel.transform(src, {
+        presets: ['react'],
+        parserOpts: { allowReturnOutsideFunction: true }
+      }).code;
       var factory = new Function('React', out);
       var Carousel = factory(window.React);
+
+      if (typeof Carousel !== 'function') {
+        throw new Error('Generated code did not produce a Carousel function (got: ' + typeof Carousel + '). Check the generated TSX.');
+      }
+
       var root = window.ReactDOM.createRoot(document.getElementById('root'));
       root.render(window.React.createElement(Carousel));
-      window.parent.postMessage({ type: 'carousel-ready' }, '*');
+
+      // Give React a tick to actually commit, then measure slide count
+      requestAnimationFrame(function(){
+        var slides = document.querySelectorAll('section.slide');
+        window.parent.postMessage({ type: 'carousel-ready', slideCount: slides.length }, '*');
+      });
     } catch (err) {
-      var pre = document.createElement('pre');
-      pre.className = '__error';
-      pre.textContent = String(err && err.stack ? err.stack : err);
-      document.body.innerHTML = '';
-      document.body.appendChild(pre);
-      window.parent.postMessage({
-        type: 'carousel-error',
-        message: String(err && err.message ? err.message : err)
-      }, '*');
+      reportError(err);
     }
   }
   boot();
@@ -130,6 +180,7 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
   const [slideCount, setSlideCount] = useState<number>(0);
   const [exporting, setExporting] = useState<false | number>(false);
   const [scale, setScale] = useState<number>(0.5);
+  const [showCode, setShowCode] = useState(false);
 
   // Re-compute scale whenever the container size changes
   useEffect(() => {
@@ -175,6 +226,24 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
     setSlideCount(0);
     return buildSrcDoc(tsxCode);
   }, [tsxCode]);
+
+  // Safety net: if the iframe never reports ready OR error within 25s,
+  // surface a visible message. Without this, a broken boot script (e.g.
+  // stray </script> in TSX, CSP blocking CDN, babel parse loop) looks
+  // identical to an in-progress render.
+  useEffect(() => {
+    if (status !== "loading") return;
+    const t = setTimeout(() => {
+      setStatus(prev => {
+        if (prev !== "loading") return prev;
+        setErrorMsg(
+          "Das iframe hat nach 25s keine Rückmeldung gegeben. Wahrscheinliche Ursachen: Ungültiger TSX (z.B. </script> im Code), CDN blockiert, oder Babel hängt. Klick 'Code' um den generierten TSX zu prüfen.",
+        );
+        return "error";
+      });
+    }, 25000);
+    return () => clearTimeout(t);
+  }, [status, srcDoc]);
 
   const safeFilename = (base: string, idx: number) => {
     const slug = (base || "carousel")
@@ -276,6 +345,16 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
             </div>
           )}
           <Button
+            onClick={() => setShowCode(true)}
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs"
+            title="Generierten TSX-Code anzeigen"
+          >
+            <Code2 className="h-3.5 w-3.5" />
+            Code
+          </Button>
+          <Button
             onClick={exportAll}
             disabled={status !== "ready" || exporting !== false}
             size="sm"
@@ -348,6 +427,47 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
               aria-label={`Zu Slide ${i + 1} springen`}
             />
           ))}
+        </div>
+      )}
+
+      {/* ── Generated code modal ───────────────────────────────── */}
+      {showCode && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-6"
+          onClick={() => setShowCode(false)}
+        >
+          <div
+            className="w-full max-w-4xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-ocean/[0.08]">
+              <div className="flex items-center gap-2">
+                <Code2 className="h-4 w-4 text-ocean/60" />
+                <span className="text-sm font-medium text-ocean">Generierter TSX-Code</span>
+                <span className="text-xs text-ocean/45">({tsxCode.length} Zeichen)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => navigator.clipboard.writeText(tsxCode)}
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                >
+                  Kopieren
+                </Button>
+                <button
+                  onClick={() => setShowCode(false)}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center text-ocean/60 hover:bg-ocean/[0.05] hover:text-ocean"
+                  aria-label="Schließen"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <pre className="flex-1 overflow-auto p-5 text-xs font-mono text-ocean/80 bg-ocean/[0.02] whitespace-pre-wrap break-words">
+              {tsxCode}
+            </pre>
+          </div>
         </div>
       )}
     </div>
