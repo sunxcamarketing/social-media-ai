@@ -182,7 +182,16 @@ export function CarouselReactMode({ clientId }: Props) {
     setEvents([]);
   };
 
-  const stageEvents = events.filter((e) => e.stage !== "complete");
+  // Pipeline emits two events per stage (loading → done). Collapse to the
+  // latest event per stage so each step renders exactly once.
+  const stageEvents = (() => {
+    const latestByStage = new Map<string, ProgressEvent>();
+    for (const ev of events) {
+      if (ev.stage === "complete") continue;
+      latestByStage.set(ev.stage, ev);
+    }
+    return Array.from(latestByStage.values());
+  })();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
