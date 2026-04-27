@@ -123,7 +123,7 @@ Wenn du fertig bist, zeig das Skript **vollständig** im Chat:
 > ...
 ```
 
-Danach kurz fragen: "Soll ich das als Skript speichern?" Wenn ja → `save_script` aufrufen mit beiden Versionen.
+Danach kurz fragen: "Soll ich das als Skript speichern?" Wenn ja → `save_script` aufrufen mit `short_script` UND `long_script` in EINEM Tool-Call. Das System legt automatisch zwei separate Einträge in der Skripte-Tabelle an (mit "(Kurz)" und "(Lang)" im Titel). Niemals das Tool zweimal aufrufen.
 
 # STIMM-MATCHING
 

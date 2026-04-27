@@ -220,49 +220,61 @@ async function toolSaveScript(
 ): Promise<string> {
   if (!input.title?.trim()) return "Titel fehlt. Gib einen kurzen Titel mit.";
 
-  let body = input.body?.trim() || "";
-  if (!body) {
-    if (!input.short_script && !input.long_script) {
-      return "Skript-Text fehlt. Übergib entweder body oder short_script + long_script.";
-    }
-    const textHookLine = input.text_hook ? `[TEXT-HOOK auf Screen]: "${input.text_hook}"` : "";
-    const parts: string[] = [];
-    if (input.short_script) {
-      parts.push(`── KURZ (30-40 Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${input.short_script.trim()}`);
-    }
-    if (input.long_script) {
-      parts.push(`── LANG (60+ Sek) ──\n${textHookLine ? textHookLine + "\n\n" : ""}${input.long_script.trim()}`);
-    }
-    body = parts.join("\n\n");
+  const baseTitle = input.title.trim();
+  const shortScript = input.short_script?.trim();
+  const longScript = input.long_script?.trim();
+  const rawBody = input.body?.trim();
+
+  // Build the rows we need to insert. Short and long versions become SEPARATE
+  // rows with a length suffix in the title — previously they were squashed
+  // into one body string so the user couldn't distinguish them in the table.
+  type Row = { title: string; body: string };
+  const rows: Row[] = [];
+
+  if (rawBody) {
+    // Caller provided a fully formatted body — store as a single row.
+    rows.push({ title: baseTitle, body: rawBody });
+  } else if (shortScript || longScript) {
+    if (shortScript) rows.push({ title: `${baseTitle} (Kurz)`, body: shortScript });
+    if (longScript) rows.push({ title: `${baseTitle} (Lang)`, body: longScript });
+  } else {
+    return "Skript-Text fehlt. Übergib entweder body oder short_script + long_script.";
   }
 
-  const firstPara = (input.short_script || input.long_script || body).trim().split(/\n{2,}/)[0] || "";
+  const today = new Date().toISOString().split("T")[0];
+  const insertedIds: string[] = [];
+  for (const row of rows) {
+    const firstPara = row.body.split(/\n{2,}/)[0] || "";
+    const id = uuid();
+    const { error } = await supabase.from("scripts").insert({
+      id,
+      client_id: clientId,
+      title: row.title,
+      pillar: input.pillar || "",
+      content_type: input.content_type || "",
+      format: input.format || "",
+      hook: firstPara,
+      hook_pattern: input.hook_pattern || "",
+      text_hook: input.text_hook || "",
+      body: row.body,
+      cta: input.cta || "",
+      status: "entwurf",
+      source: "chat-agent-manual",
+      shot_list: "",
+      pattern_type: "",
+      post_type: "",
+      anchor_ref: "",
+      cta_type: "",
+      funnel_stage: "",
+      created_at: today,
+    });
+    if (error) return `Fehler beim Speichern: ${error.message}`;
+    insertedIds.push(id);
+  }
 
-  const scriptId = uuid();
-  const { error } = await supabase.from("scripts").insert({
-    id: scriptId,
-    client_id: clientId,
-    title: input.title.trim(),
-    pillar: input.pillar || "",
-    content_type: input.content_type || "",
-    format: input.format || "",
-    hook: firstPara,
-    hook_pattern: input.hook_pattern || "",
-    text_hook: input.text_hook || "",
-    body,
-    cta: input.cta || "",
-    status: "entwurf",
-    source: "chat-agent-manual",
-    shot_list: "",
-    pattern_type: "",
-    post_type: "",
-    anchor_ref: "",
-    cta_type: "",
-    funnel_stage: "",
-    created_at: new Date().toISOString().split("T")[0],
-  });
-  if (error) return `Fehler beim Speichern: ${error.message}`;
-  return `Skript gespeichert: "${input.title}" (id=${scriptId}). Zu finden im Skripte-Tab des Clients.`;
+  return rows.length === 2
+    ? `Beide Versionen gespeichert als zwei Skripte: "${rows[0].title}" und "${rows[1].title}". Im Skripte-Tab.`
+    : `Skript gespeichert: "${rows[0].title}" (id=${insertedIds[0]}). Zu finden im Skripte-Tab des Clients.`;
 }
 
 // ── check_competitors ──────────────────────────────────────────────────────

@@ -961,7 +961,7 @@ export const AGENT_LIST_IDEAS_TOOL = {
 
 export const AGENT_SAVE_SCRIPT_TOOL = {
   name: "save_script",
-  description: "Speichere ein fertiges Skript direkt in den Skripte-Tab des Clients (NICHT nur als Idee). Nutze das nachdem du ein Skript im Chat ausgeschrieben hast und der User es behalten will, oder wenn der User selbst einen Skript-Text liefert und sagt 'speicher das'. Immer beide Versionen (short_script + long_script) mitgeben wenn vorhanden.",
+  description: "Speichere ein fertiges Skript direkt in den Skripte-Tab des Clients (NICHT nur als Idee). Nutze das nachdem du ein Skript im Chat ausgeschrieben hast und der User es behalten will, oder wenn der User selbst einen Skript-Text liefert und sagt 'speicher das'. WICHTIG: EINEN einzigen Tool-Call mit short_script UND long_script — das speichert automatisch zwei separate Skript-Einträge (mit Suffix '(Kurz)' / '(Lang)' im Titel). Nicht das Tool zweimal aufrufen.",
   input_schema: {
     type: "object" as const,
     properties: {

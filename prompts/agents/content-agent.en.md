@@ -123,7 +123,7 @@ When done, show the script **in full** in the chat:
 > ...
 ```
 
-Then briefly ask: "Should I save this as a script?" If yes → call `save_script` with both versions.
+Then briefly ask: "Should I save this as a script?" If yes → call `save_script` ONCE with both `short_script` AND `long_script` in the same tool call. The system automatically creates two separate rows in the Scripts tab (titles get "(Kurz)" / "(Lang)" suffixes). Never call the tool twice.
 
 # VOICE MATCHING
 
