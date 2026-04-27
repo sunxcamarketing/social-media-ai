@@ -96,6 +96,7 @@ und endet mit der schließenden Klammer `}` der Funktion.
 - **Jede Slide:** ein `<section>` Element mit:
   - `className="slide"` (PFLICHT — wird fürs PNG-Export gebraucht)
   - Inline-Style `style={{ width: 1080, height: 1440 }}` (PFLICHT — exakte IG-Maße)
+  - Bei horizontalem Layout (`flex flex-row` Container): zusätzlich `flexShrink: 0` im Style sonst werden alle Slides auf `1080 / N` zusammengequetscht. Sicherer Standardweg: alle Slides `absolute inset-0` und nur die aktuelle anzeigen (siehe Beispiel unten).
 - **KEINE** `import`- oder `export`-Statements — React ist als Global vorgeladen
 
 ### Styling Contract

@@ -79,6 +79,15 @@ function buildSrcDoc(tsxCode: string): string {
 <style>
   html, body { margin: 0; padding: 0; background: #fafafa; overflow: hidden; }
   #root { display: flex; align-items: flex-start; justify-content: center; }
+  /* Defensive: when Claude picks a horizontal flex-row layout, slides without
+     explicit flex-shrink would collapse to 1/N of the container width. Force
+     real Instagram dimensions on every .slide regardless of parent layout. */
+  section.slide {
+    width: 1080px !important;
+    height: 1440px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+  }
   .__error {
     margin: 24px; padding: 20px; border-radius: 12px;
     background: #FEF2F2; border: 1px solid #FECACA;
