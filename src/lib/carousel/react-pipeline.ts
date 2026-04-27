@@ -72,6 +72,19 @@ function sanitizeTsx(raw: string): string {
   // Drop `export default` — we render <Carousel /> ourselves
   code = code.replace(/^\s*export\s+default\s+/gm, "");
 
+  // Auto-repair typographic-quote mistakes: Claude often writes
+  //   body: "...„moderne Sklaverei"...",
+  // where the second " is a closing typographic quote that the JS parser
+  // reads as the string terminator, breaking the rest of the file. We
+  // detect the pattern „TEXT" (German low-9 opening + ASCII closing) and
+  // replace the closing ASCII quote with a Unicode right-double-quote so
+  // the parser stays inside the string. Safe because this exact sequence
+  // is virtually never legitimate JS.
+  code = code.replace(/„([^"„]*)"/g, "„$1”");
+
+  // Same defensive pass for English typographic openers '"' (U+201C)
+  code = code.replace(/“([^"“]*)"/g, "“$1”");
+
   // Trim trailing whitespace/newlines
   return code.trim();
 }

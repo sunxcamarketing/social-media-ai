@@ -98,6 +98,7 @@ und endet mit der schließenden Klammer `}` der Funktion.
   - Inline-Style `style={{ width: 1080, height: 1440 }}` (PFLICHT — exakte IG-Maße)
   - Bei horizontalem Layout (`flex flex-row` Container): zusätzlich `flexShrink: 0` im Style sonst werden alle Slides auf `1080 / N` zusammengequetscht. Sicherer Standardweg: alle Slides `absolute inset-0` und nur die aktuelle anzeigen (siehe Beispiel unten).
 - **KEINE** `import`- oder `export`-Statements — React ist als Global vorgeladen
+- **String-Quotes:** Wenn ein Text-Wert deutsche/typografische Anführungszeichen enthält (z.B. `„moderne Sklaverei"`), nutze BACKTICKS für den outer String oder escape mit `\"`. NIEMALS einen ASCII-Quote `"` innerhalb eines `"..."`-Strings benutzen — das schließt den String und bricht den Babel-Parser. Beispiel falsch: `body: "...„X"..."` ✗ — Beispiel richtig: `` body: `...„X"...` `` ✓
 
 ### Styling Contract
 

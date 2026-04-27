@@ -194,9 +194,9 @@ export function CarouselReactMode({ clientId }: Props) {
   })();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5">
       {/* ── Preview / Empty state ───────────────────────────────── */}
-      <div className="rounded-2xl bg-white border border-ocean/[0.06] overflow-hidden min-h-[640px] flex flex-col">
+      <div className="min-w-0 rounded-2xl bg-white border border-ocean/[0.06] overflow-hidden min-h-[640px] flex flex-col">
         {tsxCode ? (
           <CarouselReactPreview tsxCode={tsxCode} topic={currentTopic} />
         ) : (
