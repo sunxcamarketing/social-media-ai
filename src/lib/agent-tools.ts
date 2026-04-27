@@ -244,7 +244,6 @@ async function toolSaveScript(
   const today = new Date().toISOString().split("T")[0];
   const insertedIds: string[] = [];
   for (const row of rows) {
-    const firstPara = row.body.split(/\n{2,}/)[0] || "";
     const id = uuid();
     const { error } = await supabase.from("scripts").insert({
       id,
@@ -253,7 +252,10 @@ async function toolSaveScript(
       pillar: input.pillar || "",
       content_type: input.content_type || "",
       format: input.format || "",
-      hook: firstPara,
+      // hook stays empty — the first paragraph is already in `body`. Storing
+      // it in both fields caused the edit dialog (which combines hook + body
+      // + cta) to render the same text twice.
+      hook: "",
       hook_pattern: input.hook_pattern || "",
       text_hook: input.text_hook || "",
       body: row.body,

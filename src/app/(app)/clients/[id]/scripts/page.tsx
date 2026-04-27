@@ -204,7 +204,17 @@ export default function ClientScriptsPage() {
   // ── Saved scripts CRUD ──────────────────────────────────────────────────
   const openEdit = (script: Script) => {
     setEditing(script);
-    const fullScript = [script.hook, script.body, script.cta].filter(Boolean).join("\n\n");
+    // De-dup hook/cta from body — chat-saved scripts store hook as the
+    // first paragraph and body as the full text, so naively concatenating
+    // hook+body+cta produces the duplicated content the user reported.
+    const body = (script.body || "").trim();
+    const hook = (script.hook || "").trim();
+    const cta = (script.cta || "").trim();
+    const parts: string[] = [];
+    if (hook && !body.startsWith(hook)) parts.push(hook);
+    if (body) parts.push(body);
+    if (cta && !body.endsWith(cta)) parts.push(cta);
+    const fullScript = parts.join("\n\n");
     setForm({
       title: script.title, pillar: script.pillar, contentType: script.contentType,
       format: script.format, hook: "", body: "", cta: "", status: script.status, fullScript,
