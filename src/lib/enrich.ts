@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { ENRICH_PROFILE_TOOL } from "@prompts/tools";
 
 export interface EnrichedProfile {
   // Basic info
@@ -172,12 +173,7 @@ export async function enrichFromLinks(links: {
 
   const client = new Anthropic({ apiKey, timeout: 110_000 });
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2048,
-    messages: [{
-      role: "user",
-      content: `You are a brand positioning expert using the following framework to analyze clients:
+  const prompt = `You are a brand positioning expert using the following framework to analyze clients:
 
 FRAMEWORK — Brand & Positioning Workbook:
 
@@ -194,90 +190,45 @@ Phase 3 — Brand Message:
 - Branding Statement formula: "Ich helfe [Zielgruppe], von [Transformation], damit [Ergebnis]."
 - Human differentiation (AND factor): "Ich bin [Anbieter] UND...?" — what makes them human and non-interchangeable
 
-Use this framework to analyze the scraped profile data and extract/infer all fields. Make intelligent inferences even when not explicitly stated — a positioning expert reads between the lines of someone's messaging.
-
-Based on the following profile data scraped from a client's online presence, extract and infer their information. Return ONLY a valid JSON object with these exact fields:
-
-{
-  "name": "Full name of the person",
-  "company": "Company or brand name",
-  "role": "Job title or role (e.g. Founder & CEO, Coach, Consultant)",
-  "location": "City, Country",
-  "businessContext": "What they do, their target market, unique value proposition (2-4 sentences)",
-  "professionalBackground": "Career history, expertise, credentials (2-3 sentences)",
-  "keyAchievements": "Notable wins, milestones, numbers, social proof (2-3 sentences)",
-  "brandFeeling": "The core emotional feeling they sell to clients (e.g. 'Sicherheit, Klarheit und Selbstvertrauen' or 'Freedom and confidence in business'). Infer from their messaging and positioning.",
-  "brandProblem": "The single core problem they solve for their clients. Be specific and concise (1-2 sentences).",
-  "dreamCustomer": {
-    "tonality": "Communication style of their ideal client (e.g. professional, ambitious, authentic)",
-    "age": "Age range (e.g. 28-45)",
-    "gender": "Primary gender or 'all'",
-    "income": "Income level or range",
-    "country": "Primary country or region",
-    "profession": "Typical profession or industry",
-    "values": "Core values their ideal client holds",
-    "description": "A concrete 2-3 sentence description of one specific ideal client persona"
-  },
-  "customerProblems": {
-    "mental": "Mental/psychological struggles the ideal client faces",
-    "physical": "Physical or time-related challenges (burnout, overwork, etc.)",
-    "financial": "Financial problems or goals",
-    "social": "Social/relational challenges",
-    "aesthetic": "Aesthetic or image-related challenges (how they want to be perceived)"
-  },
-  "providerRole": "The role this person plays for clients — Mentor, Strategist, Coach, Sparring partner, etc. (1-2 sentences)",
-  "providerBeliefs": "What they believe in their industry that sets them apart — their contrarian or distinctive viewpoint (2-3 sentences)",
-  "providerStrengths": "Their key strengths and skills that clients value most (2-3 sentences)",
-  "authenticityZone": "Where their client's core problem overlaps with their unique strength — the sweet spot of their positioning (2-3 sentences)",
-  "brandingStatement": "A branding statement in the formula: I help [target group], from [transformation/starting point], so that [result]. Write it in the language used in their profile.",
-  "humanDifferentiation": "What makes them human and non-interchangeable beyond their offer — their AND factor (e.g. 'I am a business strategist AND a mother of 3 who believes...'). 2-3 sentences."
-}
-
-Rules:
-- Use information clearly present in the data, but also make intelligent inferences based on their messaging, tone, and positioning
-- For brand positioning fields (brandFeeling, dreamCustomer, etc.), make your best inference even if not explicitly stated — these are strategic interpretations
-- If a simple string field truly cannot be determined, use an empty string ""
-- For dreamCustomer and customerProblems, always return the full object structure (use empty strings for unknown sub-fields)
-- The brandingStatement should feel authentic to their voice and language
-- Return only the JSON object, no other text
+Use this framework to analyze the scraped profile data below. Make intelligent inferences even when not explicitly stated — a positioning expert reads between the lines of someone's messaging. For strategic fields (brandFeeling, dreamCustomer, providerBeliefs, etc.) make your best inference; only return an empty string for a simple field if it truly cannot be determined. Write the brandingStatement in the language used in their profile.
 
 PROFILE DATA:
-${sections}`,
-    }],
+${sections}`;
+
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2048,
+    tools: [ENRICH_PROFILE_TOOL],
+    tool_choice: { type: "tool", name: ENRICH_PROFILE_TOOL.name },
+    messages: [{ role: "user", content: prompt }],
   });
 
-  const text = message.content[0]?.type === "text" ? message.content[0].text : "{}";
-  console.log(`[enrich] Claude returned ${text.length} chars`);
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    console.warn("[enrich] Claude response had no JSON object:", text.slice(0, 200));
+  const toolUse = message.content.find((b) => b.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    console.warn("[enrich] Claude returned no tool_use block");
     return empty;
   }
 
-  try {
-    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-    console.log(`[enrich] parsed JSON with ${Object.keys(parsed).length} fields`);
-    return {
-      name: (parsed.name as string) || "",
-      company: (parsed.company as string) || "",
-      role: (parsed.role as string) || "",
-      location: (parsed.location as string) || "",
-      businessContext: (parsed.businessContext as string) || "",
-      professionalBackground: (parsed.professionalBackground as string) || "",
-      keyAchievements: (parsed.keyAchievements as string) || "",
-      brandFeeling: (parsed.brandFeeling as string) || "",
-      brandProblem: (parsed.brandProblem as string) || "",
-      dreamCustomer: parsed.dreamCustomer ? JSON.stringify(parsed.dreamCustomer) : "",
-      customerProblems: parsed.customerProblems ? JSON.stringify(parsed.customerProblems) : "",
-      providerRole: (parsed.providerRole as string) || "",
-      providerBeliefs: (parsed.providerBeliefs as string) || "",
-      providerStrengths: (parsed.providerStrengths as string) || "",
-      authenticityZone: (parsed.authenticityZone as string) || "",
-      brandingStatement: (parsed.brandingStatement as string) || "",
-      humanDifferentiation: (parsed.humanDifferentiation as string) || "",
-    };
-  } catch (e) {
-    console.warn("[enrich] JSON parse failed:", e instanceof Error ? e.message : e);
-    return empty;
-  }
+  const parsed = toolUse.input as Record<string, unknown>;
+  console.log(`[enrich] tool_use returned ${Object.keys(parsed).length} fields`);
+
+  return {
+    name: (parsed.name as string) || "",
+    company: (parsed.company as string) || "",
+    role: (parsed.role as string) || "",
+    location: (parsed.location as string) || "",
+    businessContext: (parsed.businessContext as string) || "",
+    professionalBackground: (parsed.professionalBackground as string) || "",
+    keyAchievements: (parsed.keyAchievements as string) || "",
+    brandFeeling: (parsed.brandFeeling as string) || "",
+    brandProblem: (parsed.brandProblem as string) || "",
+    dreamCustomer: parsed.dreamCustomer ? JSON.stringify(parsed.dreamCustomer) : "",
+    customerProblems: parsed.customerProblems ? JSON.stringify(parsed.customerProblems) : "",
+    providerRole: (parsed.providerRole as string) || "",
+    providerBeliefs: (parsed.providerBeliefs as string) || "",
+    providerStrengths: (parsed.providerStrengths as string) || "",
+    authenticityZone: (parsed.authenticityZone as string) || "",
+    brandingStatement: (parsed.brandingStatement as string) || "",
+    humanDifferentiation: (parsed.humanDifferentiation as string) || "",
+  };
 }
