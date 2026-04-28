@@ -16,18 +16,23 @@ import {
 } from "lucide-react";
 import type { Config, Analysis } from "@/lib/types";
 import { useAudit } from "@/context/audit-context";
+import { useI18n } from "@/lib/i18n";
 import { fmt } from "@/lib/format";
 
 export default function ClientAuditPage() {
   const { id } = useParams<{ id: string }>();
+  const { t } = useI18n();
   const [client, setClient] = useState<Config | null>(null);
   const [lang, setLang] = useState<"de" | "en">("de");
 
-  // Default audit language to the client's configured language as soon as it loads.
-  // Without this, English-only clients silently got German audits.
+  // Bidirectionally sync audit lang to client.language. Earlier we only flipped
+  // to "en" and never back to "de", so a stale state could persist across client
+  // switches. Now whenever the client changes we reset from scratch — user can
+  // still override via the dropdown below.
   useEffect(() => {
-    if (client?.language === "en") setLang("en");
-  }, [client?.language]);
+    if (!client) return;
+    setLang(client.language === "en" ? "en" : "de");
+  }, [client]);
 
   const { audit, startAudit, clearAudit } = useAudit(`client-${id}`);
 
@@ -103,7 +108,7 @@ export default function ClientAuditPage() {
   }
 
   async function deleteAnalysis(analysisId: string) {
-    if (!confirm("Audit wirklich löschen?")) return;
+    if (!confirm(t("audit.confirmDelete"))) return;
     await fetch(`/api/analyses?id=${analysisId}`, { method: "DELETE" });
     if (expandedId === analysisId) setExpandedId(null);
     loadAnalyses();
@@ -152,9 +157,9 @@ export default function ClientAuditPage() {
             className="rounded-full bg-ocean hover:bg-ocean-light border-0 gap-2 h-9 text-xs"
           >
             {running ? (
-              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Audit läuft…</>
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("audit.running")}</>
             ) : (
-              <><Search className="h-3.5 w-3.5" /> {analyses.length > 0 ? "Neuer Audit" : "Audit starten"}</>
+              <><Search className="h-3.5 w-3.5" /> {analyses.length > 0 ? t("audit.runNew") : t("audit.runStart")}</>
             )}
           </Button>
         </div>
@@ -221,7 +226,7 @@ export default function ClientAuditPage() {
         <div className="space-y-4">
           {analyses.length > 0 ? (
             <>
-              <h2 className="text-sm font-semibold text-ocean">Gespeicherte Audits</h2>
+              <h2 className="text-sm font-semibold text-ocean">{t("audit.savedList")}</h2>
               <div className="space-y-3">
                 {analyses.map((a) => {
                   const isOpen = expandedId === a.id;

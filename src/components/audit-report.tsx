@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fmt } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -423,6 +424,7 @@ function openPdfExport(profile: ProfileData | null, sections: Section[]) {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function AuditReport({ report, profile, onSave, saved }: AuditReportProps) {
+  const { t } = useI18n();
   const sections = useMemo(() => parseSections(report), [report]);
 
   const engagementRate = profile && profile.avgViews30d > 0 && profile.followers > 0
@@ -456,12 +458,12 @@ export function AuditReport({ report, profile, onSave, saved }: AuditReportProps
                     onClick={onSave}
                     className="h-8 gap-1.5 rounded-lg px-3 text-xs bg-white/15 hover:bg-white/25 text-white border border-white/10"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Speichern
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {t("scripts.save")}
                   </Button>
                 )}
                 {saved && (
                   <span className="flex items-center gap-1.5 text-xs text-green-300">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Gespeichert
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {t("audit.saved")}
                   </span>
                 )}
                 <Button
@@ -470,7 +472,7 @@ export function AuditReport({ report, profile, onSave, saved }: AuditReportProps
                   onClick={handleExport}
                   className="h-8 gap-1.5 rounded-lg px-3 text-xs text-white/70 hover:text-white hover:bg-white/10 border border-white/10"
                 >
-                  <Download className="h-3.5 w-3.5" /> Export
+                  <Download className="h-3.5 w-3.5" /> {t("audit.export")}
                 </Button>
               </div>
             </div>
@@ -479,21 +481,21 @@ export function AuditReport({ report, profile, onSave, saved }: AuditReportProps
               <div className="rounded-xl bg-white/[0.08] backdrop-blur-sm border border-white/[0.08] px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Users className="h-3.5 w-3.5 text-white/50" />
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider">Follower</span>
+                  <span className="text-[10px] text-white/40 uppercase tracking-wider">{t("audit.followers")}</span>
                 </div>
                 <p className="text-xl font-bold">{fmt(profile.followers)}</p>
               </div>
               <div className="rounded-xl bg-white/[0.08] backdrop-blur-sm border border-white/[0.08] px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Film className="h-3.5 w-3.5 text-white/50" />
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider">Reels / 30d</span>
+                  <span className="text-[10px] text-white/40 uppercase tracking-wider">{t("audit.reels30d")}</span>
                 </div>
                 <p className="text-xl font-bold">{profile.reelsCount30d}</p>
               </div>
               <div className="rounded-xl bg-white/[0.08] backdrop-blur-sm border border-white/[0.08] px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Eye className="h-3.5 w-3.5 text-white/50" />
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider">Ø Views</span>
+                  <span className="text-[10px] text-white/40 uppercase tracking-wider">{t("audit.avgViews")}</span>
                 </div>
                 <p className="text-xl font-bold">{fmt(profile.avgViews30d)}</p>
               </div>
@@ -514,7 +516,7 @@ export function AuditReport({ report, profile, onSave, saved }: AuditReportProps
       {/* Table of contents */}
       {sections.length > 2 && (
         <div className="rounded-2xl border border-ocean/[0.06] bg-warm-white/50 px-4 sm:px-6 py-5">
-          <p className="text-[10px] font-bold text-ocean/30 uppercase tracking-widest mb-3">Inhalt</p>
+          <p className="text-[10px] font-bold text-ocean/30 uppercase tracking-widest mb-3">{t("audit.content")}</p>
           <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
             {sections.map((section, i) => {
               const sStyle = SECTION_STYLE[section.id] || SECTION_STYLE.overview;

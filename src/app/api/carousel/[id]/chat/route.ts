@@ -25,6 +25,8 @@ export interface CarouselChatMessage {
      *  so the UI can show "updated carousel" without diffing. */
     tsxChars: number;
   };
+  /** Public URLs of user-uploaded photos attached to a user message. */
+  imageUrls?: string[];
   createdAt: string;
 }
 
@@ -54,7 +56,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const body = await request.json().catch(() => ({}));
   const userText: string = (body.message || "").trim();
-  if (!userText) return NextResponse.json({ error: "Empty message" }, { status: 400 });
+  const imageUrls: string[] = Array.isArray(body.imageUrls)
+    ? body.imageUrls.filter((u: unknown): u is string => typeof u === "string" && u.length > 0)
+    : [];
+  if (!userText && imageUrls.length === 0) {
+    return NextResponse.json({ error: "Empty message" }, { status: 400 });
+  }
 
   // Load current carousel state
   const { data: carousel, error: loadErr } = await supabase
@@ -79,7 +86,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     : [];
 
   const now = new Date().toISOString();
-  const userMessage: CarouselChatMessage = { role: "user", text: userText, createdAt: now };
+  const userMessage: CarouselChatMessage = {
+    role: "user",
+    text: userText,
+    ...(imageUrls.length > 0 ? { imageUrls } : {}),
+    createdAt: now,
+  };
 
   // Mark as generating so the UI can reflect in-progress state if user switches tabs.
   await supabase

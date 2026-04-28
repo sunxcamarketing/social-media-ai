@@ -121,47 +121,54 @@ export default function StoriesPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
           {/* History sidebar */}
-          <aside className="space-y-2">
-            <p className="text-[10px] font-medium text-ocean/50 uppercase tracking-wider mb-2">Historie</p>
-            {strategies.map(s => (
-              <button
-                key={s.id}
-                onClick={() => setSelectedId(s.id)}
-                type="button"
-                className={`w-full text-left rounded-lg border p-3 transition ${
-                  selectedId === s.id
-                    ? "border-ocean/30 bg-ocean/[0.03]"
-                    : "border-ocean/10 bg-white hover:border-ocean/20"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs text-ocean/60">
-                    <Clock className="h-3 w-3" />
-                    {fmtDate(s.created_at)}
-                  </div>
-                  <span
-                    role="button"
-                    tabIndex={0}
+          <aside className="space-y-1.5 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto pr-1">
+            <p className="text-[10px] font-medium text-ocean/40 uppercase tracking-wider mb-2 px-1">
+              Historie · {strategies.length}
+            </p>
+            {strategies.map(s => {
+              const active = selectedId === s.id;
+              return (
+                <div key={s.id} className="group relative">
+                  <button
+                    onClick={() => setSelectedId(s.id)}
+                    type="button"
+                    className={`w-full text-left rounded-xl p-3 transition-all ${
+                      active
+                        ? "bg-blush-light/60 ring-1 ring-blush-dark/20"
+                        : "bg-white border border-ocean/[0.06] hover:border-blush/30 hover:-translate-y-0.5"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] text-ocean/50 mb-1.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      {fmtDate(s.created_at)}
+                    </div>
+                    <p className={`text-sm leading-snug line-clamp-2 pr-6 ${active ? "text-ocean font-medium" : "text-ocean/80"}`}>
+                      {s.content.campaign_plan?.objective || "Story-Strategie"}
+                    </p>
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleDelete(s.id); }}
-                    className="text-ocean/30 hover:text-red-500 transition cursor-pointer"
+                    className="absolute top-2.5 right-2.5 h-6 w-6 rounded-md flex items-center justify-center text-ocean/30 hover:text-red-500 hover:bg-white opacity-0 group-hover:opacity-100 transition-all"
+                    title="Löschen"
+                    type="button"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </span>
+                  </button>
                 </div>
-                <p className="text-sm text-ocean mt-1 line-clamp-2">
-                  {s.content.campaign_plan?.objective || "Story-Strategie"}
-                </p>
-              </button>
-            ))}
+              );
+            })}
           </aside>
 
           {/* Detail view */}
-          <div className="space-y-6">
-            {selected ? <StoryStrategyDetail content={selected.content} /> : (
-              <p className="text-sm text-ocean/50">Wähle eine Strategie aus der Liste.</p>
+          <div>
+            {selected ? (
+              <StoryStrategyDetail content={selected.content} />
+            ) : (
+              <div className="rounded-2xl border border-ocean/[0.06] bg-white/60 p-10 text-center">
+                <p className="text-sm text-ocean/50">Wähle eine Strategie aus der Liste.</p>
+              </div>
             )}
           </div>
         </div>

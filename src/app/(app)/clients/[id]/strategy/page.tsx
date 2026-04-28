@@ -451,10 +451,12 @@ export default function ClientStrategyPage() {
   useEffect(() => { loadClientCached(id).then(setClient); loadAnalyses(); }, [id]);
 
   // Sync audit language to the client's configured language so English clients
-  // don't silently get German audits. Admin can still override via the dropdown.
+  // don't silently get German audits. Previously one-way ("en" only), which left
+  // a stale "en" when switching from English to a German client.
   useEffect(() => {
-    if (client?.language === "en") setAuditLang("en");
-  }, [client?.language]);
+    if (!client) return;
+    setAuditLang(client.language === "en" ? "en" : "de");
+  }, [client]);
 
   // Reload client data when background tasks complete
   useEffect(() => {
@@ -532,7 +534,7 @@ export default function ClientStrategyPage() {
   }
 
   async function deleteAnalysis(analysisId: string) {
-    if (!confirm("Audit wirklich löschen?")) return;
+    if (!confirm(t("audit.confirmDelete"))) return;
     await fetch(`/api/analyses?id=${analysisId}`, { method: "DELETE" });
     if (expandedAuditId === analysisId) setExpandedAuditId(null);
     loadAnalyses();
@@ -747,9 +749,9 @@ export default function ClientStrategyPage() {
               className="h-8 gap-1.5 rounded-lg px-3 text-xs text-ocean hover:text-ocean"
             >
               {auditRunning ? (
-                <><Loader2 className="h-3 w-3 animate-spin" /> Audit läuft…</>
+                <><Loader2 className="h-3 w-3 animate-spin" /> {t("audit.running")}</>
               ) : (
-                <><Search className="h-3 w-3" /> {analyses.length > 0 ? "Neuer Audit" : "Audit starten"}</>
+                <><Search className="h-3 w-3" /> {analyses.length > 0 ? t("audit.runNew") : t("audit.runStart")}</>
               )}
             </Button>
           </div>
@@ -819,7 +821,7 @@ export default function ClientStrategyPage() {
           <div className="space-y-3">
             {analyses.length > 0 ? (
               <>
-                <p className="text-[11px] font-medium text-ocean uppercase tracking-wider">Gespeicherte Audits</p>
+                <p className="text-[11px] font-medium text-ocean uppercase tracking-wider">{t("audit.savedList")}</p>
                 <div className="space-y-2">
                   {analyses.map((a) => {
                     const isOpen = expandedAuditId === a.id;
@@ -1037,7 +1039,7 @@ export default function ClientStrategyPage() {
                 </div>
                 {strategyReasoning && (
                   <div className="mt-3 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] px-4 py-3">
-                    <p className="text-[10px] font-medium text-blush-dark uppercase tracking-wider mb-1">AI Begründung</p>
+                    <p className="text-[10px] font-medium text-blush-dark uppercase tracking-wider mb-1">{t("strategy.aiReasoning")}</p>
                     <p className="text-xs text-ocean leading-relaxed">{String(strategyReasoning)}</p>
                   </div>
                 )}

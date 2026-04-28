@@ -33,13 +33,15 @@ function startOfDay(d: Date): Date {
 }
 
 /**
- * Builds a 7-day window ending yesterday (so "last week" excludes today
- * which isn't complete yet). Returns an array of Date objects, oldest first.
+ * Builds a 7-day window ending TODAY (inclusive). Earlier we excluded today
+ * because "the day isn't complete yet" — but that hides posts the user made
+ * today and reads as broken ("I posted, widget says 0"). Including today is
+ * the label's natural meaning of "last 7 days".
  */
 function last7Days(): Date[] {
   const today = startOfDay(new Date());
   const days: Date[] = [];
-  for (let i = 7; i >= 1; i--) {
+  for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     days.push(d);

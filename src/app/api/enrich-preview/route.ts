@@ -15,6 +15,12 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Enrichment failed" }, { status: 500 });
+    console.error("[enrich-preview] failed", e);
+    const msg =
+      e instanceof Error ? e.message :
+      (e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string")
+        ? (e as { message: string }).message
+        : "Enrichment failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

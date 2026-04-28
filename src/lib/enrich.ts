@@ -22,33 +22,66 @@ export interface EnrichedProfile {
   humanDifferentiation: string;
 }
 
-async function fetchWebsiteText(url: string): Promise<string> {
-  if (!url) return "";
-  const fullUrl = url.startsWith("http") ? url : `https://${url}`;
+function normalizeUrl(value: string, kind: "website" | "linkedin" | "tiktok" | "youtube"): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (trimmed.startsWith("http")) return trimmed;
+  const stripped = trimmed.replace(/^@/, "");
+  switch (kind) {
+    case "tiktok":
+      if (stripped.includes("tiktok.com")) return `https://${stripped}`;
+      return `https://www.tiktok.com/@${stripped}`;
+    case "linkedin":
+      if (stripped.includes("linkedin.com")) return `https://${stripped}`;
+      return `https://www.linkedin.com/in/${stripped}`;
+    case "youtube":
+      if (stripped.includes("youtube.com") || stripped.includes("youtu.be")) return `https://${stripped}`;
+      return `https://www.youtube.com/@${stripped}`;
+    default:
+      return `https://${stripped}`;
+  }
+}
+
+async function fetchWebsiteText(url: string, kind: "website" | "linkedin" | "tiktok" | "youtube"): Promise<string> {
+  const fullUrl = normalizeUrl(url, kind);
+  if (!fullUrl) return "";
   try {
     const res = await fetch(fullUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,de;q=0.8",
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
+    if (!res.ok) {
+      console.warn(`[enrich] ${kind} ${fullUrl} → HTTP ${res.status}`);
+      return "";
+    }
     const html = await res.text();
-    return html
+    const text = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
       .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 8000);
-  } catch {
+    console.log(`[enrich] ${kind} ${fullUrl} → ${text.length} chars`);
+    return text;
+  } catch (e) {
+    console.warn(`[enrich] ${kind} ${fullUrl} failed:`, e instanceof Error ? e.message : e);
     return "";
   }
 }
 
 async function fetchInstagramProfile(handle: string): Promise<string> {
   const token = process.env.APIFY_API_TOKEN;
-  if (!token || !handle) return "";
+  if (!token) {
+    console.warn("[enrich] APIFY_API_TOKEN missing — skipping Instagram");
+    return "";
+  }
+  if (!handle) return "";
 
   const username = handle
     .replace(/^@/, "")
@@ -69,11 +102,17 @@ async function fetchInstagramProfile(handle: string): Promise<string> {
         }),
       }
     );
-    if (!res.ok) return "";
+    if (!res.ok) {
+      console.warn(`[enrich] Apify IG @${username} → HTTP ${res.status}`);
+      return "";
+    }
     const data = await res.json();
     const p = data[0];
-    if (!p) return "";
-    return [
+    if (!p) {
+      console.warn(`[enrich] Apify IG @${username} → empty result`);
+      return "";
+    }
+    const text = [
       p.fullName && `Name: ${p.fullName}`,
       p.biography && `Bio: ${p.biography}`,
       p.businessCategoryName && `Category: ${p.businessCategoryName}`,
@@ -81,7 +120,10 @@ async function fetchInstagramProfile(handle: string): Promise<string> {
       p.externalUrl && `Website: ${p.externalUrl}`,
       p.followersCount && `Followers: ${p.followersCount}`,
     ].filter(Boolean).join("\n");
-  } catch {
+    console.log(`[enrich] Apify IG @${username} → ${text.length} chars`);
+    return text;
+  } catch (e) {
+    console.warn(`[enrich] Apify IG @${handle} failed:`, e instanceof Error ? e.message : e);
     return "";
   }
 }
@@ -105,10 +147,10 @@ export async function enrichFromLinks(links: {
   // Scrape all sources in parallel
   const [instagramText, websiteText, linkedinText, tiktokText, youtubeText] = await Promise.all([
     fetchInstagramProfile(links.instagram || ""),
-    fetchWebsiteText(links.website || ""),
-    fetchWebsiteText(links.linkedin || ""),
-    fetchWebsiteText(links.tiktok || ""),
-    fetchWebsiteText(links.youtube || ""),
+    fetchWebsiteText(links.website || "", "website"),
+    fetchWebsiteText(links.linkedin || "", "linkedin"),
+    fetchWebsiteText(links.tiktok || "", "tiktok"),
+    fetchWebsiteText(links.youtube || "", "youtube"),
   ]);
 
   const sections = [
@@ -119,7 +161,11 @@ export async function enrichFromLinks(links: {
     youtubeText && `YOUTUBE:\n${youtubeText}`,
   ].filter(Boolean).join("\n\n---\n\n");
 
-  if (!sections) return empty;
+  console.log(`[enrich] total sections: ${sections.length} chars`);
+  if (!sections) {
+    console.warn("[enrich] all sources returned empty — nothing to extract");
+    return empty;
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
@@ -200,12 +246,17 @@ ${sections}`,
     }],
   });
 
-  const text = message.content[0].type === "text" ? message.content[0].text : "{}";
+  const text = message.content[0]?.type === "text" ? message.content[0].text : "{}";
+  console.log(`[enrich] Claude returned ${text.length} chars`);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return empty;
+  if (!jsonMatch) {
+    console.warn("[enrich] Claude response had no JSON object:", text.slice(0, 200));
+    return empty;
+  }
 
   try {
     const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+    console.log(`[enrich] parsed JSON with ${Object.keys(parsed).length} fields`);
     return {
       name: (parsed.name as string) || "",
       company: (parsed.company as string) || "",
@@ -225,7 +276,8 @@ ${sections}`,
       brandingStatement: (parsed.brandingStatement as string) || "",
       humanDifferentiation: (parsed.humanDifferentiation as string) || "",
     };
-  } catch {
+  } catch (e) {
+    console.warn("[enrich] JSON parse failed:", e instanceof Error ? e.message : e);
     return empty;
   }
 }

@@ -24,9 +24,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       Object.entries(enriched).filter(([, v]) => v !== "")
     );
 
+    if (Object.keys(fields).length === 0) {
+      return NextResponse.json(
+        { error: "Auto-fill couldn't extract any info from the linked profiles. Check that the links are public and reachable." },
+        { status: 422 },
+      );
+    }
+
     const updated = await updateConfig(id, fields);
     return NextResponse.json({ config: updated, enriched });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Enrichment failed" }, { status: 500 });
+    console.error("[enrich] failed", e);
+    const msg =
+      e instanceof Error ? e.message :
+      (e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string")
+        ? (e as { message: string }).message
+        : "Enrichment failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

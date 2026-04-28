@@ -429,6 +429,13 @@ const translations: Record<string, { de: string; en: string }> = {
   "audit.running": { de: "Audit läuft…", en: "Audit running…" },
   "audit.confirmDelete": { de: "Audit wirklich löschen?", en: "Really delete this audit?" },
   "strategy.aiReasoning": { de: "AI Begründung", en: "AI Reasoning" },
+  "audit.savedList": { de: "Gespeicherte Audits", en: "Saved audits" },
+  "audit.saved": { de: "Gespeichert", en: "Saved" },
+  "audit.export": { de: "Export", en: "Export" },
+  "audit.followers": { de: "Follower", en: "Followers" },
+  "audit.reels30d": { de: "Reels / 30d", en: "Reels / 30d" },
+  "audit.avgViews": { de: "Ø Views", en: "Ø Views" },
+  "audit.content": { de: "Inhalt", en: "Contents" },
 
   // Scripts Page extras
   "scripts.regenerate": { de: "Neu generieren", en: "Regenerate" },
