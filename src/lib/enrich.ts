@@ -76,57 +76,129 @@ async function fetchWebsiteText(url: string, kind: "website" | "linkedin" | "tik
   }
 }
 
-async function fetchInstagramProfile(handle: string): Promise<string> {
+async function callApifyActor(
+  actorId: string,
+  input: object,
+  label: string,
+): Promise<Record<string, unknown> | null> {
   const token = process.env.APIFY_API_TOKEN;
   if (!token) {
-    console.warn("[enrich] APIFY_API_TOKEN missing — skipping Instagram");
-    return "";
+    console.warn(`[enrich] APIFY_API_TOKEN missing — skipping ${label}`);
+    return null;
   }
-  if (!handle) return "";
+  try {
+    const res = await fetch(
+      `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+        signal: AbortSignal.timeout(90_000),
+      },
+    );
+    if (!res.ok) {
+      console.warn(`[enrich] Apify ${label} → HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    const first = Array.isArray(data) ? data[0] : null;
+    if (!first || typeof first !== "object") {
+      console.warn(`[enrich] Apify ${label} → empty result`);
+      return null;
+    }
+    return first as Record<string, unknown>;
+  } catch (e) {
+    console.warn(`[enrich] Apify ${label} failed:`, e instanceof Error ? e.message : e);
+    return null;
+  }
+}
 
+function summarizeApifyItem(item: Record<string, unknown>, fields: string[]): string {
+  const out: Record<string, unknown> = {};
+  for (const f of fields) {
+    const v = item[f];
+    if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) continue;
+    out[f] = v;
+  }
+  return JSON.stringify(out, null, 2).slice(0, 4000);
+}
+
+async function fetchInstagramProfile(handle: string): Promise<string> {
+  if (!handle) return "";
   const username = handle
     .replace(/^@/, "")
     .replace(/.*instagram\.com\//, "")
     .replace(/\/$/, "")
     .split("?")[0];
+  const item = await callApifyActor(
+    "apify~instagram-scraper",
+    {
+      directUrls: [`https://www.instagram.com/${username}/`],
+      resultsType: "details",
+      resultsLimit: 1,
+    },
+    `IG @${username}`,
+  );
+  if (!item) return "";
+  const text = [
+    item.fullName && `Name: ${item.fullName}`,
+    item.biography && `Bio: ${item.biography}`,
+    item.businessCategoryName && `Category: ${item.businessCategoryName}`,
+    item.city && `City: ${item.city}`,
+    item.externalUrl && `Website: ${item.externalUrl}`,
+    item.followersCount && `Followers: ${item.followersCount}`,
+  ].filter(Boolean).join("\n");
+  console.log(`[enrich] Apify IG @${username} → ${text.length} chars`);
+  return text;
+}
 
-  try {
-    const res = await fetch(
-      `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          directUrls: [`https://www.instagram.com/${username}/`],
-          resultsType: "details",
-          resultsLimit: 1,
-        }),
-      }
-    );
-    if (!res.ok) {
-      console.warn(`[enrich] Apify IG @${username} → HTTP ${res.status}`);
-      return "";
-    }
-    const data = await res.json();
-    const p = data[0];
-    if (!p) {
-      console.warn(`[enrich] Apify IG @${username} → empty result`);
-      return "";
-    }
-    const text = [
-      p.fullName && `Name: ${p.fullName}`,
-      p.biography && `Bio: ${p.biography}`,
-      p.businessCategoryName && `Category: ${p.businessCategoryName}`,
-      p.city && `City: ${p.city}`,
-      p.externalUrl && `Website: ${p.externalUrl}`,
-      p.followersCount && `Followers: ${p.followersCount}`,
-    ].filter(Boolean).join("\n");
-    console.log(`[enrich] Apify IG @${username} → ${text.length} chars`);
-    return text;
-  } catch (e) {
-    console.warn(`[enrich] Apify IG @${handle} failed:`, e instanceof Error ? e.message : e);
-    return "";
-  }
+async function fetchLinkedInProfile(url: string): Promise<string> {
+  if (!url) return "";
+  const fullUrl = normalizeUrl(url, "linkedin");
+  const actor = process.env.APIFY_LINKEDIN_ACTOR || "dev_fusion~Linkedin-Profile-Scraper";
+  const item = await callApifyActor(actor, { profileUrls: [fullUrl] }, `LinkedIn ${fullUrl}`);
+  if (!item) return "";
+  const text = summarizeApifyItem(item, [
+    "fullName", "firstName", "lastName", "headline", "about", "summary",
+    "addressWithCountry", "addressCountryOnly", "addressWithoutCountry",
+    "location", "geoCountryName", "geoUrn",
+    "publicIdentifier", "occupation", "jobTitle", "currentJob", "currentCompany",
+    "experiences", "experience", "educations", "education", "skills", "languages",
+    "connectionsCount", "followersCount",
+  ]);
+  console.log(`[enrich] Apify LinkedIn ${fullUrl} → ${text.length} chars`);
+  return text;
+}
+
+async function fetchTikTokProfile(handle: string): Promise<string> {
+  if (!handle) return "";
+  const username = handle
+    .replace(/^@/, "")
+    .replace(/.*tiktok\.com\/@?/, "")
+    .replace(/\/$/, "")
+    .split("?")[0];
+  const actor = process.env.APIFY_TIKTOK_ACTOR || "clockworks~tiktok-profile-scraper";
+  const item = await callApifyActor(
+    actor,
+    { profiles: [username], resultsPerPage: 1 },
+    `TikTok @${username}`,
+  );
+  if (!item) return "";
+  // Some TikTok actors nest profile data under authorMeta — pull it up if present
+  const profile = (item.authorMeta && typeof item.authorMeta === "object")
+    ? { ...item, ...(item.authorMeta as Record<string, unknown>) }
+    : item;
+  const text = summarizeApifyItem(profile, [
+    "name", "nickName", "fullName", "uniqueId", "id",
+    "signature", "bio", "biography",
+    "verified", "private",
+    "fans", "followers", "followerCount", "followingCount", "heart", "heartCount",
+    "video", "videoCount",
+    "category", "categoryName", "language", "region", "ttSeller",
+    "bioLink",
+  ]);
+  console.log(`[enrich] Apify TikTok @${username} → ${text.length} chars`);
+  return text;
 }
 
 export async function enrichFromLinks(links: {
@@ -145,12 +217,13 @@ export async function enrichFromLinks(links: {
     authenticityZone: "", brandingStatement: "", humanDifferentiation: "",
   };
 
-  // Scrape all sources in parallel
+  // Scrape all sources in parallel — Instagram/LinkedIn/TikTok via Apify
+  // (those platforms block plain HTTP fetches), website/YouTube via direct fetch.
   const [instagramText, websiteText, linkedinText, tiktokText, youtubeText] = await Promise.all([
     fetchInstagramProfile(links.instagram || ""),
     fetchWebsiteText(links.website || "", "website"),
-    fetchWebsiteText(links.linkedin || "", "linkedin"),
-    fetchWebsiteText(links.tiktok || "", "tiktok"),
+    fetchLinkedInProfile(links.linkedin || ""),
+    fetchTikTokProfile(links.tiktok || ""),
     fetchWebsiteText(links.youtube || "", "youtube"),
   ]);
 

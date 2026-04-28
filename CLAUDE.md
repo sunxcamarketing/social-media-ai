@@ -19,12 +19,16 @@ npm run dev
 ```
 
 **Required environment variables** (in `.env` at project root):
-- `APIFY_API_TOKEN` — Apify Instagram scraper
+- `APIFY_API_TOKEN` — Apify (Instagram + LinkedIn + TikTok scraping for Auto-fill, plus competitor video scraping)
 - `GEMINI_API_KEY` — Google Gemini video analysis
 - `ANTHROPIC_API_KEY` — Claude concept generation
 - `BRAVE_API_KEY` — Brave Search API for live trend research
 - `JOB_SECRET` — Auth token for background research jobs
 - `GOOGLE_SERVICE_ACCOUNT_KEY` — Google Drive integration (base64 JSON)
+
+**Optional Apify actor overrides** (defaults work for most cases; override only if you've subscribed to a different actor):
+- `APIFY_LINKEDIN_ACTOR` — default `dev_fusion~Linkedin-Profile-Scraper`
+- `APIFY_TIKTOK_ACTOR` — default `clockworks~tiktok-profile-scraper`
 
 ---
 
