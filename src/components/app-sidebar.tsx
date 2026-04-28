@@ -39,7 +39,6 @@ interface NavLink {
 
 const CLIENT_TABS: NavLink[] = [
   { titleKey: "sidebar.dashboard", path: "dashboard", icon: LayoutDashboard },
-  { titleKey: "sidebar.profile", path: "information", icon: BookOpen },
   { titleKey: "sidebar.strategy", path: "strategy", icon: BarChart2 },
   { titleKey: "sidebar.scripts", path: "scripts", icon: FileText },
   { titleKey: "sidebar.stories", path: "stories", icon: Film },

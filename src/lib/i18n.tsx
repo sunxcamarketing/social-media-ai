@@ -589,7 +589,6 @@ const translations: Record<string, { de: string; en: string }> = {
   // ── Sidebar ──────────────────────────────────────────────────────────────
   "sidebar.selectClient": { de: "Client wählen", en: "Select client" },
   "sidebar.unnamed": { de: "Unbenannt", en: "Unnamed" },
-  "sidebar.profile": { de: "Profil", en: "Profile" },
   "sidebar.scripts": { de: "Skripte", en: "Scripts" },
   "sidebar.strategy": { de: "Strategie", en: "Strategy" },
   "sidebar.ideas": { de: "Ideen", en: "Ideas" },
