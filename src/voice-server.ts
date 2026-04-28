@@ -165,9 +165,11 @@ const httpServer = createHttpServer((req, res) => {
   res.end();
 });
 const wss = new WebSocketServer({ server: httpServer });
-httpServer.listen(PORT);
+// Bind explicitly to 0.0.0.0 — on Alpine/Node defaults to "::" (IPv6) which
+// fly-proxy doesn't always resolve, leading to "app not listening" warnings.
+httpServer.listen(PORT, "0.0.0.0");
 
-console.log(`[${new Date().toISOString()}] Voice server listening on port ${PORT}`);
+console.log(`[${new Date().toISOString()}] Voice server listening on 0.0.0.0:${PORT}`);
 
 wss.on("connection", async (ws: WebSocket, req) => {
   const url = new URL(req.url || "/", `http://localhost:${PORT}`);

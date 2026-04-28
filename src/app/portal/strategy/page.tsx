@@ -251,9 +251,6 @@ export default function PortalStrategy() {
                   );
                 })}
               </div>
-              {_reasoning && (
-                <p className="mt-3 text-xs text-ocean/55 leading-relaxed">{_reasoning}</p>
-              )}
             </div>
           </section>
         )}

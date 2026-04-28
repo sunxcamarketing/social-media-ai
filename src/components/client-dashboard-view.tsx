@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Mic,
   ArrowRight,
+  ArrowUpRight,
   ThumbsUp,
   RotateCcw,
   Clock,
@@ -16,9 +17,11 @@ import {
   Sparkles,
   CheckCircle2,
   Activity,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { PageDisplay } from "@/components/ui/page-display";
 import { Section } from "@/components/ui/section";
 import { LastWeekActivity } from "@/components/last-week-activity";
 import { StoryIdeasCard } from "@/components/story-ideas-card";
@@ -50,14 +53,7 @@ function startOfDayMs(ts: number): number {
 }
 
 interface ClientDashboardViewProps {
-  /** The client whose dashboard we're viewing. Required. */
   clientId: string;
-  /**
-   * - "portal": used when logged in as client OR admin impersonating.
-   *   Shows "Hi [Name] 👋" greeting and all portal routes (/portal/...).
-   * - "admin": used on /clients/[id]/dashboard. Greeting is the client
-   *   name, links point at admin routes (/clients/[id]/...).
-   */
   mode?: "portal" | "admin";
 }
 
@@ -89,47 +85,22 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
     });
   }, [clientId]);
 
-  // 7-day script creation trend (for sparkline) — hooks must run before any early return
-  const scriptTrend = useMemo(() => {
-    const days = Array.from({ length: 7 }, () => 0);
-    const today = startOfDayMs(Date.now());
-    for (const s of scripts) {
-      if (!s.createdAt) continue;
-      const ts = new Date(s.createdAt).getTime();
-      if (isNaN(ts)) continue;
-      const dayStart = startOfDayMs(ts);
-      const diff = Math.floor((today - dayStart) / 86_400_000);
-      if (diff >= 0 && diff < 7) days[6 - diff]++;
-    }
-    return days;
-  }, [scripts]);
-
-  const ideaTrend = useMemo(() => {
-    const days = Array.from({ length: 7 }, () => 0);
-    const today = startOfDayMs(Date.now());
-    for (const i of ideas) {
-      const ts = (i as { createdAt?: string }).createdAt
-        ? new Date((i as { createdAt?: string }).createdAt!).getTime()
-        : NaN;
-      if (isNaN(ts)) continue;
-      const diff = Math.floor((today - startOfDayMs(ts)) / 86_400_000);
-      if (diff >= 0 && diff < 7) days[6 - diff]++;
-    }
-    return days;
-  }, [ideas]);
-
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-32 rounded-2xl bg-ocean/[0.04] animate-pulse" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-2xl bg-ocean/[0.04] animate-pulse" />
-          ))}
+      <div className="space-y-5">
+        <div className="space-y-2.5">
+          <div className="h-2.5 w-36 rounded bg-ocean/[0.06] animate-pulse" />
+          <div className="h-9 w-1/2 rounded-lg bg-ocean/[0.06] animate-pulse" />
+          <div className="h-3.5 w-1/3 rounded bg-ocean/[0.06] animate-pulse" />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 h-64 rounded-2xl bg-ocean/[0.04] animate-pulse" />
-          <div className="h-64 rounded-2xl bg-ocean/[0.04] animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 h-44 rounded-2xl bg-ocean/[0.04] animate-pulse" />
+          <div className="h-44 rounded-2xl bg-ocean/[0.04] animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-24 rounded-xl bg-ocean/[0.04] animate-pulse" />
+          ))}
         </div>
       </div>
     );
@@ -138,14 +109,12 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
   const clientName = client?.configName || client?.name || "";
   const firstName = (client?.name || client?.configName || "").split(" ")[0] || "";
 
-  // URL helpers — switch based on mode
   const scriptsUrl = mode === "portal" ? "/portal/scripts" : `/clients/${clientId}/scripts`;
   const strategyUrl = mode === "portal" ? "/portal/strategy" : `/clients/${clientId}/strategy`;
   const chatUrl = mode === "portal" ? "/portal/chat" : `/clients/${clientId}/chat`;
   const voiceUrl = mode === "portal" ? "/portal/voice" : `/clients/${clientId}/voice`;
   const profileUrl = mode === "portal" ? "/portal/profil" : `/clients/${clientId}/information`;
 
-  // Derived
   const weekStart = startOfWeekMs();
   const lastWeekStart = startOfWeekMs(-1);
   const scriptsThisWeek = scripts.filter((s) => {
@@ -159,6 +128,9 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
     return !isNaN(ts) && ts >= lastWeekStart && ts < weekStart;
   }).length;
   const scriptsDelta = scriptsThisWeek - scriptsLastWeek;
+  const scriptsDeltaPct = scriptsLastWeek > 0
+    ? Math.round(((scriptsThisWeek - scriptsLastWeek) / scriptsLastWeek) * 100)
+    : null;
 
   const pendingFeedback = scripts.filter((s) => !s.clientFeedbackStatus);
   const approvedCount = scripts.filter((s) => s.clientFeedbackStatus === "approved").length;
@@ -194,74 +166,71 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
   const heroSubtitle = isLive
     ? t(pendingFeedback.length === 1 ? "dash.pendingFeedbackOne" : "dash.pendingFeedbackMany", { count: pendingFeedback.length })
     : scripts.length === 0
-      ? t(mode === "portal" ? "dash.noScriptsSubtitleClient" : "dash.noScriptsSubtitle")
+      ? t("dash.noScriptsSubtitle")
       : t("dash.summary", { scripts: scripts.length, ideas: ideas.length });
 
   const heroTitle = firstName ? t("dash.hi", { name: firstName }) : clientName || t("dash.titleFallback");
 
+  // Headline insight: pick the most useful one-liner for THIS week
+  const insight = buildInsight({ scriptsThisWeek, scriptsLastWeek, scriptsDelta, scriptsDeltaPct, pendingCount: pendingFeedback.length, approvedCount, lang, mode });
+
   return (
     <div className="space-y-5 sm:space-y-6">
-      {/* === HERO: Live status strip === */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-ocean via-ocean to-ocean-light text-white p-5 sm:p-7"
-      >
-        {/* decorative gradient orbs */}
-        <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blush/[0.10] blur-3xl pointer-events-none" />
-        <div className="absolute -left-10 -bottom-20 h-48 w-48 rounded-full bg-wind/[0.08] blur-3xl pointer-events-none" />
+      {/* === HERO === */}
+      <PageDisplay
+        eyebrow={`${lang === "de" ? "DASHBOARD" : "DASHBOARD"} · ${dateMono} · W${isoWeek}`}
+        title={heroTitle}
+        subtitle={heroSubtitle}
+        rightSlot={<InsightCard insight={insight} todaySlot={todaySlot} strategyUrl={strategyUrl} lang={lang} t={t} />}
+      />
 
-        <div className="relative flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
-            <LivePulse active={isLive} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="font-mono text-[10px] tracking-[0.2em] text-white/45 uppercase">
-                  {dateMono}
-                </span>
-                <span className="text-white/20">·</span>
-                <span className="font-mono text-[10px] tracking-[0.2em] text-white/45 uppercase">
-                  W{isoWeek}
-                </span>
-                <span className="text-white/20">·</span>
-                <span className={`font-mono text-[10px] tracking-[0.2em] uppercase ${isLive ? "text-blush" : "text-white/45"}`}>
-                  {isLive ? (lang === "de" ? "OFFENE TASKS" : "OPEN TASKS") : (lang === "de" ? "ALLES KLAR" : "ALL CLEAR")}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-[28px] font-light leading-tight mt-1.5 break-words">
-                {heroTitle}
-              </h1>
-              <p className="text-sm text-white/65 mt-1.5 break-words">
-                {heroSubtitle}
-              </p>
-            </div>
-          </div>
+      {/* === Metric cards (4) with barcode bars === */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <MetricCard
+          label={t("dash.stats.scriptsThisWeek")}
+          value={scriptsThisWeek}
+          sublabel={t("dash.stats.ofTotal", { total: scripts.length })}
+          icon={FileText}
+          delta={scriptsDelta}
+          deltaPct={scriptsDeltaPct}
+          barcodeRatio={scripts.length > 0 ? scriptsThisWeek / Math.max(scripts.length, 1) : 0}
+          barcodeColor="#22C55E"
+          href={scriptsUrl}
+        />
+        <MetricCard
+          label={t("dash.stats.feedbackOpen")}
+          value={pendingFeedback.length}
+          sublabel={pendingFeedback.length > 0 ? t("dash.stats.waitingReaction") : t("dash.stats.allGiven")}
+          icon={Clock}
+          tone={pendingFeedback.length > 0 ? "amber" : "green"}
+          barcodeRatio={pendingFeedback.length > 0 ? Math.min(1, pendingFeedback.length / 10) : 1}
+          barcodeColor={pendingFeedback.length > 0 ? "#F97316" : "#22C55E"}
+          href={scriptsUrl}
+        />
+        <MetricCard
+          label={t("dash.stats.approved")}
+          value={approvedCount}
+          sublabel={revisionCount > 0 ? t("dash.stats.revisionsOpen", { count: revisionCount }) : t("dash.stats.readyToRecord")}
+          icon={ThumbsUp}
+          tone="green"
+          barcodeRatio={scripts.length > 0 ? approvedCount / Math.max(scripts.length, 1) : 0}
+          barcodeColor="#22C55E"
+        />
+        <MetricCard
+          label={t("dash.stats.contentIdeas")}
+          value={ideas.length}
+          sublabel={t("dash.stats.poolForFutureWeeks")}
+          icon={Lightbulb}
+          tone="blush"
+          barcodeRatio={Math.min(1, ideas.length / 20)}
+          barcodeColor="#D42E35"
+          href={scriptsUrl}
+        />
+      </div>
 
-          {todaySlot?.type && (
-            <Link
-              href={strategyUrl}
-              className="group flex items-center gap-3 rounded-xl bg-white/[0.06] backdrop-blur-sm border border-white/[0.10] hover:border-white/25 hover:bg-white/[0.10] transition-all px-4 py-3 shrink-0"
-            >
-              <div className="h-9 w-9 rounded-lg bg-blush/15 border border-blush/20 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-blush" />
-              </div>
-              <div className="text-left min-w-0">
-                <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-white/45">
-                  {lang === "de" ? "HEUTE" : "TODAY"}
-                </p>
-                <p className="text-sm font-medium text-white truncate max-w-[180px]">{todaySlot.type}</p>
-                {todaySlot.format && <p className="text-[11px] text-white/55 truncate max-w-[180px]">{todaySlot.format}</p>}
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-white/30 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-            </Link>
-          )}
-        </div>
-      </motion.div>
-
-      {/* === Last 7 days post activity + Story ideas === */}
+      {/* === Post activity + Story ideas === */}
       <Section title={t("dash.postActivity")} icon={CheckCircle2}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           <LastWeekActivity
             posts={
               parseInsights(client?.performanceInsights || "")?.recentPosts
@@ -276,48 +245,9 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
         </div>
       </Section>
 
-      {/* === Metric cards row === */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard
-          label={t("dash.stats.scriptsThisWeek")}
-          value={scriptsThisWeek}
-          sublabel={t("dash.stats.ofTotal", { total: scripts.length })}
-          icon={FileText}
-          delta={scriptsDelta}
-          trend={scriptTrend}
-          accentColor="#202345"
-          href={scriptsUrl}
-        />
-        <MetricCard
-          label={t("dash.stats.feedbackOpen")}
-          value={pendingFeedback.length}
-          sublabel={pendingFeedback.length > 0 ? t("dash.stats.waitingReaction") : t("dash.stats.allGiven")}
-          icon={Clock}
-          tone={pendingFeedback.length > 0 ? "amber" : "green"}
-          href={scriptsUrl}
-        />
-        <MetricCard
-          label={t("dash.stats.approved")}
-          value={approvedCount}
-          sublabel={revisionCount > 0 ? t("dash.stats.revisionsOpen", { count: revisionCount }) : t("dash.stats.readyToRecord")}
-          icon={ThumbsUp}
-          tone="green"
-        />
-        <MetricCard
-          label={t("dash.stats.contentIdeas")}
-          value={ideas.length}
-          sublabel={t("dash.stats.poolForFutureWeeks")}
-          icon={Lightbulb}
-          tone="blush"
-          trend={ideaTrend}
-          accentColor="#D42E35"
-          href={scriptsUrl}
-        />
-      </div>
-
       {/* === Main 2-col === */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5">
-        <div className="lg:col-span-2 space-y-5">
+        <div className="lg:col-span-2 space-y-5 sm:space-y-6">
           {openFeedback.length > 0 && (
             <Section
               title={t("dash.waitingForFeedback")}
@@ -328,7 +258,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                 </Link>
               }
             >
-              <div className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-white overflow-hidden divide-y divide-amber-200/40">
+              <div className="rounded-2xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-white overflow-hidden divide-y divide-amber-200/40">
                 {openFeedback.map((s, i) => (
                   <motion.div
                     key={s.id}
@@ -340,7 +270,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                       href={scriptsUrl}
                       className="group flex items-start gap-3 p-3 sm:p-4 hover:bg-amber-50/60 transition-colors"
                     >
-                      <div className="relative shrink-0 mt-0.5">
+                      <div className="relative shrink-0 mt-1">
                         <div className="h-2 w-2 rounded-full bg-amber-500" />
                         <div className="absolute inset-0 h-2 w-2 rounded-full bg-amber-500 animate-ping opacity-40" />
                       </div>
@@ -373,7 +303,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
               }
               delay={0.08}
             >
-              <div className="rounded-xl bg-white border border-ocean/10 overflow-hidden">
+              <div className="rounded-2xl bg-white border border-ocean/10 overflow-hidden shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
                 {latestScripts.map((s, i) => {
                   const preview = (s.hook || s.body || "").slice(0, 120);
                   const fb = s.clientFeedbackStatus;
@@ -419,22 +349,20 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
           )}
 
           {scripts.length === 0 && (
-            <div className="rounded-2xl border-2 border-dashed border-ocean/15 bg-warm-white/40 p-8 sm:p-12 text-center">
+            <div className="rounded-2xl border-2 border-dashed border-ocean/15 bg-warm-white/40 p-8 sm:p-10 text-center">
               <div className="h-12 w-12 rounded-2xl bg-blush-light/40 flex items-center justify-center mx-auto mb-4">
-                <FileText className="h-6 w-6 text-blush-dark" />
+                <Sparkles className="h-6 w-6 text-blush-dark" />
               </div>
-              <h3 className="text-sm font-semibold text-ocean mb-1">{t("dash.noScriptsTitle")}</h3>
-              <p className="text-xs text-ocean/55 max-w-md mx-auto">
-                {t(mode === "portal" ? "dash.noScriptsBodyClient" : "dash.noScriptsBody")}
+              <h3 className="text-sm font-medium text-ocean mb-1">{t("dash.noScriptsTitle")}</h3>
+              <p className="text-xs text-ocean/55 mb-5 max-w-md mx-auto leading-relaxed">
+                {t("dash.noScriptsBody")}
               </p>
-              {mode === "admin" && (
-                <Link
-                  href={chatUrl}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-ocean hover:bg-ocean-light text-white text-xs font-medium px-4 py-2.5 mt-5 transition-colors"
-                >
-                  <MessageSquare className="h-3.5 w-3.5" /> {t("dash.openChat")}
-                </Link>
-              )}
+              <Link
+                href={chatUrl}
+                className="inline-flex items-center gap-1.5 rounded-full bg-ocean hover:bg-ocean-light text-white text-xs font-medium px-4 py-2.5 transition-colors"
+              >
+                <MessageSquare className="h-3.5 w-3.5" /> {t("dash.openChat")}
+              </Link>
             </div>
           )}
         </div>
@@ -443,7 +371,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
         <div className="space-y-5">
           {plannedDays.length > 0 && (
             <Section title={t("dash.thisWeek")} icon={BarChart2} delay={0.05}>
-              <div className="rounded-xl bg-white border border-ocean/10 overflow-hidden">
+              <div className="rounded-2xl bg-white border border-ocean/10 overflow-hidden shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
                 <div className="grid grid-cols-7 border-b border-ocean/[0.06]">
                   {ALL_DAYS.map((day, i) => {
                     const slot = weekly[day];
@@ -453,14 +381,14 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                     return (
                       <div
                         key={day}
-                        className={`flex flex-col items-center justify-center py-2.5 transition-colors ${
+                        className={`flex flex-col items-center justify-center py-3 transition-colors ${
                           isToday ? "bg-ocean text-white" : hasContent ? "bg-blush-light/30" : "bg-warm-white/40"
                         } ${i < 6 ? "border-r border-ocean/[0.06]" : ""}`}
                       >
-                        <span className={`font-mono text-[9px] uppercase tracking-wider ${isToday ? "text-white/65" : "text-ocean/45"}`}>
+                        <span className={`font-mono text-[10px] uppercase tracking-wider ${isToday ? "text-white/65" : "text-ocean/45"}`}>
                           {dayShort[i]}
                         </span>
-                        <span className={`mt-0.5 h-1.5 w-1.5 rounded-full ${
+                        <span className={`mt-1 h-1.5 w-1.5 rounded-full ${
                           isToday ? "bg-blush"
                           : hasContent ? "bg-ocean/40"
                           : "bg-ocean/10"
@@ -505,7 +433,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
 
                 <Link
                   href={strategyUrl}
-                  className="flex items-center justify-center gap-1 text-[11px] text-ocean/55 hover:text-ocean transition-colors py-2.5 border-t border-ocean/[0.06] font-medium"
+                  className="flex items-center justify-center gap-1 text-[11px] text-ocean/55 hover:text-ocean transition-colors py-3 border-t border-ocean/[0.06] font-medium"
                 >
                   {t("dash.fullWeekPlan")} <ArrowRight className="h-3 w-3" />
                 </Link>
@@ -517,17 +445,17 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
             <Section title={t("dash.lastAudit")} icon={Search} delay={0.1}>
               <Link
                 href={strategyUrl}
-                className="block rounded-xl bg-gradient-to-br from-ocean via-ocean to-ocean-light p-4 text-white relative overflow-hidden group hover:shadow-[0_8px_32px_rgba(32,35,69,0.15)] transition-shadow border border-ocean-light/40"
+                className="block rounded-2xl bg-gradient-to-br from-ocean via-ocean to-ocean-light p-5 text-white relative overflow-hidden group hover:shadow-[0_12px_40px_rgba(32,35,69,0.18)] transition-shadow border border-ocean-light/40"
               >
-                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blush/[0.08] blur-2xl" />
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blush/[0.10] blur-2xl" />
                 <div className="relative">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/55">
                       {analysis.instagramHandle ? `@${analysis.instagramHandle}` : t("dash.profileAudit")}
                     </p>
                     <div className="flex items-center gap-1.5">
                       <div className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-                      <span className="font-mono text-[9px] uppercase tracking-wider text-white/45">live</span>
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-white/55">live</span>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
@@ -535,7 +463,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
                     <MiniStat label={t("dash.reels30d")} value={String(analysis.profileReels30d || 0)} />
                     <MiniStat label={t("dash.avgViews")} value={fmt(analysis.profileAvgViews30d || 0)} />
                   </div>
-                  <p className="text-[10px] text-white/55 mt-3 flex items-center gap-1 group-hover:text-white/85 transition-colors font-medium">
+                  <p className="text-[11px] text-white/65 mt-4 flex items-center gap-1 group-hover:text-white transition-colors font-medium">
                     {t("dash.fullReport")} <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
                   </p>
                 </div>
@@ -544,7 +472,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
           )}
 
           <Section title={t("dash.quickStart")} icon={Sparkles} delay={0.15}>
-            <div className="rounded-xl bg-white border border-ocean/10 overflow-hidden">
+            <div className="rounded-2xl bg-white border border-ocean/10 overflow-hidden shadow-[0_1px_8px_rgba(32,35,69,0.03)]">
               {quickActions.map((a, i) => (
                 <motion.div
                   key={a.href}
@@ -572,7 +500,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
           </Section>
 
           {!hasStrategy && (
-            <div className="rounded-xl border-2 border-dashed border-blush/40 bg-blush-light/20 p-4 text-center">
+            <div className="rounded-2xl border-2 border-dashed border-blush/40 bg-blush-light/20 p-5 text-center">
               <RotateCcw className="h-5 w-5 text-blush-dark mx-auto mb-2" />
               <p className="text-xs text-ocean/65 leading-relaxed">
                 {mode === "admin" ? t("dash.noStrategyAdmin") : t("dash.noStrategyClient")}
@@ -587,7 +515,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
 
           <Link
             href={profileUrl}
-            className="block rounded-xl bg-white border border-ocean/10 px-4 py-3 hover:border-ocean/20 hover:shadow-[0_4px_16px_rgba(32,35,69,0.04)] transition-all text-center"
+            className="block rounded-2xl bg-white border border-ocean/10 px-4 py-3 hover:border-ocean/20 hover:shadow-[0_4px_16px_rgba(32,35,69,0.04)] transition-all text-center"
           >
             <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-ocean/55">
               {mode === "admin" ? t("dash.editProfile") : t("dash.viewProfile")}
@@ -600,17 +528,138 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
 }
 
 // ============================================================================
-// Helpers
+// Hero Insight Card (floating right of headline)
 // ============================================================================
 
-function LivePulse({ active }: { active: boolean }) {
+interface InsightData {
+  eyebrow: string;
+  copy: string;
+  tone: "good" | "neutral" | "warn";
+  icon: LucideIcon;
+}
+
+function buildInsight(args: {
+  scriptsThisWeek: number;
+  scriptsLastWeek: number;
+  scriptsDelta: number;
+  scriptsDeltaPct: number | null;
+  pendingCount: number;
+  approvedCount: number;
+  lang: string;
+  mode: "portal" | "admin";
+}): InsightData {
+  const { scriptsThisWeek, scriptsDelta, scriptsDeltaPct, pendingCount, approvedCount, lang, mode } = args;
+  const isDe = lang === "de";
+  const isPortal = mode === "portal";
+
+  if (pendingCount > 0) {
+    return {
+      eyebrow: isDe ? "OFFENE TASKS" : "OPEN TASKS",
+      copy: isDe
+        ? `${pendingCount} ${pendingCount === 1 ? "Skript wartet" : "Skripte warten"} auf dein Feedback`
+        : `${pendingCount} ${pendingCount === 1 ? "script waiting" : "scripts waiting"}`,
+      tone: "warn",
+      icon: Clock,
+    };
+  }
+
+  if (scriptsDelta > 0 && scriptsDeltaPct !== null) {
+    return {
+      eyebrow: isDe ? "DIESE WOCHE" : "THIS WEEK",
+      copy: isDe
+        ? `${scriptsThisWeek} neue Skripte · ${scriptsDeltaPct >= 0 ? "+" : ""}${scriptsDeltaPct}%`
+        : `${scriptsThisWeek} new scripts · ${scriptsDeltaPct >= 0 ? "+" : ""}${scriptsDeltaPct}%`,
+      tone: "good",
+      icon: TrendingUp,
+    };
+  }
+
+  if (approvedCount > 0) {
+    return {
+      eyebrow: isDe ? "BEREIT ZUR AUFNAHME" : "READY TO RECORD",
+      copy: isDe
+        ? `${approvedCount} ${approvedCount === 1 ? "Skript freigegeben" : "Skripte freigegeben"}`
+        : `${approvedCount} ${approvedCount === 1 ? "script approved" : "scripts approved"}`,
+      tone: "good",
+      icon: ThumbsUp,
+    };
+  }
+
+  return {
+    eyebrow: isDe ? "STARTPUNKT" : "STARTING OUT",
+    copy: isPortal
+      ? isDe ? "Voice-Session starten" : "Start a voice session"
+      : isDe ? "Chat oder Voice starten" : "Open chat or voice",
+    tone: "neutral",
+    icon: isPortal ? Mic : Sparkles,
+  };
+}
+
+function InsightCard({
+  insight,
+  todaySlot,
+  strategyUrl,
+  lang,
+  t,
+}: {
+  insight: InsightData;
+  todaySlot?: { type: string; format: string; pillar?: string };
+  strategyUrl: string;
+  lang: string;
+  t: (key: string) => string;
+}) {
+  const toneStyles = {
+    good:    { card: "from-blush-light/70 via-white to-white border-blush/30",          iconBg: "bg-blush/30 border-blush/40",      iconColor: "text-blush-dark" },
+    neutral: { card: "from-ocean/[0.04] via-white to-white border-ocean/10",            iconBg: "bg-ocean/[0.06] border-ocean/10",  iconColor: "text-ocean/65" },
+    warn:    { card: "from-amber-50 via-white to-white border-amber-200/60",            iconBg: "bg-amber-100 border-amber-300/50", iconColor: "text-amber-700" },
+  }[insight.tone];
+  const Icon = insight.icon;
+
   return (
-    <div className="relative h-10 w-10 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center shrink-0">
-      <div className={`h-2.5 w-2.5 rounded-full ${active ? "bg-blush" : "bg-green-400"}`} />
-      <div className={`absolute h-2.5 w-2.5 rounded-full animate-ping opacity-70 ${active ? "bg-blush" : "bg-green-400"}`} />
+    <div className="space-y-2.5">
+      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${toneStyles.card} border p-3.5 shadow-[0_4px_16px_rgba(32,35,69,0.04)]`}>
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-xl ${toneStyles.iconBg} border flex items-center justify-center shrink-0`}>
+            <Icon className={`h-4 w-4 ${toneStyles.iconColor}`} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-ocean/50 font-medium leading-none mb-1">
+              {insight.eyebrow}
+            </p>
+            <p className="text-[13px] text-ocean leading-snug font-medium">
+              {insight.copy}
+            </p>
+          </div>
+          <ArrowUpRight className="h-3.5 w-3.5 text-ocean/25 shrink-0" />
+        </div>
+      </div>
+
+      {todaySlot?.type && (
+        <Link
+          href={strategyUrl}
+          className="group flex items-center gap-2.5 rounded-xl bg-ocean text-white p-3 hover:bg-ocean-light transition-all relative overflow-hidden"
+        >
+          <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-blush/10 blur-2xl pointer-events-none" />
+          <div className="relative h-7 w-7 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+            <Sparkles className="h-3.5 w-3.5 text-blush" />
+          </div>
+          <div className="relative min-w-0 flex-1">
+            <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-white/55">
+              {lang === "de" ? "HEUTE" : "TODAY"}
+            </p>
+            <p className="text-xs font-medium text-white truncate">{todaySlot.type}</p>
+          </div>
+          <ArrowRight className="h-3 w-3 text-white/40 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
+          <span className="sr-only">{t("dash.fullWeekPlan")}</span>
+        </Link>
+      )}
     </div>
   );
 }
+
+// ============================================================================
+// Metric Card with barcode bar
+// ============================================================================
 
 interface MetricCardProps {
   label: string;
@@ -618,17 +667,18 @@ interface MetricCardProps {
   sublabel?: string;
   icon: LucideIcon;
   delta?: number;
-  trend?: number[];
-  accentColor?: string;
+  deltaPct?: number | null;
+  barcodeRatio?: number;
+  barcodeColor?: string;
   tone?: "default" | "green" | "amber" | "blush";
   href?: string;
 }
 
-function MetricCard({ label, value, sublabel, icon: Icon, delta, trend, accentColor = "#202345", tone = "default", href }: MetricCardProps) {
+function MetricCard({ label, value, sublabel, icon: Icon, delta, barcodeRatio, barcodeColor = "#22C55E", tone = "default", href }: MetricCardProps) {
   const toneStyles = {
-    default: { iconBg: "bg-ocean/[0.05]", iconColor: "text-ocean/60" },
-    green:   { iconBg: "bg-green-50",     iconColor: "text-green-600" },
-    amber:   { iconBg: "bg-amber-50",     iconColor: "text-amber-600" },
+    default: { iconBg: "bg-ocean/[0.05]",   iconColor: "text-ocean/60" },
+    green:   { iconBg: "bg-green-50",       iconColor: "text-green-600" },
+    amber:   { iconBg: "bg-amber-50",       iconColor: "text-amber-600" },
     blush:   { iconBg: "bg-blush-light/60", iconColor: "text-blush-dark" },
   }[tone];
 
@@ -637,48 +687,67 @@ function MetricCard({ label, value, sublabel, icon: Icon, delta, trend, accentCo
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`relative overflow-hidden rounded-xl bg-white border border-ocean/10 p-4 sm:p-5 transition-all duration-200 ${
-        href ? "hover:border-ocean/20 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(32,35,69,0.06)] cursor-pointer" : ""
+      className={`relative overflow-hidden rounded-xl bg-white border border-ocean/[0.08] p-4 shadow-[0_1px_6px_rgba(32,35,69,0.03)] transition-all duration-200 ${
+        href ? "hover:border-ocean/20 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(32,35,69,0.06)] cursor-pointer" : ""
       }`}
     >
-      {trend && trend.length > 1 && trend.some(v => v > 0) && (
-        <div className="absolute bottom-0 left-0 right-0 h-10 sm:h-12 pointer-events-none opacity-90">
-          <Sparkline data={trend} color={accentColor} />
+      <div className="flex items-start justify-between gap-2 mb-2.5">
+        <span className="font-mono text-[10px] font-medium text-ocean/45 uppercase tracking-[0.15em] truncate">
+          {label}
+        </span>
+        <div className={`h-6 w-6 rounded-md ${toneStyles.iconBg} flex items-center justify-center shrink-0`}>
+          <Icon className={`h-3 w-3 ${toneStyles.iconColor}`} />
         </div>
-      )}
+      </div>
 
-      <div className="relative">
-        <div className="flex items-start justify-between gap-2 mb-2.5">
-          <span className="font-mono text-[10px] font-medium text-ocean/45 uppercase tracking-[0.15em] truncate">
-            {label}
+      <div className="flex items-baseline gap-2 flex-wrap mb-2.5">
+        <span className="font-mono text-2xl sm:text-3xl font-light text-ocean tabular-nums leading-none">
+          <CountUp value={value} />
+        </span>
+        {delta !== undefined && delta !== 0 && (
+          <span className={`flex items-center gap-0.5 font-mono text-[10px] font-semibold rounded-full px-1.5 py-0.5 ${
+            delta > 0 ? "text-green-700 bg-green-50 border border-green-200/60" : "text-red-600 bg-red-50 border border-red-200/60"
+          }`}>
+            {delta > 0 ? "▲" : "▼"} {Math.abs(delta)}
           </span>
-          <div className={`h-7 w-7 rounded-lg ${toneStyles.iconBg} flex items-center justify-center shrink-0`}>
-            <Icon className={`h-3.5 w-3.5 ${toneStyles.iconColor}`} />
-          </div>
-        </div>
-
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="font-mono text-3xl sm:text-[32px] font-light text-ocean tabular-nums leading-none">
-            <CountUp value={value} />
-          </span>
-          {delta !== undefined && delta !== 0 && (
-            <span className={`flex items-center gap-0.5 font-mono text-[11px] font-semibold ${
-              delta > 0 ? "text-green-600" : "text-red-500"
-            }`}>
-              {delta > 0 ? "▲" : "▼"} {Math.abs(delta)}
-            </span>
-          )}
-        </div>
-
-        {sublabel && (
-          <p className="text-[11px] text-ocean/50 mt-1.5 truncate">{sublabel}</p>
         )}
       </div>
+
+      {typeof barcodeRatio === "number" && (
+        <BarcodeBar ratio={barcodeRatio} color={barcodeColor} />
+      )}
+
+      {sublabel && (
+        <p className="text-[10px] text-ocean/50 mt-2 truncate">{sublabel}</p>
+      )}
     </motion.div>
   );
 
   if (href) return <Link href={href} className="block">{inner}</Link>;
   return inner;
+}
+
+function BarcodeBar({ ratio, color, total = 28 }: { ratio: number; color: string; total?: number }) {
+  const filled = Math.max(0, Math.min(total, Math.round(ratio * total)));
+  return (
+    <div className="flex items-end gap-[2px] h-3.5">
+      {Array.from({ length: total }).map((_, i) => {
+        const isFilled = i < filled;
+        const heightPct = 50 + ((i * 7) % 50);
+        return (
+          <div
+            key={i}
+            className="w-[2px] rounded-full transition-colors"
+            style={{
+              backgroundColor: isFilled ? color : "rgba(32,35,69,0.10)",
+              opacity: isFilled ? 0.85 : 0.5,
+              height: `${heightPct}%`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 function CountUp({ value }: { value: number }) {
@@ -699,40 +768,6 @@ function CountUp({ value }: { value: number }) {
   return <>{display.toLocaleString()}</>;
 }
 
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data, 1);
-  const w = 100;
-  const h = 30;
-  const step = data.length > 1 ? w / (data.length - 1) : w;
-  const points = data.map((v, i) => `${i * step},${h - (v / max) * h * 0.85 - 2}`).join(" ");
-  const id = `spark-${color.replace("#", "")}`;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-full">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polyline
-        points={`0,${h} ${points} ${w},${h}`}
-        fill={`url(#${id})`}
-        stroke="none"
-      />
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeOpacity="0.5"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
-
 function Pill({ tone, label }: { tone: "green" | "amber" | "red"; label: string }) {
   const map = {
     green: "bg-green-50 text-green-700 border-green-200",
@@ -748,9 +783,9 @@ function Pill({ tone, label }: { tone: "green" | "amber" | "red"; label: string 
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white/[0.08] backdrop-blur-sm border border-white/[0.10] px-2 py-1.5">
+    <div className="rounded-lg bg-white/[0.10] backdrop-blur-sm border border-white/[0.12] px-2 py-1.5">
       <p className="font-mono text-base font-light text-white tabular-nums leading-none">{value}</p>
-      <p className="font-mono text-[9px] text-white/45 uppercase tracking-wider mt-1">{label}</p>
+      <p className="font-mono text-[9px] text-white/55 uppercase tracking-wider mt-1">{label}</p>
     </div>
   );
 }

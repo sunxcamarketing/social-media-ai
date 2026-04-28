@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   FileText,
-  ChevronDown,
   Copy,
   Check,
   Lightbulb,
@@ -13,7 +12,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X as XIcon,
 } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
@@ -51,6 +49,57 @@ const emptyIdea = { title: "", description: "", contentType: "" };
 type Tab = "scripts" | "ideas";
 type FeedbackStatus = "approved" | "rejected" | "revision_requested";
 
+// Strip "(Kurz)" / "(Lang)" suffix to find the logical script the variant belongs to.
+function baseTitle(title: string): string {
+  return title.replace(/\s*(?:\(Kurz\)|\(Lang\)|—\s*Kurz|—\s*Lang)\s*$/, "").trim();
+}
+
+function scriptVariant(title: string): "kurz" | "lang" | null {
+  if (/(?:\(Kurz\)|—\s*Kurz)\s*$/.test(title)) return "kurz";
+  if (/(?:\(Lang\)|—\s*Lang)\s*$/.test(title)) return "lang";
+  return null;
+}
+
+type ScriptGroup = {
+  base: string;
+  kurz?: Script;
+  lang?: Script;
+  single?: Script;
+};
+
+function groupScripts(scripts: Script[]): ScriptGroup[] {
+  const map = new Map<string, ScriptGroup>();
+  for (const s of scripts) {
+    const variant = scriptVariant(s.title);
+    const base = baseTitle(s.title);
+    if (!map.has(base)) map.set(base, { base });
+    const group = map.get(base)!;
+    if (variant === "kurz") group.kurz = s;
+    else if (variant === "lang") group.lang = s;
+    else group.single = s;
+  }
+  return Array.from(map.values());
+}
+
+// Combined feedback state: only "approved"/"rejected"/"revision_requested" if BOTH variants
+// share the state; otherwise null (= mixed or unset). Keeps the badge truthful.
+function combinedFeedback(group: ScriptGroup): FeedbackStatus | null {
+  const variants = [group.kurz, group.lang, group.single].filter(Boolean) as Script[];
+  if (variants.length === 0) return null;
+  const first = variants[0].clientFeedbackStatus as FeedbackStatus | null;
+  if (!first) return null;
+  return variants.every((v) => v.clientFeedbackStatus === first) ? first : null;
+}
+
+function combinedFeedbackText(group: ScriptGroup): string | null {
+  // Use the first non-empty feedback text (usually they're identical).
+  const variants = [group.kurz, group.lang, group.single].filter(Boolean) as Script[];
+  for (const v of variants) {
+    if (v.clientFeedbackText) return v.clientFeedbackText;
+  }
+  return null;
+}
+
 export default function PortalScripts() {
   const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
@@ -62,7 +111,7 @@ export default function PortalScripts() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [feedbackDialog, setFeedbackDialog] = useState<{ script: Script; status: FeedbackStatus } | null>(null);
+  const [feedbackDialog, setFeedbackDialog] = useState<{ group: ScriptGroup; status: FeedbackStatus } | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSaving, setFeedbackSaving] = useState(false);
 
@@ -120,17 +169,29 @@ export default function PortalScripts() {
     return true;
   };
 
-  const approve = (script: Script) => {
-    if (script.clientFeedbackStatus === "approved") return applyFeedback(script.id, null);
-    return applyFeedback(script.id, "approved");
+  // Apply feedback to all variants of a group at once. Both Kurz and Lang share
+  // the same client decision — splitting them would force the user to react twice.
+  const applyFeedbackToGroup = async (group: ScriptGroup, status: FeedbackStatus | null, text?: string) => {
+    const ids = [group.kurz?.id, group.lang?.id, group.single?.id].filter(Boolean) as string[];
+    let allOk = true;
+    for (const id of ids) {
+      const ok = await applyFeedback(id, status, text);
+      if (!ok) allOk = false;
+    }
+    return allOk;
   };
-  const openReject = (script: Script) => {
-    setFeedbackText(script.clientFeedbackStatus === "rejected" ? script.clientFeedbackText || "" : "");
-    setFeedbackDialog({ script, status: "rejected" });
+
+  const approve = (group: ScriptGroup) => {
+    if (combinedFeedback(group) === "approved") return applyFeedbackToGroup(group, null);
+    return applyFeedbackToGroup(group, "approved");
   };
-  const openRevision = (script: Script) => {
-    setFeedbackText(script.clientFeedbackStatus === "revision_requested" ? script.clientFeedbackText || "" : "");
-    setFeedbackDialog({ script, status: "revision_requested" });
+  const openReject = (group: ScriptGroup) => {
+    setFeedbackText(combinedFeedback(group) === "rejected" ? combinedFeedbackText(group) || "" : "");
+    setFeedbackDialog({ group, status: "rejected" });
+  };
+  const openRevision = (group: ScriptGroup) => {
+    setFeedbackText(combinedFeedback(group) === "revision_requested" ? combinedFeedbackText(group) || "" : "");
+    setFeedbackDialog({ group, status: "revision_requested" });
   };
 
   const submitFeedback = async () => {
@@ -138,7 +199,7 @@ export default function PortalScripts() {
     const text = feedbackText.trim();
     if (!text) return;
     setFeedbackSaving(true);
-    const ok = await applyFeedback(feedbackDialog.script.id, feedbackDialog.status, text);
+    const ok = await applyFeedbackToGroup(feedbackDialog.group, feedbackDialog.status, text);
     setFeedbackSaving(false);
     if (ok) {
       setFeedbackDialog(null);
@@ -187,6 +248,7 @@ export default function PortalScripts() {
   };
 
   const sortedIdeas = [...ideas].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const grouped = groupScripts(scripts);
   const items = tab === "scripts" ? scripts : ideas;
   const isEmpty = items.length === 0;
 
@@ -194,7 +256,7 @@ export default function PortalScripts() {
     <PortalShell
       icon={FileText}
       title={t("portal.dash.scripts")}
-      subtitle={tab === "scripts" ? t("portal.scripts.countScripts", { count: scripts.length }) : t("portal.scripts.countIdeas", { count: ideas.length })}
+      subtitle={tab === "scripts" ? t("portal.scripts.countScripts", { count: grouped.length }) : t("portal.scripts.countIdeas", { count: ideas.length })}
       loading={authLoading || loading}
       isEmpty={isEmpty && tab === "scripts"}
       emptyMessage={t("portal.scripts.empty")}
@@ -228,85 +290,104 @@ export default function PortalScripts() {
       }
     >
       {tab === "scripts" ? (
-        <div className="space-y-3 stagger">
-          {scripts.map((script) => {
-            const isExpanded = expandedId === script.id;
-            const fb = script.clientFeedbackStatus;
-            return (
-              <div key={script.id} className="glass rounded-2xl overflow-hidden card-hover">
-                <button
-                  onClick={() => setExpandedId(isExpanded ? null : script.id)}
-                  className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-4 text-left"
-                >
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-medium text-ocean break-words">{script.title || t("portal.scripts.untitled")}</h3>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {script.pillar && <Badge>{script.pillar}</Badge>}
-                      {script.format && <Badge tone="blush">{script.format}</Badge>}
-                      {script.createdAt && <span className="text-[10px] text-ocean/35">{script.createdAt.slice(0, 10)}</span>}
-                      {fb && <FeedbackBadge status={fb} />}
-                    </div>
-                  </div>
-                  <ChevronDown className={`h-4 w-4 text-ocean/30 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                </button>
+        grouped.length > 0 ? (
+          <div className="rounded-xl border border-ocean/[0.06] overflow-hidden bg-white/50">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-ocean/[0.08] bg-ocean/[0.02]">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[220px]">Titel</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Short</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Long</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[110px]">Datum</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ocean/[0.05]">
+                {grouped.map((g) => {
+                  const primary = g.single || g.lang || g.kurz;
+                  if (!primary) return null;
+                  const fb = combinedFeedback(g);
+                  const fbText = combinedFeedbackText(g);
+                  const dateStr = primary.createdAt
+                    ? new Date(primary.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                    : "—";
+                  const isExpanded = expandedId === g.base;
 
-                {isExpanded && (
-                  <div className="px-4 sm:px-5 pb-5 space-y-4 border-t border-ocean/[0.06] pt-4 animate-fade">
-                    {script.hook && <ScriptSection label={t("portal.scripts.hook")} text={script.hook} />}
-                    {script.body && <ScriptSection label={t("portal.scripts.body")} text={script.body} />}
-                    {script.cta && <ScriptSection label={t("portal.scripts.cta")} text={script.cta} />}
-
-                    {fb && script.clientFeedbackText && (
-                      <div className="rounded-xl border border-ocean/[0.06] bg-white/40 p-3">
-                        <p className="text-[10px] uppercase tracking-wider text-ocean/45 font-medium mb-1">Dein Feedback</p>
-                        <p className="text-xs text-ocean/75 leading-relaxed whitespace-pre-wrap break-words">{script.clientFeedbackText}</p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2 flex-wrap pt-1">
-                      <FeedbackButton
-                        active={fb === "approved"}
-                        onClick={() => approve(script)}
-                        icon={ThumbsUp}
-                        label={fb === "approved" ? "Gefällt mir ✓" : "Gefällt mir"}
-                        tone="approve"
-                      />
-                      <FeedbackButton
-                        active={fb === "rejected"}
-                        onClick={() => openReject(script)}
-                        icon={ThumbsDown}
-                        label={fb === "rejected" ? "Abgelehnt ✓" : "Gefällt mir nicht"}
-                        tone="reject"
-                      />
-                      <FeedbackButton
-                        active={fb === "revision_requested"}
-                        onClick={() => openRevision(script)}
-                        icon={RotateCcw}
-                        label={fb === "revision_requested" ? "Überarbeitung ✓" : "Verbesserungsvorschlag"}
-                        tone="revise"
-                      />
-                      <button
-                        onClick={() => copyScript(script)}
-                        className="ml-auto flex items-center gap-1.5 text-xs text-ocean/50 hover:text-ocean transition-all rounded-lg px-2 py-1 hover:bg-ocean/[0.03]"
+                  return (
+                    <Fragment key={g.base}>
+                      <tr
+                        onClick={() => setExpandedId(isExpanded ? null : g.base)}
+                        className="hover:bg-ocean/[0.01] transition-colors cursor-pointer"
                       >
-                        {copiedId === script.id ? (
-                          <><Check className="h-3 w-3 text-green-500" /> {t("portal.scripts.copied")}</>
-                        ) : (
-                          <><Copy className="h-3 w-3" /> {t("portal.scripts.copy")}</>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {scripts.length === 0 && (
-            <div className="glass rounded-2xl p-8 text-center">
-              <p className="text-sm text-ocean/50">{t("portal.scripts.empty")}</p>
-            </div>
-          )}
-        </div>
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-1.5">
+                            <p className="text-sm font-medium text-ocean/90 leading-snug break-words">{g.base || primary.title || t("portal.scripts.untitled")}</p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {primary.pillar && (
+                                <span className="text-[9px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5 font-medium">{primary.pillar}</span>
+                              )}
+                              {primary.format && (
+                                <span className="text-[9px] text-ocean/50 rounded bg-ocean/[0.04] border border-ocean/[0.06] px-1.5 py-0.5">{primary.format}</span>
+                              )}
+                            </div>
+                            {fb && (
+                              <div className="pt-0.5">
+                                <FeedbackBadge status={fb} />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <PortalScriptCell script={g.kurz || g.single} copiedId={copiedId} onCopy={copyScript} />
+                        <PortalScriptCell script={g.lang} copiedId={copiedId} onCopy={copyScript} />
+                        <td className="px-4 py-4 align-top">
+                          <span className="text-xs text-ocean/45 whitespace-nowrap">{dateStr}</span>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-4 bg-ocean/[0.015] border-t border-ocean/[0.04]">
+                            {fbText && (
+                              <div className="rounded-lg border border-ocean/[0.06] bg-white/60 p-3 mb-3">
+                                <p className="text-[10px] uppercase tracking-wider text-ocean/45 font-medium mb-1">Dein Feedback</p>
+                                <p className="text-xs text-ocean/75 leading-relaxed whitespace-pre-wrap break-words">{fbText}</p>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <FeedbackButton
+                                active={fb === "approved"}
+                                onClick={() => approve(g)}
+                                icon={ThumbsUp}
+                                label={fb === "approved" ? "Gefällt mir ✓" : "Gefällt mir"}
+                                tone="approve"
+                              />
+                              <FeedbackButton
+                                active={fb === "rejected"}
+                                onClick={() => openReject(g)}
+                                icon={ThumbsDown}
+                                label={fb === "rejected" ? "Abgelehnt ✓" : "Gefällt mir nicht"}
+                                tone="reject"
+                              />
+                              <FeedbackButton
+                                active={fb === "revision_requested"}
+                                onClick={() => openRevision(g)}
+                                icon={RotateCcw}
+                                label={fb === "revision_requested" ? "Überarbeitung ✓" : "Verbesserungsvorschlag"}
+                                tone="revise"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="glass rounded-2xl p-8 text-center">
+            <p className="text-sm text-ocean/50">{t("portal.scripts.empty")}</p>
+          </div>
+        )
       ) : (
         <div className="space-y-4">
           {sortedIdeas.length === 0 ? (
@@ -518,5 +599,59 @@ function ScriptSection({ label, text }: { label: string; text: string }) {
       <p className="text-[10px] uppercase tracking-wider text-ocean/40 mb-1.5 font-medium">{label}</p>
       <p className="text-sm text-ocean leading-relaxed whitespace-pre-wrap break-words">{text}</p>
     </div>
+  );
+}
+
+function PortalScriptCell({
+  script,
+  copiedId,
+  onCopy,
+}: {
+  script?: Script;
+  copiedId: string | null;
+  onCopy: (s: Script) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!script) {
+    return <td className="px-4 py-4 align-top text-xs text-ocean/25 italic">—</td>;
+  }
+
+  const isLong = (script.body || "").length > 200;
+
+  return (
+    <td className="px-4 py-4 align-top">
+      <div
+        className="space-y-2 max-w-md"
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded(!expanded);
+        }}
+      >
+        {script.hook && (
+          <p className="text-[13px] text-ocean/90 leading-relaxed font-semibold break-words">{script.hook}</p>
+        )}
+        {script.body && (
+          <p className={`text-[13px] text-ocean/65 leading-relaxed whitespace-pre-wrap break-words ${!expanded && isLong ? "line-clamp-4" : ""}`}>
+            {script.body}
+          </p>
+        )}
+        {script.cta && (
+          <p className="text-[13px] text-green-700/70 leading-relaxed italic break-words">{script.cta}</p>
+        )}
+        {isLong && !expanded && (
+          <span className="text-[11px] text-blush-dark/60 hover:text-blush-dark cursor-pointer">... mehr anzeigen</span>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopy(script);
+          }}
+          className="inline-flex items-center gap-1 text-[10px] text-ocean/40 hover:text-ocean transition-colors"
+        >
+          {copiedId === script.id ? <><Check className="h-2.5 w-2.5 text-green-600" /> Kopiert</> : <><Copy className="h-2.5 w-2.5" /> Kopieren</>}
+        </button>
+      </div>
+    </td>
   );
 }
