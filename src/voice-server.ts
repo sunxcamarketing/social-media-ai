@@ -79,6 +79,50 @@ async function verifyToken(token: string): Promise<{ clientId: string; userId: s
   return null;
 }
 
+// ── Last voice session context ───────────────────────────────────────────
+// Pulls the most recent voice_sessions row (last 30 days) and condenses the
+// client-side turns into a short topic recap. Lets the agent open with
+// "Beim letzten Mal hast du erzählt von..." instead of starting cold.
+
+interface PreviousSessionTurn {
+  role: string;
+  text: string;
+  timestamp?: string;
+}
+
+async function loadPreviousSessionContext(clientId: string, lang: "de" | "en"): Promise<string> {
+  const { data, error } = await supabase
+    .from("voice_sessions")
+    .select("transcript, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error || !data || data.length === 0) return "";
+
+  const row = data[0];
+  let transcript: PreviousSessionTurn[] = [];
+  if (Array.isArray(row.transcript)) transcript = row.transcript as PreviousSessionTurn[];
+  else if (typeof row.transcript === "string") {
+    try { transcript = JSON.parse(row.transcript); } catch { transcript = []; }
+  }
+
+  const userTurns = transcript
+    .filter((t) => t.role === "user" && typeof t.text === "string" && t.text.trim().length > 25)
+    .map((t) => t.text.trim());
+  if (userTurns.length === 0) return "";
+
+  // Keep the recap compact — top 8 substantial client turns from the most
+  // recent session. Truncate each at 280 chars so the prompt budget stays sane.
+  const recap = userTurns.slice(-8).map((t) => `- ${t.slice(0, 280)}`).join("\n");
+  const dateStr = new Date(row.created_at).toLocaleDateString(lang === "en" ? "en-US" : "de-DE", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+
+  return lang === "en"
+    ? `Last session was on ${dateStr}. Key things the client said:\n${recap}`
+    : `Letztes Gespräch war am ${dateStr}. Was der Client damals erzählt hat:\n${recap}`;
+}
+
 // ── System prompt assembly ───────────────────────────────────────────────
 
 interface SystemPromptContext {
@@ -86,6 +130,7 @@ interface SystemPromptContext {
   auditContext: string;
   performanceContext: string;
   learningsContext: string;
+  previousSessionContext: string;
   onboardingProgress: Awaited<ReturnType<typeof loadVoiceOnboarding>> | null;
   voiceProfileStep: VoiceProfileStep | null;
 }
@@ -133,12 +178,14 @@ function buildSessionSystemPrompt(
         performance: "## PERFORMANCE-DATEN",
         learnings: "## LEARNINGS",
       };
+  const previousSessionHeader = lang === "en" ? "## LAST CONVERSATION" : "## LETZTES GESPRÄCH";
 
   const sections: string[] = [];
   if (ctx.clientContext) sections.push(`${headers.clientProfile}\n${ctx.clientContext}`);
   if (ctx.auditContext) sections.push(`${headers.audit}\n${ctx.auditContext}`);
   if (ctx.performanceContext) sections.push(`${headers.performance}\n${ctx.performanceContext}`);
   if (ctx.learningsContext) sections.push(`${headers.learnings}\n${ctx.learningsContext}`);
+  if (ctx.previousSessionContext) sections.push(`${previousSessionHeader}\n${ctx.previousSessionContext}`);
 
   if (ctx.onboardingProgress) {
     sections.push(buildOnboardingProgressBlock(ctx.onboardingProgress, lang));
@@ -228,16 +275,17 @@ wss.on("connection", async (ws: WebSocket, req) => {
   // tracking happens via (a) signal-phrase parsing of the model transcript for
   // live UI updates and (b) a post-session Claude extraction pass for the
   // authoritative per-block summaries + quotes.
-  const [clientContext, auditContext, performanceContext, learningsContext] = await Promise.all([
+  const [clientContext, auditContext, performanceContext, learningsContext, previousSessionContext] = await Promise.all([
     toolLoadClientContext(clientId).catch(() => ""),
     toolLoadAudit(clientId).catch(() => ""),
     toolCheckPerformance(clientId).catch(() => ""),
     toolCheckLearnings(clientId).catch(() => ""),
+    loadPreviousSessionContext(clientId, lang).catch(() => ""),
   ]);
 
   let onboardingProgress = mode === "onboarding" ? await loadVoiceOnboarding(clientId) : null;
   const systemPrompt = buildSessionSystemPrompt(mode, lang, {
-    clientContext, auditContext, performanceContext, learningsContext, onboardingProgress, voiceProfileStep,
+    clientContext, auditContext, performanceContext, learningsContext, previousSessionContext, onboardingProgress, voiceProfileStep,
   });
   console.log(`[voice-server] system prompt: ${systemPrompt.length} chars (context pre-loaded, NO tools, mode=${mode}${voiceProfileStep ? `, step=${voiceProfileStep.id}` : ""})`);
 
