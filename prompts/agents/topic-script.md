@@ -19,3 +19,6 @@ Schreibe ein Video-Skript zu einem vorgegebenen Thema. Der Kunde liest es 1:1 au
 # PART 5: NATÜRLICHE STRUKTUR
 {{anti-monotone-formatierung}}
 {{natuerliche-satzstruktur}}
+
+# PART 6: "WIE ICH" SCHLÄGT "WIE DU"
+{{how-i-framing}}

@@ -24,6 +24,9 @@ Create ONE video script that the client can read and record 1:1.
 # PART 6: HOOK PATTERNS
 {{hook-muster}}
 
+# PART 6b: "HOW I" BEATS "HOW TO"
+{{how-i-framing}}
+
 # PART 7: ANTI-PATTERNS
 {{anti-muster}}
 

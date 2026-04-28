@@ -86,3 +86,6 @@ Generate 5 hook templates that match the niche, audience, and Core Offer exactly
 
 # PART 9: QUALITY RULES
 {{konkretion-regeln}}
+
+# PART 10: "HOW I" BEATS "HOW TO" — Subtopic and Hook Framing
+{{how-i-framing}}

@@ -147,6 +147,9 @@ Example of WRONG adaptation:
 ## Hook Patterns
 {{hook-muster}}
 
+## "How I" Beats "How To" — Proof Framing
+{{how-i-framing}}
+
 ## Body Rules
 {{body-regeln}}
 

@@ -147,6 +147,9 @@ Beispiel FALSCHE Adaption:
 ## Hook-Muster
 {{hook-muster}}
 
+## "Wie ich" schlägt "Wie du" — Proof-Framing
+{{how-i-framing}}
+
 ## Body-Regeln
 {{body-regeln}}
 

@@ -19,3 +19,6 @@ Write a video script for a given topic. The client reads it 1:1 on camera.
 # PART 5: NATURAL STRUCTURE
 {{anti-monotone-formatierung}}
 {{natuerliche-satzstruktur}}
+
+# PART 6: "HOW I" BEATS "HOW TO"
+{{how-i-framing}}

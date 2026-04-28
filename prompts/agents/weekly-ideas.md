@@ -70,6 +70,9 @@ Pro Idee:
 # KONKRETIONS-REGELN (für Titel)
 {{konkretion-regeln}}
 
+# "WIE ICH" SCHLÄGT "WIE DU" — Titel- und Angle-Framing
+{{how-i-framing}}
+
 # OUTPUT
 
 Rufe `submit_weekly_ideas` auf mit:

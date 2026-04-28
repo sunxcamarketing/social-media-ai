@@ -17,6 +17,9 @@ Du verstehst WARUM Menschen aufhören zu scrollen. Es ist nie der Inhalt allein 
 # PART 4b: MEINUNGS-PFLICHT
 {{meinungs-injektion}}
 
+# PART 4c: "WIE ICH" SCHLÄGT "WIE DU"
+{{how-i-framing}}
+
 # PART 5: SCROLL-STOPPER DENKEN
 
 Jeder Hook hat zwei Ebenen:

@@ -24,6 +24,9 @@ Erstelle EIN Video-Skript das der Kunde 1:1 ablesen und aufnehmen kann.
 # PART 6: HOOK-MUSTER
 {{hook-muster}}
 
+# PART 6b: "WIE ICH" SCHLÄGT "WIE DU"
+{{how-i-framing}}
+
 # PART 7: ANTI-MUSTER
 {{anti-muster}}
 

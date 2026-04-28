@@ -70,6 +70,9 @@ Per idea:
 # CONCRETENESS RULES (for titles)
 {{konkretion-regeln}}
 
+# "HOW I" BEATS "HOW TO" — Title and Angle Framing
+{{how-i-framing}}
+
 # OUTPUT
 
 Call `submit_weekly_ideas` with:

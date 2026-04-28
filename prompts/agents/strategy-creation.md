@@ -86,3 +86,6 @@ Generiere 5 Hook-Vorlagen die exakt zu Nische, Zielgruppe und Core Offer passen.
 
 # PART 9: QUALITÄTSREGELN
 {{konkretion-regeln}}
+
+# PART 10: "WIE ICH" SCHLÄGT "WIE DU" — Subtopic- und Hook-Framing
+{{how-i-framing}}

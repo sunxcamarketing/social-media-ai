@@ -17,6 +17,9 @@ You understand WHY people stop scrolling. It's never the content alone — it's 
 # PART 4b: OPINION MANDATE
 {{meinungs-injektion}}
 
+# PART 4c: "HOW I" BEATS "HOW TO"
+{{how-i-framing}}
+
 # PART 5: SCROLL-STOPPER THINKING
 
 Every hook has two layers:
