@@ -6,6 +6,7 @@
 //   Browser (mic audio) → WS → this server → Gemini Live API
 //   Gemini (audio response) → this server → WS → Browser (speakers)
 
+import { createServer as createHttpServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { createClient } from "@supabase/supabase-js";
 import { GeminiLiveSession } from "./lib/gemini-live";
@@ -31,7 +32,9 @@ import { trackGeminiLiveSession } from "./lib/cost-tracking";
 
 // dotenv is loaded via --require dotenv/config in the npm script
 
-const PORT = Number(process.env.VOICE_SERVER_PORT) || 4001;
+// PORT wins (cloud convention: Fly.io, Railway, Heroku all set PORT).
+// VOICE_SERVER_PORT only applies in local dev.
+const PORT = Number(process.env.PORT || process.env.VOICE_SERVER_PORT) || 4001;
 
 // Supabase service client for auth verification
 const supabase = createClient(
@@ -144,9 +147,21 @@ function buildSessionSystemPrompt(
 
 // ── WebSocket Server ─────────────────────────────────────────────────────
 
-const wss = new WebSocketServer({ port: PORT });
+// Run the WS server on top of a tiny HTTP server so cloud providers
+// (Fly.io etc.) can hit a /health endpoint for liveness checks.
+const httpServer = createHttpServer((req, res) => {
+  if (req.url === "/health" || req.url === "/") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("ok");
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
+const wss = new WebSocketServer({ server: httpServer });
+httpServer.listen(PORT);
 
-console.log(`[${new Date().toISOString()}] Voice server listening on ws://localhost:${PORT}`);
+console.log(`[${new Date().toISOString()}] Voice server listening on port ${PORT}`);
 
 wss.on("connection", async (ws: WebSocket, req) => {
   const url = new URL(req.url || "/", `http://localhost:${PORT}`);

@@ -6,7 +6,6 @@ import {
   BarChart2,
   FileText,
   Film,
-  MessageSquare,
   Mic,
   LayoutDashboard,
   X,
@@ -27,8 +26,7 @@ const PORTAL_TABS: PortalTab[] = [
   { titleKey: "portalNav.strategy", href: "/portal/strategy", icon: BarChart2 },
   { titleKey: "portalNav.scripts", href: "/portal/scripts", icon: FileText },
   { titleKey: "portalNav.stories", href: "/portal/stories", icon: Film },
-  { titleKey: "portalNav.chat", href: "/portal/chat", icon: MessageSquare, comingSoon: true },
-  { titleKey: "portalNav.voice", href: "/portal/voice", icon: Mic, comingSoon: true },
+  { titleKey: "portalNav.voice", href: "/portal/voice", icon: Mic },
 ];
 
 export function PortalSidebar({ clientName }: { clientName?: string }) {

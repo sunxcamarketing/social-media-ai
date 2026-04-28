@@ -9,6 +9,7 @@ import {
   Settings,
   LayoutDashboard,
   Menu,
+  Eye,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useClientsCache } from "@/hooks/use-clients-cache";
@@ -47,7 +48,7 @@ export function AppTopbar() {
   const pathname = usePathname();
   const router = useRouter();
   const clients = useClientsCache();
-  const { lang, toggleLang } = useI18n();
+  const { lang, toggleLang, t } = useI18n();
   const { toggle: toggleMobileNav } = useMobileNav();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -89,6 +90,18 @@ export function AppTopbar() {
     setMenuOpen(false);
     await supabaseBrowser.auth.signOut();
     router.push("/login");
+    router.refresh();
+  };
+
+  const viewAsClient = async () => {
+    if (!activeClientId) return;
+    const res = await fetch("/api/auth/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: activeClientId }),
+    });
+    if (!res.ok) { alert(t("sidebar.impersonateFailed")); return; }
+    router.push("/portal");
     router.refresh();
   };
 
@@ -135,8 +148,20 @@ export function AppTopbar() {
           })}
         </nav>
 
-        {/* Right: Language toggle + Search + User */}
+        {/* Right: View-as-client + Language toggle + Search + User */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {activeClientId && activeClientName && (
+            <button
+              onClick={viewAsClient}
+              title={t("sidebar.impersonate", { name: activeClientName })}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-blush/30 bg-blush-light/30 text-[11px] sm:text-xs font-medium text-blush-dark hover:bg-blush-light/50 hover:border-blush/50 transition-all"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">{t("sidebar.impersonate", { name: activeClientName })}</span>
+              <span className="md:hidden">{lang === "de" ? "Ansehen" : "View"}</span>
+            </button>
+          )}
+
           <button
             onClick={toggleLang}
             title={lang === "de" ? "Switch to English" : "Auf Deutsch wechseln"}

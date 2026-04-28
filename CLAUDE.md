@@ -148,13 +148,45 @@ Voice-basierter Interview-Agent im Client-Portal. Nutzt Gemini Live API (WebSock
 - Audio: PCM 16kHz (Browser → Gemini), 24kHz (Gemini → Browser)
 - Auth: Supabase access token als WebSocket query parameter
 
-**How to Run:**
+**How to Run (local):**
 ```bash
 npm run dev           # Next.js on port 4000
 npm run voice-server  # Voice WS server on port 4001
 ```
 
 Key page: `/portal/voice`
+
+### Production Deployment (Fly.io)
+
+The voice server runs as its own service because Vercel doesn't support long-lived WebSockets. We deploy it to Fly.io's Frankfurt region (low latency for DACH clients).
+
+Files involved:
+- `Dockerfile` — minimal Node 20 alpine image, copies only what `voice-server.ts` imports (`src/lib`, `prompts/`, `tsconfig.json`)
+- `fly.toml` — app config: 512MB shared-cpu, auto-stop on idle, auto-start on next request, health check on `/health`
+- `voice-server.ts` — reads `PORT` env var (cloud convention) before falling back to `VOICE_SERVER_PORT` (local)
+
+**One-time setup** (Aysun, do this in your terminal):
+```bash
+brew install flyctl                 # if not installed
+fly auth signup                     # or `fly auth login`
+fly launch --copy-config --no-deploy
+# accept the suggested name (or pick one); region: fra; don't deploy yet
+fly secrets set \
+  GEMINI_API_KEY=... \
+  NEXT_PUBLIC_SUPABASE_URL=... \
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=... \
+  SUPABASE_SERVICE_ROLE_KEY=...
+fly deploy
+fly status                          # shows the public URL
+```
+
+**Wire it up in the browser**: in Vercel project settings, set
+```
+NEXT_PUBLIC_VOICE_SERVER_URL=wss://<your-app>.fly.dev
+```
+Then redeploy Vercel. Locally this var is unset, so the client falls back to `ws://localhost:4001`.
+
+**Updating after code changes**: `fly deploy` from the repo root. Roughly 60-90s rebuild + ship.
 
 ---
 

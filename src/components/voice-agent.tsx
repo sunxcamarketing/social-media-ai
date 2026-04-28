@@ -184,10 +184,22 @@ export function VoiceAgent({
     }
 
     try {
+      // Try the browser session first (fast path), fall back to a server
+      // round-trip when the cookie is httpOnly or the SSR session hasn't
+      // synced into the browser client yet.
+      let token: string | undefined;
       const { data: { session } } = await supabaseBrowser.auth.getSession();
-      if (!session?.access_token) throw new Error(t("voice.notLoggedIn"));
+      token = session?.access_token;
+      if (!token) {
+        const res = await fetch("/api/auth/access-token");
+        if (res.ok) {
+          const data = await res.json();
+          token = data.access_token;
+        }
+      }
+      if (!token) throw new Error(t("voice.notLoggedIn"));
 
-      const params = new URLSearchParams({ token: session.access_token });
+      const params = new URLSearchParams({ token });
       if (clientIdOverride) params.set("clientId", clientIdOverride);
       if (langOverride) params.set("lang", langOverride);
       if (mode === "onboarding") params.set("mode", "onboarding");

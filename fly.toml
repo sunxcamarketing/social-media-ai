@@ -1,0 +1,28 @@
+# Fly.io config for the Voice WS server.
+# Edit `app` if you pick a different name during `fly launch`.
+app = "aysuncaliskan"
+primary_region = "fra"  # Frankfurt — closest to DACH clients
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Stop the machine when there's no traffic (saves cost on Fly's per-second
+  # billing). Auto-start on the next request adds ~3-5s cold-start before the
+  # first WS connect — acceptable for voice sessions, which are deliberate.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
