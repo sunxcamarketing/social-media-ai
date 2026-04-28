@@ -106,7 +106,6 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
   const strategyUrl = mode === "portal" ? "/portal/strategy" : `/clients/${clientId}/strategy`;
   const chatUrl = mode === "portal" ? "/portal/chat" : `/clients/${clientId}/chat`;
   const voiceUrl = mode === "portal" ? "/portal/voice" : `/clients/${clientId}/voice`;
-  const profileUrl = mode === "portal" ? "/portal/profil" : `/clients/${clientId}/information`;
 
   // Derived
   const weekStart = startOfWeekMs();
@@ -431,15 +430,6 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
               )}
             </div>
           )}
-
-          <Link
-            href={profileUrl}
-            className="block rounded-2xl bg-white border border-ocean/[0.06] p-4 hover:border-ocean/[0.15] hover:shadow-sm transition-all text-center"
-          >
-            <p className="text-[11px] text-ocean/55">
-              {mode === "admin" ? t("dash.editProfile") : t("dash.viewProfile")}
-            </p>
-          </Link>
         </div>
       </div>
     </div>

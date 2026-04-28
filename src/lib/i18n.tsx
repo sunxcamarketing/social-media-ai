@@ -828,8 +828,6 @@ const translations: Record<string, { de: string; en: string }> = {
   "dash.noStrategyAdmin": { de: "Noch keine Strategie erstellt. Leg auf der Strategie-Seite los.", en: "No strategy yet. Start on the strategy page." },
   "dash.noStrategyClient": { de: "Deine Strategie wird noch vorbereitet. Sobald sie fertig ist, erscheint sie hier.", en: "Your strategy is being prepared. It'll show up here once it's ready." },
   "dash.toStrategy": { de: "Zur Strategie", en: "To strategy" },
-  "dash.editProfile": { de: "Profil & Kontext bearbeiten", en: "Edit profile & context" },
-  "dash.viewProfile": { de: "Mein Profil ansehen", en: "View my profile" },
 
   // Last-week activity widget
   "activity.reelPost": { de: "Reel / Post", en: "Reel / Post" },
