@@ -589,6 +589,7 @@ const translations: Record<string, { de: string; en: string }> = {
   // ── Sidebar ──────────────────────────────────────────────────────────────
   "sidebar.selectClient": { de: "Client wählen", en: "Select client" },
   "sidebar.unnamed": { de: "Unbenannt", en: "Unnamed" },
+  "sidebar.profile": { de: "Profil", en: "Profile" },
   "sidebar.scripts": { de: "Skripte", en: "Scripts" },
   "sidebar.strategy": { de: "Strategie", en: "Strategy" },
   "sidebar.ideas": { de: "Ideen", en: "Ideas" },
@@ -827,6 +828,8 @@ const translations: Record<string, { de: string; en: string }> = {
   "dash.noStrategyAdmin": { de: "Noch keine Strategie erstellt. Leg auf der Strategie-Seite los.", en: "No strategy yet. Start on the strategy page." },
   "dash.noStrategyClient": { de: "Deine Strategie wird noch vorbereitet. Sobald sie fertig ist, erscheint sie hier.", en: "Your strategy is being prepared. It'll show up here once it's ready." },
   "dash.toStrategy": { de: "Zur Strategie", en: "To strategy" },
+  "dash.editProfile": { de: "Profil & Kontext bearbeiten", en: "Edit profile & context" },
+  "dash.viewProfile": { de: "Mein Profil ansehen", en: "View my profile" },
 
   // Last-week activity widget
   "activity.reelPost": { de: "Reel / Post", en: "Reel / Post" },
