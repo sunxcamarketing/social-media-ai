@@ -194,7 +194,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
   const heroSubtitle = isLive
     ? t(pendingFeedback.length === 1 ? "dash.pendingFeedbackOne" : "dash.pendingFeedbackMany", { count: pendingFeedback.length })
     : scripts.length === 0
-      ? t("dash.noScriptsSubtitle")
+      ? t(mode === "portal" ? "dash.noScriptsSubtitleClient" : "dash.noScriptsSubtitle")
       : t("dash.summary", { scripts: scripts.length, ideas: ideas.length });
 
   const heroTitle = firstName ? t("dash.hi", { name: firstName }) : clientName || t("dash.titleFallback");
@@ -421,18 +421,20 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
           {scripts.length === 0 && (
             <div className="rounded-2xl border-2 border-dashed border-ocean/15 bg-warm-white/40 p-8 sm:p-12 text-center">
               <div className="h-12 w-12 rounded-2xl bg-blush-light/40 flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="h-6 w-6 text-blush-dark" />
+                <FileText className="h-6 w-6 text-blush-dark" />
               </div>
               <h3 className="text-sm font-semibold text-ocean mb-1">{t("dash.noScriptsTitle")}</h3>
-              <p className="text-xs text-ocean/55 mb-5 max-w-md mx-auto">
-                {t("dash.noScriptsBody")}
+              <p className="text-xs text-ocean/55 max-w-md mx-auto">
+                {t(mode === "portal" ? "dash.noScriptsBodyClient" : "dash.noScriptsBody")}
               </p>
-              <Link
-                href={chatUrl}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-ocean hover:bg-ocean-light text-white text-xs font-medium px-4 py-2.5 transition-colors"
-              >
-                <MessageSquare className="h-3.5 w-3.5" /> {t("dash.openChat")}
-              </Link>
+              {mode === "admin" && (
+                <Link
+                  href={chatUrl}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ocean hover:bg-ocean-light text-white text-xs font-medium px-4 py-2.5 mt-5 transition-colors"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" /> {t("dash.openChat")}
+                </Link>
+              )}
             </div>
           )}
         </div>

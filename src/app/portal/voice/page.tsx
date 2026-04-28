@@ -9,19 +9,23 @@ import { VoiceProfileRecorder } from "@/components/voice-profile-recorder";
 type Mode = "hub" | "content-ideas" | "voice-profile";
 
 export default function PortalVoice() {
-  const { loading: authLoading } = usePortalClient();
+  const { user, effectiveClientId, loading: authLoading } = usePortalClient();
   const [mode, setMode] = useState<Mode>("hub");
 
   if (authLoading) {
     return <div className="text-center py-20 text-ocean/50">Laden...</div>;
   }
 
+  // Admins (impersonating or bootstrap) need explicit clientId on the WS
+  // because cross-origin cookies don't reach the voice server.
+  const adminClientIdOverride = user?.role === "admin" ? effectiveClientId ?? undefined : undefined;
+
   if (mode === "content-ideas") {
-    return <VoiceAgent onSessionEnd={() => setMode("hub")} />;
+    return <VoiceAgent clientIdOverride={adminClientIdOverride} onSessionEnd={() => setMode("hub")} />;
   }
 
   if (mode === "voice-profile") {
-    return <VoiceProfileRecorder onClose={() => setMode("hub")} />;
+    return <VoiceProfileRecorder clientIdOverride={adminClientIdOverride} onClose={() => setMode("hub")} />;
   }
 
   return (

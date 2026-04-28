@@ -50,24 +50,30 @@ async function verifyToken(token: string): Promise<{ clientId: string; userId: s
   if (error || !user) return null;
 
   // Look up client_users to get clientId
-  const { data: clientUser } = await supabase
+  const { data: clientUser, error: lookupError } = await supabase
     .from("client_users")
     .select("role, client_id")
     .eq("user_id", user.id)
     .limit(1)
     .single();
 
-  if (!clientUser) return null;
+  // Mirror the main app's `getCurrentUser`: a successfully authenticated user
+  // with no `client_users` row is treated as a bootstrap admin (the original
+  // account before the table was populated). They can connect, but must pass
+  // ?clientId= explicitly to scope the session.
+  const NO_ROWS_FOUND = "PGRST116";
+  if (!clientUser) {
+    if (lookupError && lookupError.code !== NO_ROWS_FOUND) return null;
+    return { clientId: "", userId: user.id };
+  }
 
-  // Only clients can use voice agent (not admins — they don't have a clientId)
   if (clientUser.role === "client" && clientUser.client_id) {
     return { clientId: clientUser.client_id, userId: user.id };
   }
 
-  // Admin with impersonate cookie? Check for client_id in token metadata
-  // For now, admins can also test by passing ?clientId= in the URL
+  // Admin with a client_users row — same deal: clientId comes from query param.
   if (clientUser.role === "admin") {
-    return { clientId: "", userId: user.id }; // Will be overridden by query param
+    return { clientId: "", userId: user.id };
   }
 
   return null;
