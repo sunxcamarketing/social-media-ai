@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 const PUBLIC_ROUTES = ["/login", "/no-access"] as const;
-const PUBLIC_PREFIXES = ["/viral-guide", "/api/", "/_next/", "/favicon"] as const;
+const PUBLIC_PREFIXES = ["/viral-guide", "/auth/", "/api/", "/_next/", "/favicon"] as const;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

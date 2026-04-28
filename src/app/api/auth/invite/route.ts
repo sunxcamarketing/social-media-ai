@@ -1,13 +1,14 @@
 import { requireAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { sendInviteEmail } from "@/lib/emails/invite";
 
 // supabase (from lib/supabase) already uses SUPABASE_SERVICE_ROLE_KEY — reuse it
 // for both DB queries and auth admin operations.
 
-function buildCallbackUrl(request: Request): string {
-  const host = request.headers.get("host") || "localhost:4000";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  return `${protocol}://${host}/api/auth/callback?next=/portal`;
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || "https://app.sunxca.com").replace(/\/$/, "");
+
+function buildVerifyUrl(tokenHash: string): string {
+  return `${APP_URL}/auth/verify?token_hash=${encodeURIComponent(tokenHash)}&type=invite&next=/portal`;
 }
 
 function isUserAlreadyExistsError(message: string): boolean {
@@ -107,26 +108,39 @@ export async function POST(request: Request) {
     return Response.json({ error: "Client nicht gefunden" }, { status: 404 });
   }
 
-  const redirectTo = buildCallbackUrl(request);
-  const { data: inviteData, error: inviteError } =
-    await supabase.auth.admin.inviteUserByEmail(email, { redirectTo });
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: "invite",
+    email,
+  });
 
-  if (inviteError) {
-    if (isUserAlreadyExistsError(inviteError.message)) {
+  if (linkError) {
+    if (isUserAlreadyExistsError(linkError.message)) {
       return grantAccessToExistingUser(email, clientId);
     }
     return Response.json(
-      { error: "Einladung konnte nicht gesendet werden" },
+      { error: "Einladung konnte nicht erzeugt werden" },
       { status: 500 }
     );
   }
 
-  if (inviteData.user) {
-    const errorResponse = await createClientUserMapping(
-      inviteData.user.id,
-      clientId
+  const tokenHash = linkData.properties?.hashed_token;
+  if (!tokenHash || !linkData.user) {
+    return Response.json(
+      { error: "Einladungs-Token fehlt" },
+      { status: 500 }
     );
-    if (errorResponse) return errorResponse;
+  }
+
+  const errorResponse = await createClientUserMapping(linkData.user.id, clientId);
+  if (errorResponse) return errorResponse;
+
+  try {
+    await sendInviteEmail({ to: email, verifyUrl: buildVerifyUrl(tokenHash) });
+  } catch (err) {
+    return Response.json(
+      { error: `Email konnte nicht versendet werden: ${(err as Error).message}` },
+      { status: 500 }
+    );
   }
 
   return Response.json({ success: true, message: "Einladung gesendet" });
