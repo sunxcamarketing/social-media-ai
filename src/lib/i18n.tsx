@@ -752,7 +752,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "voice.notLoggedIn": { de: "Nicht eingeloggt", en: "Not logged in" },
   "voice.unauthorized": { de: "Nicht autorisiert", en: "Not authorized" },
   "voice.connectionFailed": { de: "Verbindung zum Voice-Server fehlgeschlagen", en: "Voice server connection failed" },
-  "voice.serverNotRunning": { de: "Verbindung zum Voice Server fehlgeschlagen. Läuft der Server? (npm run voice-server)", en: "Voice server connection failed. Is the server running? (npm run voice-server)" },
+  "voice.serverNotRunning": { de: "Verbindung verloren. Bitte starte das Interview neu.", en: "Connection lost. Please restart the interview." },
   "voice.startError": { de: "Fehler beim Starten", en: "Error starting" },
   "voice.sessionComplete": { de: "Session abgeschlossen", en: "Session complete" },
   "voice.duration": { de: "{{minutes}} Min. Gespräch", en: "{{minutes}} min conversation" },
