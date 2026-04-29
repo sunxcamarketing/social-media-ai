@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 const PUBLIC_ROUTES = ["/login", "/no-access"] as const;
-const PUBLIC_PREFIXES = ["/viral-guide", "/auth/", "/api/", "/_next/", "/favicon"] as const;
+const PUBLIC_PREFIXES = ["/viral-guide", "/auth/", "/api/", "/_next/", "/favicon", "/icon", "/apple-icon", "/opengraph-image", "/twitter-image"] as const;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -94,5 +94,5 @@ async function resolveRoleRedirect(
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|twitter-image).*)"],
 };
