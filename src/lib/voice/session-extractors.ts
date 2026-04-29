@@ -110,18 +110,36 @@ export async function generateSessionSummary(
     ? ["Storytelling", "Opinion", "Tip", "Experience", "Education"]
     : ["Storytelling", "Meinung", "Tipp", "Erfahrung", "Aufklärung"];
 
+  const systemPrompt = lang === "en"
+    ? `You are an experienced content strategist. You analyze a voice-interview transcript and extract concentrated video CONCEPTS from it.
+
+CORE PRINCIPLE: **bundle related statements into ONE substantial concept.** When the client circles a topic across several minutes from different angles, condense that into ONE concept — not three thin bullets. Recognize topic boundaries: where one theme ends and another begins.
+
+Quality over count. **Prefer 2-4 substantial concepts over 6 thin ones.** Only output more if the transcript genuinely covers more clearly distinct topics with depth.
+
+For each concept the description must capture WHY it works as a video — not just what was said. Pull the core thesis + 1-2 supporting points the client made + the angle that makes it scroll-stopping. 3-5 sentences.
+
+If the transcript is thin or lacks substantive client statements, do NOT call the tool. Invent NOTHING. No placeholders, no <UNKNOWN>.`
+    : `Du bist ein erfahrener Content-Stratege. Du analysierst ein Voice-Interview-Transkript und extrahierst daraus konzentrierte Video-KONZEPTE.
+
+KERN-PRINZIP: **Bündele verwandte Aussagen zu EINEM substantiellen Konzept.** Wenn der Client ein Thema über mehrere Minuten aus verschiedenen Winkeln behandelt, fasse das zu EINEM Konzept zusammen — nicht zu drei dünnen Stichpunkten. Erkenne Themen-Grenzen: wo endet ein Thema, wo beginnt das nächste.
+
+Qualität vor Menge. **Lieber 2-4 substantielle Konzepte als 6 dünne.** Nur mehr ausgeben, wenn das Transkript wirklich mehr klar getrennte Themen mit Tiefe abdeckt.
+
+Pro Konzept muss die description erklären, WARUM es als Video funktioniert — nicht bloß was gesagt wurde. Zieh die Kernthese + 1-2 unterstützende Punkte des Clients + den Winkel der scroll-stopping ist. 3-5 Sätze.
+
+Wenn das Transkript dünn ist oder keine substanziellen Client-Aussagen enthält, rufe das Tool NICHT auf. Erfinde NICHTS. Keine Platzhalter, keine <UNKNOWN>.`;
+
   const input = await runToolExtraction<{ ideas?: Array<{ title: string; description: string; contentType: string }> }>({
     label: "summary",
-    systemPrompt: lang === "en"
-      ? "You are a content strategist. Extract ONLY video ideas from the interview that are based on concrete things the client actually said (story, opinion, experience, tip). If the client hasn't said anything substantive, do NOT call the tool. Invent NOTHING. No placeholders, no <UNKNOWN> values."
-      : "Du bist ein Content-Stratege. Extrahiere aus dem Interview NUR Video-Ideen, die auf konkreten Aussagen des Clients basieren (Story, Meinung, Erfahrung, Tipp). Wenn der Client nichts Substantielles gesagt hat, rufe das Tool NICHT auf. Erfinde NICHTS. Keine Platzhalter, keine <UNKNOWN>-Werte.",
+    systemPrompt,
     userContent: formatTranscript(transcript),
-    maxTokens: 2048,
+    maxTokens: 4096,
     tool: {
       name: "save_ideas",
       description: lang === "en"
-        ? "Save 1-5 concrete video ideas from the interview. ONLY call when at least one real idea based on client statements exists."
-        : "Speichere 1-5 konkrete Video-Ideen aus dem Interview. NUR aufrufen wenn mindestens eine echte, auf Client-Aussagen basierende Idee existiert.",
+        ? "Save 2-8 substantial video concepts from the interview, each bundling related client statements. ONLY call when real, depth-having concepts exist."
+        : "Speichere 2-8 substantielle Video-Konzepte aus dem Interview, jedes bündelt verwandte Aussagen. NUR aufrufen wenn echte, substanzhabende Konzepte existieren.",
       input_schema: {
         type: "object",
         properties: {
@@ -130,14 +148,14 @@ export async function generateSessionSummary(
             items: {
               type: "object",
               properties: {
-                title: { type: "string", description: lang === "en" ? "Max 10 words, specific, based on a real statement" : "Max 10 Wörter, spezifisch, basiert auf echter Aussage" },
-                description: { type: "string", description: lang === "en" ? "1-2 sentences capturing the core of the story/opinion" : "1-2 Sätze mit dem Kern der Geschichte/Meinung" },
+                title: { type: "string", description: lang === "en" ? "Max 12 words, specific, scroll-stopping" : "Max 12 Wörter, spezifisch, scroll-stopping" },
+                description: { type: "string", description: lang === "en" ? "3-5 sentences: core thesis + 1-2 supporting points the client made + why it works as a video" : "3-5 Sätze: Kernthese + 1-2 unterstützende Punkte aus dem Gespräch + warum es als Video funktioniert" },
                 contentType: { type: "string", enum: contentTypeEnum },
               },
               required: ["title", "description", "contentType"],
             },
             minItems: 1,
-            maxItems: 5,
+            maxItems: 8,
           },
         },
         required: ["ideas"],
