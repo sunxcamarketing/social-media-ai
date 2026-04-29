@@ -172,7 +172,7 @@ export function ClientDashboardView({ clientId, mode = "portal" }: ClientDashboa
   const heroTitle = firstName ? t("dash.hi", { name: firstName }) : clientName || t("dash.titleFallback");
 
   // Headline insight: pick the most useful one-liner for THIS week
-  const insight = buildInsight({ scriptsThisWeek, scriptsLastWeek, scriptsDelta, scriptsDeltaPct, pendingCount: pendingFeedback.length, approvedCount, lang, mode });
+  const insight = buildInsight({ scriptsThisWeek, scriptsLastWeek, scriptsDelta, scriptsDeltaPct, pendingCount: pendingFeedback.length, approvedCount, lang, mode, scriptsUrl, voiceUrl, chatUrl });
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -536,6 +536,7 @@ interface InsightData {
   copy: string;
   tone: "good" | "neutral" | "warn";
   icon: LucideIcon;
+  href: string;
 }
 
 function buildInsight(args: {
@@ -547,8 +548,11 @@ function buildInsight(args: {
   approvedCount: number;
   lang: string;
   mode: "portal" | "admin";
+  scriptsUrl: string;
+  voiceUrl: string;
+  chatUrl: string;
 }): InsightData {
-  const { scriptsThisWeek, scriptsDelta, scriptsDeltaPct, pendingCount, approvedCount, lang, mode } = args;
+  const { scriptsThisWeek, scriptsDelta, scriptsDeltaPct, pendingCount, approvedCount, lang, mode, scriptsUrl, voiceUrl, chatUrl } = args;
   const isDe = lang === "de";
   const isPortal = mode === "portal";
 
@@ -560,6 +564,7 @@ function buildInsight(args: {
         : `${pendingCount} ${pendingCount === 1 ? "script waiting" : "scripts waiting"}`,
       tone: "warn",
       icon: Clock,
+      href: scriptsUrl,
     };
   }
 
@@ -571,6 +576,7 @@ function buildInsight(args: {
         : `${scriptsThisWeek} new scripts · ${scriptsDeltaPct >= 0 ? "+" : ""}${scriptsDeltaPct}%`,
       tone: "good",
       icon: TrendingUp,
+      href: scriptsUrl,
     };
   }
 
@@ -582,6 +588,7 @@ function buildInsight(args: {
         : `${approvedCount} ${approvedCount === 1 ? "script approved" : "scripts approved"}`,
       tone: "good",
       icon: ThumbsUp,
+      href: scriptsUrl,
     };
   }
 
@@ -592,6 +599,7 @@ function buildInsight(args: {
       : isDe ? "Chat oder Voice starten" : "Open chat or voice",
     tone: "neutral",
     icon: isPortal ? Mic : Sparkles,
+    href: isPortal ? voiceUrl : chatUrl,
   };
 }
 
@@ -617,7 +625,10 @@ function InsightCard({
 
   return (
     <div className="space-y-2.5">
-      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${toneStyles.card} border p-3.5 shadow-[0_4px_16px_rgba(32,35,69,0.04)]`}>
+      <Link
+        href={insight.href}
+        className={`group block relative overflow-hidden rounded-xl bg-gradient-to-br ${toneStyles.card} border p-3.5 shadow-[0_4px_16px_rgba(32,35,69,0.04)] hover:shadow-[0_6px_20px_rgba(32,35,69,0.08)] transition-shadow`}
+      >
         <div className="flex items-center gap-3">
           <div className={`h-10 w-10 rounded-xl ${toneStyles.iconBg} border flex items-center justify-center shrink-0`}>
             <Icon className={`h-4 w-4 ${toneStyles.iconColor}`} />
@@ -630,9 +641,9 @@ function InsightCard({
               {insight.copy}
             </p>
           </div>
-          <ArrowUpRight className="h-3.5 w-3.5 text-ocean/25 shrink-0" />
+          <ArrowUpRight className="h-3.5 w-3.5 text-ocean/40 group-hover:text-ocean group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
         </div>
-      </div>
+      </Link>
 
       {todaySlot?.type && (
         <Link
