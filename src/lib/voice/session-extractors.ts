@@ -75,19 +75,19 @@ export async function saveVoiceSession(
   transcript: TranscriptEntry[],
   ideasGenerated: number,
   durationSeconds: number,
+  sessionId?: string,
 ): Promise<void> {
-  const id = crypto.randomUUID();
-  await supabase.from("voice_sessions").insert({
+  const id = sessionId || crypto.randomUUID();
+  // Upsert so the same row can be updated multiple times during a session
+  // (incremental save protects against server crash mid-call).
+  await supabase.from("voice_sessions").upsert({
     id,
     client_id: clientId,
-    // voice_sessions.transcript is JSONB — pass the array directly. Legacy rows
-    // written with JSON.stringify are stored as strings and must be parsed on
-    // read (see /api/configs/[id]/voice-sessions for the compat logic).
     transcript,
     ideas_generated: ideasGenerated,
     duration_seconds: durationSeconds,
     created_at: new Date().toISOString().split("T")[0],
-  });
+  }, { onConflict: "id" });
 }
 
 // ── Session summary: Convert transcript to content ideas ─────────────────

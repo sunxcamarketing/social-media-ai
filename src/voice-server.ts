@@ -28,6 +28,7 @@ import { getStep, type VoiceProfileStep } from "./lib/voice-profile-scenarios";
 import { finalizeVoiceProfileSession } from "./lib/voice/finalize-voice-profile";
 import { finalizeOnboardingSession } from "./lib/voice/finalize-onboarding";
 import { finalizeContentIdeasSession } from "./lib/voice/finalize-content-ideas";
+import { saveVoiceSession } from "./lib/voice/session-extractors";
 import { trackGeminiLiveSession } from "./lib/cost-tracking";
 
 // dotenv is loaded via --require dotenv/config in the npm script
@@ -306,7 +307,10 @@ wss.on("connection", async (ws: WebSocket, req) => {
   const lang: "de" | "en" = langRaw === "en" ? "en" : "de";
   const languageCode = lang === "en" ? "en-US" : "de-DE";
 
-  console.log(`Voice session started for client: ${clientId} (lang=${lang}, mode=${mode})`);
+  // Stable session id used for both incremental snapshots and the final save.
+  // crypto.randomUUID is global in Node 19+ which Fly's node:20-alpine has.
+  const sessionId = crypto.randomUUID();
+  console.log(`Voice session started for client: ${clientId} (lang=${lang}, mode=${mode}, session=${sessionId.slice(0, 8)})`);
   const sessionStart = Date.now();
 
   // Pre-load the full context (client profile, audit, performance, learnings)
@@ -336,6 +340,7 @@ wss.on("connection", async (ws: WebSocket, req) => {
   const geminiSession = new GeminiLiveSession();
 
   let connected = false;
+  let incrementalSaveIntervalRef: NodeJS.Timeout | null = null;
 
   // ── Onboarding mode: parse model transcript for block-completion signals
   // Signal format (agent speaks this as one short sentence at end of each block):
@@ -475,6 +480,20 @@ wss.on("connection", async (ws: WebSocket, req) => {
 
     connected = true;
 
+    // Incremental transcript save — every 15s we upsert the current transcript
+    // into voice_sessions so a server crash / restart / network drop never
+    // causes the transcript to be lost. Final save in endSession() rewrites
+    // the same row with ideas_generated set after extraction.
+    const incrementalSaveInterval = setInterval(() => {
+      const transcript = geminiSession.getTranscript();
+      if (transcript.length === 0) return;
+      const durationSeconds = Math.round((Date.now() - sessionStart) / 1000);
+      saveVoiceSession(clientId, transcript, 0, durationSeconds, sessionId).catch((err) => {
+        console.warn("[voice-server] incremental save failed:", err instanceof Error ? err.message : err);
+      });
+    }, 15_000);
+    incrementalSaveIntervalRef = incrementalSaveInterval;
+
     // Tell the browser the session is reserved — it should open mic access now
     // so it's ready when the agent starts speaking.
     ws.send(JSON.stringify({ type: "ready" }));
@@ -566,6 +585,11 @@ wss.on("connection", async (ws: WebSocket, req) => {
     if (!connected) return;
     connected = false;
 
+    if (incrementalSaveIntervalRef) {
+      clearInterval(incrementalSaveIntervalRef);
+      incrementalSaveIntervalRef = null;
+    }
+
     const durationSeconds = Math.round((Date.now() - sessionStart) / 1000);
     const { transcript } = await geminiSession.close();
 
@@ -583,10 +607,18 @@ wss.on("connection", async (ws: WebSocket, req) => {
       } else if (mode === "voice-profile" && voiceProfileStep) {
         await finalizeVoiceProfileSession({ ws, clientId, transcript, durationSeconds, step: voiceProfileStep });
       } else {
-        await finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds });
+        await finalizeContentIdeasSession({ ws, clientId, lang, transcript, durationSeconds, sessionId });
       }
     } catch (err) {
       console.error("Error finalizing session:", err);
+      // Last-resort save so a crash in finalize never loses the transcript.
+      // Incremental saves cover the common case but a finalize-time crash
+      // could land between snapshots.
+      try {
+        await saveVoiceSession(clientId, transcript, 0, durationSeconds, sessionId);
+      } catch (saveErr) {
+        console.error("Last-resort transcript save failed:", saveErr);
+      }
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "error", message: "Session summary failed" }));
       }

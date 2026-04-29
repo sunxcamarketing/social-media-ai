@@ -15,10 +15,11 @@ export interface FinalizeContentIdeasArgs {
   lang: "de" | "en";
   transcript: TranscriptEntry[];
   durationSeconds: number;
+  sessionId?: string;
 }
 
 export async function finalizeContentIdeasSession({
-  ws, clientId, lang, transcript, durationSeconds,
+  ws, clientId, lang, transcript, durationSeconds, sessionId,
 }: FinalizeContentIdeasArgs): Promise<void> {
   // Persist the transcript first so it survives any extractor failure —
   // we can always reprocess later via scripts/reprocess-voice-sessions.ts
@@ -36,7 +37,7 @@ export async function finalizeContentIdeasSession({
   } catch (err) {
     console.error(`[finalize] idea extraction failed:`, err instanceof Error ? err.message : err);
   }
-  await saveVoiceSession(clientId, transcript, ideas.length, durationSeconds);
+  await saveVoiceSession(clientId, transcript, ideas.length, durationSeconds, sessionId);
 
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify({
