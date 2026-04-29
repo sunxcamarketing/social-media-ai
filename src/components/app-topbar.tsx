@@ -36,8 +36,6 @@ const SECTION_LABELS: Record<string, string> = {
 const ADMIN_PATH_LABELS: Record<string, string> = {
   "/admin": "Admin Dashboard",
   "/chat": "Content Agent",
-  "/viral-script": "Viral Script",
-  "/viral-builder": "Viral Builder",
   "/analyse": "Audit (global)",
   "/transcribe": "Transkribieren",
   "/training": "Training Scripts",

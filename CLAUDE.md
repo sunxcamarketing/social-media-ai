@@ -197,17 +197,17 @@ The heart of the system. All prompt text lives in markdown files, assembled at r
 ### How It Works
 
 ```
-API Route calls:  buildPrompt("hook-generation", { client_name: "Max" })
+API Route calls:  buildPrompt("script-writer", { platform_context: ctx })
                          │
                          ▼
-              loads agents/hook-generation.md
+              loads agents/script-writer.md
               finds {{placeholders}} in template
                          │
               ┌──────────┼──────────┐
               ▼          ▼          ▼
          passed       auto-load   auto-load
          substitution foundational foundational
-         (client_name) (hook-regeln.md) (verboten-ai-sprache.md)
+         (platform_context) (hook-regeln.md) (verboten-ai-sprache.md)
                          │
                          ▼
               fully assembled system prompt
@@ -232,10 +232,9 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 | `single-script.md` | Direct single-script generation |
 | `script-writer.md` | Script Agent: Creative Writing (used by Content Agent `generate_script` tool) |
 | `script-reviewer.md` | Script Agent: Quality Gate (banned phrases, voice match) |
-| `hook-generation.md` | Hook-only generation (reference; used standalone/from chat) |
-| `carousel-generator.md` | Carousel slide generation |
+| `carousel-generator.md` / `carousel-react-generator.md` / `carousel-chat-refine.md` | Carousel pipelines |
 | `content-agent.md` | Content Agent (Portal Chat) — 12 tools, script rules delegated to script-writer |
-| `chat-assistant.md` | Lightweight chat assistant (non-agent chat surfaces) |
+| `story-strategist.md` | Story strategist agent |
 | `voice-profile.md` | Voice Profile Extraction from training transcripts |
 | `voice-profile-topic.md` / `voice-profile-scenario.md` | Voice Agent voice-profile sub-prompts |
 | `voice-agent.md` | Voice Interview Agent |
@@ -245,7 +244,7 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 | `strategy-creation.md` | Strategy: Pillar Creation |
 | `strategy-review.md` | Strategy: Review |
 
-Viral Script Builder prompts are inlined in `src/app/api/viral-script/route.ts` (no standalone `.md`). Tools still in `prompts/tools.ts`: `VIRAL_STRUCTURE_TOOL`, `VIRAL_ADAPT_TOOL`, `VIRAL_PRODUCTION_TOOL`, `VIRAL_CRITIC_TOOL`, `VIRAL_REVISE_TOOL`.
+**⚠️ Viral Script Builder is currently broken.** `src/app/api/viral-script/route.ts` calls `buildPrompt("viral-script-structure", …)` and four similar viral-* names, but no such files exist in `prompts/agents/`. Each call returns an empty string and the agent runs without instructions. The UI pages (`(app)/viral-script`, `(app)/viral-builder`) have no sidebar links so users typically don't reach them. Decide: rip the whole feature out, or write the missing prompts.
 
 ### Foundational Sub-Prompts (`prompts/foundational/`)
 
@@ -265,7 +264,6 @@ Single-concern markdown files. Each covers ONE aspect of script quality. Reused 
 | `abwechslung-regeln.md` | Variety rules — vary hooks, emotions, formats across the week |
 | `titel-regeln.md` | Title rules — max 10 words, describes exact content |
 | `storytelling-formel.md` | Story structure formula for narrative scripts |
-| `sekunden-regie.md` | Second-by-second script direction (seconds-based timing) |
 | `meinungs-injektion.md` | Opinion injection — how to insert contrarian POV into scripts |
 
 **Anti-AI & Language Quality:**
@@ -277,12 +275,6 @@ Single-concern markdown files. Each covers ONE aspect of script quality. Reused 
 | `anti-monotone-formatierung.md` | Bans the "one sentence → blank line → one sentence" AI pattern |
 | `natuerliche-satzstruktur.md` | Variable sentence structure — mix short/long, strategic punctuation |
 
-**Voice & Examples:**
-| File | What It Controls |
-|------|-----------------|
-| `stimm-matching.md` | Voice matching template — uses `{{client_name}}` for personalization |
-| `skript-beispiele.md` | Script examples wrapper — uses `{{beispiel_skripte}}` for training scripts |
-
 **Chat Surfaces:**
 | File | What It Controls |
 |------|-----------------|
@@ -293,7 +285,6 @@ Single-concern markdown files. Each covers ONE aspect of script quality. Reused 
 **Strategy & Data:**
 | File | What It Controls |
 |------|-----------------|
-| `reasoning-regeln.md` | Data-driven reasoning — cite concrete audit findings, not vague claims |
 | `audit-nutzung.md` | How to use audit report — read fully, find patterns, identify gaps |
 | `themen-spezifizitaet.md` | Topic specificity — "not 'Trading Fehler' but 'Warum dein Stop-Loss bei 2% Quatsch ist'" |
 | `wochen-koherenz.md` | Week coherence — strategic variety across pillars, hooks, emotions |
@@ -307,13 +298,11 @@ All Anthropic tool schemas in one file. Used with `tool_choice: { type: "tool" }
 |------|---------|--------|
 | `WEEKLY_IDEAS_TOOL(n)` | weekly-ideas | N coherent ideas for the week (title/angle/hookDirection/keyPoints/whyNow/emotion) + weekReasoning |
 | `TREND_RESEARCH_TOOL` | trend-research | Array of topic/angle/whyNow/hookIdea + sourceUrls + category |
-| `HOOK_GENERATION_TOOL` | hook-generation | 3 hook options + selected index + reason |
 | `VOICE_PROFILE_TOOL` | voice-profile | Structured voice profile (tone, energy, words, patterns) |
 | `SCRIPT_STRUCTURE_TOOL` | script-structure | Dramaturgic flow, hook/body/CTA patterns |
 | `STRATEGY_ANALYSIS_TOOL` | strategy-analysis | Insights + goal (reach/trust/revenue) |
 | `STRATEGY_CREATION_TOOL` | strategy-creation | Pillars with subtopics + weekly schedule |
 | `STRATEGY_REVIEW_TOOL` | strategy-review | Issues + optional revised pillars/weekly |
-| `VIRAL_STRUCTURE_TOOL`, `VIRAL_ADAPT_TOOL`, `VIRAL_PRODUCTION_TOOL`, `VIRAL_CRITIC_TOOL`, `VIRAL_REVISE_TOOL` | viral-script route (inlined prompts) | Psychology extraction, adaptation, production notes, critique, revision |
 | `AGENT_*_TOOL` (15+) | Content Agent tool-use loop | Tool-specific payloads (load context, search scripts, generate script, save idea, etc.) |
 | `VOICE_AGENT_GEMINI_TOOLS` | Voice Agent (Gemini Live) | Live function-calling schemas for voice session |
 
@@ -452,10 +441,11 @@ The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `
 │   │   ├── single-script.md              # Direct single-script generation
 │   │   ├── script-writer.md              # Script Agent: creative writing
 │   │   ├── script-reviewer.md            # Script Agent: quality gate
-│   │   ├── hook-generation.md            # Hook-only generation
 │   │   ├── carousel-generator.md         # Carousel slides
+│   │   ├── carousel-react-generator.md   # React-based carousel
+│   │   ├── carousel-chat-refine.md       # Carousel refine chat
 │   │   ├── content-agent.md              # Content Agent system prompt
-│   │   ├── chat-assistant.md             # Lightweight chat assistant
+│   │   ├── story-strategist.md           # Story strategist
 │   │   ├── voice-profile.md              # Voice profile extraction
 │   │   ├── voice-profile-topic.md        # Voice agent topic sub-prompt
 │   │   ├── voice-profile-scenario.md     # Voice agent scenario sub-prompt
@@ -465,16 +455,15 @@ The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `
 │   │   ├── strategy-analysis.md
 │   │   ├── strategy-creation.md
 │   │   └── strategy-review.md
-│   └── foundational/                     # 27+ sub-prompts (single-concern .md, de + .en.md pairs)
+│   └── foundational/                     # 25 sub-prompts (single-concern .md, de + .en.md pairs)
 │       ├── rolle-skriptschreiber.md
 │       ├── hook-regeln.md · hook-muster.md · hook-framework.md · text-hook-regeln.md
 │       ├── body-regeln.md · cta-regeln.md · konkretion-regeln.md · titel-regeln.md
-│       ├── abwechslung-regeln.md · storytelling-formel.md · sekunden-regie.md · meinungs-injektion.md
+│       ├── abwechslung-regeln.md · storytelling-formel.md · meinungs-injektion.md
 │       ├── verboten-ai-sprache.md · anti-ai-checkliste.md · sprach-stil.md
 │       ├── anti-monotone-formatierung.md · natuerliche-satzstruktur.md
-│       ├── stimm-matching.md · skript-beispiele.md
 │       ├── chat-admin-mode.md · chat-admin-scoped.md · chat-client-scoped.md
-│       ├── reasoning-regeln.md · audit-nutzung.md
+│       ├── audit-nutzung.md
 │       └── themen-spezifizitaet.md · wochen-koherenz.md · anti-muster.md
 ├── data/                                  # CSV data storage (legacy)
 ├── context/                               # Background context for Claude

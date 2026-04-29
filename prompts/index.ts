@@ -9,7 +9,6 @@ export type { Lang } from "./loader";
 
 // Tool schemas
 export {
-  HOOK_GENERATION_TOOL,
   WEEKLY_IDEAS_TOOL,
   VOICE_PROFILE_TOOL,
   SCRIPT_STRUCTURE_TOOL,
@@ -17,11 +16,6 @@ export {
   STRATEGY_ANALYSIS_TOOL,
   STRATEGY_CREATION_TOOL,
   STRATEGY_REVIEW_TOOL,
-  VIRAL_STRUCTURE_TOOL,
-  VIRAL_ADAPT_TOOL,
-  VIRAL_PRODUCTION_TOOL,
-  VIRAL_CRITIC_TOOL,
-  VIRAL_REVISE_TOOL,
   AGENT_LIST_CLIENTS_TOOL,
   AGENT_LOAD_CONTEXT_TOOL,
   AGENT_LOAD_VOICE_TOOL,
@@ -45,4 +39,4 @@ export {
 export type { StrategyPromptContext, StrategyOutput } from "./tools";
 
 // Video analysis pipeline (Gemini — separate, unchanged)
-export { ANALYSIS_PROMPT, VIRAL_SCRIPT_ANALYSIS_PROMPT, buildConceptsPrompt } from "./analysis";
+export { ANALYSIS_PROMPT, buildConceptsPrompt } from "./analysis";
