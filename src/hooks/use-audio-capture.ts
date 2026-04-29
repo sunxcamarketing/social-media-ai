@@ -2,9 +2,15 @@
 
 import { useRef, useState, useCallback } from "react";
 
+type AudioMode = "headphones" | "speakers";
+
 interface AudioCaptureOptions {
   onAudioChunk: (pcmBase64: string) => void;
   sampleRate?: number;
+  /** "headphones" disables echo cancellation + noise suppression so soft
+   * speech isn't dampened. "speakers" keeps them on (laptop speakers play
+   * AI voice → mic picks it up → AEC removes it). Default: headphones. */
+  audioMode?: AudioMode;
 }
 
 // AudioWorklet processor: collects samples into ~40ms frames and emits Int16 PCM.
@@ -56,7 +62,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 export function useAudioCapture(options: AudioCaptureOptions) {
-  const { onAudioChunk, sampleRate = 16000 } = options;
+  const { onAudioChunk, sampleRate = 16000, audioMode = "headphones" } = options;
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
 
@@ -68,10 +74,11 @@ export function useAudioCapture(options: AudioCaptureOptions) {
   const workletUrlRef = useRef<string | null>(null);
 
   const start = useCallback(async () => {
+    const useProcessing = audioMode === "speakers";
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
+        echoCancellation: useProcessing,
+        noiseSuppression: useProcessing,
         autoGainControl: true,
         channelCount: 1,
       },

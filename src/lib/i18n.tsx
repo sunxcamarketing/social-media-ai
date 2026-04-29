@@ -741,6 +741,8 @@ const translations: Record<string, { de: string; en: string }> = {
   "voice.statusDone": { de: "Beendet", en: "Done" },
   "voice.statusActive": { de: "Verbunden", en: "Connected" },
   "voice.startButton": { de: "Interview starten", en: "Start interview" },
+  "voice.modeHeadphones": { de: "Kopfhörer", en: "Headphones" },
+  "voice.modeSpeakers": { de: "Lautsprecher", en: "Speakers" },
   "voice.connectingMsg": { de: "Verbinde mit Agent...", en: "Connecting to agent..." },
   "voice.loadingMsg": { de: "Lade deinen Kontext...", en: "Loading your context..." },
   "voice.buildingSession": { de: "Session wird aufgebaut.", en: "Setting up session." },

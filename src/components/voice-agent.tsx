@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, User, Phone, PhoneOff, Loader2, PauseCircle } from "lucide-react";
+import { Mic, User, Phone, PhoneOff, Loader2, PauseCircle, Headphones, Volume2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAudioCapture } from "@/hooks/use-audio-capture";
 import { supabaseBrowser } from "@/lib/supabase-browser";
@@ -82,12 +82,22 @@ export function VoiceAgent({
     () => new Set(initialCompletedBlocks),
   );
   const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
+  const [audioMode, setAudioMode] = useState<"headphones" | "speakers">(() => {
+    if (typeof window === "undefined") return "headphones";
+    const stored = window.localStorage.getItem("voice-audio-mode");
+    return stored === "speakers" ? "speakers" : "headphones";
+  });
+  const persistAudioMode = (m: "headphones" | "speakers") => {
+    setAudioMode(m);
+    if (typeof window !== "undefined") window.localStorage.setItem("voice-audio-mode", m);
+  };
   const [applying, setApplying] = useState(false);
   const [applyResult, setApplyResult] = useState<"idle" | "done" | "error">("idle");
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const playbackQueueRef = useRef<AudioBufferSourceNode[]>([]);
+  const endedRef = useRef<boolean>(false);
   const nextStartTimeRef = useRef<number>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const agentSilenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,6 +135,7 @@ export function VoiceAgent({
   }, []);
 
   const playAudio = useCallback((base64Data: string) => {
+    if (endedRef.current) return;
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext({ sampleRate: 24000 });
     }
@@ -168,9 +179,11 @@ export function VoiceAgent({
 
   const { isRecording, audioLevel, start: startCapture, stop: stopCapture } = useAudioCapture({
     onAudioChunk: handleAudioChunk,
+    audioMode,
   });
 
   const startSession = async () => {
+    endedRef.current = false;
     setError(null);
     setTranscript([]);
     setSummary(null);
@@ -293,8 +306,15 @@ export function VoiceAgent({
   };
 
   const endSession = () => {
+    endedRef.current = true;
     setSessionState("ending");
     stopCapture();
+    flushAudio();
+    if (agentSilenceTimerRef.current) {
+      clearTimeout(agentSilenceTimerRef.current);
+      agentSilenceTimerRef.current = null;
+    }
+    setAgentSpeaking(false);
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "end" }));
     }
@@ -406,15 +426,41 @@ export function VoiceAgent({
             </div>
 
             {sessionState === "idle" && (
-              <motion.button
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={startSession}
-                className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-ocean text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 btn-press"
-              >
-                <Phone className="h-5 w-5" />
-                {t("voice.startButton")}
-              </motion.button>
+              <div className="flex flex-col items-center gap-3">
+                <motion.button
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={startSession}
+                  className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-ocean text-white font-medium shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 btn-press"
+                >
+                  <Phone className="h-5 w-5" />
+                  {t("voice.startButton")}
+                </motion.button>
+                <div className="inline-flex items-center gap-1 rounded-full bg-ocean/[0.04] p-1 text-xs">
+                  <button
+                    onClick={() => persistAudioMode("headphones")}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors ${
+                      audioMode === "headphones"
+                        ? "bg-white text-ocean shadow-sm font-medium"
+                        : "text-ocean/55 hover:text-ocean"
+                    }`}
+                  >
+                    <Headphones className="h-3 w-3" />
+                    {t("voice.modeHeadphones")}
+                  </button>
+                  <button
+                    onClick={() => persistAudioMode("speakers")}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors ${
+                      audioMode === "speakers"
+                        ? "bg-white text-ocean shadow-sm font-medium"
+                        : "text-ocean/55 hover:text-ocean"
+                    }`}
+                  >
+                    <Volume2 className="h-3 w-3" />
+                    {t("voice.modeSpeakers")}
+                  </button>
+                </div>
+              </div>
             )}
 
             {isLoading && (
