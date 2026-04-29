@@ -10,6 +10,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfig, updateConfig } from "./csv";
 import { safeJsonParse } from "./safe-json";
+import { MODEL_HAIKU } from "./models";
 import {
   type VoiceOnboarding,
   type VoiceBlock,
@@ -174,7 +175,7 @@ export async function synthesizeVoiceOnboarding(
 
   const client = new Anthropic({ apiKey });
   const resp = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_HAIKU,
     max_tokens: 1500,
     system,
     messages: [{ role: "user", content: blockDump }],

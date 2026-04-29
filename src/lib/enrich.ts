@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ENRICH_PROFILE_TOOL } from "@prompts/tools";
+import { MODEL_HAIKU } from "./models";
 
 export interface EnrichedProfile {
   // Basic info
@@ -269,7 +270,7 @@ PROFILE DATA:
 ${sections}`;
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_HAIKU,
     max_tokens: 2048,
     tools: [ENRICH_PROFILE_TOOL],
     tool_choice: { type: "tool", name: ENRICH_PROFILE_TOOL.name },

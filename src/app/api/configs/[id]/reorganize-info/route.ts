@@ -10,6 +10,7 @@ import { readConfig, updateConfig } from "@/lib/csv";
 import { safeJsonParse } from "@/lib/safe-json";
 import { loadVoiceOnboarding } from "@/lib/voice-onboarding";
 import type { VoiceOnboarding } from "@/lib/types";
+import { MODEL_HAIKU } from "@/lib/models";
 
 const REORG_FIELDS = [
   "name", "company", "role", "location", "creatorsCategory",
@@ -112,7 +113,7 @@ REGELN:
 
   const client = new Anthropic({ apiKey });
   const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_HAIKU,
     max_tokens: 4096,
     system: systemPrompt,
     tools: [{

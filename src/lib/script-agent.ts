@@ -10,6 +10,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient } from "./anthropic";
 import { buildPrompt } from "@prompts";
+import { MODEL_HAIKU, MODEL_SONNET } from "./models";
 import { readConfig } from "./csv";
 import {
   toolLoadClientContext,
@@ -278,7 +279,7 @@ async function runReviewer(
   }
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_HAIKU,
     max_tokens: 4096,
     system: reviewerPrompt,
     messages: [{ role: "user", content: userMessage }],
@@ -357,7 +358,7 @@ export async function runScriptAgent(
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model: MODEL_SONNET,
       max_tokens: 4096,
       system: systemPrompt,
       messages,

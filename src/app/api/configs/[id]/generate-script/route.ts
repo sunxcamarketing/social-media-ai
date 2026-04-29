@@ -449,7 +449,7 @@ async function handleTopicScript(
     ? `- LÄNGE: Max ${maxWords} Wörter gesamt (Hook+Body+CTA). Das entspricht ca. ${topicDurationLabel} Sprechzeit. Kürzer ist besser.`
     : `- LÄNGE: Instagram Reels sind kurz. Max 30-60 Sekunden Sprechzeit. Prägnant.`;
   const topicLang: "de" | "en" = config.language === "en" ? "en" : "de";
-  const systemPrompt = buildPrompt("topic-script", {
+  const systemPrompt = buildPrompt("single-script", {
     laenge_regeln: topicLaengeRegeln,
   }, topicLang);
 

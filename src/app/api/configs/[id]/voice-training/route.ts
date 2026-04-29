@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { readConfig, updateConfig } from "@/lib/csv";
 import { getAnthropicClient } from "@/lib/anthropic";
+import { MODEL_HAIKU } from "@/lib/models";
 
 export const maxDuration = 60;
 
@@ -103,7 +104,7 @@ ${voiceExamples || "(keine Beispiele)"}
 Extrahiere daraus ein präzises Stimmprofil. Achte besonders auf: Lieblingswörter, Satzlänge, Ton, Energie, was die Person NICHT sagt.`;
 
     const response = await claude.messages.create({
-      model: "claude-sonnet-4-6",
+      model: MODEL_HAIKU,
       max_tokens: 2048,
       system,
       tools: [{

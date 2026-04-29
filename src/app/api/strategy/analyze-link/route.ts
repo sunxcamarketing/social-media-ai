@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAnthropicClient } from "@/lib/anthropic";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS } from "@/lib/strategy";
+import { MODEL_HAIKU } from "@/lib/models";
 
 export const maxDuration = 30;
 
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
 
   const client = getAnthropicClient();
   const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_HAIKU,
     max_tokens: 512,
     messages: [{
       role: "user",

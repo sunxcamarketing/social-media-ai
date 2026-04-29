@@ -4,6 +4,7 @@ import { readConfig, readScripts, writeScripts, readTrainingScripts } from "@/li
 import { buildFullClientContext } from "@/lib/client-context";
 import { safeJsonParse } from "@/lib/safe-json";
 import { v4 as uuid } from "uuid";
+import { MODEL_HAIKU } from "@/lib/models";
 
 export const maxDuration = 120;
 
@@ -53,7 +54,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const client = getAnthropicClient();
 
   const msg = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_HAIKU,
     max_tokens: 4000,
     tools: [
       {

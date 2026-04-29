@@ -12,6 +12,7 @@ import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import type { TranscriptEntry } from "../gemini-live";
 import { VOICE_BLOCK_ORDER, type VoiceBlockId, type Config } from "../types";
+import { MODEL_HAIKU } from "../models";
 
 const CLAUDE_EXTRACTION_TIMEOUT_MS = 45_000;
 
@@ -46,7 +47,7 @@ async function runToolExtraction<TInput>(opts: ToolExtractionOptions): Promise<T
     const client = new Anthropic({ apiKey });
     const response = await Promise.race([
       client.messages.create({
-        model: "claude-sonnet-4-6",
+        model: MODEL_HAIKU,
         max_tokens: opts.maxTokens ?? 3000,
         system: opts.systemPrompt,
         tools: [opts.tool],
