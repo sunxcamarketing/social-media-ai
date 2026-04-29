@@ -163,9 +163,9 @@ Wenn das Transkript dünn ist oder keine substanziellen Client-Aussagen enthält
     },
   });
 
-  const raw = input?.ideas || [];
-  const isPlaceholder = (s: string) => /^<?unknown>?$/i.test(s.trim()) || s.trim().length < 5;
-  const cleaned = raw.filter((i) => !isPlaceholder(i.title) && !isPlaceholder(i.description));
+  const raw = Array.isArray(input?.ideas) ? input.ideas : [];
+  const isPlaceholder = (s: string) => /^<?unknown>?$/i.test((s || "").trim()) || (s || "").trim().length < 5;
+  const cleaned = raw.filter((i) => i && typeof i === "object" && !isPlaceholder(i.title) && !isPlaceholder(i.description));
   if (cleaned.length < raw.length) console.warn(`[summary] dropped ${raw.length - cleaned.length} placeholder idea(s)`);
   if (cleaned.length > 0) console.log(`[summary] extracted ${cleaned.length} idea(s)`);
   void clientId; // kept in signature for future per-client context

@@ -20,13 +20,21 @@ export interface FinalizeContentIdeasArgs {
 export async function finalizeContentIdeasSession({
   ws, clientId, lang, transcript, durationSeconds,
 }: FinalizeContentIdeasArgs): Promise<void> {
-  const ideas = await generateSessionSummary(clientId, transcript, lang);
-  for (const idea of ideas) {
-    await executeAgentTool(clientId, "save_idea", {
-      title: idea.title,
-      description: idea.description,
-      content_type: idea.contentType,
-    });
+  // Persist the transcript first so it survives any extractor failure —
+  // we can always reprocess later via scripts/reprocess-voice-sessions.ts
+  // if Claude's tool-use response was malformed.
+  let ideas: Awaited<ReturnType<typeof generateSessionSummary>> = [];
+  try {
+    ideas = await generateSessionSummary(clientId, transcript, lang);
+    for (const idea of ideas) {
+      await executeAgentTool(clientId, "save_idea", {
+        title: idea.title,
+        description: idea.description,
+        content_type: idea.contentType,
+      });
+    }
+  } catch (err) {
+    console.error(`[finalize] idea extraction failed:`, err instanceof Error ? err.message : err);
   }
   await saveVoiceSession(clientId, transcript, ideas.length, durationSeconds);
 
