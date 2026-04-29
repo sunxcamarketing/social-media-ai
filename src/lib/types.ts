@@ -95,6 +95,7 @@ export interface Config {
   // Editing / content inspiration (captured during onboarding)
   inspirationReels?: string; // Newline-separated Reel URLs the client considers well-edited
   inspirationProfiles?: string; // Newline-separated profile URLs / @handles the client admires
+  isOwner?: boolean; // True for Aysun's own brands (vs. external clients)
 }
 
 export interface Creator {

@@ -115,6 +115,7 @@ const CONFIG_LIGHT_COLUMNS = [
   "googleDriveFolder",
   "voiceOnboarding",
   "language",
+  "isOwner",
 ].join(",");
 
 export async function readConfigs(): Promise<Config[]> {

@@ -12,7 +12,9 @@ export default function RootLanding() {
       .then((r) => r.json())
       .then((clients) => {
         if (Array.isArray(clients) && clients.length > 0) {
-          router.replace(`/clients/${clients[0].id}/dashboard`);
+          const owner = clients.find((c) => c?.isOwner === true);
+          const target = owner ?? clients[0];
+          router.replace(`/clients/${target.id}/dashboard`);
         } else {
           router.replace("/admin");
         }

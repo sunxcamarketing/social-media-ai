@@ -36,6 +36,7 @@ import {
   Film,
   Mic,
   ArrowRight,
+  Crown,
 } from "lucide-react";
 import type { Config, VoiceOnboarding, VoiceBlockId } from "@/lib/types";
 import { VOICE_BLOCK_ORDER } from "@/lib/types";
@@ -669,10 +670,23 @@ function ClientInformationContent() {
                 </>
               )}
             </div>
-            <div className="mt-2">
+            <div className="mt-2 flex items-center gap-2">
               <Badge variant="secondary" className="rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06]">
                 {client.creatorsCategory}
               </Badge>
+              <button
+                onClick={() => savePartial({ isOwner: !client.isOwner })}
+                disabled={saving}
+                title={client.isOwner ? t("info.unmarkOwner") : t("info.markOwner")}
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 ${
+                  client.isOwner
+                    ? "bg-blush-light/60 border-blush/40 text-blush-dark hover:bg-blush-light"
+                    : "bg-ocean/[0.02] border-ocean/[0.06] text-ocean/55 hover:text-ocean hover:bg-ocean/[0.05]"
+                }`}
+              >
+                <Crown className="h-2.5 w-2.5" />
+                {client.isOwner ? t("info.ownerBrand") : t("info.markOwner")}
+              </button>
             </div>
           </div>
         </div>

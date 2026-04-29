@@ -65,6 +65,7 @@ export async function POST(request: Request) {
     customFonts: body.customFonts || "",
     inspirationReels: body.inspirationReels || "",
     inspirationProfiles: body.inspirationProfiles || "",
+    isOwner: body.isOwner === true,
   };
   try {
     const { insertConfig } = await import("@/lib/csv");

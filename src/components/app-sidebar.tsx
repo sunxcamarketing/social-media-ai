@@ -166,44 +166,72 @@ export function AppSidebar() {
           {switcherOpen && (
             <div className="absolute top-full left-0 right-0 mt-1 rounded-2xl bg-white border border-ocean/[0.06] shadow-[0_8px_32px_rgba(32,35,69,0.08)] overflow-hidden z-50">
               <div className="p-2 max-h-72 overflow-y-auto">
-                {clients.map((c) => {
-                  const isActive = c.id === activeClientId;
-                  const name = c.configName || c.name || t("sidebar.unnamed");
-                  return (
-                    <div key={c.id} className="group relative">
-                      <button
-                        onClick={() => switchClient(c.id)}
-                        className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 pr-20 text-sm transition-colors ${
-                          isActive
-                            ? "bg-ocean text-white font-medium"
-                            : "text-ocean/75 hover:bg-ocean/[0.03] hover:text-ocean"
-                        }`}
-                      >
-                        <span className="truncate flex-1 text-left">{name}</span>
-                        {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-white/80" />}
-                      </button>
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                {(() => {
+                  const ownerClients = clients.filter((c) => c.isOwner);
+                  const customerClients = clients.filter((c) => !c.isOwner);
+
+                  const renderClientRow = (c: typeof clients[number]) => {
+                    const isActive = c.id === activeClientId;
+                    const name = c.configName || c.name || t("sidebar.unnamed");
+                    return (
+                      <div key={c.id} className="group relative">
                         <button
-                          onClick={(e) => { e.stopPropagation(); impersonate(c.id); }}
-                          title={t("sidebar.impersonate", { name })}
-                          className="h-6 w-6 flex items-center justify-center rounded-md bg-blush-light/60 text-blush-dark hover:bg-blush-dark hover:text-white transition-colors"
+                          onClick={() => switchClient(c.id)}
+                          className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2 pr-20 text-sm transition-colors ${
+                            isActive
+                              ? "bg-ocean text-white font-medium"
+                              : "text-ocean/75 hover:bg-ocean/[0.03] hover:text-ocean"
+                          }`}
                         >
-                          <Eye className="h-3 w-3" />
+                          <span className="truncate flex-1 text-left">{name}</span>
+                          {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-white/80" />}
                         </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteClient(c.id, name); }}
-                          title={t("sidebar.delete")}
-                          className="h-6 w-6 flex items-center justify-center rounded-md text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); impersonate(c.id); }}
+                            title={t("sidebar.impersonate", { name })}
+                            className="h-6 w-6 flex items-center justify-center rounded-md bg-blush-light/60 text-blush-dark hover:bg-blush-dark hover:text-white transition-colors"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteClient(c.id, name); }}
+                            title={t("sidebar.delete")}
+                            className="h-6 w-6 flex items-center justify-center rounded-md text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    );
+                  };
+
+                  const sectionLabel = (label: string) => (
+                    <p className="px-3 pt-2 pb-1 text-[10px] font-medium uppercase tracking-wider text-ocean/35">
+                      {label}
+                    </p>
                   );
-                })}
-                {clients.length === 0 && (
-                  <p className="px-3 py-4 text-center text-xs text-ocean/40">{t("sidebar.noClients")}</p>
-                )}
+
+                  return (
+                    <>
+                      {ownerClients.length > 0 && (
+                        <>
+                          {sectionLabel(t("sidebar.myBrands"))}
+                          {ownerClients.map(renderClientRow)}
+                        </>
+                      )}
+                      {customerClients.length > 0 && (
+                        <>
+                          {sectionLabel(t("sidebar.customers"))}
+                          {customerClients.map(renderClientRow)}
+                        </>
+                      )}
+                      {clients.length === 0 && (
+                        <p className="px-3 py-4 text-center text-xs text-ocean/40">{t("sidebar.noClients")}</p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <button
                 onClick={createClient}
