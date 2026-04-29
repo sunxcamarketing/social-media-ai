@@ -79,10 +79,11 @@ async function verifyToken(token: string): Promise<{ clientId: string; userId: s
   return null;
 }
 
-// ── Last voice session context ───────────────────────────────────────────
-// Pulls the most recent voice_sessions row (last 30 days) and condenses the
-// client-side turns into a short topic recap. Lets the agent open with
-// "Beim letzten Mal hast du erzählt von..." instead of starting cold.
+// ── Previous-sessions context (multi-session memory) ─────────────────────
+// Loads the last 3 voice_sessions rows and condenses substantial client turns
+// across them, deduplicated by normalized text prefix so a story repeated
+// across two sessions only appears once. Gives the agent a broader picture of
+// what the client typically talks about, beyond just the most recent call.
 
 interface PreviousSessionTurn {
   role: string;
@@ -90,37 +91,75 @@ interface PreviousSessionTurn {
   timestamp?: string;
 }
 
-async function loadPreviousSessionContext(clientId: string, lang: "de" | "en"): Promise<string> {
+function normalizeForDedup(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, " ").trim().slice(0, 60);
+}
+
+async function loadPreviousSessionsContext(clientId: string, lang: "de" | "en"): Promise<string> {
   const { data, error } = await supabase
     .from("voice_sessions")
     .select("transcript, created_at")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(3);
   if (error || !data || data.length === 0) return "";
 
-  const row = data[0];
-  let transcript: PreviousSessionTurn[] = [];
-  if (Array.isArray(row.transcript)) transcript = row.transcript as PreviousSessionTurn[];
-  else if (typeof row.transcript === "string") {
-    try { transcript = JSON.parse(row.transcript); } catch { transcript = []; }
+  const seen = new Set<string>();
+  const sessionBlocks: string[] = [];
+
+  for (const row of data) {
+    let transcript: PreviousSessionTurn[] = [];
+    if (Array.isArray(row.transcript)) transcript = row.transcript as PreviousSessionTurn[];
+    else if (typeof row.transcript === "string") {
+      try { transcript = JSON.parse(row.transcript); } catch { transcript = []; }
+    }
+
+    const userTurns: string[] = [];
+    for (const t of transcript) {
+      if (t.role !== "user" || typeof t.text !== "string") continue;
+      const text = t.text.trim();
+      if (text.length < 25) continue;
+      const key = normalizeForDedup(text);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      userTurns.push(text);
+    }
+    if (userTurns.length === 0) continue;
+
+    const dateStr = new Date(row.created_at).toLocaleDateString(lang === "en" ? "en-US" : "de-DE", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+    const recap = userTurns.slice(-6).map((t) => `  - ${t.slice(0, 280)}`).join("\n");
+    sessionBlocks.push(lang === "en" ? `Session ${dateStr}:\n${recap}` : `Gespräch ${dateStr}:\n${recap}`);
   }
 
-  const userTurns = transcript
-    .filter((t) => t.role === "user" && typeof t.text === "string" && t.text.trim().length > 25)
-    .map((t) => t.text.trim());
-  if (userTurns.length === 0) return "";
+  if (sessionBlocks.length === 0) return "";
+  return sessionBlocks.join("\n\n");
+}
 
-  // Keep the recap compact — top 8 substantial client turns from the most
-  // recent session. Truncate each at 280 chars so the prompt budget stays sane.
-  const recap = userTurns.slice(-8).map((t) => `- ${t.slice(0, 280)}`).join("\n");
-  const dateStr = new Date(row.created_at).toLocaleDateString(lang === "en" ? "en-US" : "de-DE", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+// ── Already-extracted ideas (avoid repeat topics) ────────────────────────
+// Lists the client's recent ideas so the agent can a) avoid pitching topics
+// that have already been covered, and b) compare against the pillars in the
+// client profile to spot under-mined territories.
+
+async function loadExtractedIdeasContext(clientId: string, lang: "de" | "en"): Promise<string> {
+  const { data, error } = await supabase
+    .from("ideas")
+    .select("title, description, content_type, created_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false })
+    .limit(30);
+  if (error || !data || data.length === 0) return "";
+
+  const lines = data.map((i) => {
+    const desc = (i.description || "").trim().slice(0, 180);
+    const type = i.content_type ? ` [${i.content_type}]` : "";
+    return desc ? `  - ${i.title}${type} — ${desc}` : `  - ${i.title}${type}`;
+  }).join("\n");
 
   return lang === "en"
-    ? `Last session was on ${dateStr}. Key things the client said:\n${recap}`
-    : `Letztes Gespräch war am ${dateStr}. Was der Client damals erzählt hat:\n${recap}`;
+    ? `${data.length} idea(s) already extracted (most recent first):\n${lines}\n\nDo NOT pitch any of these topics again. Either find a new angle on a pillar that's bare, or surface a topic the client hasn't covered yet.`
+    : `${data.length} bereits extrahierte Idee(n) (neueste zuerst):\n${lines}\n\nSchlage KEINES dieser Themen erneut vor. Such entweder einen neuen Winkel in einem Pillar der noch leer ist, oder bring ein Thema das der Client noch nicht behandelt hat.`;
 }
 
 // ── System prompt assembly ───────────────────────────────────────────────
@@ -130,7 +169,8 @@ interface SystemPromptContext {
   auditContext: string;
   performanceContext: string;
   learningsContext: string;
-  previousSessionContext: string;
+  previousSessionsContext: string;
+  extractedIdeasContext: string;
   onboardingProgress: Awaited<ReturnType<typeof loadVoiceOnboarding>> | null;
   voiceProfileStep: VoiceProfileStep | null;
 }
@@ -178,14 +218,16 @@ function buildSessionSystemPrompt(
         performance: "## PERFORMANCE-DATEN",
         learnings: "## LEARNINGS",
       };
-  const previousSessionHeader = lang === "en" ? "## LAST CONVERSATION" : "## LETZTES GESPRÄCH";
+  const previousSessionsHeader = lang === "en" ? "## RECENT VOICE SESSIONS" : "## LETZTE VOICE-GESPRÄCHE";
+  const extractedIdeasHeader = lang === "en" ? "## ALREADY EXTRACTED VIDEO IDEAS — DO NOT REPEAT" : "## BEREITS EXTRAHIERTE VIDEO-IDEEN — NICHT WIEDERHOLEN";
 
   const sections: string[] = [];
   if (ctx.clientContext) sections.push(`${headers.clientProfile}\n${ctx.clientContext}`);
   if (ctx.auditContext) sections.push(`${headers.audit}\n${ctx.auditContext}`);
   if (ctx.performanceContext) sections.push(`${headers.performance}\n${ctx.performanceContext}`);
   if (ctx.learningsContext) sections.push(`${headers.learnings}\n${ctx.learningsContext}`);
-  if (ctx.previousSessionContext) sections.push(`${previousSessionHeader}\n${ctx.previousSessionContext}`);
+  if (ctx.previousSessionsContext) sections.push(`${previousSessionsHeader}\n${ctx.previousSessionsContext}`);
+  if (ctx.extractedIdeasContext) sections.push(`${extractedIdeasHeader}\n${ctx.extractedIdeasContext}`);
 
   if (ctx.onboardingProgress) {
     sections.push(buildOnboardingProgressBlock(ctx.onboardingProgress, lang));
@@ -275,17 +317,18 @@ wss.on("connection", async (ws: WebSocket, req) => {
   // tracking happens via (a) signal-phrase parsing of the model transcript for
   // live UI updates and (b) a post-session Claude extraction pass for the
   // authoritative per-block summaries + quotes.
-  const [clientContext, auditContext, performanceContext, learningsContext, previousSessionContext] = await Promise.all([
+  const [clientContext, auditContext, performanceContext, learningsContext, previousSessionsContext, extractedIdeasContext] = await Promise.all([
     toolLoadClientContext(clientId).catch(() => ""),
     toolLoadAudit(clientId).catch(() => ""),
     toolCheckPerformance(clientId).catch(() => ""),
     toolCheckLearnings(clientId).catch(() => ""),
-    loadPreviousSessionContext(clientId, lang).catch(() => ""),
+    loadPreviousSessionsContext(clientId, lang).catch(() => ""),
+    loadExtractedIdeasContext(clientId, lang).catch(() => ""),
   ]);
 
   let onboardingProgress = mode === "onboarding" ? await loadVoiceOnboarding(clientId) : null;
   const systemPrompt = buildSessionSystemPrompt(mode, lang, {
-    clientContext, auditContext, performanceContext, learningsContext, previousSessionContext, onboardingProgress, voiceProfileStep,
+    clientContext, auditContext, performanceContext, learningsContext, previousSessionsContext, extractedIdeasContext, onboardingProgress, voiceProfileStep,
   });
   console.log(`[voice-server] system prompt: ${systemPrompt.length} chars (context pre-loaded, NO tools, mode=${mode}${voiceProfileStep ? `, step=${voiceProfileStep.id}` : ""})`);
 
