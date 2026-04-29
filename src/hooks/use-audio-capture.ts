@@ -7,9 +7,12 @@ type AudioMode = "headphones" | "speakers";
 interface AudioCaptureOptions {
   onAudioChunk: (pcmBase64: string) => void;
   sampleRate?: number;
-  /** "headphones" disables echo cancellation + noise suppression so soft
-   * speech isn't dampened. "speakers" keeps them on (laptop speakers play
-   * AI voice → mic picks it up → AEC removes it). Default: headphones. */
+  /** "speakers" enables noise suppression + AGC for laptop-mic conditions.
+   * "headphones" leaves them off so soft speech isn't dampened. Echo
+   * cancellation is always on regardless — without it, laptop speakers
+   * playing the agent voice get re-captured by the mic and trip Gemini's
+   * VAD, causing the agent to interrupt itself mid-sentence. Default:
+   * headphones. */
   audioMode?: AudioMode;
 }
 
@@ -77,7 +80,7 @@ export function useAudioCapture(options: AudioCaptureOptions) {
     const useProcessing = audioMode === "speakers";
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
-        echoCancellation: useProcessing,
+        echoCancellation: true,
         noiseSuppression: useProcessing,
         autoGainControl: true,
         channelCount: 1,
