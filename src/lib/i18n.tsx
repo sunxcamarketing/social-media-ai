@@ -677,6 +677,20 @@ const translations: Record<string, { de: string; en: string }> = {
   "portal.scripts.ideaSelectPlaceholder": { de: "Auswählen…", en: "Select…" },
   "portal.scripts.save": { de: "Speichern", en: "Save" },
   "portal.scripts.create": { de: "Anlegen", en: "Create" },
+  "portal.scripts.editScript": { de: "Skript bearbeiten", en: "Edit script" },
+  "portal.scripts.editScriptHint": {
+    de: "Du kannst Hook, Body, CTA, Titel und Text-Hook anpassen. Größere Änderungen besser über Feedback besprechen.",
+    en: "You can edit hook, body, CTA, title and on-screen text-hook. For bigger changes use the feedback flow instead.",
+  },
+  "portal.scripts.editTitle": { de: "Titel", en: "Title" },
+  "portal.scripts.editTextHook": { de: "Text-Hook (optional)", en: "On-screen text hook (optional)" },
+  "portal.scripts.editTextHookPlaceholder": {
+    de: "Was als Text auf dem Video erscheint",
+    en: "What appears as text on the video",
+  },
+  "portal.scripts.editHook": { de: "Hook (gesprochen)", en: "Hook (spoken)" },
+  "portal.scripts.editBody": { de: "Body", en: "Body" },
+  "portal.scripts.editCta": { de: "Call to Action", en: "Call to Action" },
 
   // ── Portal Strategy ──────────────────────────────────────────────────────
   "portal.strategy.empty": { de: "Noch keine Strategie erstellt.", en: "No strategy created yet." },

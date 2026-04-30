@@ -108,6 +108,9 @@ CREATE TABLE scripts (
   anchor_ref TEXT DEFAULT '',     -- winner this post is anchored to
   cta_type TEXT DEFAULT '',       -- soft | lead | authority | none
   funnel_stage TEXT DEFAULT '',   -- TOF | MOF | BOF
+  -- Release flow (2026-04-30)
+  released_at TIMESTAMPTZ,        -- NULL = admin-only draft, set = visible in portal
+  client_edited_at TIMESTAMPTZ,   -- set when client edits in the portal
   created_at TEXT
 );
 

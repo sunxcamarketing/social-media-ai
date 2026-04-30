@@ -120,6 +120,12 @@ export default function PortalScripts() {
   const [ideaForm, setIdeaForm] = useState(emptyIdea);
   const [ideaSaving, setIdeaSaving] = useState(false);
 
+  // Script edit (client-side small changes — title/hook/body/cta/textHook).
+  // Variant-scoped: editing the Kurz post doesn't touch the Lang post.
+  const [scriptEditing, setScriptEditing] = useState<Script | null>(null);
+  const [scriptForm, setScriptForm] = useState({ title: "", textHook: "", hook: "", body: "", cta: "" });
+  const [scriptSaving, setScriptSaving] = useState(false);
+
   useEffect(() => {
     if (!effectiveClientId) return;
     Promise.all([
@@ -247,6 +253,50 @@ export default function PortalScripts() {
     setIdeas((prev) => prev.filter((i) => i.id !== id));
   };
 
+  // ── Script edit actions ─────────────────────────────────────────────────
+  const openScriptEdit = (script: Script) => {
+    setScriptEditing(script);
+    setScriptForm({
+      title: script.title || "",
+      textHook: script.textHook || "",
+      hook: script.hook || "",
+      body: script.body || "",
+      cta: script.cta || "",
+    });
+  };
+  const saveScriptEdit = async () => {
+    if (!scriptEditing || scriptSaving) return;
+    setScriptSaving(true);
+    try {
+      const res = await fetch("/api/scripts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: scriptEditing.id,
+          title: scriptForm.title,
+          textHook: scriptForm.textHook,
+          hook: scriptForm.hook,
+          body: scriptForm.body,
+          cta: scriptForm.cta,
+        }),
+      });
+      if (!res.ok) return;
+      const updated = await res.json();
+      setScripts((prev) => prev.map((s) => (s.id === updated.id ? {
+        ...s,
+        title: updated.title,
+        textHook: updated.text_hook,
+        hook: updated.hook,
+        body: updated.body,
+        cta: updated.cta,
+        clientEditedAt: updated.client_edited_at,
+      } : s)));
+      setScriptEditing(null);
+    } finally {
+      setScriptSaving(false);
+    }
+  };
+
   const sortedIdeas = [...ideas].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   const grouped = groupScripts(scripts);
   const items = tab === "scripts" ? scripts : ideas;
@@ -336,8 +386,8 @@ export default function PortalScripts() {
                             )}
                           </div>
                         </td>
-                        <PortalScriptCell script={g.kurz || g.single} copiedId={copiedId} onCopy={copyScript} />
-                        <PortalScriptCell script={g.lang} copiedId={copiedId} onCopy={copyScript} />
+                        <PortalScriptCell script={g.kurz || g.single} copiedId={copiedId} onCopy={copyScript} onEdit={openScriptEdit} />
+                        <PortalScriptCell script={g.lang} copiedId={copiedId} onCopy={copyScript} onEdit={openScriptEdit} />
                         <td className="px-4 py-4 align-top">
                           <span className="text-xs text-ocean/45 whitespace-nowrap">{dateStr}</span>
                         </td>
@@ -542,6 +592,76 @@ export default function PortalScripts() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Script Edit Dialog (client-side small changes) ───────────────── */}
+      <Dialog open={!!scriptEditing} onOpenChange={(open) => { if (!open) setScriptEditing(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/[0.06]">
+          <DialogHeader>
+            <DialogTitle>{t("portal.scripts.editScript")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-ocean/55 leading-relaxed">
+              {t("portal.scripts.editScriptHint")}
+            </p>
+            <div>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.editTitle")}</Label>
+              <Input
+                value={scriptForm.title}
+                onChange={(e) => setScriptForm({ ...scriptForm, title: e.target.value })}
+                className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-10 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.editTextHook")}</Label>
+              <Input
+                value={scriptForm.textHook}
+                onChange={(e) => setScriptForm({ ...scriptForm, textHook: e.target.value })}
+                className="mt-1.5 rounded-xl glass border-ocean/[0.06] h-10 text-sm"
+                placeholder={t("portal.scripts.editTextHookPlaceholder")}
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.editHook")}</Label>
+              <Textarea
+                value={scriptForm.hook}
+                onChange={(e) => setScriptForm({ ...scriptForm, hook: e.target.value })}
+                rows={2}
+                className="mt-1.5 rounded-xl glass border-ocean/[0.06] text-sm leading-relaxed"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.editBody")}</Label>
+              <Textarea
+                value={scriptForm.body}
+                onChange={(e) => setScriptForm({ ...scriptForm, body: e.target.value })}
+                rows={10}
+                className="mt-1.5 rounded-xl glass border-ocean/[0.06] text-sm leading-relaxed"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-ocean/60">{t("portal.scripts.editCta")}</Label>
+              <Textarea
+                value={scriptForm.cta}
+                onChange={(e) => setScriptForm({ ...scriptForm, cta: e.target.value })}
+                rows={2}
+                className="mt-1.5 rounded-xl glass border-ocean/[0.06] text-sm leading-relaxed"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button variant="ghost" onClick={() => setScriptEditing(null)} className="rounded-xl">
+                {t("portal.scripts.cancel")}
+              </Button>
+              <Button
+                onClick={saveScriptEdit}
+                disabled={scriptSaving}
+                className="rounded-xl bg-ocean hover:bg-ocean-light border-0"
+              >
+                {scriptSaving ? t("portal.scripts.saving") : t("portal.scripts.save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PortalShell>
   );
 }
@@ -606,10 +726,12 @@ function PortalScriptCell({
   script,
   copiedId,
   onCopy,
+  onEdit,
 }: {
   script?: Script;
   copiedId: string | null;
   onCopy: (s: Script) => void;
+  onEdit?: (s: Script) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -642,15 +764,28 @@ function PortalScriptCell({
         {isLong && !expanded && (
           <span className="text-[11px] text-blush-dark/60 hover:text-blush-dark cursor-pointer">... mehr anzeigen</span>
         )}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onCopy(script);
-          }}
-          className="inline-flex items-center gap-1 text-[10px] text-ocean/40 hover:text-ocean transition-colors"
-        >
-          {copiedId === script.id ? <><Check className="h-2.5 w-2.5 text-green-600" /> Kopiert</> : <><Copy className="h-2.5 w-2.5" /> Kopieren</>}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy(script);
+            }}
+            className="inline-flex items-center gap-1 text-[10px] text-ocean/40 hover:text-ocean transition-colors"
+          >
+            {copiedId === script.id ? <><Check className="h-2.5 w-2.5 text-green-600" /> Kopiert</> : <><Copy className="h-2.5 w-2.5" /> Kopieren</>}
+          </button>
+          {onEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(script);
+              }}
+              className="inline-flex items-center gap-1 text-[10px] text-ocean/40 hover:text-ocean transition-colors"
+            >
+              <Pencil className="h-2.5 w-2.5" /> Bearbeiten
+            </button>
+          )}
+        </div>
       </div>
     </td>
   );

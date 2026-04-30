@@ -164,6 +164,10 @@ export interface Script {
   clientFeedbackStatus?: "approved" | "rejected" | "revision_requested" | null;
   clientFeedbackText?: string | null;
   clientFeedbackAt?: string | null;
+  // Release flow (2026-04-30): NULL = admin-only draft, set = visible in portal
+  releasedAt?: string | null;
+  // Set whenever the client edits the script in the portal
+  clientEditedAt?: string | null;
   createdAt: string;
 }
 

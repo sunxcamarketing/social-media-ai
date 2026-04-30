@@ -5,6 +5,11 @@ import { readScripts, readScriptsByClient } from "@/lib/csv";
 import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 import { saveScriptEmbedding } from "@/lib/embeddings";
 
+// Fields a client may edit on a released script via the portal. Anything else
+// (pillar, post_type, status, source, …) is admin-only.
+const CLIENT_EDITABLE_FIELDS = ["title", "textHook", "hook", "body", "cta"] as const;
+type ClientEditableField = (typeof CLIENT_EDITABLE_FIELDS)[number];
+
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -12,11 +17,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   let clientId = searchParams.get("clientId");
 
-  // Clients can only see their own scripts
+  // Clients can only see their own scripts — and only the ones admin has released.
   if (user.role === "client") {
     clientId = user.clientId;
+    if (!clientId) return NextResponse.json([]);
+    const scripts = await readScriptsByClient(clientId, { releasedOnly: true });
+    return NextResponse.json(scripts);
   }
 
+  // Admin: full visibility, optionally scoped to one client.
   const scripts = clientId ? await readScriptsByClient(clientId) : await readScripts();
   return NextResponse.json(scripts);
 }
@@ -55,31 +64,77 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await request.json();
   const { id, ...rest } = body;
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  // Map camelCase to snake_case for any fields provided
-  const update: Record<string, unknown> = {};
-  if (rest.title !== undefined) update.title = rest.title;
-  if (rest.pillar !== undefined) update.pillar = rest.pillar;
-  if (rest.contentType !== undefined) update.content_type = rest.contentType;
-  if (rest.format !== undefined) update.format = rest.format;
-  if (rest.hook !== undefined) update.hook = rest.hook;
-  if (rest.hookPattern !== undefined) update.hook_pattern = rest.hookPattern;
-  if (rest.textHook !== undefined) update.text_hook = rest.textHook;
-  if (rest.body !== undefined) update.body = rest.body;
-  if (rest.cta !== undefined) update.cta = rest.cta;
-  if (rest.status !== undefined) update.status = rest.status;
-  if (rest.source !== undefined) update.source = rest.source;
-  if (rest.shotList !== undefined) update.shot_list = rest.shotList;
-  if (rest.patternType !== undefined) update.pattern_type = rest.patternType;
-  if (rest.postType !== undefined) update.post_type = rest.postType;
-  if (rest.anchorRef !== undefined) update.anchor_ref = rest.anchorRef;
-  if (rest.ctaType !== undefined) update.cta_type = rest.ctaType;
-  if (rest.funnelStage !== undefined) update.funnel_stage = rest.funnelStage;
+  // Map camelCase → snake_case for any provided fields. Then we'll filter
+  // this map down to what the caller is actually allowed to write.
+  const patch: Record<string, unknown> = {};
+  if (rest.title !== undefined) patch.title = rest.title;
+  if (rest.pillar !== undefined) patch.pillar = rest.pillar;
+  if (rest.contentType !== undefined) patch.content_type = rest.contentType;
+  if (rest.format !== undefined) patch.format = rest.format;
+  if (rest.hook !== undefined) patch.hook = rest.hook;
+  if (rest.hookPattern !== undefined) patch.hook_pattern = rest.hookPattern;
+  if (rest.textHook !== undefined) patch.text_hook = rest.textHook;
+  if (rest.body !== undefined) patch.body = rest.body;
+  if (rest.cta !== undefined) patch.cta = rest.cta;
+  if (rest.status !== undefined) patch.status = rest.status;
+  if (rest.source !== undefined) patch.source = rest.source;
+  if (rest.shotList !== undefined) patch.shot_list = rest.shotList;
+  if (rest.patternType !== undefined) patch.pattern_type = rest.patternType;
+  if (rest.postType !== undefined) patch.post_type = rest.postType;
+  if (rest.anchorRef !== undefined) patch.anchor_ref = rest.anchorRef;
+  if (rest.ctaType !== undefined) patch.cta_type = rest.ctaType;
+  if (rest.funnelStage !== undefined) patch.funnel_stage = rest.funnelStage;
 
-  const { data, error } = await supabase.from("scripts").update(update).eq("id", id).select().single();
+  if (user.role === "client") {
+    // Look up the script to enforce ownership + release-gate.
+    const { data: existing, error: readErr } = await supabase
+      .from("scripts")
+      .select("client_id, released_at")
+      .eq("id", id)
+      .single();
+    if (readErr || !existing) {
+      return NextResponse.json({ error: "Script not found" }, { status: 404 });
+    }
+    if (existing.client_id !== getEffectiveClientId(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!existing.released_at) {
+      return NextResponse.json({ error: "Script noch nicht freigegeben" }, { status: 403 });
+    }
+
+    // Restrict to the client-editable allowlist + tag the edit timestamp.
+    const allowed: Record<string, unknown> = {};
+    const fieldMap: Record<ClientEditableField, string> = {
+      title: "title",
+      textHook: "text_hook",
+      hook: "hook",
+      body: "body",
+      cta: "cta",
+    };
+    for (const f of CLIENT_EDITABLE_FIELDS) {
+      const dbCol = fieldMap[f];
+      if (patch[dbCol] !== undefined) allowed[dbCol] = patch[dbCol];
+    }
+    if (Object.keys(allowed).length === 0) {
+      return NextResponse.json({ error: "Keine erlaubten Felder im Update" }, { status: 400 });
+    }
+    allowed.client_edited_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("scripts").update(allowed).eq("id", id).select().single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data);
+  }
+
+  // Admin: full update.
+  const { data, error } = await supabase.from("scripts").update(patch).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }

@@ -80,6 +80,8 @@ function mapScript(r: Record<string, unknown>): Script {
     clientFeedbackStatus: (r.client_feedback_status as Script["clientFeedbackStatus"]) ?? null,
     clientFeedbackText: (r.client_feedback_text as string | null) ?? null,
     clientFeedbackAt: (r.client_feedback_at as string | null) ?? null,
+    releasedAt: (r.released_at as string | null) ?? null,
+    clientEditedAt: (r.client_edited_at as string | null) ?? null,
     createdAt: (r.created_at as string) || "",
   };
 }
@@ -373,13 +375,20 @@ export async function readScripts(): Promise<Script[]> {
   return setCache("scripts", (data || []).map(mapScript), TTL_10M);
 }
 
-/** Read scripts for a specific client */
-export async function readScriptsByClient(clientId: string): Promise<Script[]> {
-  const { data, error } = await supabase
+/** Read scripts for a specific client.
+ *  releasedOnly=true filters to scripts the admin has explicitly released to
+ *  the client portal (drops drafts). Used by the client-facing API path. */
+export async function readScriptsByClient(
+  clientId: string,
+  opts?: { releasedOnly?: boolean },
+): Promise<Script[]> {
+  let q = supabase
     .from("scripts")
     .select("*")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false });
+  if (opts?.releasedOnly) q = q.not("released_at", "is", null);
+  const { data, error } = await q;
   if (error) throw error;
   return (data || []).map(mapScript);
 }

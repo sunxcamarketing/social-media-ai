@@ -21,6 +21,8 @@ import {
   Pencil,
   Trash2,
   Plus,
+  Send,
+  EyeOff,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 import { useClientData } from "@/context/client-data-context";
@@ -270,6 +272,24 @@ export default function ClientScriptsPage() {
     loadScripts();
   };
 
+  // Toggle whether a script (or a Kurz/Lang group) is released to the client portal.
+  // Optimistic update so the badge flips instantly even though the request is over WAN.
+  const toggleRelease = async (ids: string[], release: boolean) => {
+    const ts = release ? new Date().toISOString() : null;
+    setScripts((prev) =>
+      prev.map((s) => (ids.includes(s.id) ? { ...s, releasedAt: ts } : s)),
+    );
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/scripts/${id}/release`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ released: release }),
+        }),
+      ),
+    );
+  };
+
   const toggleSelect = (ids: string[]) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -404,6 +424,16 @@ export default function ClientScriptsPage() {
                         <div className="space-y-1.5">
                           <p className="text-sm font-medium text-ocean/90 leading-snug">{g.base || primary.title || "Ohne Titel"}</p>
                           <div className="flex flex-wrap items-center gap-1.5">
+                            {primary.releasedAt ? (
+                              <span className="text-[9px] text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 font-medium">Freigegeben</span>
+                            ) : (
+                              <span className="text-[9px] text-ocean/55 bg-ocean/[0.04] border border-ocean/[0.08] rounded px-1.5 py-0.5 font-medium">Entwurf (intern)</span>
+                            )}
+                            {(g.kurz?.clientEditedAt || g.lang?.clientEditedAt || g.single?.clientEditedAt) && (
+                              <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 font-medium" title="Kunde hat das Skript im Portal bearbeitet">
+                                ✏️ Vom Kunden bearbeitet
+                              </span>
+                            )}
                             {primary.source === "viral-script" && (
                               <span className="text-[9px] text-purple-600 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.5 font-medium">Viral Script</span>
                             )}
@@ -440,6 +470,21 @@ export default function ClientScriptsPage() {
                       {/* Actions */}
                       <td className="px-4 py-4 align-top">
                         <div className="flex gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                          {primary.releasedAt ? (
+                            <button
+                              onClick={() => toggleRelease(groupIds, false)}
+                              title="Freigabe zurückziehen"
+                              className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+                              <EyeOff className="h-3 w-3" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => toggleRelease(groupIds, true)}
+                              title="Für Kunden freigeben"
+                              className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-green-600 hover:bg-green-50 transition-colors">
+                              <Send className="h-3 w-3" />
+                            </button>
+                          )}
                           <button onClick={() => openEdit(primary)} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-ocean/5 transition-colors">
                             <Pencil className="h-3 w-3" />
                           </button>
