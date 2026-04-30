@@ -441,6 +441,7 @@ function mapIdea(r: Record<string, unknown>): Record<string, string> {
     description: (r.description as string) || "",
     contentType: (r.content_type as string) || "",
     status: (r.status as string) || "",
+    sourceSessionId: (r.source_session_id as string) || "",
     createdAt: (r.created_at as string) || "",
   };
 }

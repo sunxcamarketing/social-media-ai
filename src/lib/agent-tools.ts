@@ -445,7 +445,7 @@ const saveIdeaLocks = new Map<string, Promise<unknown>>();
 
 async function toolSaveIdea(
   clientId: string,
-  input: { title: string; description: string; content_type?: string },
+  input: { title: string; description: string; content_type?: string; source_session_id?: string },
 ): Promise<string> {
   const previous = saveIdeaLocks.get(clientId) ?? Promise.resolve();
   const next = previous.then(() => saveIdeaInner(clientId, input));
@@ -455,7 +455,7 @@ async function toolSaveIdea(
 
 async function saveIdeaInner(
   clientId: string,
-  input: { title: string; description: string; content_type?: string },
+  input: { title: string; description: string; content_type?: string; source_session_id?: string },
 ): Promise<string> {
   const normalizedTitle = normalizeTitle(input.title);
   if (!normalizedTitle) return "Titel fehlt. Gib einen kurzen Titel mit.";
@@ -470,7 +470,7 @@ async function saveIdeaInner(
     return `Idee "${input.title}" existiert bereits (id=${duplicate.id}) — nicht erneut gespeichert.`;
   }
 
-  const { error } = await supabase.from("ideas").insert({
+  const row: Record<string, unknown> = {
     id: uuid(),
     client_id: clientId,
     title: input.title,
@@ -478,8 +478,22 @@ async function saveIdeaInner(
     content_type: input.content_type || "",
     status: "idea",
     created_at: new Date().toISOString().split("T")[0],
-  });
-  if (error) return `Fehler beim Speichern: ${error.message}`;
+  };
+  // Only include source_session_id if provided — defensive against the
+  // column not existing yet on environments where the migration hasn't run.
+  if (input.source_session_id) row.source_session_id = input.source_session_id;
+
+  const { error } = await supabase.from("ideas").insert(row);
+  if (error) {
+    // If the column is missing (pre-migration env), retry without it.
+    if (error.message?.includes("source_session_id") && row.source_session_id) {
+      delete row.source_session_id;
+      const retry = await supabase.from("ideas").insert(row);
+      if (retry.error) return `Fehler beim Speichern: ${retry.error.message}`;
+      return `Video-Idee gespeichert: "${input.title}". (Hinweis: source_session_id-Spalte fehlt noch — Migration ausführen.)`;
+    }
+    return `Fehler beim Speichern: ${error.message}`;
+  }
   return `Video-Idee gespeichert: "${input.title}". Du findest sie im Ideen-Tab des Clients.`;
 }
 
@@ -594,7 +608,7 @@ export async function executeAgentTool(
     case "check_learnings":
       return toolCheckLearnings(clientId);
     case "save_idea":
-      return toolSaveIdea(clientId, toolInput as { title: string; description: string; content_type?: string });
+      return toolSaveIdea(clientId, toolInput as { title: string; description: string; content_type?: string; source_session_id?: string });
     case "list_ideas":
       return toolListIdeas(clientId, toolInput as { status?: string; query?: string });
     case "save_script":

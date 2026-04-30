@@ -4,8 +4,12 @@ import { supabase } from "@/lib/supabase";
 
 /** GET — list voice sessions for a client, with their transcripts normalized.
  *  Legacy rows stored the transcript as a JSON-stringified string (instead of
- *  a JSONB array). We parse those back to arrays so the UI gets a uniform shape. */
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+ *  a JSONB array). We parse those back to arrays so the UI gets a uniform shape.
+ *
+ *  Query params:
+ *    ?sessionId=X — return only that single session (used by develop-idea
+ *                    flow to fetch the transcript linked to an idea). */
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -14,11 +18,16 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data, error } = await supabase
+  const sessionId = new URL(request.url).searchParams.get("sessionId");
+
+  let query = supabase
     .from("voice_sessions")
     .select("id, transcript, ideas_generated, duration_seconds, created_at")
     .eq("client_id", id)
     .order("created_at", { ascending: false });
+  if (sessionId) query = query.eq("id", sessionId).limit(1);
+
+  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const sessions = (data || []).map((s) => {

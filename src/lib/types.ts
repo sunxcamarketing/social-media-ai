@@ -135,6 +135,10 @@ export interface Idea {
   description: string;
   contentType: string;
   status: string;
+  /** voice_sessions.id when this idea was extracted from a voice transcript.
+   *  Used by the develop-idea flow to pull the original transcript so the
+   *  script-writer drafts from the client's actual spoken words. */
+  sourceSessionId?: string | null;
   createdAt: string;
 }
 

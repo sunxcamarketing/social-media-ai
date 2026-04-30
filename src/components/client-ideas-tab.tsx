@@ -49,7 +49,7 @@ function statusLabel(status: string) {
 
 const emptyForm = { title: "", description: "", contentType: "", status: "idea" };
 
-function buildChatSeed(idea: Idea): string {
+function buildChatSeed(idea: Idea, voiceTranscript?: string): string {
   const parts = [
     `Ich will die folgende gespeicherte Idee zu einem Skript ausformulieren:`,
     ``,
@@ -57,11 +57,32 @@ function buildChatSeed(idea: Idea): string {
   ];
   if (idea.description) parts.push(`**Beschreibung:** ${idea.description}`);
   if (idea.contentType) parts.push(`**Content-Typ:** ${idea.contentType}`);
+
+  if (voiceTranscript && voiceTranscript.trim().length > 0) {
+    parts.push(
+      ``,
+      `**MATERIAL VOM CLIENT (aus Voice-Gespräch):**`,
+      ``,
+      voiceTranscript.trim(),
+      ``,
+      `Wichtig: Das Skript soll aus den ECHTEN Worten des Clients oben entstehen — sein Sprachstil, seine konkreten Aussagen, sein Wendepunkt-Moment. Nicht aus der kompakten Beschreibung der Idee. Stell KEINE Fragen die der Client da oben schon beantwortet hat.`,
+    );
+  }
+
   parts.push(
     ``,
     `Schreib mir daraus ein Skript in zwei Versionen (kurz 30-40 Sek + lang 60+ Sek). Bleib bei meinem Winkel, erfinde keinen neuen. Wenn etwas unklar ist, frag vorher. Wenn das Skript fertig ist, frag ob du es unter "Skripte" speichern sollst.`,
   );
   return parts.join("\n");
+}
+
+interface TranscriptTurn { role: string; text: string }
+
+function formatTranscriptForPrompt(turns: TranscriptTurn[]): string {
+  return turns
+    .filter((t) => (t.text || "").trim().length > 0)
+    .map((t) => `${t.role === "user" ? "Client" : "Agent"}: ${t.text.trim()}`)
+    .join("\n\n");
 }
 
 export function ClientIdeasTab({ clientId }: { clientId: string }) {
@@ -71,7 +92,28 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
   const [form, setForm] = useState(emptyForm);
   const [filterStatus, setFilterStatus] = useState("all");
   const [chatIdea, setChatIdea] = useState<Idea | null>(null);
+  const [chatTranscript, setChatTranscript] = useState<string>("");
   const [saving, setSaving] = useState(false);
+
+  // Open the develop-idea dialog. If the idea was extracted from a voice
+  // session (sourceSessionId set), fetch that transcript first so the chat
+  // seed can include the client's actual spoken words — the script writer
+  // then drafts from those instead of asking redundant questions.
+  const openDevelopDialog = async (idea: Idea) => {
+    setChatTranscript("");
+    setChatIdea(idea);
+    if (!idea.sourceSessionId) return;
+    try {
+      const res = await fetch(`/api/configs/${clientId}/voice-sessions?sessionId=${idea.sourceSessionId}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const session = json.sessions?.[0];
+      if (!session?.transcript) return;
+      setChatTranscript(formatTranscriptForPrompt(session.transcript as TranscriptTurn[]));
+    } catch {
+      // Non-fatal: fall back to seed without transcript.
+    }
+  };
 
   const loadIdeas = () => {
     fetch(`/api/ideas?clientId=${clientId}`).then((r) => r.json()).then(setIdeas);
@@ -219,8 +261,8 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
         {filtered.map((idea) => (
           <div
             key={idea.id}
-            onClick={() => setChatIdea(idea)}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setChatIdea(idea); } }}
+            onClick={() => openDevelopDialog(idea)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDevelopDialog(idea); } }}
             role="button"
             tabIndex={0}
             className="group glass rounded-2xl p-5 space-y-3 transition-all duration-300 hover:bg-warm-white hover:border-ocean/5 cursor-pointer"
@@ -285,7 +327,7 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
           clientId={clientId}
           title={chatIdea.title}
           subtitle={chatIdea.description}
-          seedMessage={buildChatSeed(chatIdea)}
+          seedMessage={buildChatSeed(chatIdea, chatTranscript)}
           dialogKey={chatIdea.id}
           onScriptSaved={async () => {
             const ideaId = chatIdea.id;

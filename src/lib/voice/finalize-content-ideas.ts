@@ -26,18 +26,30 @@ export async function finalizeContentIdeasSession({
   // if Claude's tool-use response was malformed.
   let ideas: Awaited<ReturnType<typeof generateSessionSummary>> = [];
   try {
+    // Save the voice_sessions row FIRST so source_session_id has something
+    // to reference. Idea inserts that follow link back to this row, which
+    // lets the script-generation pipeline pull the original transcript and
+    // write scripts from the client's actual spoken words.
+    await saveVoiceSession(clientId, transcript, 0, durationSeconds, sessionId);
+
     ideas = await generateSessionSummary(clientId, transcript, lang);
     for (const idea of ideas) {
       await executeAgentTool(clientId, "save_idea", {
         title: idea.title,
         description: idea.description,
         content_type: idea.contentType,
+        source_session_id: sessionId,
       });
+    }
+    // Update idea count on the session row now that we know it.
+    if (ideas.length > 0) {
+      await saveVoiceSession(clientId, transcript, ideas.length, durationSeconds, sessionId);
     }
   } catch (err) {
     console.error(`[finalize] idea extraction failed:`, err instanceof Error ? err.message : err);
+    // Best-effort fallback save in case the upfront save failed too.
+    await saveVoiceSession(clientId, transcript, 0, durationSeconds, sessionId).catch(() => {});
   }
-  await saveVoiceSession(clientId, transcript, ideas.length, durationSeconds, sessionId);
 
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify({

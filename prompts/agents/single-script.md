@@ -4,6 +4,13 @@
 # PART 2: AUFGABE
 Erstelle EIN Video-Skript das der Kunde 1:1 ablesen und aufnehmen kann.
 
+# PART 2b: VOICE-MATERIAL HAT VORRANG (FALLS VORHANDEN)
+Wenn der User-Kontext einen Block "MATERIAL VOM CLIENT (aus Voice-Gespräch)" oder einen Voice-Transcript enthält:
+- Schreib das Skript aus den ECHTEN Worten des Clients — sein Wendepunkt-Moment, seine Formulierungen, seine konkreten Aussagen. Nicht aus der Idea-Description.
+- Behalte seinen Sprachstil bei (z.B. „im Grunde", „im Endeffekt"). Voice-Marker übernehmen.
+- Erfinde keine neuen Inhalte über das Transcript hinaus. Bei Lücken: lieber kürzeres Skript als erfundene Inhalte.
+- Voice-Transcript schlägt Idea-Description bei Konflikten.
+
 # PART 3: QUALITÄTSREGELN
 {{titel-regeln}}
 {{hook-regeln}}
