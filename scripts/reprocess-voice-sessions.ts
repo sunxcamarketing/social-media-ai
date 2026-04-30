@@ -78,7 +78,7 @@ async function main() {
       .eq("client_id", s.client_id);
     const existingNorms = new Set((existing || []).map((i) => normalizeTitle(i.title)));
 
-    const toInsert: Array<{ id: string; client_id: string; title: string; description: string; content_type: string; status: string; created_at: string }> = [];
+    const toInsert: Array<{ id: string; client_id: string; title: string; description: string; content_type: string; status: string; created_at: string; source_session_id: string }> = [];
     for (const idea of ideas) {
       const norm = normalizeTitle(idea.title);
       if (existingNorms.has(norm)) {
@@ -95,6 +95,7 @@ async function main() {
         content_type: idea.contentType || "",
         status: "idea",
         created_at: s.created_at || new Date().toISOString().split("T")[0],
+        source_session_id: s.id,
       });
       console.log(`     · "${idea.title}"`);
     }
