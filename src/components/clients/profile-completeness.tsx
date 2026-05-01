@@ -11,6 +11,8 @@ interface FieldDef {
   de: string;
   en: string;
   target: DialogTarget;
+  /** DOM id of the field inside the dialog — used to scroll/focus on open. */
+  fieldId: string;
   /** Custom completion check. Defaults to "non-empty trimmed string". */
   isComplete?: (client: Config) => boolean;
 }
@@ -20,20 +22,21 @@ interface FieldDef {
 // considered nice-to-have and doesn't move the completeness needle.
 const FIELDS: FieldDef[] = [
   // Basic info
-  { key: "businessContext", de: "Business-Kontext", en: "Business context", target: "basic" },
-  { key: "professionalBackground", de: "Beruflicher Hintergrund", en: "Professional background", target: "basic" },
-  { key: "keyAchievements", de: "Erfolge & Meilensteine", en: "Achievements & milestones", target: "basic" },
-  { key: "coreOffer", de: "Core Offer", en: "Core offer", target: "basic" },
-  { key: "mainGoal", de: "Konkretes Ziel", en: "Concrete goal", target: "basic" },
+  { key: "businessContext", de: "Business-Kontext", en: "Business context", target: "basic", fieldId: "field-businessContext" },
+  { key: "professionalBackground", de: "Beruflicher Hintergrund", en: "Professional background", target: "basic", fieldId: "field-professionalBackground" },
+  { key: "keyAchievements", de: "Erfolge & Meilensteine", en: "Achievements & milestones", target: "basic", fieldId: "field-keyAchievements" },
+  { key: "coreOffer", de: "Core Offer", en: "Core offer", target: "basic", fieldId: "field-coreOffer" },
+  { key: "mainGoal", de: "Konkretes Ziel", en: "Concrete goal", target: "basic", fieldId: "field-mainGoal" },
 
   // Brand identity
-  { key: "brandFeeling", de: "Markengefühl", en: "Brand feeling", target: "brand" },
-  { key: "brandProblem", de: "Kernproblem der Zielgruppe", en: "Core problem of the audience", target: "brand" },
+  { key: "brandFeeling", de: "Markengefühl", en: "Brand feeling", target: "brand", fieldId: "field-brandFeeling" },
+  { key: "brandProblem", de: "Kernproblem der Zielgruppe", en: "Core problem of the audience", target: "brand", fieldId: "field-brandProblem" },
   {
     key: "dreamCustomer",
     de: "Traumkunde",
     en: "Dream customer",
     target: "brand",
+    fieldId: "field-dreamCustomer",
     // dreamCustomer is JSON; complete if any sub-field has content.
     isComplete: (c) => {
       const dc = safeJsonParse<Record<string, string>>(c.dreamCustomer || "", {});
@@ -47,19 +50,20 @@ const FIELDS: FieldDef[] = [
     de: "Top-Probleme der Zielgruppe",
     en: "Top problems of the audience",
     target: "customer",
+    fieldId: "field-customerProblems",
     isComplete: (c) => {
       const cp = safeJsonParse<Record<string, string>>(c.customerProblems || "", {});
       return Object.values(cp).some((v) => typeof v === "string" && v.trim() !== "");
     },
   },
-  { key: "providerRole", de: "Rolle gegenüber der Zielgruppe", en: "Role toward audience", target: "customer" },
-  { key: "providerBeliefs", de: "Kernüberzeugungen", en: "Core beliefs", target: "customer" },
-  { key: "providerStrengths", de: "Kommunikationsstärken", en: "Communication strengths", target: "customer" },
-  { key: "authenticityZone", de: "Authentizitätszone", en: "Authenticity zone", target: "customer" },
+  { key: "providerRole", de: "Rolle gegenüber der Zielgruppe", en: "Role toward audience", target: "customer", fieldId: "field-providerRole" },
+  { key: "providerBeliefs", de: "Kernüberzeugungen", en: "Core beliefs", target: "customer", fieldId: "field-providerBeliefs" },
+  { key: "providerStrengths", de: "Kommunikationsstärken", en: "Communication strengths", target: "customer", fieldId: "field-providerStrengths" },
+  { key: "authenticityZone", de: "Authentizitätszone", en: "Authenticity zone", target: "customer", fieldId: "field-authenticityZone" },
 
   // Brand message
-  { key: "brandingStatement", de: "Positionierungssatz", en: "Positioning statement", target: "message" },
-  { key: "humanDifferentiation", de: "Was macht dich einzigartig", en: "What makes you unique", target: "message" },
+  { key: "brandingStatement", de: "Positionierungssatz", en: "Positioning statement", target: "message", fieldId: "field-brandingStatement" },
+  { key: "humanDifferentiation", de: "Was macht dich einzigartig", en: "What makes you unique", target: "message", fieldId: "field-humanDifferentiation" },
 
   // Billing — needed for invoicing. We treat the address block as one unit:
   // complete if the must-have fields (recipient, street, zip, city, country)
@@ -71,6 +75,7 @@ const FIELDS: FieldDef[] = [
     de: "Rechnungsadresse",
     en: "Billing address",
     target: "billing",
+    fieldId: "field-billingName",
     isComplete: (c) => {
       const required = [c.billingName, c.billingStreet, c.billingZip, c.billingCity, c.billingCountry];
       return required.every((v) => typeof v === "string" && v.trim() !== "");
@@ -87,13 +92,15 @@ function isFieldComplete(field: FieldDef, client: Config): boolean {
 export interface ProfileCompletenessProps {
   client: Config;
   lang: "de" | "en";
-  onOpen: Record<DialogTarget, () => void>;
+  onOpen: Record<DialogTarget, (fieldId?: string) => void>;
 }
 
 export function ProfileCompleteness({ client, lang, onOpen }: ProfileCompletenessProps) {
-  const total = FIELDS.length;
-  const completed = FIELDS.filter((f) => isFieldComplete(f, client));
-  const missing = FIELDS.filter((f) => !isFieldComplete(f, client));
+  // Owner brands don't get invoiced — billing is admin/external-client only.
+  const fields = FIELDS.filter((f) => !(client.isOwner && f.target === "billing"));
+  const total = fields.length;
+  const completed = fields.filter((f) => isFieldComplete(f, client));
+  const missing = fields.filter((f) => !isFieldComplete(f, client));
   const percent = Math.round((completed.length / total) * 100);
 
   const allDone = missing.length === 0;
@@ -158,7 +165,7 @@ export function ProfileCompleteness({ client, lang, onOpen }: ProfileCompletenes
               >
                 <span className="text-sm text-ocean/75 truncate">{lang === "en" ? f.en : f.de}</span>
                 <button
-                  onClick={() => onOpen[f.target]()}
+                  onClick={() => onOpen[f.target](f.fieldId)}
                   className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-ocean/[0.08] px-3 py-1 text-xs font-medium text-ocean/70 hover:text-ocean hover:bg-ocean/[0.03] hover:border-ocean/[0.16] transition-all"
                 >
                   {t("Ergänzen", "Add")}
