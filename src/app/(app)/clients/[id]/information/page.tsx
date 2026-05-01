@@ -717,6 +717,22 @@ function ClientInformationContent() {
                 <Crown className="h-2.5 w-2.5" />
                 {client.isOwner ? t("info.ownerBrand") : t("info.markOwner")}
               </button>
+              <button
+                onClick={openBilling}
+                title={billingEmpty
+                  ? (lang === "en" ? "No billing address yet — click to add" : "Noch keine Rechnungsadresse — Klick zum Eintragen")
+                  : [client.billingName, client.billingStreet, [client.billingZip, client.billingCity].filter(Boolean).join(" "), client.billingCountry].filter(Boolean).join("\n")}
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                  billingEmpty
+                    ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                    : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                }`}
+              >
+                <Receipt className="h-2.5 w-2.5" />
+                {billingEmpty
+                  ? (lang === "en" ? "No billing address" : "Keine Rechnungsadresse")
+                  : (lang === "en" ? "Billing address" : "Rechnungsadresse")}
+              </button>
             </div>
           </div>
         </div>
