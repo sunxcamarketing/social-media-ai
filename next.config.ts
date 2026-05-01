@@ -16,6 +16,14 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "scontent.cdninstagram.com" },
     ],
   },
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "radix-ui",
+      "motion",
+      "@floating-ui/react-dom",
+    ],
+  },
 };
 
 export default nextConfig;

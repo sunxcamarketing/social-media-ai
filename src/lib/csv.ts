@@ -123,6 +123,7 @@ const CONFIG_LIGHT_COLUMNS = [
   "language",
   "isOwner",
   "clickupListId",
+  "billingName", "billingCompany", "billingStreet", "billingZip", "billingCity", "billingCountry", "billingVatId", "billingEmail",
 ].join(",");
 
 export async function readConfigs(): Promise<Config[]> {
