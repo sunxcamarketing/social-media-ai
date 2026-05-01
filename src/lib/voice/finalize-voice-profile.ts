@@ -8,6 +8,7 @@ import type { WebSocket } from "ws";
 import { createClient } from "@supabase/supabase-js";
 import type { TranscriptEntry } from "../gemini-live";
 import type { VoiceProfileStep } from "../voice-profile-scenarios";
+import { generateVoiceProfile } from "../voice-profile";
 
 const MIN_SAMPLE_CHARS = 30;
 
@@ -95,6 +96,25 @@ export async function finalizeVoiceProfileSession(args: FinalizeVoiceProfileArgs
   // Save voice session record for replay/debug (best-effort).
   saveVoiceSessionRecord(clientId, transcript, durationSeconds).catch((err) => {
     console.error("[voice-profile] saveVoiceSessionRecord failed:", err);
+  });
+
+  // Fire-and-forget: extract a structured voiceProfile from the accumulated
+  // training samples and write to configs.voiceProfile. Idempotent — each
+  // run sees ALL the client's voice samples and overwrites with the latest
+  // merged result. This is what makes the portal "Stimmprofil" card flip
+  // from "Aufnehmen" to "Captured" the moment a step finishes.
+  (async () => {
+    const { data: cfg } = await supabase
+      .from("configs")
+      .select("name, configName, language")
+      .eq("id", clientId)
+      .single();
+    const clientName = cfg?.name || cfg?.configName || "Client";
+    const lang: "de" | "en" = cfg?.language === "en" ? "en" : "de";
+    await generateVoiceProfile(clientId, clientName, lang, "client");
+    console.log(`[voice-profile] extracted profile for ${clientId} after step ${step.id}`);
+  })().catch((err) => {
+    console.error("[voice-profile] extraction failed:", err instanceof Error ? err.message : err);
   });
 
   if (ws.readyState === ws.OPEN) {

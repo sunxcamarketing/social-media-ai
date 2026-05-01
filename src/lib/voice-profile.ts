@@ -182,9 +182,11 @@ Beispielsätze: ${p.exampleSentences.map(s => `"${s}"`).join(" | ")}`
 }
 
 async function saveVoiceProfile(clientId: string, profile: VoiceProfile) {
+  // Column is camelCase in Supabase (configs.voiceProfile), not snake_case.
+  // Writing to "voice_profile" silently succeeds without persisting.
   await supabase
     .from("configs")
-    .update({ voice_profile: JSON.stringify(profile) })
+    .update({ voiceProfile: JSON.stringify(profile) })
     .eq("id", clientId);
 }
 
@@ -322,9 +324,10 @@ Regeln: ${s.keyRules.join(" | ")}`
 }
 
 async function saveScriptStructure(clientId: string, structure: ScriptStructureProfile) {
+  // Column is camelCase in Supabase (configs.scriptStructure), not snake_case.
   await supabase
     .from("configs")
-    .update({ script_structure: JSON.stringify(structure) })
+    .update({ scriptStructure: JSON.stringify(structure) })
     .eq("id", clientId);
 }
 

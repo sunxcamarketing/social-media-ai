@@ -107,25 +107,6 @@ function mapAnalysis(r: Record<string, unknown>): Analysis {
 
 // ── Configs ─────────────────────────────────────────────────────────────────
 
-/** Frontend-safe config fields (excludes large backend-only blobs) */
-const CONFIG_LIGHT_COLUMNS = [
-  "id", "configName", "creatorsCategory", "postsPerWeek",
-  "strategyGoal", "strategyPillars", "strategyWeekly", "performanceInsights",
-  "name", "company", "role", "location", "businessContext", "professionalBackground", "keyAchievements",
-  "brandFeeling", "brandProblem", "brandingStatement", "humanDifferentiation",
-  "dreamCustomer", "customerProblems", "providerRole", "providerBeliefs", "providerStrengths", "authenticityZone",
-  "coreOffer", "mainGoal",
-  "website", "instagram", "tiktok", "youtube", "linkedin", "twitter",
-  "igFullName", "igBio", "igFollowers", "igFollowing", "igPostsCount",
-  "igProfilePicUrl", "igCategory", "igVerified", "igLastUpdated",
-  "googleDriveFolder",
-  "voiceOnboarding",
-  "language",
-  "isOwner",
-  "clickupListId",
-  "billingName", "billingCompany", "billingStreet", "billingZip", "billingCity", "billingCountry", "billingVatId", "billingEmail",
-].join(",");
-
 export async function readConfigs(): Promise<Config[]> {
   const cached = getCached<Config[]>("configs");
   if (cached) return cached;
@@ -148,14 +129,19 @@ export async function readConfig(id: string): Promise<Config | null> {
   return setCache(`config:${id}`, data as Config, TTL_5M);
 }
 
-/** Read a single config with only frontend-needed fields. No cache: frontend
- *  has its own cache layer (client-data-context) — adding a server-side cache
- *  here would silently stale data written by the voice-server process (in-memory
- *  caches don't sync across processes). */
+/** Read a single config for frontend use. No cache: frontend has its own
+ *  cache layer (client-data-context) — adding a server-side cache here
+ *  would silently stale data written by the voice-server process
+ *  (in-memory caches don't sync across processes).
+ *
+ *  Selects everything: maintaining an allowlist of columns turned out to
+ *  be a footgun (we shipped three bugs in a row where new fields were
+ *  written to DB but never returned to the UI). The configs table has
+ *  no large blobs anyway — transcript/training data live elsewhere. */
 export async function readConfigLight(id: string): Promise<Config | null> {
   const { data, error } = await supabase
     .from("configs")
-    .select(CONFIG_LIGHT_COLUMNS)
+    .select("*")
     .eq("id", id)
     .single();
   if (error && error.code === "PGRST116") return null;
