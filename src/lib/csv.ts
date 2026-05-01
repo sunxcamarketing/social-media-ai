@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Config, Creator, Video, Script, TrainingScript, Analysis } from "./types";
+import type { Config, Creator, Video, Script, TrainingScript, Analysis, Idea } from "./types";
 
 // ── In-Memory Cache ─────────────────────────────────────────────────────────
 
@@ -429,7 +429,7 @@ export async function writeScripts(scripts: Script[]) {
 
 // ── Ideas ────────────────────────────────────────────────────────────────────
 
-function mapIdea(r: Record<string, unknown>): Record<string, string> {
+function mapIdea(r: Record<string, unknown>): Idea {
   return {
     id: (r.id as string) || "",
     clientId: (r.client_id as string) || "",
@@ -438,17 +438,18 @@ function mapIdea(r: Record<string, unknown>): Record<string, string> {
     contentType: (r.content_type as string) || "",
     status: (r.status as string) || "",
     sourceSessionId: (r.source_session_id as string) || "",
+    starred: r.starred === true,
     createdAt: (r.created_at as string) || "",
   };
 }
 
-export async function readIdeas(): Promise<Record<string, string>[]> {
+export async function readIdeas(): Promise<Idea[]> {
   const { data, error } = await supabase.from("ideas").select("*");
   if (error) throw error;
   return (data || []).map(mapIdea);
 }
 
-export async function readIdeasByClient(clientId: string): Promise<Record<string, string>[]> {
+export async function readIdeasByClient(clientId: string): Promise<Idea[]> {
   const { data, error } = await supabase
     .from("ideas")
     .select("*")

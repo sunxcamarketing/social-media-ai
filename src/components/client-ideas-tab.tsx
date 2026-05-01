@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Lightbulb } from "lucide-react";
+import { Plus, Pencil, Trash2, Lightbulb, Star } from "lucide-react";
 import type { Idea } from "@/lib/types";
 import { DevelopIdeaDialog } from "@/components/develop-idea-dialog";
 
@@ -163,7 +163,30 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
     loadIdeas();
   };
 
-  const filtered = filterStatus === "all" ? ideas : ideas.filter((i) => i.status === filterStatus);
+  const toggleStar = async (idea: Idea) => {
+    const next = !idea.starred;
+    // Optimistic — flip the local state, fall back if the request errors.
+    setIdeas((prev) => prev.map((i) => (i.id === idea.id ? { ...i, starred: next } : i)));
+    const res = await fetch("/api/ideas", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: idea.id, starred: next }),
+    });
+    if (!res.ok) {
+      setIdeas((prev) => prev.map((i) => (i.id === idea.id ? { ...i, starred: !next } : i)));
+    }
+  };
+
+  // Starred first, then by createdAt desc (mirroring the SQL order). Ideas
+  // without a starred field treated as not starred.
+  const sorted = [...ideas].sort((a, b) => {
+    const sa = a.starred ? 1 : 0;
+    const sb = b.starred ? 1 : 0;
+    if (sa !== sb) return sb - sa;
+    return (b.createdAt || "").localeCompare(a.createdAt || "");
+  });
+
+  const filtered = filterStatus === "all" ? sorted : sorted.filter((i) => i.status === filterStatus);
 
   return (
     <div className="space-y-6">
@@ -268,7 +291,21 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
             className="group glass rounded-2xl p-5 space-y-3 transition-all duration-300 hover:bg-warm-white hover:border-ocean/5 cursor-pointer"
           >
             <div className="flex items-start justify-between gap-2">
-              <p className="text-sm font-semibold leading-snug">{idea.title}</p>
+              <div className="flex items-start gap-2 flex-1 min-w-0">
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleStar(idea); }}
+                  title={idea.starred ? "Favorit entfernen" : "Als Favorit markieren"}
+                  aria-label={idea.starred ? "Unstar idea" : "Star idea"}
+                  className={`shrink-0 mt-0.5 h-6 w-6 rounded-md inline-flex items-center justify-center transition-colors ${
+                    idea.starred
+                      ? "text-amber-500 hover:bg-amber-50"
+                      : "text-ocean/30 hover:text-amber-500 hover:bg-amber-50"
+                  }`}
+                >
+                  <Star className={`h-4 w-4 ${idea.starred ? "fill-amber-500" : ""}`} />
+                </button>
+                <p className="text-sm font-semibold leading-snug">{idea.title}</p>
+              </div>
               <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"

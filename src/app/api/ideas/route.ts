@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     description: newIdea.description,
     contentType: newIdea.content_type,
     status: newIdea.status,
+    starred: false,
     createdAt: newIdea.created_at,
   }, { status: 201 });
 }
@@ -114,6 +115,7 @@ export async function PUT(request: Request) {
   if (body.description !== undefined) patch.description = body.description;
   if (body.contentType !== undefined) patch.content_type = body.contentType;
   if (body.status !== undefined) patch.status = body.status;
+  if (body.starred !== undefined) patch.starred = !!body.starred;
 
   const { data, error } = await supabase
     .from("ideas")
@@ -132,6 +134,7 @@ export async function PUT(request: Request) {
     description: data.description,
     contentType: data.content_type,
     status: data.status,
+    starred: data.starred === true,
     createdAt: data.created_at,
   });
 }

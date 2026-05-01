@@ -151,6 +151,8 @@ export interface Idea {
    *  Used by the develop-idea flow to pull the original transcript so the
    *  script-writer drafts from the client's actual spoken words. */
   sourceSessionId?: string | null;
+  /** Client-toggled favorite. Starred ideas sort to the top. */
+  starred?: boolean;
   createdAt: string;
 }
 
