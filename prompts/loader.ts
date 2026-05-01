@@ -62,8 +62,12 @@ export function loadAgent(name: string, lang?: Lang): string {
   return content;
 }
 
-// Pre-compiled regex — reused across all buildPrompt calls
-const PLACEHOLDER_RE = /\{\{([^}]+)\}\}/g;
+// Pre-compiled regex — reused across all buildPrompt calls.
+// Only matches identifier-shaped placeholders (letters, numbers, _, -)
+// so JSX inline-style snippets like `{{ width: 1080 }}` in code-example
+// blocks within markdown don't get treated as placeholders and crash
+// the build with a "no substitution found" error.
+const PLACEHOLDER_RE = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*\}\}/g;
 
 /**
  * Build a prompt from an agent template by substituting {{placeholders}}.
