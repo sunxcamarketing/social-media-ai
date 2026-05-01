@@ -77,12 +77,55 @@ export async function POST(request: Request) {
   }
 }
 
+// Fields a client may write on their own config from the portal. Anything
+// outside this list is admin-only (strategy, voice profile blobs, billing,
+// IG cache, etc.). Mirrors the questions surfaced in the portal voice
+// setup checklist.
+const CLIENT_WRITABLE_FIELDS = new Set<keyof Config>([
+  "businessContext",
+  "professionalBackground",
+  "keyAchievements",
+  "coreOffer",
+  "mainGoal",
+  "brandFeeling",
+  "brandProblem",
+  "brandingStatement",
+  "humanDifferentiation",
+  "providerRole",
+  "providerBeliefs",
+  "providerStrengths",
+  "authenticityZone",
+]);
+
 export async function PUT(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await request.json();
   if (!body.id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  let payload: Record<string, unknown> = body;
+
+  if (user.role === "client") {
+    if (user.clientId !== body.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    // Filter to allowlist — silently dropping foreign fields is safer than
+    // 400ing on, say, a stale UI sending an extra metadata key.
+    const allowed: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(body)) {
+      if (k === "id") continue;
+      if (CLIENT_WRITABLE_FIELDS.has(k as keyof Config)) allowed[k] = v;
+    }
+    if (Object.keys(allowed).length === 0) {
+      return NextResponse.json({ error: "Keine erlaubten Felder im Update" }, { status: 400 });
+    }
+    payload = { id: body.id, ...allowed };
+  }
+
   try {
     const { updateConfig } = await import("@/lib/csv");
-    const updated = await updateConfig(body.id, body);
+    const updated = await updateConfig(body.id, payload);
     if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(updated);
   } catch (e) {
