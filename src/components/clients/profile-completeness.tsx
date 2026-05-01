@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { Config } from "@/lib/types";
 import { safeJsonParse } from "@/lib/safe-json";
@@ -89,6 +90,32 @@ function isFieldComplete(field: FieldDef, client: Config): boolean {
   return typeof v === "string" && v.trim() !== "";
 }
 
+export interface CompletenessState {
+  total: number;
+  completed: number;
+  missing: FieldDef[];
+  percent: number;
+  allDone: boolean;
+}
+
+/** Single source of truth — page header + card both call this. */
+export function computeCompleteness(client: Config): CompletenessState {
+  const fields = FIELDS.filter((f) => !(client.isOwner && f.target === "billing"));
+  const total = fields.length;
+  const completedList = fields.filter((f) => isFieldComplete(f, client));
+  const missing = fields.filter((f) => !isFieldComplete(f, client));
+  const percent = total === 0 ? 100 : Math.round((completedList.length / total) * 100);
+  return {
+    total,
+    completed: completedList.length,
+    missing,
+    percent,
+    allDone: missing.length === 0,
+  };
+}
+
+const STORAGE_KEY_PREFIX = "profile-celebration-seen:";
+
 export interface ProfileCompletenessProps {
   client: Config;
   lang: "de" | "en";
@@ -96,30 +123,75 @@ export interface ProfileCompletenessProps {
 }
 
 export function ProfileCompleteness({ client, lang, onOpen }: ProfileCompletenessProps) {
-  // Owner brands don't get invoiced — billing is admin/external-client only.
-  const fields = FIELDS.filter((f) => !(client.isOwner && f.target === "billing"));
-  const total = fields.length;
-  const completed = fields.filter((f) => isFieldComplete(f, client));
-  const missing = fields.filter((f) => !isFieldComplete(f, client));
-  const percent = Math.round((completed.length / total) * 100);
+  const { total, completed, missing, percent, allDone } = computeCompleteness(client);
 
-  const allDone = missing.length === 0;
+  // Track whether the user has already seen the celebration for this client.
+  // Once seen, the card never reappears (even if fields stay at 100%).
+  // null = still loading from localStorage (avoid SSR/CSR flash).
+  const [celebrationSeen, setCelebrationSeen] = useState<boolean | null>(null);
+  const [phase, setPhase] = useState<"idle" | "celebrating" | "collapsing">("idle");
+
+  const storageKey = `${STORAGE_KEY_PREFIX}${client.id}`;
+
+  useEffect(() => {
+    try {
+      setCelebrationSeen(localStorage.getItem(storageKey) === "1");
+    } catch {
+      setCelebrationSeen(false);
+    }
+  }, [storageKey]);
+
+  // When 100% is first reached and the user hasn't seen it yet: celebrate, then collapse.
+  useEffect(() => {
+    if (celebrationSeen !== false) return;
+    if (!allDone) return;
+    setPhase("celebrating");
+    const t1 = setTimeout(() => setPhase("collapsing"), 900);
+    const t2 = setTimeout(() => {
+      try { localStorage.setItem(storageKey, "1"); } catch {}
+      setCelebrationSeen(true);
+    }, 1400);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [allDone, celebrationSeen, storageKey]);
+
+  // Don't render anything until we know the seen-state (prevents flash) or
+  // once the user has already seen the celebration on this client.
+  if (celebrationSeen === null) return null;
+  if (celebrationSeen) return null;
+
   const isHealthy = percent >= 80;
-  const barColor = allDone
-    ? "bg-green-500"
-    : isHealthy
-    ? "bg-ocean"
-    : "bg-amber-500";
+  const barColor = allDone ? "bg-green-500" : isHealthy ? "bg-ocean" : "bg-amber-500";
 
   const t = (de: string, en: string) => (lang === "en" ? en : de);
 
+  const collapsing = phase === "collapsing";
+  const celebrating = phase === "celebrating";
+
   return (
-    <div className="rounded-2xl border border-ocean/[0.06] bg-white p-5 space-y-4">
+    <div
+      className={[
+        "rounded-2xl border bg-white p-5 space-y-4 overflow-hidden",
+        "transition-all duration-500 ease-out",
+        celebrating ? "border-green-400/60 shadow-[0_0_0_4px_rgba(34,197,94,0.12)]" : "border-ocean/[0.06]",
+        collapsing ? "opacity-0 scale-[0.98] max-h-0 !p-0 !my-0 !border-0 !space-y-0" : "max-h-[1000px]",
+      ].join(" ")}
+      style={{ transitionProperty: "max-height, opacity, transform, padding, margin, border-color, box-shadow" }}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${allDone ? "bg-green-50" : "bg-blush-light/50"}`}>
+          <div
+            className={[
+              "h-10 w-10 rounded-xl flex items-center justify-center transition-colors duration-300",
+              allDone ? "bg-green-50" : "bg-blush-light/50",
+            ].join(" ")}
+          >
             {allDone ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CheckCircle2
+                className={[
+                  "h-5 w-5 text-green-600 transition-transform duration-500 ease-out",
+                  celebrating ? "scale-125" : "scale-100",
+                ].join(" ")}
+              />
             ) : (
               <AlertCircle className="h-5 w-5 text-blush-dark" />
             )}
@@ -132,8 +204,8 @@ export function ProfileCompleteness({ client, lang, onOpen }: ProfileCompletenes
               {allDone
                 ? t("Alle wichtigen Felder ausgefüllt.", "All key fields filled.")
                 : t(
-                    `${completed.length} von ${total} Feldern · ${missing.length} offen`,
-                    `${completed.length} of ${total} fields · ${missing.length} open`,
+                    `${completed} von ${total} Feldern · ${missing.length} offen`,
+                    `${completed} of ${total} fields · ${missing.length} open`,
                   )}
             </p>
           </div>

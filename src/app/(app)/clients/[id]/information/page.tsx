@@ -45,7 +45,8 @@ import { VoiceProfileRecorder } from "@/components/voice-profile-recorder";
 import { OnboardingInterviewCard } from "@/components/voice/onboarding-interview-card";
 import { OnboardingInterviewView } from "@/components/voice/onboarding-interview-view";
 import { VoiceProfileCard } from "@/components/voice/voice-profile-card";
-import { ProfileCompleteness } from "@/components/clients/profile-completeness";
+import { ProfileCompleteness, computeCompleteness } from "@/components/clients/profile-completeness";
+import { ProfileCompleteBadge } from "@/components/clients/profile-complete-badge";
 import { safeJsonParse } from "@/lib/safe-json";
 import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
@@ -719,7 +720,14 @@ function ClientInformationContent() {
             <User className="h-6 w-6 text-blush-dark" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{client.name || client.configName}</h1>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2.5">
+              {client.name || client.configName}
+              <ProfileCompleteBadge
+                complete={computeCompleteness(client).allDone}
+                clientId={client.id}
+                title={lang === "en" ? "Profile complete" : "Profil komplett"}
+              />
+            </h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {client.role && <span className="text-sm text-ocean/70">{client.role}</span>}
               {client.role && client.company && <span className="text-ocean/65">·</span>}
