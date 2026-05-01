@@ -31,6 +31,7 @@ interface FieldSuggestion {
 }
 
 interface SessionSummary {
+  sessionId?: string;                   // server-issued session row id (for feedback PATCH)
   ideas?: IdeaResult[];                // content-ideas mode
   doneCount?: number;                  // onboarding mode
   total?: number;                      // onboarding mode
@@ -356,6 +357,20 @@ export function VoiceAgent({
     }
   };
 
+  const submitFeedback = async (rating: number, comment: string) => {
+    const sid = summary?.sessionId;
+    if (!sid) throw new Error("missing sessionId");
+    const res = await fetch(`/api/voice-sessions/${sid}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating, comment }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || "feedback save failed");
+    }
+  };
+
   const resetSession = () => {
     setSessionState("idle");
     setTranscript([]);
@@ -562,6 +577,7 @@ export function VoiceAgent({
           }}
           onApplySelected={applySelected}
           onReset={resetSession}
+          onSubmitFeedback={submitFeedback}
           t={t}
         />
       )}

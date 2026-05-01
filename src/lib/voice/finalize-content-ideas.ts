@@ -54,6 +54,7 @@ export async function finalizeContentIdeasSession({
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify({
       type: "summary",
+      sessionId,
       ideas,
       durationSeconds,
       transcriptLength: transcript.length,

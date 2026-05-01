@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "motion/react";
-import { Check, Lightbulb } from "lucide-react";
+import { Check, Lightbulb, Star } from "lucide-react";
 
 export interface IdeaResult {
   title: string;
@@ -16,6 +17,7 @@ export interface FieldSuggestion {
 }
 
 export interface SessionSummaryData {
+  sessionId?: string;
   ideas?: IdeaResult[];
   doneCount?: number;
   total?: number;
@@ -25,6 +27,8 @@ export interface SessionSummaryData {
   durationSeconds: number;
   transcriptLength: number;
 }
+
+const FEEDBACK_MIN_SECONDS = 300;
 
 export interface TranscriptEntry {
   role: "user" | "model";
@@ -42,6 +46,7 @@ export interface SessionSummaryViewProps {
   onToggleAll: () => void;
   onApplySelected: () => void;
   onReset: () => void;
+  onSubmitFeedback?: (rating: number, comment: string) => Promise<void>;
   t: (key: string, subs?: Record<string, string | number>) => string;
 }
 
@@ -56,8 +61,30 @@ export function SessionSummaryView({
   onToggleAll,
   onApplySelected,
   onReset,
+  onSubmitFeedback,
   t,
 }: SessionSummaryViewProps) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [feedbackState, setFeedbackState] = useState<"idle" | "submitting" | "done" | "error">("idle");
+
+  const showFeedback =
+    !!onSubmitFeedback &&
+    !!summary.sessionId &&
+    summary.durationSeconds >= FEEDBACK_MIN_SECONDS;
+
+  const handleSubmitFeedback = async () => {
+    if (!onSubmitFeedback || rating === 0) return;
+    setFeedbackState("submitting");
+    try {
+      await onSubmitFeedback(rating, comment);
+      setFeedbackState("done");
+    } catch {
+      setFeedbackState("error");
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <motion.div
@@ -82,6 +109,73 @@ export function SessionSummaryView({
             {mode !== "onboarding" && summary.ideas && summary.ideas.length > 0 && ` · ${t("voice.ideasSaved", { count: summary.ideas.length })}`}
           </p>
         </div>
+
+        {showFeedback && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 rounded-2xl border border-ocean/[0.08] bg-white p-5"
+          >
+            {feedbackState === "done" ? (
+              <div className="flex items-center gap-3 text-sm text-ocean/70">
+                <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                  <Check className="h-4 w-4 text-green-500" />
+                </div>
+                <p>{t("voice.feedbackThanks")}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-ocean mb-1">{t("voice.feedbackTitle")}</p>
+                <p className="text-xs text-ocean/55 leading-relaxed mb-4">{t("voice.feedbackHint")}</p>
+                <div className="flex items-center gap-1 mb-4">
+                  {[1, 2, 3, 4, 5].map((n) => {
+                    const filled = (hoverRating || rating) >= n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onMouseEnter={() => setHoverRating(n)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => setRating(n)}
+                        disabled={feedbackState === "submitting"}
+                        aria-label={t("voice.feedbackStarLabel", { n })}
+                        className="p-1 rounded transition-transform hover:scale-110 disabled:opacity-50"
+                      >
+                        <Star
+                          className={`h-6 w-6 transition-colors ${
+                            filled ? "fill-amber-400 text-amber-400" : "text-ocean/25"
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder={t("voice.feedbackCommentPlaceholder")}
+                  disabled={feedbackState === "submitting"}
+                  rows={3}
+                  maxLength={2000}
+                  className="w-full rounded-xl border border-ocean/[0.1] bg-ocean/[0.02] px-3 py-2 text-sm text-ocean placeholder:text-ocean/35 focus:border-ocean/30 focus:outline-none disabled:opacity-50 resize-none"
+                />
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={handleSubmitFeedback}
+                    disabled={rating === 0 || feedbackState === "submitting"}
+                    className="px-4 py-2 rounded-full bg-ocean text-white text-sm font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200 btn-press disabled:opacity-40 disabled:hover:scale-100"
+                  >
+                    {feedbackState === "submitting" ? t("voice.feedbackSending") : t("voice.feedbackSubmit")}
+                  </button>
+                  {feedbackState === "error" && (
+                    <span className="text-xs text-red-500">{t("voice.feedbackError")}</span>
+                  )}
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
 
         {mode !== "onboarding" && summary.ideas && summary.ideas.length > 0 && (
           <div className="space-y-3 mb-8">

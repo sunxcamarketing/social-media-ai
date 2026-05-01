@@ -603,7 +603,7 @@ wss.on("connection", async (ws: WebSocket, req) => {
 
     try {
       if (mode === "onboarding") {
-        await finalizeOnboardingSession({ ws, clientId, lang, transcript, durationSeconds });
+        await finalizeOnboardingSession({ ws, clientId, lang, transcript, durationSeconds, sessionId });
       } else if (mode === "voice-profile" && voiceProfileStep) {
         await finalizeVoiceProfileSession({ ws, clientId, transcript, durationSeconds, step: voiceProfileStep });
       } else {

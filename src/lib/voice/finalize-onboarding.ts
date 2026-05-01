@@ -27,10 +27,11 @@ export interface FinalizeOnboardingArgs {
   lang: "de" | "en";
   transcript: TranscriptEntry[];
   durationSeconds: number;
+  sessionId?: string;
 }
 
 export async function finalizeOnboardingSession({
-  ws, clientId, lang, transcript, durationSeconds,
+  ws, clientId, lang, transcript, durationSeconds, sessionId,
 }: FinalizeOnboardingArgs): Promise<void> {
   // FAST PATH: persist the baseline data and send the summary event IMMEDIATELY.
   // Provisional block marks from the live signal-phrase parser are already in DB,
@@ -39,7 +40,7 @@ export async function finalizeOnboardingSession({
   const doneCount = onboarding.blocks.filter((b) => b.status === "done").length;
 
   // Best-effort: persist transcript. Don't let a DB hiccup block the UI summary.
-  saveVoiceSession(clientId, transcript, doneCount, durationSeconds).catch((err) => {
+  saveVoiceSession(clientId, transcript, doneCount, durationSeconds, sessionId).catch((err) => {
     console.error("[onboarding] saveVoiceSession failed:", err);
   });
 
@@ -50,6 +51,7 @@ export async function finalizeOnboardingSession({
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify({
       type: "onboarding_summary",
+      sessionId,
       doneCount,
       total: VOICE_BLOCK_ORDER.length,
       durationSeconds,

@@ -195,7 +195,10 @@ CREATE TABLE voice_sessions (
   transcript JSONB DEFAULT '[]'::jsonb,
   ideas_generated INTEGER DEFAULT 0,
   duration_seconds INTEGER DEFAULT 0,
-  created_at TEXT
+  created_at TEXT,
+  feedback_rating INTEGER CHECK (feedback_rating IS NULL OR (feedback_rating BETWEEN 1 AND 5)),
+  feedback_comment TEXT,
+  feedback_submitted_at TEXT
 );
 
 -- Enable RLS and allow service role full access
