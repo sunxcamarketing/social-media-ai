@@ -1,6 +1,7 @@
 "use client";
 
-import { Mic, ArrowRight } from "lucide-react";
+import { Mic, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { VoiceOnboarding, VoiceBlockId } from "@/lib/types";
 
 export interface OnboardingSessionMeta {
@@ -51,59 +52,96 @@ export interface OnboardingInterviewCardProps {
   lang: "de" | "en";
   onboarding: VoiceOnboarding;
   sessions: OnboardingSessionMeta[];
-  onOpen: () => void;
+  /** Open the live recorder dialog (start / continue interview) */
+  onStart: () => void;
+  /** Open the read-only viewer dialog. Only shown when doneCount > 0. */
+  onReview?: () => void;
 }
 
-export function OnboardingInterviewCard({ lang, onboarding, sessions, onOpen }: OnboardingInterviewCardProps) {
+export function OnboardingInterviewCard({
+  lang, onboarding, sessions, onStart, onReview,
+}: OnboardingInterviewCardProps) {
   const doneCount = onboarding.blocks.filter((b) => b.status === "done").length;
   const total = onboarding.blocks.length;
+  const isComplete = doneCount === total;
+  const isStarted = doneCount > 0;
   const totalSeconds = sessions.reduce((n, s) => n + s.durationSeconds, 0);
   const totalMins = Math.floor(totalSeconds / 60);
   const firstDate = sessions.length > 0
     ? sessions.map((s) => new Date(s.createdAt).getTime()).sort((a, b) => a - b)[0]
     : null;
 
+  const actionLabel = !isStarted
+    ? (lang === "en" ? "Start" : "Starten")
+    : isComplete
+    ? (lang === "en" ? "Re-record" : "Neu aufnehmen")
+    : (lang === "en" ? "Continue" : "Fortsetzen");
+
   return (
-    <button
-      onClick={onOpen}
-      className="w-full rounded-2xl border border-ocean/[0.06] bg-white p-5 hover:border-ocean/15 transition-all text-left group"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="h-10 w-10 shrink-0 rounded-xl bg-blush-light/50 flex items-center justify-center">
-            <Mic className="h-4 w-4 text-blush-dark" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium text-ocean">
-                {lang === "en" ? "Onboarding Interview" : "Onboarding-Interview"}
-              </h3>
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-ocean/[0.04] text-ocean/55">
-                {doneCount}/{total}
+    <div className="rounded-2xl border border-ocean/[0.06] bg-white p-5">
+      <div className="flex items-start gap-4">
+        <div className="h-10 w-10 shrink-0 rounded-xl bg-blush-light/50 flex items-center justify-center">
+          <Mic className="h-4 w-4 text-blush-dark" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-medium text-ocean">
+              {lang === "en" ? "Onboarding Interview" : "Onboarding-Interview"}
+            </h3>
+            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-ocean/[0.04] text-ocean/55">
+              {doneCount}/{total}
+            </span>
+            {isComplete && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 font-medium">
+                <CheckCircle2 className="h-2.5 w-2.5" />
+                {lang === "en" ? "Complete" : "Komplett"}
               </span>
-            </div>
+            )}
+          </div>
+
+          {isStarted && (
             <p className="text-[11px] text-ocean/50 mt-0.5">
               {firstDate && new Date(firstDate).toLocaleDateString(lang === "en" ? "en-US" : "de-DE")}
               {sessions.length > 0 && ` · ${totalMins} ${lang === "en" ? "min total" : "Min gesamt"} · ${sessions.length} ${lang === "en" ? (sessions.length === 1 ? "session" : "sessions") : (sessions.length === 1 ? "Gespräch" : "Gespräche")}`}
             </p>
-            <p className="text-xs text-ocean/60 mt-2 leading-relaxed">
-              {lang === "en"
-                ? "Structured voice interview across 8 blocks — identity, positioning, audience, beliefs, offer, feel, vision, resources. Click to view answers."
-                : "Strukturiertes Voice-Interview durch 8 Blöcke — Identität, Positionierung, Zielgruppe, Beliefs, Angebot, Feel, Vision, Ressourcen. Klick für Antworten."}
-            </p>
-            <div className="mt-3 flex gap-1">
-              {onboarding.blocks.map((b) => (
-                <div
-                  key={b.id}
-                  title={BLOCK_META[b.id][lang].label}
-                  className={`h-1 flex-1 rounded-full transition-all ${b.status === "done" ? "bg-ocean" : "bg-ocean/15"}`}
-                />
-              ))}
-            </div>
+          )}
+
+          <p className="text-xs text-ocean/60 mt-2 leading-relaxed">
+            {lang === "en"
+              ? "Structured voice interview across 8 blocks — identity, positioning, audience, beliefs, offer, feel, vision, resources. Captures WHAT the client says about their business."
+              : "Strukturiertes Voice-Interview durch 8 Blöcke — Identität, Positionierung, Zielgruppe, Beliefs, Angebot, Feel, Vision, Ressourcen. Erfasst WAS der Kunde inhaltlich sagt."}
+          </p>
+
+          <div className="mt-3 flex gap-1">
+            {onboarding.blocks.map((b) => (
+              <div
+                key={b.id}
+                title={BLOCK_META[b.id][lang].label}
+                className={`h-1 flex-1 rounded-full transition-all ${b.status === "done" ? "bg-ocean" : "bg-ocean/15"}`}
+              />
+            ))}
           </div>
+
+          {isStarted && onReview && (
+            <button
+              onClick={onReview}
+              className="mt-3 inline-flex items-center gap-1 text-[11px] text-ocean/60 hover:text-ocean transition-colors"
+            >
+              {lang === "en" ? "View answers" : "Antworten anschauen"}
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
         </div>
-        <ArrowRight className="h-4 w-4 text-ocean/30 group-hover:text-ocean/70 transition-colors mt-3" />
+
+        <Button
+          onClick={onStart}
+          size="sm"
+          className="shrink-0 gap-1.5 bg-ocean text-white hover:bg-ocean-light"
+        >
+          {actionLabel}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
       </div>
-    </button>
+    </div>
   );
 }
