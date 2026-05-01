@@ -37,6 +37,7 @@ import {
   Mic,
   ArrowRight,
   Crown,
+  Receipt,
 } from "lucide-react";
 import type { Config, VoiceOnboarding, VoiceBlockId } from "@/lib/types";
 import { VOICE_BLOCK_ORDER } from "@/lib/types";
@@ -373,6 +374,7 @@ function ClientInformationContent() {
   const [brandOpen, setBrandOpen] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Forms
@@ -397,6 +399,16 @@ function ClientInformationContent() {
   const [messageForm, setMessageForm] = useState({
     brandingStatement: "",
     humanDifferentiation: "",
+  });
+  const [billingForm, setBillingForm] = useState({
+    billingName: "",
+    billingCompany: "",
+    billingStreet: "",
+    billingZip: "",
+    billingCity: "",
+    billingCountry: "",
+    billingVatId: "",
+    billingEmail: "",
   });
 
   const { loadClient: loadClientCached, invalidateClient } = useClientData();
@@ -616,6 +628,21 @@ function ClientInformationContent() {
     setMessageOpen(true);
   };
 
+  const openBilling = () => {
+    if (!client) return;
+    setBillingForm({
+      billingName: client.billingName || "",
+      billingCompany: client.billingCompany || "",
+      billingStreet: client.billingStreet || "",
+      billingZip: client.billingZip || "",
+      billingCity: client.billingCity || "",
+      billingCountry: client.billingCountry || "",
+      billingVatId: client.billingVatId || "",
+      billingEmail: client.billingEmail || "",
+    });
+    setBillingOpen(true);
+  };
+
   if (!client) {
     return <div className="flex items-center justify-center h-64 text-ocean/70 text-sm">{t("info.loading")}</div>;
   }
@@ -646,6 +673,7 @@ function ClientInformationContent() {
   const brandEmpty = !client.brandFeeling && !client.brandProblem && !client.dreamCustomer;
   const customerEmpty = !client.customerProblems && !client.providerRole && !client.providerBeliefs && !client.providerStrengths && !client.authenticityZone;
   const messageEmpty = !client.brandingStatement && !client.humanDifferentiation;
+  const billingEmpty = !client.billingName && !client.billingStreet && !client.billingCity && !client.billingZip && !client.billingCountry && !client.billingCompany && !client.billingVatId && !client.billingEmail;
 
   const dateLocale = lang === "de" ? "de-DE" : "en-US";
 
@@ -855,6 +883,7 @@ function ClientInformationContent() {
           brand: openBrand,
           customer: openCustomer,
           message: openMessage,
+          billing: openBilling,
         }}
       />
 
@@ -1030,6 +1059,48 @@ function ClientInformationContent() {
             </div>
           )}
           <InfoRow label={t("label.humanDifferentiation")} value={client.humanDifferentiation} />
+        </div>
+      </SectionCard>
+
+      {/* Rechnungsadresse */}
+      <SectionCard
+        icon={Receipt}
+        iconColor="text-ocean/60"
+        title={lang === "en" ? "Billing Address" : "Rechnungsadresse"}
+        onEdit={openBilling}
+        empty={billingEmpty}
+        editLabel={t("common.edit")}
+        noInfoLabel={lang === "en" ? "No billing address yet" : "Noch keine Rechnungsadresse"}
+        addInfoLabel={lang === "en" ? "Add billing address" : "Rechnungsadresse hinzufügen"}
+      >
+        <div className="space-y-4">
+          {(client.billingName || client.billingCompany) && (
+            <div className="grid gap-5 md:grid-cols-2">
+              <InfoRow label={lang === "en" ? "Recipient" : "Empfänger"} value={client.billingName || ""} />
+              <InfoRow label={lang === "en" ? "Company" : "Firma"} value={client.billingCompany || ""} />
+            </div>
+          )}
+          {(client.billingStreet || client.billingZip || client.billingCity || client.billingCountry) && (
+            <div className="border-t border-ocean/[0.06] pt-4 space-y-2">
+              {client.billingStreet && (
+                <p className="text-sm text-ocean/85">{client.billingStreet}</p>
+              )}
+              {(client.billingZip || client.billingCity) && (
+                <p className="text-sm text-ocean/85">
+                  {[client.billingZip, client.billingCity].filter(Boolean).join(" ")}
+                </p>
+              )}
+              {client.billingCountry && (
+                <p className="text-sm text-ocean/85">{client.billingCountry}</p>
+              )}
+            </div>
+          )}
+          {(client.billingVatId || client.billingEmail) && (
+            <div className="border-t border-ocean/[0.06] pt-4 grid gap-5 md:grid-cols-2">
+              <InfoRow label={lang === "en" ? "VAT ID" : "USt-ID / Steuernummer"} value={client.billingVatId || ""} />
+              <InfoRow label={lang === "en" ? "Billing Email" : "Rechnungs-Email"} value={client.billingEmail || ""} />
+            </div>
+          )}
         </div>
       </SectionCard>
 
@@ -1449,6 +1520,108 @@ function ClientInformationContent() {
             </div>
             <Button onClick={async () => { await savePartial(messageForm); setMessageOpen(false); }} disabled={saving}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
+              {saving ? t("info.saving") : t("info.save")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Billing Address Dialog */}
+      <Dialog open={billingOpen} onOpenChange={(v) => { if (!v) setBillingOpen(false); }}>
+        <DialogContent className="max-w-2xl glass-strong rounded-2xl border-ocean/5">
+          <DialogHeader>
+            <DialogTitle>{lang === "en" ? "Billing Address" : "Rechnungsadresse"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-[11px] text-ocean/60 leading-relaxed">
+              {lang === "en"
+                ? "Address used for invoices. VAT ID is optional but required for B2B reverse-charge in the EU."
+                : "Adresse für Rechnungen. USt-ID ist optional, aber notwendig für B2B Reverse-Charge in der EU."}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs text-ocean/70">{lang === "en" ? "Recipient name" : "Empfänger"}</Label>
+                <Input
+                  value={billingForm.billingName}
+                  onChange={(e) => setBillingForm({ ...billingForm, billingName: e.target.value })}
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                  placeholder={lang === "en" ? "Vor- und Nachname" : "Vor- und Nachname"}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-ocean/70">{lang === "en" ? "Company (optional)" : "Firma (optional)"}</Label>
+                <Input
+                  value={billingForm.billingCompany}
+                  onChange={(e) => setBillingForm({ ...billingForm, billingCompany: e.target.value })}
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                  placeholder="z.B. Mustermann GmbH"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-ocean/70">{lang === "en" ? "Street + number" : "Straße + Hausnummer"}</Label>
+              <Input
+                value={billingForm.billingStreet}
+                onChange={(e) => setBillingForm({ ...billingForm, billingStreet: e.target.value })}
+                className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                placeholder="z.B. Musterstraße 12"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label className="text-xs text-ocean/70">{lang === "en" ? "ZIP" : "PLZ"}</Label>
+                <Input
+                  value={billingForm.billingZip}
+                  onChange={(e) => setBillingForm({ ...billingForm, billingZip: e.target.value })}
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                  placeholder="80331"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label className="text-xs text-ocean/70">{lang === "en" ? "City" : "Stadt"}</Label>
+                <Input
+                  value={billingForm.billingCity}
+                  onChange={(e) => setBillingForm({ ...billingForm, billingCity: e.target.value })}
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                  placeholder="München"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-ocean/70">{lang === "en" ? "Country" : "Land"}</Label>
+              <Input
+                value={billingForm.billingCountry}
+                onChange={(e) => setBillingForm({ ...billingForm, billingCountry: e.target.value })}
+                className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                placeholder={lang === "en" ? "e.g. Germany" : "z.B. Deutschland"}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs text-ocean/70">{lang === "en" ? "VAT ID (optional)" : "USt-ID / Steuernummer (optional)"}</Label>
+                <Input
+                  value={billingForm.billingVatId}
+                  onChange={(e) => setBillingForm({ ...billingForm, billingVatId: e.target.value })}
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                  placeholder="z.B. DE123456789"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-ocean/70">{lang === "en" ? "Billing email (optional)" : "Rechnungs-Email (optional)"}</Label>
+                <Input
+                  type="email"
+                  value={billingForm.billingEmail}
+                  onChange={(e) => setBillingForm({ ...billingForm, billingEmail: e.target.value })}
+                  className="mt-1.5 rounded-xl glass border-ocean/5 h-10 text-sm"
+                  placeholder="rechnung@firma.de"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={async () => { await savePartial(billingForm); setBillingOpen(false); }}
+              disabled={saving}
+              className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white"
+            >
               {saving ? t("info.saving") : t("info.save")}
             </Button>
           </div>

@@ -4,7 +4,7 @@ import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { Config } from "@/lib/types";
 import { safeJsonParse } from "@/lib/safe-json";
 
-type DialogTarget = "basic" | "brand" | "customer" | "message";
+type DialogTarget = "basic" | "brand" | "customer" | "message" | "billing";
 
 interface FieldDef {
   key: keyof Config;
@@ -60,6 +60,22 @@ const FIELDS: FieldDef[] = [
   // Brand message
   { key: "brandingStatement", de: "Positionierungssatz", en: "Positioning statement", target: "message" },
   { key: "humanDifferentiation", de: "Was macht dich einzigartig", en: "What makes you unique", target: "message" },
+
+  // Billing — needed for invoicing. We treat the address block as one unit:
+  // complete if the must-have fields (recipient, street, zip, city, country)
+  // are all filled. VAT-ID + billing email stay optional, so they don't gate
+  // the bar. This matches admin reality: an invoice without one of those five
+  // fields is invalid; one without a VAT-ID is just non-reverse-charge.
+  {
+    key: "billingStreet",
+    de: "Rechnungsadresse",
+    en: "Billing address",
+    target: "billing",
+    isComplete: (c) => {
+      const required = [c.billingName, c.billingStreet, c.billingZip, c.billingCity, c.billingCountry];
+      return required.every((v) => typeof v === "string" && v.trim() !== "");
+    },
+  },
 ];
 
 function isFieldComplete(field: FieldDef, client: Config): boolean {

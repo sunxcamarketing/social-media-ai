@@ -96,6 +96,15 @@ export interface Config {
   inspirationReels?: string; // Newline-separated Reel URLs the client considers well-edited
   inspirationProfiles?: string; // Newline-separated profile URLs / @handles the client admires
   isOwner?: boolean; // True for Aysun's own brands (vs. external clients)
+  // Billing address (for invoice generation, B2B reverse-charge support)
+  billingName?: string;
+  billingCompany?: string;
+  billingStreet?: string;
+  billingZip?: string;
+  billingCity?: string;
+  billingCountry?: string;
+  billingVatId?: string;
+  billingEmail?: string;
 }
 
 export interface Creator {
