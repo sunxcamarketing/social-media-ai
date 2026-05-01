@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 // One-off cleanup helper: list all clients with key identifiers so we can
 // decide which to keep and which to delete.
 //

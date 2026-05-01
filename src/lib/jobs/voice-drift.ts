@@ -13,8 +13,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readConfig, readTrainingScriptsByClient } from "../csv";
 import { getVoiceProfile, generateVoiceProfile } from "../voice-profile";
 import { saveSnapshot } from "../intelligence";
+import { MODEL_HAIKU } from "../models";
 
-const DRIFT_MODEL = "claude-haiku-4-5-20251001";
+const DRIFT_MODEL = MODEL_HAIKU;
 const DRIFT_TIMEOUT_MS = 20_000;
 const RECENT_SAMPLE_WINDOW = 5; // last N training scripts to compare against cache
 

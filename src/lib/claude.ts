@@ -1,5 +1,6 @@
 import { getAnthropicClient } from "./anthropic";
 import { trackClaudeCost, type Initiator } from "./cost-tracking";
+import { MODEL_SONNET } from "./models";
 
 export async function generateNewConcepts(
   videoAnalysis: string,
@@ -9,7 +10,7 @@ export async function generateNewConcepts(
   const client = getAnthropicClient();
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_SONNET,
     max_tokens: 4096,
     messages: [
       {
@@ -38,7 +39,7 @@ ${newConceptsPrompt}
   if (costMeta) {
     trackClaudeCost({
       usage: message.usage,
-      model: "claude-sonnet-4-6",
+      model: MODEL_SONNET,
       clientId: costMeta.clientId,
       operation: "video_concept_adapt",
       initiator: costMeta.initiator,

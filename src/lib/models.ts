@@ -18,3 +18,7 @@ export const MODEL_SONNET = "claude-sonnet-4-6";
 
 /** Top tier. Multi-step reasoning, planning, agentic tool loops. */
 export const MODEL_OPUS = "claude-opus-4-7";
+
+/** Max tool-use iterations per agent turn. Safety cap to prevent runaway
+ *  loops if the model keeps calling tools without producing a final answer. */
+export const AGENT_ITERATION_LIMIT = 10;

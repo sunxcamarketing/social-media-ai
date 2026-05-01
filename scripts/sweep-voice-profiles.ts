@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 // Sweep: find clients who have voice-profile training samples but no
 // voiceProfile JSON saved (i.e. extraction never ran or got eaten by the
 // snake_case-vs-camelCase column bug). Report only — no writes.

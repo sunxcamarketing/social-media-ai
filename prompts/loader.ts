@@ -97,8 +97,11 @@ export function buildPrompt(
       return foundationalContent;
     }
 
-    // If nothing found, return empty (silent fallback for optional sections)
-    console.warn(`No substitution found for placeholder: ${key}`);
+    // If nothing found: throw in dev (catches typos immediately), warn+empty
+    // in prod (don't crash a generation run on a missing optional section).
+    const message = `[prompts] No substitution found for placeholder "{{${key}}}" in agent "${agentPromptName}"`;
+    if (isDev) throw new Error(message);
+    console.warn(message);
     return "";
   });
 }

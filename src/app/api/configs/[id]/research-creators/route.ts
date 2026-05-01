@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { readConfig } from "@/lib/csv";
+import { MODEL_SONNET } from "@/lib/models";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
@@ -85,7 +86,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const client = new Anthropic({ apiKey, timeout: 110_000 });
 
   const msg = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_SONNET,
     max_tokens: 2048,
     tools: [
       {

@@ -114,6 +114,8 @@ const translations: Record<string, { de: string; en: string }> = {
 
   // Edit Dialogs - Basic Info
   "editBasic.title": { de: "Basis-Informationen bearbeiten", en: "Edit Basic Information" },
+  "editBasic.displayName": { de: "Anzeigename", en: "Display Name" },
+  "editBasic.displayNamePlaceholder": { de: "Name in der Sidebar", en: "Name in the sidebar" },
   "editBasic.fullName": { de: "Vollständiger Name", en: "Full Name" },
   "editBasic.company": { de: "Unternehmen", en: "Company" },
   "editBasic.role": { de: "Rolle", en: "Role" },
@@ -121,6 +123,11 @@ const translations: Record<string, { de: string; en: string }> = {
   "editBasic.businessContext": { de: "Business Context", en: "Business Context" },
   "editBasic.professionalBackground": { de: "Beruflicher Hintergrund", en: "Professional Background" },
   "editBasic.keyAchievements": { de: "Erfolge & Meilensteine", en: "Key Achievements" },
+  "editBasic.offerGoal": { de: "Angebot & Ziel", en: "Offer & Goal" },
+  "editBasic.coreOffer": { de: "Core Offer — Was wird verkauft?", en: "Core Offer — What's being sold?" },
+  "editBasic.coreOfferPlaceholder": { de: "z.B. 12-Wochen Coaching-Programm, 3.000€, Ergebnis: Traumfigur ohne Jojo-Effekt", en: "e.g. 12-week coaching program, $3,000, outcome: dream physique without yo-yo effect" },
+  "editBasic.mainGoal": { de: "Konkretes Ziel", en: "Concrete Goal" },
+  "editBasic.mainGoalPlaceholder": { de: "z.B. 5 Sales Calls/Woche, Launch in 6 Wochen", en: "e.g. 5 sales calls/week, launch in 6 weeks" },
 
   // Edit Dialogs - Brand
   "editBrand.title": { de: "Markenidentität", en: "Brand Identity" },
@@ -128,6 +135,13 @@ const translations: Record<string, { de: string; en: string }> = {
   "editBrand.problem": { de: "Kernproblem das du löst", en: "Core problem you solve" },
   "editBrand.dreamCustomer": { de: "Traumkunde-Profil", en: "Dream Customer Profile" },
   "editBrand.description": { de: "Konkrete Personenbeschreibung", en: "Concrete person description" },
+  "editBrand.dc.tonality": { de: "Tonalität", en: "Tonality" },
+  "editBrand.dc.age": { de: "Alter", en: "Age" },
+  "editBrand.dc.gender": { de: "Geschlecht", en: "Gender" },
+  "editBrand.dc.income": { de: "Einkommen", en: "Income" },
+  "editBrand.dc.country": { de: "Land", en: "Country" },
+  "editBrand.dc.profession": { de: "Beruf", en: "Profession" },
+  "editBrand.dc.values": { de: "Werte", en: "Values" },
 
   // Edit Dialogs - Customer
   "editCustomer.title": { de: "Kunde & Problem", en: "Customer & Problem" },

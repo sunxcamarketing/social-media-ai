@@ -6,13 +6,14 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { supabase } from "./supabase";
-import { readTrainingScripts, readConfigs } from "./csv";
+import { readTrainingScripts, readConfig } from "./csv";
 import { buildPrompt, VOICE_PROFILE_TOOL, SCRIPT_STRUCTURE_TOOL } from "@prompts";
 import type { VoiceProfile, ScriptStructureProfile } from "./types";
 import { trackClaudeCost, type Initiator } from "./cost-tracking";
+import { MODEL_SONNET } from "./models";
 
 const BATCH_SIZE = 15; // docs per Claude call
-const MODEL = "claude-sonnet-4-6";
+const MODEL = MODEL_SONNET;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,8 +52,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
  * Read cached voice profile from config, or null if none exists.
  */
 export async function getVoiceProfile(clientId: string): Promise<VoiceProfile | null> {
-  const configs = await readConfigs();
-  const config = configs.find(c => c.id === clientId);
+  const config = await readConfig(clientId);
   if (!config) return null;
 
   const raw = config.voiceProfile || (config as unknown as Record<string, unknown>).voice_profile;
@@ -196,8 +196,7 @@ async function saveVoiceProfile(clientId: string, profile: VoiceProfile) {
  * Read cached script structure from config, or null if none exists.
  */
 export async function getScriptStructure(clientId: string): Promise<ScriptStructureProfile | null> {
-  const configs = await readConfigs();
-  const config = configs.find(c => c.id === clientId);
+  const config = await readConfig(clientId);
   if (!config) return null;
 
   const raw = config.scriptStructure || (config as unknown as Record<string, unknown>).script_structure;

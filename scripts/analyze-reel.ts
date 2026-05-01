@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 import "dotenv/config";
 import { scrapeSinglePost } from "../src/lib/apify";
 import { uploadVideo, analyzeVideo } from "../src/lib/gemini";

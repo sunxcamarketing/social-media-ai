@@ -382,6 +382,28 @@ function ClientInformationContent() {
   const [messageOpen, setMessageOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // When user clicks "Ergänzen" on a specific missing field in ProfileCompleteness,
+  // we scroll to + flash that field after the dialog opens.
+  const [focusField, setFocusField] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focusField) return;
+    if (!basicOpen && !brandOpen && !customerOpen && !messageOpen && !billingOpen) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(focusField);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusable = el.querySelector<HTMLInputElement | HTMLTextAreaElement>("input, textarea");
+      focusable?.focus();
+      el.classList.add("ring-2", "ring-blush-dark/60", "ring-offset-2", "rounded-xl");
+      const cleanup = setTimeout(() => {
+        el.classList.remove("ring-2", "ring-blush-dark/60", "ring-offset-2", "rounded-xl");
+        setFocusField(null);
+      }, 1800);
+      return () => clearTimeout(cleanup);
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [focusField, basicOpen, brandOpen, customerOpen, messageOpen, billingOpen]);
 
   // Forms
   const [basicForm, setBasicForm] = useState({
@@ -584,7 +606,7 @@ function ClientInformationContent() {
     }
   };
 
-  const openBasic = () => {
+  const openBasic = (fieldId?: string) => {
     if (!client) return;
     setBasicForm({
       configName: client.configName || "",
@@ -601,9 +623,10 @@ function ClientInformationContent() {
     });
     setSaveError(null);
     setBasicOpen(true);
+    setFocusField(fieldId ?? null);
   };
 
-  const openBrand = () => {
+  const openBrand = (fieldId?: string) => {
     if (!client) return;
     setBrandForm({
       brandFeeling: client.brandFeeling || "",
@@ -611,9 +634,10 @@ function ClientInformationContent() {
       dreamCustomer: parseDreamCustomer(client.dreamCustomer || ""),
     });
     setBrandOpen(true);
+    setFocusField(fieldId ?? null);
   };
 
-  const openCustomer = () => {
+  const openCustomer = (fieldId?: string) => {
     if (!client) return;
     setCustomerForm({
       customerProblems: parseCustomerProblems(client.customerProblems || ""),
@@ -623,18 +647,20 @@ function ClientInformationContent() {
       authenticityZone: client.authenticityZone || "",
     });
     setCustomerOpen(true);
+    setFocusField(fieldId ?? null);
   };
 
-  const openMessage = () => {
+  const openMessage = (fieldId?: string) => {
     if (!client) return;
     setMessageForm({
       brandingStatement: client.brandingStatement || "",
       humanDifferentiation: client.humanDifferentiation || "",
     });
     setMessageOpen(true);
+    setFocusField(fieldId ?? null);
   };
 
-  const openBilling = () => {
+  const openBilling = (fieldId?: string) => {
     if (!client) return;
     setBillingForm({
       billingName: client.billingName || "",
@@ -647,6 +673,7 @@ function ClientInformationContent() {
       billingEmail: client.billingEmail || "",
     });
     setBillingOpen(true);
+    setFocusField(fieldId ?? null);
   };
 
   if (!client) {
@@ -724,7 +751,7 @@ function ClientInformationContent() {
                 {client.isOwner ? t("info.ownerBrand") : t("info.markOwner")}
               </button>
               <button
-                onClick={openBilling}
+                onClick={() => openBilling()}
                 title={billingEmpty
                   ? (lang === "en" ? "No billing address yet — click to add" : "Noch keine Rechnungsadresse — Klick zum Eintragen")
                   : [client.billingName, client.billingStreet, [client.billingZip, client.billingCity].filter(Boolean).join(" "), client.billingCountry].filter(Boolean).join("\n")}
@@ -966,7 +993,7 @@ function ClientInformationContent() {
       )}
 
       {/* Basic Info */}
-      <SectionCard icon={Briefcase} iconColor="text-blush-dark" title={t("info.basicInfo")} onEdit={openBasic} empty={basicEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
+      <SectionCard icon={Briefcase} iconColor="text-blush-dark" title={t("info.basicInfo")} onEdit={() => openBasic()} empty={basicEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
           {(client.name || client.company || client.role || client.location) && (
             <div className="grid gap-5 md:grid-cols-2">
@@ -993,7 +1020,7 @@ function ClientInformationContent() {
       </SectionCard>
 
       {/* Brand Identity */}
-      <SectionCard icon={Heart} iconColor="text-blush-dark" title={t("info.brandIdentity")} onEdit={openBrand} empty={brandEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
+      <SectionCard icon={Heart} iconColor="text-blush-dark" title={t("info.brandIdentity")} onEdit={() => openBrand()} empty={brandEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
           <InfoRow label={t("label.feelingYouSell")} value={client.brandFeeling} />
           <InfoRow label={t("label.coreProblem")} value={client.brandProblem} />
@@ -1016,7 +1043,7 @@ function ClientInformationContent() {
       </SectionCard>
 
       {/* Customer & Problem */}
-      <SectionCard icon={Users} iconColor="text-ocean/60" title={t("info.customerProblem")} onEdit={openCustomer} empty={customerEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
+      <SectionCard icon={Users} iconColor="text-ocean/60" title={t("info.customerProblem")} onEdit={() => openCustomer()} empty={customerEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
           {cpRows.length > 0 && (
             <div>
@@ -1040,7 +1067,7 @@ function ClientInformationContent() {
       </SectionCard>
 
       {/* Brand Message */}
-      <SectionCard icon={MessageSquare} iconColor="text-ivory" title={t("info.brandMessage")} onEdit={openMessage} empty={messageEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
+      <SectionCard icon={MessageSquare} iconColor="text-ivory" title={t("info.brandMessage")} onEdit={() => openMessage()} empty={messageEmpty} editLabel={t("common.edit")} noInfoLabel={t("info.noInfoYet")} addInfoLabel={t("info.addInformation")}>
         <div className="space-y-5">
           {client.brandingStatement && (
             <div>
@@ -1059,7 +1086,7 @@ function ClientInformationContent() {
         icon={Receipt}
         iconColor="text-ocean/60"
         title={lang === "en" ? "Billing Address" : "Rechnungsadresse"}
-        onEdit={openBilling}
+        onEdit={() => openBilling()}
         empty={billingEmpty}
         editLabel={t("common.edit")}
         noInfoLabel={lang === "en" ? "No billing address yet" : "Noch keine Rechnungsadresse"}
@@ -1374,8 +1401,8 @@ function ClientInformationContent() {
               <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-500">{saveError}</div>
             )}
             <div>
-              <Label className="text-xs text-ocean/70">{t("editBasic.displayName") || "Anzeigename"}</Label>
-              <Input value={basicForm.configName} onChange={(e) => setBasicForm({ ...basicForm, configName: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" placeholder="Name in der Sidebar" />
+              <Label className="text-xs text-ocean/70">{t("editBasic.displayName")}</Label>
+              <Input value={basicForm.configName} onChange={(e) => setBasicForm({ ...basicForm, configName: e.target.value })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" placeholder={t("editBasic.displayNamePlaceholder")} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(["name", "company", "role", "location"] as const).map((key) => (
@@ -1386,29 +1413,29 @@ function ClientInformationContent() {
               ))}
             </div>
             {(["businessContext", "professionalBackground", "keyAchievements"] as const).map((key) => (
-              <div key={key}>
+              <div key={key} id={`field-${key}`}>
                 <Label className="text-xs text-ocean/70">{key === "businessContext" ? t("editBasic.businessContext") : key === "professionalBackground" ? t("editBasic.professionalBackground") : t("editBasic.keyAchievements")}</Label>
                 <Textarea value={basicForm[key]} onChange={(e) => setBasicForm({ ...basicForm, [key]: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
             ))}
             <div className="border-t border-ocean/[0.06] pt-4 space-y-4">
-              <p className="text-xs font-medium text-ocean/70">Angebot & Ziel</p>
-              <div>
-                <Label className="text-xs text-ocean/70">Core Offer — Was wird verkauft?</Label>
+              <p className="text-xs font-medium text-ocean/70">{t("editBasic.offerGoal")}</p>
+              <div id="field-coreOffer">
+                <Label className="text-xs text-ocean/70">{t("editBasic.coreOffer")}</Label>
                 <Textarea
                   value={basicForm.coreOffer}
                   onChange={(e) => setBasicForm({ ...basicForm, coreOffer: e.target.value })}
                   rows={2}
-                  placeholder="z.B. 12-Wochen Coaching-Programm, 3.000€, Ergebnis: Traumfigur ohne Jojo-Effekt"
+                  placeholder={t("editBasic.coreOfferPlaceholder")}
                   className="mt-1.5 rounded-xl glass border-ocean/5 text-sm"
                 />
               </div>
-              <div>
-                <Label className="text-xs text-ocean/70">Konkretes Ziel</Label>
+              <div id="field-mainGoal">
+                <Label className="text-xs text-ocean/70">{t("editBasic.mainGoal")}</Label>
                 <Input
                   value={basicForm.mainGoal}
                   onChange={(e) => setBasicForm({ ...basicForm, mainGoal: e.target.value })}
-                  placeholder="z.B. 5 Sales Calls/Woche, Launch in 6 Wochen"
+                  placeholder={t("editBasic.mainGoalPlaceholder")}
                   className="mt-1.5 rounded-xl glass border-ocean/5 h-11"
                 />
               </div>
@@ -1434,20 +1461,20 @@ function ClientInformationContent() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>{t("editBrand.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
-            <div>
+            <div id="field-brandFeeling">
               <Label className="text-xs text-ocean/70">{t("editBrand.feeling")}</Label>
               <Textarea value={brandForm.brandFeeling} onChange={(e) => setBrandForm({ ...brandForm, brandFeeling: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
-            <div>
+            <div id="field-brandProblem">
               <Label className="text-xs text-ocean/70">{t("editBrand.problem")}</Label>
               <Textarea value={brandForm.brandProblem} onChange={(e) => setBrandForm({ ...brandForm, brandProblem: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
             </div>
-            <div className="border-t border-ocean/[0.06] pt-4">
+            <div id="field-dreamCustomer" className="border-t border-ocean/[0.06] pt-4">
               <p className="text-xs font-medium text-ocean/70 mb-3">{t("editBrand.dreamCustomer")}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(["tonality", "age", "gender", "income", "country", "profession", "values"] as const).map((key) => (
                   <div key={key}>
-                    <Label className="text-xs text-ocean/70 capitalize">{key}</Label>
+                    <Label className="text-xs text-ocean/70">{t(`editBrand.dc.${key}`)}</Label>
                     <Input value={brandForm.dreamCustomer[key]} onChange={(e) => setBrandForm({ ...brandForm, dreamCustomer: { ...brandForm.dreamCustomer, [key]: e.target.value } })} className="mt-1.5 rounded-xl glass border-ocean/5 h-11" />
                   </div>
                 ))}
@@ -1477,7 +1504,7 @@ function ClientInformationContent() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>{t("editCustomer.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
-            <div>
+            <div id="field-customerProblems">
               <p className="text-xs font-medium text-ocean/70 mb-3">{t("editCustomer.problems")}</p>
               <div className="space-y-3">
                 {(["mental", "physical", "financial", "social", "aesthetic"] as const).map((key) => (
@@ -1489,19 +1516,19 @@ function ClientInformationContent() {
               </div>
             </div>
             <div className="border-t border-ocean/[0.06] pt-4 space-y-4">
-              <div>
+              <div id="field-providerRole">
                 <Label className="text-xs text-ocean/70">{t("editCustomer.providerRole")}</Label>
                 <Textarea value={customerForm.providerRole} onChange={(e) => setCustomerForm({ ...customerForm, providerRole: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
-              <div>
+              <div id="field-providerBeliefs">
                 <Label className="text-xs text-ocean/70">{t("editCustomer.beliefs")}</Label>
                 <Textarea value={customerForm.providerBeliefs} onChange={(e) => setCustomerForm({ ...customerForm, providerBeliefs: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
-              <div>
+              <div id="field-providerStrengths">
                 <Label className="text-xs text-ocean/70">{t("editCustomer.strengths")}</Label>
                 <Textarea value={customerForm.providerStrengths} onChange={(e) => setCustomerForm({ ...customerForm, providerStrengths: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
-              <div>
+              <div id="field-authenticityZone">
                 <Label className="text-xs text-ocean/70">{t("editCustomer.authenticity")}</Label>
                 <Textarea value={customerForm.authenticityZone} onChange={(e) => setCustomerForm({ ...customerForm, authenticityZone: e.target.value })} rows={2} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
               </div>
@@ -1528,12 +1555,12 @@ function ClientInformationContent() {
         <DialogContent className="max-w-2xl glass-strong rounded-2xl border-ocean/5">
           <DialogHeader><DialogTitle>{t("editMessage.title")}</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
-            <div>
+            <div id="field-brandingStatement">
               <Label className="text-xs text-ocean/70">{t("editMessage.statement")}</Label>
               <p className="text-[11px] text-ocean/60 mt-0.5 mb-1.5">{t("editMessage.statementHint")}</p>
               <Textarea value={messageForm.brandingStatement} onChange={(e) => setMessageForm({ ...messageForm, brandingStatement: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" placeholder={t("editMessage.statementPlaceholder")} />
             </div>
-            <div>
+            <div id="field-humanDifferentiation">
               <Label className="text-xs text-ocean/70">{t("editMessage.human")}</Label>
               <p className="text-[11px] text-ocean/60 mt-0.5 mb-1.5">{t("editMessage.humanHint")}</p>
               <Textarea value={messageForm.humanDifferentiation} onChange={(e) => setMessageForm({ ...messageForm, humanDifferentiation: e.target.value })} rows={3} className="mt-1.5 rounded-xl glass border-ocean/5 text-sm" />
@@ -1559,7 +1586,7 @@ function ClientInformationContent() {
                 : "Adresse für Rechnungen. USt-ID ist optional, aber notwendig für B2B Reverse-Charge in der EU."}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div>
+              <div id="field-billingName">
                 <Label className="text-xs text-ocean/70">{lang === "en" ? "Recipient name" : "Empfänger"}</Label>
                 <Input
                   value={billingForm.billingName}

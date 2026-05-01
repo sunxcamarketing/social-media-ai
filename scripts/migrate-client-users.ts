@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 /**
  * Migration: Create client_users table and insert admin user.
  *

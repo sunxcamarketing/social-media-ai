@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { scrapeCreatorStats } from "@/lib/apify";
 import type { ApifyReel } from "@/lib/apify";
 import { getAnthropicClient } from "@/lib/anthropic";
+import { MODEL_SONNET } from "@/lib/models";
 import { sendEvent, sseResponse } from "@/lib/sse";
 
 function buildFullReportPrompt(profile: {
@@ -189,7 +190,7 @@ export async function POST(req: NextRequest) {
         );
 
         const message = await client.messages.create({
-          model: "claude-sonnet-4-6",
+          model: MODEL_SONNET,
           max_tokens: 8192,
           messages: [{ role: "user", content: prompt }],
         });

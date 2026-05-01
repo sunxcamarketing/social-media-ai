@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 // One-shot: trigger voiceProfile extraction for a specific client.
 // Run with: npx tsx scripts/trigger-voice-profile.ts <clientNameSubstring>
 

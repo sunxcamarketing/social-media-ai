@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 import { supabase } from "../src/lib/supabase";
 
 const clientId = process.argv[2];

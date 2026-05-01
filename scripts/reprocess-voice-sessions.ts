@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 // Re-runs the post-session idea extractor over voice_sessions that ended up
 // with ideas_generated = 0. Used to recover sessions that ran while the Fly
 // voice-server was missing ANTHROPIC_API_KEY (discovered 2026-04-29).

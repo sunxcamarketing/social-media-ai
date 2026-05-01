@@ -24,10 +24,11 @@ import { sendEvent, sseResponse } from "@/lib/sse";
 import { readConfig } from "@/lib/csv";
 import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 import { trackClaudeCost } from "@/lib/cost-tracking";
+import { MODEL_OPUS, AGENT_ITERATION_LIMIT } from "@/lib/models";
 
 export const maxDuration = 300;
 
-const MAX_ITERATIONS = 10;
+const MAX_ITERATIONS = AGENT_ITERATION_LIMIT;
 
 // Shared tools available when the chat has a resolved client scope
 // (admin-scoped chat or client user). Write tools like save_idea /
@@ -191,7 +192,7 @@ export async function POST(request: Request) {
 
         for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
           const response = await client.messages.create({
-            model: "claude-opus-4-7",
+            model: MODEL_OPUS,
             max_tokens: 4096,
             system: cachedSystem,
             messages: currentMessages,
@@ -200,7 +201,7 @@ export async function POST(request: Request) {
 
           trackClaudeCost({
             usage: response.usage,
-            model: "claude-opus-4-7",
+            model: MODEL_OPUS,
             clientId: scopedClientId,
             userId: user.id,
             operation: "chat",

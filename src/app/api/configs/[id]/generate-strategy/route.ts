@@ -2,6 +2,7 @@ import { getAnthropicClient } from "@/lib/anthropic";
 import { readConfig, updateConfig, readVideosByConfig, readAnalysesByClient, readStrategyConfig } from "@/lib/csv";
 import { getCurrentUser } from "@/lib/auth";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
+import { MODEL_SONNET } from "@/lib/models";
 import { BUILT_IN_CONTENT_TYPES, BUILT_IN_FORMATS, type ContentType, type ContentFormat } from "@/lib/strategy";
 import { buildPrompt, STRATEGY_ANALYSIS_TOOL, STRATEGY_CREATION_TOOL, STRATEGY_REVIEW_TOOL } from "@prompts";
 import { getVoiceProfile, voiceProfileToPromptBlock } from "@/lib/voice-profile";
@@ -241,14 +242,14 @@ ${competitorBlock}
 ${labels.analyzeInstruction}`;
 
           const analysisMsg = await claude.messages.create({
-            model: "claude-sonnet-4-6",
+            model: MODEL_SONNET,
             max_tokens: 3000,
             system: buildPrompt("strategy-analysis", { platform_context: platformContext }, lang),
             tools: [STRATEGY_ANALYSIS_TOOL],
             tool_choice: { type: "tool", name: "submit_analysis" },
             messages: [{ role: "user", content: analysisUserPrompt }],
           });
-          trackClaudeCost({ usage: analysisMsg.usage, model: "claude-sonnet-4-6", clientId: id, userId, operation: "strategy_analysis", initiator });
+          trackClaudeCost({ usage: analysisMsg.usage, model: MODEL_SONNET, clientId: id, userId, operation: "strategy_analysis", initiator });
 
           const tu = analysisMsg.content.find(b => b.type === "tool_use");
           if (!tu || tu.type !== "tool_use") {
@@ -327,14 +328,14 @@ ${formatList}
 ${labels.createInstruction(postsPerWeek, activeDays.join(", "))}`;
 
         const creationMsg = await claude.messages.create({
-          model: "claude-sonnet-4-6",
+          model: MODEL_SONNET,
           max_tokens: 4000,
           system: creationSystemPrompt,
           tools: [creationTool],
           tool_choice: { type: "tool", name: "submit_strategy" },
           messages: [{ role: "user", content: creationUserPrompt }],
         });
-        trackClaudeCost({ usage: creationMsg.usage, model: "claude-sonnet-4-6", clientId: id, userId, operation: "strategy_creation", initiator });
+        trackClaudeCost({ usage: creationMsg.usage, model: MODEL_SONNET, clientId: id, userId, operation: "strategy_creation", initiator });
 
         const creationTu = creationMsg.content.find(b => b.type === "tool_use");
         if (!creationTu || creationTu.type !== "tool_use") {
@@ -396,14 +397,14 @@ ${labels.reviewInstruction}`;
 
         try {
           const reviewMsg = await claude.messages.create({
-            model: "claude-sonnet-4-6",
+            model: MODEL_SONNET,
             max_tokens: 3000,
             system: buildPrompt("strategy-review", { platform_context: platformContext }, lang),
             tools: [STRATEGY_REVIEW_TOOL(activeDays)],
             tool_choice: { type: "tool", name: "submit_strategy_review" },
             messages: [{ role: "user", content: reviewUserPrompt }],
           });
-          trackClaudeCost({ usage: reviewMsg.usage, model: "claude-sonnet-4-6", clientId: id, userId, operation: "strategy_review", initiator });
+          trackClaudeCost({ usage: reviewMsg.usage, model: MODEL_SONNET, clientId: id, userId, operation: "strategy_review", initiator });
 
           const reviewTu = reviewMsg.content.find(b => b.type === "tool_use");
           if (reviewTu && reviewTu.type === "tool_use") {

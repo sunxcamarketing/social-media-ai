@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { readConfigs } from "@/lib/csv";
+import { readConfig } from "@/lib/csv";
+import { MODEL_SONNET } from "@/lib/models";
 import { safeJsonParse } from "@/lib/safe-json";
 
 export const maxDuration = 60;
@@ -13,8 +14,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const configs = await readConfigs();
-  const config = configs.find((c) => c.id === id);
+  const config = await readConfig(id);
   if (!config) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -87,7 +87,7 @@ Antworte auf Deutsch.`;
   const client = new Anthropic({ apiKey });
 
   const stream = client.messages.stream({
-    model: "claude-sonnet-4-6",
+    model: MODEL_SONNET,
     max_tokens: 350,
     system: systemPrompt,
     messages,

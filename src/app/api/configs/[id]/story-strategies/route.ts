@@ -7,8 +7,9 @@ import { buildPrompt, STORY_STRATEGY_TOOL } from "@prompts";
 import { buildFullClientContext } from "@/lib/client-context";
 import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
+import { MODEL_SONNET } from "@/lib/models";
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = MODEL_SONNET;
 
 // ── GET: list past story strategies for this client ──────────────────────
 

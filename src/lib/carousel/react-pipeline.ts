@@ -17,6 +17,7 @@
  */
 
 import { getAnthropicClient } from "@/lib/anthropic";
+import { MODEL_SONNET } from "@/lib/models";
 import { buildPrompt } from "@prompts";
 import { readConfig } from "@/lib/csv";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
@@ -140,7 +141,7 @@ export async function runCarouselReactPipeline(
 
   const anthropic = getAnthropicClient();
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_SONNET,
     max_tokens: 16000,
     thinking: { type: "enabled", budget_tokens: 8000 },
     system: systemPrompt,

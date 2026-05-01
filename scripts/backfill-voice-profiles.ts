@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 // One-shot backfill: re-runs voiceProfile + scriptStructure extraction for
 // every client that has training_scripts but no saved profile/structure
 // (silent victims of the snake_case-vs-camelCase column bug).

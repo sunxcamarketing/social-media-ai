@@ -13,6 +13,7 @@ import type { PipelineContext, VoiceContext, ResearchContext } from "./weekly-st
 import { getLatestSnapshot } from "@/lib/intelligence";
 import { buildPerformanceMemoBlock, type PerformanceMemo } from "@/lib/jobs/performance-memo";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
+import { MODEL_OPUS } from "../models";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ export async function generateWeekIdeas(
   const tool = WEEKLY_IDEAS_TOOL(numIdeas);
 
   const response = await claude.messages.create({
-    model: "claude-opus-4-7",
+    model: MODEL_OPUS,
     max_tokens: 6000, // Ideas are much smaller than full scripts
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -147,7 +148,7 @@ export async function generateWeekIdeas(
 
   trackClaudeCost({
     usage: response.usage,
-    model: "claude-opus-4-7",
+    model: MODEL_OPUS,
     clientId: ctx.config.id,
     operation: "weekly_ideas",
     initiator,

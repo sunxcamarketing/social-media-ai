@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import sharp from "sharp";
 import puppeteer from "puppeteer";
 import { getAnthropicClient } from "@/lib/anthropic";
+import { MODEL_SONNET } from "@/lib/models";
 import { supabase } from "@/lib/supabase";
 import { generateImages } from "@/lib/nano-banana";
 
@@ -231,7 +232,7 @@ export async function runCarouselPipeline(input: CarouselPipelineInput): Promise
 
   const anthropic = getAnthropicClient();
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: MODEL_SONNET,
     max_tokens: 16000,
     system: systemPrompt,
     messages: [{ role: "user", content: userContent }],
@@ -465,7 +466,7 @@ export async function regenerateCarousel(input: CarouselRegenerateInput): Promis
     const userText = `## CURRENT SLIDE ${input.slideIndex + 1} / ${sections.length}\n\nHere is the current HTML of the slide:\n\n\`\`\`html\n${targetSection}\n\`\`\`\n\n${feedbackBlock}${imageNote}\n## TASK\n\nReturn ONLY the revised <section>...</section> HTML for this single slide. Keep the same structure, page counter format (${slideNum}/${totalStr}), and design language as the original. Apply the feedback precisely. Do not add commentary.`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: MODEL_SONNET,
       max_tokens: 4000,
       system: systemPrompt,
       messages: [{ role: "user", content: userText }],
@@ -489,7 +490,7 @@ export async function regenerateCarousel(input: CarouselRegenerateInput): Promis
     const userText = `## CURRENT CAROUSEL\n\nHere is the current HTML:\n\n\`\`\`html\n${html}\n\`\`\`\n\n${feedbackBlock}${imageNote}\n## TASK\n\nReturn the COMPLETE revised carousel HTML. Apply the feedback carefully. Keep the overall structure (same number of slides, same page counters, same design language). Do not add commentary — just return the HTML starting with <!DOCTYPE html>.`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: MODEL_SONNET,
       max_tokens: 16000,
       system: systemPrompt,
       messages: [{ role: "user", content: userText }],

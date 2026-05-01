@@ -39,7 +39,7 @@ npm run dev
 - **Supabase** for data storage (migrated from CSV)
 - **Apify** — Instagram scraping
 - **Google Gemini 2.0 Flash** — Video analysis (upload + multimodal)
-- **Claude Sonnet** — Script generation, strategy, concept adaptation
+- **Claude (Sonnet + Opus + Haiku)** — Strategy, weekly ideas, chat agent, concept adaptation. Models centralized in `src/lib/models.ts` — never hardcode model IDs at the call site.
 
 ---
 
@@ -78,7 +78,7 @@ Note: despite the endpoint name `generate-week-scripts`, this flow produces **id
    - Voice profile + script structure + voice onboarding block (all cached in DB, regenerated on miss)
 3. **Research** — `runResearch()`: Brave deep search (15-20 queries across 9 categories, week-RNG rotates angles) → Sonnet synthesizes 6-12 real trends via `TREND_RESEARCH_TOOL` (plus high-confidence client learnings from Supabase)
 4. **One-Shot Idea Generation** — single **Opus** call (`claude-opus-4-7`) with the `weekly-ideas` agent + `WEEKLY_IDEAS_TOOL`. Sees full context and returns N coherent ideas (one per active day) with `title`, `angle`, `hookDirection`, `keyPoints`, `whyNow`, `emotion`, plus a `weekReasoning`
-5. **Return Inline, Don't Persist** — ideas stream back to the UI. The user picks which to develop into full scripts via the Content Agent chat or single-script generator
+5. **Return Inline, Don't Persist** — ideas stream back to the UI. The user picks which to develop into full scripts via the Content Agent chat (the "Skript ausformulieren" button on each idea opens the chat pre-seeded with the idea brief)
 6. **Fire-and-Forget** — triggers `/api/jobs/research-cycle` to refresh snapshots/learnings for the next run
 
 Entry point: `src/lib/pipelines/weekly-oneshot.ts` (`generateWeekIdeas`)
@@ -86,47 +86,30 @@ Shared setup: `src/lib/pipelines/weekly-steps.ts` (`loadPipelineContext`, `loadV
 Route orchestrator: ~95 lines — `POST /api/configs/[id]/generate-week-scripts` (SSE stream)
 Voice profile: `POST /api/configs/[id]/generate-voice-profile`
 
-### Single Script Generation — From Idea to Full Script
+### Single Script Generation — Inline in the Content Agent Chat
 
-Scripts are always generated **per-idea**, not in batch. Two paths:
+Scripts are written **inline by the Content Agent** as plain text in the chat (`/api/chat`). There is no separate script-generation endpoint and no Writer/Reviewer pipeline — the agent's system prompt (`prompts/agents/content-agent.md`) loads the full set of foundational rules (hook-regeln, body-regeln, anti-AI, voice profile, etc.) and the agent writes both the short (30-40s) and long (60+s) versions in a single message. The user can then call the `save_script` tool to persist them.
 
-**Via Content Agent chat** (`POST /api/chat`, SSE): the agent calls its `generate_script` tool which runs the Script Writer (`script-writer.md`) → regex quality check → Reviewer (`script-reviewer.md`) only if issues found. Always returns short (30-40s) + long (60+s) versions.
+There are two ways to enter that flow:
 
-**Via direct endpoint** (`POST /api/configs/[id]/generate-script`): accepts a `topicOverride` (from a weekly idea or topic plan) or `dayOverride`; builds full context (voice profile, script structure, audit, performance, banned phrases, hook patterns) and calls Claude with the `submit_script` tool → returns `{ title, hook, body, cta, reasoning }`. Used by the "generate script" buttons on ideas and the 2-step topic-plan → script flow.
-
-Related endpoints:
-- `POST /api/configs/[id]/generate-topic-plan` — Opus generates a topic plan for a day
-- `POST /api/configs/[id]/generate-week` — older week-level endpoint (distinct from `generate-week-scripts`)
-
-### Viral Script Builder — Psychology-First Pipeline
-
-Adapts viral reference videos by extracting PSYCHOLOGICAL MECHANICS (not structure). Produces original-feeling scripts that use the same triggers.
-
-1. **Load Context** — Voice profile, script structure, audit
-2. **Reference Video** — Scrape via Apify + analyze with Gemini (or use existing DB video)
-3. **Psychology Extraction** — Extract hook-trigger, retention-mechanic, share-trigger, opinion-angle, reward-mechanic
-4. **Hook Generation** — 3 hook variants using same psychological trigger (not word-swapping)
-5. **Script Adaptation** — New script using same psychology, different content (short + long versions)
-6. **Critic Agent Loop** — Up to 3 rounds: critic evaluates creative quality + psychological equivalence → writer revises
-7. **Production Notes** — Shot list for filming
-
-Key endpoint: `POST /api/viral-script` (SSE stream)
+- **From an idea** — the "Skript ausformulieren" button on any saved idea or weekly idea opens `DevelopIdeaDialog` (`src/components/develop-idea-dialog.tsx`), which mounts the chat with a pre-seeded message describing the idea.
+- **Directly in chat** — the user just asks for a script. Same agent, same prompt, same rules.
 
 ### Content Agent (Portal Chat)
 
-AI-Agent im Client-Portal mit Tool-Zugriff. Nutzt Claude's native `tool_use` für autonome Datenabfragen und Skript-Generierung. Der Agent entscheidet selbstständig welche Tools er aufruft basierend auf der Nachricht.
+AI-Agent im Client-Portal mit Tool-Zugriff. Nutzt Claude's native `tool_use` für autonome Datenabfragen. Skripte schreibt der Agent **selbst inline im Chat** — kein separater Script-Generation-Endpoint, kein Writer/Reviewer-Loop. Der Agent entscheidet selbstständig welche Tools er aufruft basierend auf der Nachricht.
 
-**Tools (12):** `load_client_context`, `load_voice_profile`, `search_scripts`, `check_performance`, `load_audit`, `generate_script`, `check_competitors`, `check_learnings`, `search_web`, `research_trends`, `save_idea`, `update_profile` (+ admin-only: `list_clients`)
+**Tools (13):** `load_client_context`, `load_voice_profile`, `search_scripts`, `check_performance`, `load_audit`, `check_competitors`, `check_learnings`, `search_web`, `research_trends`, `save_idea`, `list_ideas`, `save_script`, `update_profile` (+ admin-only: `list_clients`)
 
 - Agent-Loop: Non-streaming tool iterations + SSE text streaming for final response
 - Tool implementations: `src/lib/agent-tools.ts`
-- Agent prompt: `prompts/agents/content-agent.md` (slim, no script rules)
-- Script generation: Writer (`script-writer.md`) + Regex check + Reviewer (`script-reviewer.md`, only when needed)
-- Max 10 tool-call iterations per turn (safety limit)
-- Scripts always generated in short (30-40s) + long (60+s) versions
+- Agent prompt: `prompts/agents/content-agent.md` (loads all foundational rules — hook-regeln, body-regeln, anti-AI, etc.)
+- Max iterations per turn: `AGENT_ITERATION_LIMIT` from `src/lib/models.ts` (currently 10)
+- Scripts always generated in short (30-40s) + long (60+s) versions, written inline; `save_script` persists both as separate Skript-Einträge
 - `search_web` uses Brave Search API for live web data
 - `research_trends` runs multi-query niche trend search
 - `check_learnings` returns confidence-scored performance insights (N≥8 minimum)
+- Prompt caching enabled on the system prompt — large speed-up on multi-turn conversations
 
 Key endpoint: `POST /api/chat` (SSE stream with agent loop)
 
@@ -197,10 +180,10 @@ The heart of the system. All prompt text lives in markdown files, assembled at r
 ### How It Works
 
 ```
-API Route calls:  buildPrompt("script-writer", { platform_context: ctx })
+API Route calls:  buildPrompt("content-agent", { platform_context: ctx })
                          │
                          ▼
-              loads agents/script-writer.md
+              loads agents/content-agent.md
               finds {{placeholders}} in template
                          │
               ┌──────────┼──────────┐
@@ -227,24 +210,17 @@ Mother prompts — one per pipeline step. Each contains the full structure with 
 |-------|---------------|
 | `weekly-ideas.md` | Weekly: One-Shot Idea Generation (Opus) |
 | `trend-research.md` | Weekly: Trend Research (synthesizes Brave search results) |
-| `topic-plan.md` | Topic Plan (per-day topic planning) |
-| `topic-script.md` | Script Generation from a topic/idea |
-| `single-script.md` | Direct single-script generation |
-| `script-writer.md` | Script Agent: Creative Writing (used by Content Agent `generate_script` tool) |
-| `script-reviewer.md` | Script Agent: Quality Gate (banned phrases, voice match) |
+| `content-agent.md` | Content Agent (Portal Chat) — writes scripts inline, loads all script foundationals |
+| `story-strategist.md` | Story Strategist (`POST /api/configs/[id]/story-strategies`) |
 | `carousel-generator.md` / `carousel-react-generator.md` / `carousel-chat-refine.md` | Carousel pipelines |
-| `content-agent.md` | Content Agent (Portal Chat) — 12 tools, script rules delegated to script-writer |
-| `story-strategist.md` | Story strategist agent |
 | `voice-profile.md` | Voice Profile Extraction from training transcripts |
 | `voice-profile-topic.md` / `voice-profile-scenario.md` | Voice Agent voice-profile sub-prompts |
-| `voice-agent.md` | Voice Interview Agent |
+| `voice-agent.md` | Voice Interview Agent (Gemini Live) |
 | `voice-agent-onboarding.md` | Voice Onboarding (8-block interview) |
 | `script-structure.md` | Script Structure Extraction |
 | `strategy-analysis.md` | Strategy: Data Analysis |
 | `strategy-creation.md` | Strategy: Pillar Creation |
 | `strategy-review.md` | Strategy: Review |
-
-**⚠️ Viral Script Builder is currently broken.** `src/app/api/viral-script/route.ts` calls `buildPrompt("viral-script-structure", …)` and four similar viral-* names, but no such files exist in `prompts/agents/`. Each call returns an empty string and the agent runs without instructions. The UI pages (`(app)/viral-script`, `(app)/viral-builder`) have no sidebar links so users typically don't reach them. Decide: rip the whole feature out, or write the missing prompts.
 
 ### Foundational Sub-Prompts (`prompts/foundational/`)
 
@@ -290,9 +266,9 @@ Single-concern markdown files. Each covers ONE aspect of script quality. Reused 
 | `wochen-koherenz.md` | Week coherence — strategic variety across pillars, hooks, emotions |
 | `anti-muster.md` | Anti-patterns — what NOT to do (generic titles, repetitive hooks, etc.) |
 
-### Tool Schemas (`prompts/tools.ts`)
+### Tool Schemas (`prompts/tools/`)
 
-All Anthropic tool schemas in one file. Used with `tool_choice: { type: "tool" }` for structured JSON output.
+Anthropic tool schemas split by domain into `prompts/tools/{strategy,voice,agent,carousel,story,enrich}.ts`, with a re-export index. Used with `tool_choice: { type: "tool" }` for structured JSON output. Importers can use either the bundled re-export (`@prompts/tools` or `@prompts`) or a specific domain file.
 
 | Tool | Used By | Output |
 |------|---------|--------|
@@ -303,8 +279,11 @@ All Anthropic tool schemas in one file. Used with `tool_choice: { type: "tool" }
 | `STRATEGY_ANALYSIS_TOOL` | strategy-analysis | Insights + goal (reach/trust/revenue) |
 | `STRATEGY_CREATION_TOOL` | strategy-creation | Pillars with subtopics + weekly schedule |
 | `STRATEGY_REVIEW_TOOL` | strategy-review | Issues + optional revised pillars/weekly |
-| `AGENT_*_TOOL` (15+) | Content Agent tool-use loop | Tool-specific payloads (load context, search scripts, generate script, save idea, etc.) |
+| `AGENT_*_TOOL` (13 + admin `list_clients`) | Content Agent tool-use loop | Tool-specific payloads (load context, search scripts, save idea, save script, etc.) |
 | `VOICE_AGENT_GEMINI_TOOLS` | Voice Agent (Gemini Live) | Live function-calling schemas for voice session |
+| `STORY_STRATEGY_TOOL` | story-strategist | Instagram Story campaign plan |
+| `CAROUSEL_UPDATE_TOOL` | carousel chat refine | TSX update + summary |
+| `ENRICH_PROFILE_TOOL` | profile enrichment (auto-fill) | Brand-positioning profile from scraped social data |
 
 ### Editing Prompts
 
@@ -385,20 +364,28 @@ The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `
 │   │   ├── no-access/                     # No access page
 │   │   └── api/                           # API routes
 │   │       ├── auth/                      # Auth routes (invite, me, impersonate)
-│   │       ├── chat/                      # Content Agent chat (SSE)
+│   │       ├── chat/                      # Content Agent chat (SSE) — writes scripts inline
 │   │       ├── configs/[id]/
 │   │       │   ├── generate-week-scripts/ # Weekly IDEAS pipeline — one-shot Opus (SSE)
-│   │       │   ├── generate-week/         # (older week-level endpoint)
-│   │       │   ├── generate-topic-plan/   # Per-day topic planning
-│   │       │   ├── generate-script/       # Single script from idea/topic override
 │   │       │   ├── generate-strategy/     # Strategy pipeline (SSE)
 │   │       │   ├── generate-voice-profile/# Voice profile extraction
-│   │       │   ├── performance/           # Performance data
+│   │       │   ├── chat/                  # Per-config helper chat
+│   │       │   ├── finish-chat/           # Voice/onboarding completion (Haiku, submit_scripts)
+│   │       │   ├── voice-training/        # Training-script CRUD per client
 │   │       │   ├── voice-sessions/        # Voice agent session storage
+│   │       │   ├── story-strategies/      # Instagram Story strategy generation
+│   │       │   ├── performance/           # Performance data
+│   │       │   ├── refresh-posts/         # Re-scrape client's own posts
+│   │       │   ├── research-creators/     # Suggest competitor creators
+│   │       │   ├── reorganize-info/       # Profile-info reorganize (Haiku)
+│   │       │   ├── add-info/              # Profile-info add (Haiku)
+│   │       │   ├── enrich/                # Auto-fill profile from socials
+│   │       │   ├── instagram-profile/     # IG profile fetch
 │   │       │   └── sync-drive/            # Google Drive sync
-│   │       ├── viral-script/              # Viral script builder (SSE; prompts inlined)
-│   │       ├── carousel/                  # Carousel generator
+│   │       ├── carousel/                  # Carousel generator + chat refine
 │   │       ├── ideas/                     # Ideas CRUD
+│   │       ├── scripts/                   # Scripts CRUD + feedback + release
+│   │       ├── analyse/                   # Single-creator analysis (SSE)
 │   │       ├── inngest/                   # Inngest background jobs
 │   │       └── jobs/
 │   │           └── research-cycle/        # Background research orchestrator
@@ -411,7 +398,8 @@ The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `
 │   │   ├── pipeline-lock.ts              # Per-client pipeline lock (prevents parallel runs)
 │   │   ├── voice-profile.ts              # Voice + script structure extraction
 │   │   ├── voice-onboarding.ts           # Voice onboarding synthesis
-│   │   ├── agent-tools.ts               # Content Agent tool implementations (12 tools)
+│   │   ├── agent-tools.ts               # Content Agent tool implementations (13 tools + admin list_clients)
+│   │   ├── models.ts                    # Centralized model IDs (MODEL_HAIKU/SONNET/OPUS) + AGENT_ITERATION_LIMIT
 │   │   ├── gemini-live.ts              # Gemini Live API client (WebSocket, audio streaming)
 │   │   ├── platforms.ts                  # Platform abstraction (IG, TikTok, LinkedIn)
 │   │   ├── intelligence.ts              # Intelligence snapshots CRUD + freshness
@@ -430,21 +418,23 @@ The i18n dict lives in `src/lib/i18n.tsx` (~500 keys, single file). Access via `
 │   └── components/                        # UI components (shadcn + custom)
 ├── prompts/                               # ── MODULAR PROMPT SYSTEM (top-level!) ──
 │   ├── index.ts                          # Re-exports: buildPrompt, tools, analysis
-│   ├── loader.ts                         # buildPrompt() — loads agent + resolves {{placeholders}}
-│   ├── tools.ts                          # All Anthropic tool schemas (pipeline + agent)
+│   ├── loader.ts                         # buildPrompt() — loads agent + resolves {{placeholders}}; throws in dev on missing placeholder
+│   ├── tools/                            # Anthropic tool schemas split by domain
+│   │   ├── index.ts                      # Re-export of all tool schemas
+│   │   ├── strategy.ts                   # WEEKLY_IDEAS / TREND_RESEARCH / STRATEGY_*
+│   │   ├── voice.ts                      # VOICE_PROFILE / SCRIPT_STRUCTURE / VOICE_AGENT_GEMINI_TOOLS
+│   │   ├── agent.ts                      # AGENT_* (Content Agent tools)
+│   │   ├── carousel.ts                   # CAROUSEL_UPDATE_TOOL
+│   │   ├── story.ts                      # STORY_STRATEGY_TOOL
+│   │   └── enrich.ts                     # ENRICH_PROFILE_TOOL
 │   ├── analysis.ts                       # Gemini video analysis prompts
 │   ├── agents/                           # Agent templates (each exists as foo.md = de + foo.en.md = en)
 │   │   ├── weekly-ideas.md               # One-shot Opus week idea generator
 │   │   ├── trend-research.md             # Sonnet trend synthesis
-│   │   ├── topic-plan.md                 # Per-day topic planning
-│   │   ├── topic-script.md               # Script from topic
-│   │   ├── single-script.md              # Direct single-script generation
-│   │   ├── script-writer.md              # Script Agent: creative writing
-│   │   ├── script-reviewer.md            # Script Agent: quality gate
+│   │   ├── content-agent.md              # Content Agent system prompt (writes scripts inline)
 │   │   ├── carousel-generator.md         # Carousel slides
 │   │   ├── carousel-react-generator.md   # React-based carousel
 │   │   ├── carousel-chat-refine.md       # Carousel refine chat
-│   │   ├── content-agent.md              # Content Agent system prompt
 │   │   ├── story-strategist.md           # Story strategist
 │   │   ├── voice-profile.md              # Voice profile extraction
 │   │   ├── voice-profile-topic.md        # Voice agent topic sub-prompt

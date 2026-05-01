@@ -11,9 +11,10 @@ import { readConfig, readScriptsByClient } from "../csv";
 import { saveSnapshot } from "../intelligence";
 import { getHighConfidenceLearnings } from "../client-learnings";
 import { parseInsights } from "../performance-helpers";
+import { MODEL_HAIKU } from "../models";
 
 const CLAUDE_TIMEOUT_MS = 30_000;
-const MEMO_MODEL = "claude-haiku-4-5-20251001";
+const MEMO_MODEL = MODEL_HAIKU;
 
 export interface PerformanceMemo {
   generatedAt: string;

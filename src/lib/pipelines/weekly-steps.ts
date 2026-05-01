@@ -16,6 +16,7 @@ import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/
 import type { PlatformId } from "@/lib/platforms";
 import { getLatestSnapshot, getSnapshotFreshness, buildTrendBlockFromSnapshot } from "@/lib/intelligence";
 import { trackClaudeCost, trackBraveCost, type Initiator } from "@/lib/cost-tracking";
+import { MODEL_SONNET } from "@/lib/models";
 import { getHighConfidenceLearnings, buildLearningsBlock } from "@/lib/client-learnings";
 import type { ClientLearning } from "@/lib/client-learnings";
 import { buildClientProfile, buildBrandContext } from "@/lib/client-context";
@@ -387,7 +388,7 @@ export async function runResearch(
     }, lang);
 
     const trendPromise = claude.messages.create({
-      model: "claude-sonnet-4-6",
+      model: MODEL_SONNET,
       max_tokens: 2500,
       temperature: 0.7,
       system: trendSystem,
@@ -403,7 +404,7 @@ export async function runResearch(
     if (trendMsg) {
       trackClaudeCost({
         usage: trendMsg.usage,
-        model: "claude-sonnet-4-6",
+        model: MODEL_SONNET,
         clientId: configId,
         operation: "trend_synthesis",
         initiator,

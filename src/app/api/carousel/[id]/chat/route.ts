@@ -7,10 +7,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { buildPrompt, CAROUSEL_UPDATE_TOOL } from "@prompts";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
+import { MODEL_SONNET } from "@/lib/models";
 
 export const maxDuration = 120;
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = MODEL_SONNET;
 
 export interface CarouselChatMessage {
   role: "user" | "assistant";

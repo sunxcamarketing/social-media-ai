@@ -1,3 +1,4 @@
+// DEV-SCRIPT — not used in production. Run via: npx tsx --require dotenv/config scripts/<this-file>
 import "dotenv/config";
 import { writeFileSync, mkdirSync, existsSync } from "fs";
 import { resolve, join } from "path";
