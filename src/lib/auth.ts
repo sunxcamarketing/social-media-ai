@@ -10,6 +10,10 @@ export interface AppUser {
   role: UserRole;
   clientId: string | null;
   invitedAt?: string | null;
+  /** Stored in Supabase Auth user_metadata.first_name */
+  firstName?: string | null;
+  /** Stored in Supabase Auth user_metadata.last_name */
+  lastName?: string | null;
   impersonating?: { clientId: string; clientName: string };
 }
 
@@ -30,14 +34,24 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     .limit(1)
     .single();
 
+  const meta = (user.user_metadata || {}) as { first_name?: string; last_name?: string };
+
   if (!clientUser && error?.code !== NO_ROWS_FOUND) {
-    return buildAppUser(user.id, user.email, "admin", null, null);
+    return buildAppUser(user.id, user.email, "admin", null, null, meta.first_name, meta.last_name);
   }
 
   if (!clientUser) return null;
 
   const role = clientUser.role as UserRole;
-  const base = buildAppUser(user.id, user.email, role, clientUser.client_id, clientUser.invited_at ?? null);
+  const base = buildAppUser(
+    user.id,
+    user.email,
+    role,
+    clientUser.client_id,
+    clientUser.invited_at ?? null,
+    meta.first_name,
+    meta.last_name,
+  );
 
   if (role === "admin") {
     const impersonating = await readImpersonation();
@@ -68,8 +82,18 @@ function buildAppUser(
   role: UserRole,
   clientId: string | null,
   invitedAt: string | null = null,
+  firstName?: string,
+  lastName?: string,
 ): AppUser {
-  return { id, email: email || "", role, clientId, invitedAt };
+  return {
+    id,
+    email: email || "",
+    role,
+    clientId,
+    invitedAt,
+    firstName: firstName || null,
+    lastName: lastName || null,
+  };
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   FileText,
   Copy,
@@ -49,57 +49,6 @@ const emptyIdea = { title: "", description: "", contentType: "" };
 type Tab = "scripts" | "ideas";
 type FeedbackStatus = "approved" | "rejected" | "revision_requested";
 
-// Strip "(Kurz)" / "(Lang)" suffix to find the logical script the variant belongs to.
-function baseTitle(title: string): string {
-  return title.replace(/\s*(?:\(Kurz\)|\(Lang\)|—\s*Kurz|—\s*Lang)\s*$/, "").trim();
-}
-
-function scriptVariant(title: string): "kurz" | "lang" | null {
-  if (/(?:\(Kurz\)|—\s*Kurz)\s*$/.test(title)) return "kurz";
-  if (/(?:\(Lang\)|—\s*Lang)\s*$/.test(title)) return "lang";
-  return null;
-}
-
-type ScriptGroup = {
-  base: string;
-  kurz?: Script;
-  lang?: Script;
-  single?: Script;
-};
-
-function groupScripts(scripts: Script[]): ScriptGroup[] {
-  const map = new Map<string, ScriptGroup>();
-  for (const s of scripts) {
-    const variant = scriptVariant(s.title);
-    const base = baseTitle(s.title);
-    if (!map.has(base)) map.set(base, { base });
-    const group = map.get(base)!;
-    if (variant === "kurz") group.kurz = s;
-    else if (variant === "lang") group.lang = s;
-    else group.single = s;
-  }
-  return Array.from(map.values());
-}
-
-// Combined feedback state: only "approved"/"rejected"/"revision_requested" if BOTH variants
-// share the state; otherwise null (= mixed or unset). Keeps the badge truthful.
-function combinedFeedback(group: ScriptGroup): FeedbackStatus | null {
-  const variants = [group.kurz, group.lang, group.single].filter(Boolean) as Script[];
-  if (variants.length === 0) return null;
-  const first = variants[0].clientFeedbackStatus as FeedbackStatus | null;
-  if (!first) return null;
-  return variants.every((v) => v.clientFeedbackStatus === first) ? first : null;
-}
-
-function combinedFeedbackText(group: ScriptGroup): string | null {
-  // Use the first non-empty feedback text (usually they're identical).
-  const variants = [group.kurz, group.lang, group.single].filter(Boolean) as Script[];
-  for (const v of variants) {
-    if (v.clientFeedbackText) return v.clientFeedbackText;
-  }
-  return null;
-}
-
 export default function PortalScripts() {
   const { t } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
@@ -111,7 +60,7 @@ export default function PortalScripts() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [feedbackDialog, setFeedbackDialog] = useState<{ group: ScriptGroup; status: FeedbackStatus } | null>(null);
+  const [feedbackDialog, setFeedbackDialog] = useState<{ scriptId: string; status: FeedbackStatus } | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSaving, setFeedbackSaving] = useState(false);
 
@@ -175,29 +124,17 @@ export default function PortalScripts() {
     return true;
   };
 
-  // Apply feedback to all variants of a group at once. Both Kurz and Lang share
-  // the same client decision — splitting them would force the user to react twice.
-  const applyFeedbackToGroup = async (group: ScriptGroup, status: FeedbackStatus | null, text?: string) => {
-    const ids = [group.kurz?.id, group.lang?.id, group.single?.id].filter(Boolean) as string[];
-    let allOk = true;
-    for (const id of ids) {
-      const ok = await applyFeedback(id, status, text);
-      if (!ok) allOk = false;
-    }
-    return allOk;
+  const approveScript = (script: Script) => {
+    if (script.clientFeedbackStatus === "approved") return applyFeedback(script.id, null);
+    return applyFeedback(script.id, "approved");
   };
-
-  const approve = (group: ScriptGroup) => {
-    if (combinedFeedback(group) === "approved") return applyFeedbackToGroup(group, null);
-    return applyFeedbackToGroup(group, "approved");
+  const openRejectScript = (script: Script) => {
+    setFeedbackText(script.clientFeedbackStatus === "rejected" ? script.clientFeedbackText || "" : "");
+    setFeedbackDialog({ scriptId: script.id, status: "rejected" });
   };
-  const openReject = (group: ScriptGroup) => {
-    setFeedbackText(combinedFeedback(group) === "rejected" ? combinedFeedbackText(group) || "" : "");
-    setFeedbackDialog({ group, status: "rejected" });
-  };
-  const openRevision = (group: ScriptGroup) => {
-    setFeedbackText(combinedFeedback(group) === "revision_requested" ? combinedFeedbackText(group) || "" : "");
-    setFeedbackDialog({ group, status: "revision_requested" });
+  const openRevisionScript = (script: Script) => {
+    setFeedbackText(script.clientFeedbackStatus === "revision_requested" ? script.clientFeedbackText || "" : "");
+    setFeedbackDialog({ scriptId: script.id, status: "revision_requested" });
   };
 
   const submitFeedback = async () => {
@@ -205,7 +142,7 @@ export default function PortalScripts() {
     const text = feedbackText.trim();
     if (!text) return;
     setFeedbackSaving(true);
-    const ok = await applyFeedbackToGroup(feedbackDialog.group, feedbackDialog.status, text);
+    const ok = await applyFeedback(feedbackDialog.scriptId, feedbackDialog.status, text);
     setFeedbackSaving(false);
     if (ok) {
       setFeedbackDialog(null);
@@ -298,7 +235,6 @@ export default function PortalScripts() {
   };
 
   const sortedIdeas = [...ideas].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  const grouped = groupScripts(scripts);
   const items = tab === "scripts" ? scripts : ideas;
   const isEmpty = items.length === 0;
 
@@ -306,7 +242,7 @@ export default function PortalScripts() {
     <PortalShell
       icon={FileText}
       title={t("portal.dash.scripts")}
-      subtitle={tab === "scripts" ? t("portal.scripts.countScripts", { count: grouped.length }) : t("portal.scripts.countIdeas", { count: ideas.length })}
+      subtitle={tab === "scripts" ? t("portal.scripts.countScripts", { count: scripts.length }) : t("portal.scripts.countIdeas", { count: ideas.length })}
       loading={authLoading || loading}
       isEmpty={isEmpty && tab === "scripts"}
       emptyMessage={t("portal.scripts.empty")}
@@ -340,54 +276,55 @@ export default function PortalScripts() {
       }
     >
       {tab === "scripts" ? (
-        grouped.length > 0 ? (
+        scripts.length > 0 ? (
           <div className="rounded-xl border border-ocean/[0.06] overflow-hidden bg-white/50">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-ocean/[0.08] bg-ocean/[0.02]">
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[220px]">Titel</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Short</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Long</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[260px]">Titel</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[140px]">Mein Feedback</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[110px]">Datum</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ocean/[0.05]">
-                {grouped.map((g) => {
-                  const primary = g.single || g.lang || g.kurz;
-                  if (!primary) return null;
-                  const fb = combinedFeedback(g);
-                  const fbText = combinedFeedbackText(g);
-                  const dateStr = primary.createdAt
-                    ? new Date(primary.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                {scripts.map((script) => {
+                  const fb = (script.clientFeedbackStatus as FeedbackStatus | null) || null;
+                  const fbText = script.clientFeedbackText || "";
+                  const dateStr = script.createdAt
+                    ? new Date(script.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
                     : "—";
-                  const isExpanded = expandedId === g.base;
+                  const isExpanded = expandedId === script.id;
 
                   return (
-                    <Fragment key={g.base}>
+                    <Fragment key={script.id}>
                       <tr
-                        onClick={() => setExpandedId(isExpanded ? null : g.base)}
+                        onClick={() => setExpandedId(isExpanded ? null : script.id)}
                         className="hover:bg-ocean/[0.01] transition-colors cursor-pointer"
                       >
                         <td className="px-4 py-4 align-top">
                           <div className="space-y-1.5">
-                            <p className="text-sm font-medium text-ocean/90 leading-snug break-words">{g.base || primary.title || t("portal.scripts.untitled")}</p>
+                            <p className="text-sm font-medium text-ocean/90 leading-snug break-words">{script.title || t("portal.scripts.untitled")}</p>
                             <div className="flex flex-wrap items-center gap-1.5">
-                              {primary.pillar && (
-                                <span className="text-[9px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5 font-medium">{primary.pillar}</span>
+                              {script.pillar && (
+                                <span className="text-[9px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5 font-medium">{script.pillar}</span>
                               )}
-                              {primary.format && (
-                                <span className="text-[9px] text-ocean/50 rounded bg-ocean/[0.04] border border-ocean/[0.06] px-1.5 py-0.5">{primary.format}</span>
+                              {script.format && (
+                                <span className="text-[9px] text-ocean/50 rounded bg-ocean/[0.04] border border-ocean/[0.06] px-1.5 py-0.5">{script.format}</span>
                               )}
                             </div>
-                            {fb && (
-                              <div className="pt-0.5">
-                                <FeedbackBadge status={fb} />
-                              </div>
-                            )}
                           </div>
                         </td>
-                        <PortalScriptCell script={g.kurz || g.single} copiedId={copiedId} onCopy={copyScript} onEdit={openScriptEdit} />
-                        <PortalScriptCell script={g.lang} copiedId={copiedId} onCopy={copyScript} onEdit={openScriptEdit} />
+                        <PortalScriptCell script={script} copiedId={copiedId} onCopy={copyScript} onEdit={openScriptEdit} />
+                        <td className="px-4 py-4 align-top">
+                          <FeedbackPicker
+                            status={fb}
+                            onApprove={() => approveScript(script)}
+                            onReject={() => openRejectScript(script)}
+                            onRevise={() => openRevisionScript(script)}
+                            onClear={() => applyFeedback(script.id, null)}
+                          />
+                        </td>
                         <td className="px-4 py-4 align-top">
                           <span className="text-xs text-ocean/45 whitespace-nowrap">{dateStr}</span>
                         </td>
@@ -401,29 +338,7 @@ export default function PortalScripts() {
                                 <p className="text-xs text-ocean/75 leading-relaxed whitespace-pre-wrap break-words">{fbText}</p>
                               </div>
                             )}
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <FeedbackButton
-                                active={fb === "approved"}
-                                onClick={() => approve(g)}
-                                icon={ThumbsUp}
-                                label={fb === "approved" ? "Gefällt mir ✓" : "Gefällt mir"}
-                                tone="approve"
-                              />
-                              <FeedbackButton
-                                active={fb === "rejected"}
-                                onClick={() => openReject(g)}
-                                icon={ThumbsDown}
-                                label={fb === "rejected" ? "Abgelehnt ✓" : "Gefällt mir nicht"}
-                                tone="reject"
-                              />
-                              <FeedbackButton
-                                active={fb === "revision_requested"}
-                                onClick={() => openRevision(g)}
-                                icon={RotateCcw}
-                                label={fb === "revision_requested" ? "Überarbeitung ✓" : "Verbesserungsvorschlag"}
-                                tone="revise"
-                              />
-                            </div>
+                            <ScriptDetailFields script={script} />
                           </td>
                         </tr>
                       )}
@@ -683,6 +598,86 @@ function FeedbackBadge({ status }: { status: FeedbackStatus }) {
   return <span className={`text-[10px] ${cls} border px-2 py-0.5 rounded-md font-medium`}>{label}</span>;
 }
 
+// Inline feedback picker for the table column. Replaces the row of buttons
+// in the expanded section — keeps everything in one click without scrolling
+// and lets the client see + change feedback without expanding.
+function FeedbackPicker({
+  status,
+  onApprove,
+  onReject,
+  onRevise,
+  onClear,
+}: {
+  status: FeedbackStatus | null;
+  onApprove: () => void;
+  onReject: () => void;
+  onRevise: () => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  // Stop the row's onClick (which toggles expanded) from firing.
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+  return (
+    <div className="relative inline-block" ref={ref} onClick={stop}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="cursor-pointer"
+      >
+        {status ? <FeedbackBadge status={status} /> : <span className="text-xs text-ocean/40 hover:text-ocean transition-colors">— offen ▾</span>}
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-1 left-0 min-w-[210px] rounded-lg border border-ocean/[0.08] bg-white shadow-[0_8px_24px_rgba(32,35,69,0.10)] py-1">
+          <button
+            onClick={() => { setOpen(false); onApprove(); }}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-green-50 hover:text-green-700 transition-colors flex items-center gap-2"
+          >
+            <ThumbsUp className="h-3.5 w-3.5 text-green-600" />
+            <span className="font-medium">Gefällt mir</span>
+          </button>
+          <button
+            onClick={() => { setOpen(false); onReject(); }}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-2"
+          >
+            <ThumbsDown className="h-3.5 w-3.5 text-red-500" />
+            <span className="font-medium">Gefällt mir nicht</span>
+          </button>
+          <button
+            onClick={() => { setOpen(false); onRevise(); }}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 hover:text-amber-700 transition-colors flex items-center gap-2"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-amber-600" />
+            <span className="font-medium">Verbesserungsvorschlag</span>
+          </button>
+          {status && (
+            <>
+              <div className="border-t border-ocean/[0.06] my-1" />
+              <button
+                onClick={() => { setOpen(false); onClear(); }}
+                className="w-full text-left px-3 py-2 text-[10px] text-ocean/50 hover:bg-ocean/[0.03] hover:text-ocean transition-colors"
+              >
+                Feedback zurücknehmen
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function FeedbackButton({
   active, onClick, icon: Icon, label, tone,
 }: {
@@ -712,6 +707,35 @@ function FeedbackButton({
     </button>
   );
 }
+
+// Per-script production details: hook variants, b-roll, shot list, caption.
+// Renders only the fields that have content — no empty rows.
+function ScriptDetailFields({ script }: { script?: Script }) {
+  if (!script) return null;
+
+  const items: Array<{ label: string; text: string }> = [];
+  if (script.format) items.push({ label: "Format", text: script.format });
+  if (script.textHook) items.push({ label: "Text-Hook (On-Screen)", text: script.textHook });
+  if (script.visualHook) items.push({ label: "Visual-Hook", text: script.visualHook });
+  if (script.hook) items.push({ label: "Audio-Hook (gesprochen)", text: script.hook });
+  if (script.bRoll) items.push({ label: "B-Roll", text: script.bRoll });
+  if (script.shotList) items.push({ label: "Shot-List / Filmanweisungen", text: script.shotList });
+  if (script.caption) items.push({ label: "Videobeschreibung (Caption)", text: script.caption });
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-ocean/[0.06] bg-white/60 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      {items.map((it) => (
+        <div key={it.label}>
+          <p className="text-[10px] uppercase tracking-wider text-ocean/40 mb-1.5 font-medium">{it.label}</p>
+          <p className="text-sm text-ocean leading-relaxed whitespace-pre-wrap break-words">{it.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 function ScriptSection({ label, text }: { label: string; text: string }) {
   return (

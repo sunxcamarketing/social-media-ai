@@ -96,6 +96,9 @@ export interface Config {
   inspirationReels?: string; // Newline-separated Reel URLs the client considers well-edited
   inspirationProfiles?: string; // Newline-separated profile URLs / @handles the client admires
   isOwner?: boolean; // True for Aysun's own brands (vs. external clients)
+  // ClickUp integration: list id of the client's editor list. The agency-wide
+  // API token lives in env (CLICKUP_API_TOKEN) — one token, all clients.
+  clickupListId?: string;
   // Billing address (for invoice generation, B2B reverse-charge support)
   billingName?: string;
   billingCompany?: string;
@@ -158,11 +161,14 @@ export interface Script {
   pillar: string;
   contentType: string;
   format: string;
-  hook: string;
+  hook: string;            // audio hook (spoken first words)
   hookPattern: string;
-  textHook: string;
+  textHook: string;        // on-screen text overlay in first seconds
+  visualHook: string;      // what's visually shown in first 3 seconds (scene/cut)
   body: string;
   cta: string;
+  bRoll: string;           // list of B-roll shots to film (newline-separated)
+  caption: string;         // Instagram caption / video description with hashtags
   status: string;
   source: string;
   shotList: string;
@@ -181,6 +187,9 @@ export interface Script {
   releasedAt?: string | null;
   // Set whenever the client edits the script in the portal
   clientEditedAt?: string | null;
+  // ClickUp integration: task id of the editor card once auto-created.
+  // Used for idempotent updates on re-trigger.
+  clickupCardId?: string | null;
   createdAt: string;
 }
 

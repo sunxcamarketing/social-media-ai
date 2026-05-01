@@ -7,6 +7,8 @@ interface CurrentUser {
   email: string;
   role: "admin" | "client";
   clientId: string | null;
+  firstName: string | null;
+  lastName: string | null;
   impersonating: { clientId: string; clientName: string } | null;
 }
 

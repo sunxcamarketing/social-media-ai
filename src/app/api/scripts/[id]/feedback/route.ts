@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
+import { syncScriptToClickUp } from "@/lib/clickup-sync";
 
 const STATUSES = ["approved", "rejected", "revision_requested"] as const;
 type FeedbackStatus = (typeof STATUSES)[number];
@@ -30,7 +31,6 @@ export async function PATCH(
     return NextResponse.json({ error: "text is required for rejected / revision_requested" }, { status: 400 });
   }
 
-  // Scope check: clients can only feedback their own scripts.
   const { data: existing, error: readErr } = await supabase
     .from("scripts")
     .select("id, client_id")
@@ -46,20 +46,38 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const patch = clearing
+  // Auto-status flip: any client feedback bumps the script to "review" so
+  // the admin sees it in the queue. Clearing feedback resets to "bereit"
+  // (the released-but-not-reviewed default).
+  const patch: Record<string, unknown> = clearing
     ? {
         client_feedback_status: null,
         client_feedback_text: null,
         client_feedback_at: null,
+        status: "bereit",
       }
     : {
         client_feedback_status: status,
         client_feedback_text: text || null,
         client_feedback_at: new Date().toISOString(),
+        status: "review",
       };
 
   const { error: updErr } = await supabase.from("scripts").update(patch).eq("id", id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+
+  // Fire-and-forget ClickUp sync on client approval. Idempotent via
+  // clickup_card_id — re-approving updates the same card.
+  if (status === "approved") {
+    void syncScriptToClickUp(id).then((result) => {
+      const tag = `[clickup-sync] script ${id.slice(0, 8)}`;
+      if (result.ok) {
+        console.log(`${tag} → task ${result.taskId} (${result.created ? "created" : "updated"})`);
+      } else {
+        console.error(`${tag} failed (${result.reason}): ${result.message}`);
+      }
+    });
+  }
 
   return NextResponse.json({ ok: true, ...patch });
 }

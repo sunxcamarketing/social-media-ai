@@ -4,22 +4,13 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+// Admin lands on the agency-wide overview at /admin. The middleware
+// already routes clients to /portal, so this only ever runs for admin.
 export default function RootLanding() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/configs")
-      .then((r) => r.json())
-      .then((clients) => {
-        if (Array.isArray(clients) && clients.length > 0) {
-          const owner = clients.find((c) => c?.isOwner === true);
-          const target = owner ?? clients[0];
-          router.replace(`/clients/${target.id}/dashboard`);
-        } else {
-          router.replace("/admin");
-        }
-      })
-      .catch(() => router.replace("/admin"));
+    router.replace("/admin");
   }, [router]);
 
   return (

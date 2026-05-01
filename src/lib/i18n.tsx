@@ -616,6 +616,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "sidebar.training": { de: "Training", en: "Training" },
   "sidebar.transcribe": { de: "Transkribieren", en: "Transcribe" },
   "sidebar.costs": { de: "Kosten", en: "Costs" },
+  "sidebar.team": { de: "Team", en: "Team" },
   "sidebar.stories": { de: "Stories", en: "Stories" },
 
   // ── Command Palette ──────────────────────────────────────────────────────
@@ -800,6 +801,14 @@ const translations: Record<string, { de: string; en: string }> = {
   "voice.applied": { de: "Übernommen", en: "Applied" },
   "voice.applyError": { de: "Fehler beim Speichern", en: "Save failed" },
   "voice.backgroundProcessing": { de: "Wird im Hintergrund analysiert — Profil-Vorschläge erscheinen gleich. Du kannst das Fenster auch schließen, die Daten sind gespeichert.", en: "Analyzing in the background — profile suggestions will appear shortly. You can close this window; your data is saved." },
+  "voice.feedbackTitle": { de: "Wie war das Gespräch?", en: "How was the conversation?" },
+  "voice.feedbackHint": { de: "Eine kurze Bewertung hilft uns, den Agent besser zu machen. Optional — kannst du auch überspringen.", en: "A quick rating helps us improve the agent. Optional — feel free to skip." },
+  "voice.feedbackStarLabel": { de: "{{n}} Sterne", en: "{{n}} stars" },
+  "voice.feedbackCommentPlaceholder": { de: "Was hat gut funktioniert? Was könnte besser werden? (optional)", en: "What worked well? What could be better? (optional)" },
+  "voice.feedbackSubmit": { de: "Feedback senden", en: "Send feedback" },
+  "voice.feedbackSending": { de: "Wird gesendet...", en: "Sending..." },
+  "voice.feedbackThanks": { de: "Danke für dein Feedback.", en: "Thanks for your feedback." },
+  "voice.feedbackError": { de: "Konnte nicht gesendet werden", en: "Could not send" },
 
   // Client Dashboard (portal + admin)
   "dash.hi": { de: "Hi {{name}} 👋", en: "Hi {{name}} 👋" },

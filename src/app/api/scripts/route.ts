@@ -81,8 +81,11 @@ export async function PUT(request: Request) {
   if (rest.hook !== undefined) patch.hook = rest.hook;
   if (rest.hookPattern !== undefined) patch.hook_pattern = rest.hookPattern;
   if (rest.textHook !== undefined) patch.text_hook = rest.textHook;
+  if (rest.visualHook !== undefined) patch.visual_hook = rest.visualHook;
   if (rest.body !== undefined) patch.body = rest.body;
   if (rest.cta !== undefined) patch.cta = rest.cta;
+  if (rest.bRoll !== undefined) patch.b_roll = rest.bRoll;
+  if (rest.caption !== undefined) patch.caption = rest.caption;
   if (rest.status !== undefined) patch.status = rest.status;
   if (rest.source !== undefined) patch.source = rest.source;
   if (rest.shotList !== undefined) patch.shot_list = rest.shotList;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,11 @@ import {
   Plus,
   Send,
   EyeOff,
+  ThumbsUp,
+  ThumbsDown,
+  Wrench,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 import { useClientData } from "@/context/client-data-context";
@@ -39,37 +44,6 @@ const DAY_SHORT: Record<string, string> = {
   Mon: "Mo", Tue: "Di", Wed: "Mi", Thu: "Do", Fri: "Fr", Sat: "Sa", Sun: "So",
 };
 
-function baseTitle(title: string): string {
-  return title.replace(/\s*(?:\(Kurz\)|\(Lang\)|—\s*Kurz|—\s*Lang)\s*$/, "").trim();
-}
-
-function scriptVariant(title: string): "kurz" | "lang" | null {
-  if (/(?:\(Kurz\)|—\s*Kurz)\s*$/.test(title)) return "kurz";
-  if (/(?:\(Lang\)|—\s*Lang)\s*$/.test(title)) return "lang";
-  return null;
-}
-
-type ScriptGroup = {
-  base: string;
-  kurz?: Script;
-  lang?: Script;
-  single?: Script; // no variant suffix
-};
-
-function groupScripts(scripts: Script[]): ScriptGroup[] {
-  const map = new Map<string, ScriptGroup>();
-  for (const s of scripts) {
-    const variant = scriptVariant(s.title);
-    const base = baseTitle(s.title);
-    if (!map.has(base)) map.set(base, { base });
-    const group = map.get(base)!;
-    if (variant === "kurz") group.kurz = s;
-    else if (variant === "lang") group.lang = s;
-    else group.single = s;
-  }
-  return Array.from(map.values());
-}
-
 function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -77,11 +51,189 @@ function wordCount(text: string): number {
 const STATUS_OPTIONS = [
   { value: "entwurf", label: "Entwurf", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
   { value: "bereit", label: "Bereit", color: "bg-green-50 text-green-600 border-green-200" },
-  { value: "veröffentlicht", label: "Veröffentlicht", color: "bg-blush/20 text-blush-dark border-blush/40" },
+  { value: "review", label: "Review", color: "bg-amber-50 text-amber-700 border-amber-200" },
 ];
 
 function statusColor(s: string) {
   return STATUS_OPTIONS.find(o => o.value === s)?.color || "bg-ocean/[0.02] text-ocean/70 border-ocean/[0.06]";
+}
+
+
+// ── Status Picker (dropdown — also gates client portal visibility) ─────────
+
+function StatusPicker({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const current = STATUS_OPTIONS.find((o) => o.value === value);
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        className="inline-flex items-center gap-1 cursor-pointer"
+      >
+        <Badge className={`rounded-md text-[10px] border ${statusColor(value)} hover:opacity-80 transition-opacity`}>
+          {current?.label || value}
+        </Badge>
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 left-0 min-w-[180px] rounded-lg border border-ocean/[0.08] bg-white shadow-[0_8px_24px_rgba(32,35,69,0.10)] py-1">
+          {STATUS_OPTIONS.map((opt) => {
+            const isClientVisible = opt.value === "bereit" || opt.value === "review";
+            const dotColor =
+              opt.value === "entwurf" ? "bg-slate-400"
+              : opt.value === "bereit" ? "bg-green-500"
+              : opt.value === "review" ? "bg-amber-500"
+              : "bg-ocean/40";
+            return (
+              <button
+                key={opt.value}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-xs hover:bg-ocean/[0.03] transition-colors flex items-center justify-between gap-3 ${value === opt.value ? "bg-ocean/[0.02]" : ""}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block h-2 w-2 rounded-full ${dotColor}`} />
+                  <span className="text-ocean font-medium">{opt.label}</span>
+                </div>
+                <span className={`text-[9px] ${isClientVisible ? "text-green-600" : "text-ocean/40"}`}>
+                  {isClientVisible ? "→ Kunde sieht es" : "intern"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Feedback Badge (aggregates client feedback across kurz+lang variants) ───
+
+function FeedbackBadge({ variants }: { variants: Script[] }) {
+  if (variants.length === 0) return <span className="text-xs text-ocean/30">—</span>;
+
+  const statuses = variants.map(v => v.clientFeedbackStatus).filter(Boolean);
+  // No feedback at all
+  if (statuses.length === 0) return <span className="text-xs text-ocean/30">— offen</span>;
+
+  // Mixed: variants disagree
+  const allSame = statuses.every(s => s === statuses[0]);
+  if (!allSame) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700" title="Unterschiedliches Feedback bei kurz/lang">
+        <span>≈ gemischt</span>
+      </span>
+    );
+  }
+
+  const status = statuses[0];
+  const fbText = variants.find(v => v.clientFeedbackText)?.clientFeedbackText;
+
+  if (status === "approved") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+        <ThumbsUp className="h-3 w-3" />
+        Mag ich
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700" title={fbText || ""}>
+        <ThumbsDown className="h-3 w-3" />
+        Mag ich nicht
+      </span>
+    );
+  }
+  if (status === "revision_requested") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] font-medium text-orange-700" title={fbText || ""}>
+        <Wrench className="h-3 w-3" />
+        Verbessern
+      </span>
+    );
+  }
+  return <span className="text-xs text-ocean/30">—</span>;
+}
+
+
+// ── Send-to-ClickUp button (manual admin trigger) ───────────────────────────
+
+function SendToClickUpButton({
+  script,
+  onSynced,
+}: {
+  script: Script;
+  onSynced: (taskId: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isSent = !!script.clickupCardId;
+
+  const handleClick = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/scripts/${script.id}/send-to-clickup`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        const msg = data.message || data.error || "Sync fehlgeschlagen";
+        setError(msg);
+        setTimeout(() => setError(null), 4000);
+        return;
+      }
+      onSynced(data.taskId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Sync fehlgeschlagen";
+      setError(msg);
+      setTimeout(() => setError(null), 4000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const title = error
+    ? `Fehler: ${error}`
+    : isSent
+    ? "Card in ClickUp aktualisieren"
+    : "An Editor senden (ClickUp)";
+
+  const colorClass = error
+    ? "text-red-600 bg-red-50"
+    : isSent
+    ? "text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+    : "text-ocean/40 hover:text-purple-600 hover:bg-purple-50";
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={busy}
+      title={title}
+      className={`h-7 w-7 flex items-center justify-center rounded-lg transition-colors ${colorClass}`}
+    >
+      {busy ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : isSent ? (
+        <ExternalLink className="h-3 w-3" />
+      ) : (
+        <span className="text-[10px] font-bold">CU</span>
+      )}
+    </button>
+  );
 }
 
 
@@ -168,6 +320,7 @@ function ScriptCell({ script }: { script?: Script }) {
 const emptyForm = {
   title: "", pillar: "", contentType: "", format: "",
   hook: "", body: "", cta: "", status: "entwurf", fullScript: "",
+  textHook: "", visualHook: "", bRoll: "", shotList: "", caption: "",
 };
 
 type ScriptTab = "scripts" | "ideas";
@@ -220,6 +373,11 @@ export default function ClientScriptsPage() {
     setForm({
       title: script.title, pillar: script.pillar, contentType: script.contentType,
       format: script.format, hook: "", body: "", cta: "", status: script.status, fullScript,
+      textHook: script.textHook || "",
+      visualHook: script.visualHook || "",
+      bRoll: script.bRoll || "",
+      shotList: script.shotList || "",
+      caption: script.caption || "",
     });
     setDialogOpen(true);
   };
@@ -235,6 +393,11 @@ export default function ClientScriptsPage() {
       title: form.title, pillar: form.pillar, contentType: form.contentType,
       format: form.format, status: form.status,
       hook: "", body: form.fullScript, cta: "",
+      textHook: form.textHook,
+      visualHook: form.visualHook,
+      bRoll: form.bRoll,
+      shotList: form.shotList,
+      caption: form.caption,
     };
     if (editing) {
       await fetch("/api/scripts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editing.id, ...payload }) });
@@ -263,13 +426,35 @@ export default function ClientScriptsPage() {
     await deleteScriptIds(Array.from(selectedIds));
   };
 
-  const handleStatusChange = async (scriptId: string, newStatus: string) => {
-    await fetch("/api/scripts", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: scriptId, status: newStatus }),
-    });
-    loadScripts();
+  // Status change. Coupled with the release flag: setting status to "bereit"
+  // or "review" makes the script visible in the client portal; "entwurf"
+  // hides it again. ("review" appears automatically when the client leaves
+  // feedback — see /api/scripts/[id]/feedback.)
+  const handleStatusChange = async (groupIds: string[], newStatus: string) => {
+    const shouldRelease = newStatus === "bereit" || newStatus === "review";
+    const ts = shouldRelease ? new Date().toISOString() : null;
+    // Optimistic update for both fields.
+    setScripts((prev) =>
+      prev.map((s) =>
+        groupIds.includes(s.id) ? { ...s, status: newStatus, releasedAt: ts } : s,
+      ),
+    );
+    await Promise.all(
+      groupIds.map((id) =>
+        Promise.all([
+          fetch("/api/scripts", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status: newStatus }),
+          }),
+          fetch(`/api/scripts/${id}/release`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ released: shouldRelease }),
+          }),
+        ]),
+      ),
+    );
   };
 
   // Toggle whether a script (or a Kurz/Lang group) is released to the client portal.
@@ -301,7 +486,6 @@ export default function ClientScriptsPage() {
   };
 
   const filtered = useMemo(() => filterStatus === "all" ? scripts : scripts.filter(s => s.status === filterStatus), [scripts, filterStatus]);
-  const grouped = useMemo(() => groupScripts(filtered), [filtered]);
   const allScriptIds = useMemo(() => filtered.map(s => s.id), [filtered]);
   const allSelected = allScriptIds.length > 0 && allScriptIds.every(id => selectedIds.has(id));
 
@@ -347,7 +531,7 @@ export default function ClientScriptsPage() {
                 {s.label}
               </button>
             ))}
-            <span className="ml-1 text-[11px] text-ocean/50">{grouped.length} Skripte</span>
+            <span className="ml-1 text-[11px] text-ocean/50">{filtered.length} Skripte</span>
           </div>
           <div className="flex items-center gap-2">
             {selectedIds.size > 0 && (
@@ -363,7 +547,7 @@ export default function ClientScriptsPage() {
           </div>
         </div>
 
-        {grouped.length > 0 ? (
+        {filtered.length > 0 ? (
           <div className="rounded-xl border border-ocean/[0.06] overflow-hidden bg-white/50">
             <table className="w-full">
               <thead>
@@ -376,90 +560,94 @@ export default function ClientScriptsPage() {
                       className="h-3.5 w-3.5 rounded border-ocean/20 text-ocean accent-ocean cursor-pointer"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[200px]">Titel</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Short</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Post Long</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[260px]">Titel</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[120px]">Kunden-Feedback</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[100px]">Status</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[100px]">Datum</th>
                   <th className="px-4 py-3 w-[80px]"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ocean/[0.05]">
-                {grouped.map((g) => {
-                  const primary = g.single || g.lang || g.kurz;
-                  if (!primary) return null;
+                {filtered.map((script) => {
+                  const isSelected = selectedIds.has(script.id);
 
-                  const cycleStatus = () => {
-                    const order = STATUS_OPTIONS.map(o => o.value);
-                    const idx = order.indexOf(primary.status);
-                    const next = order[(idx + 1) % order.length];
-                    handleStatusChange(primary.id, next);
-                  };
-
-                  const groupIds = [g.kurz?.id, g.lang?.id, g.single?.id].filter(Boolean) as string[];
-                  const isGroupSelected = groupIds.some(gid => selectedIds.has(gid));
-
-                  const handleDeleteGroup = async () => {
+                  const handleDeleteRow = async () => {
                     if (!confirm("Skript löschen?")) return;
-                    await deleteScriptIds(groupIds);
+                    await deleteScriptIds([script.id]);
                   };
 
-                  const dateStr = primary.createdAt
-                    ? new Date(primary.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                  const dateStr = script.createdAt
+                    ? new Date(script.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
                     : "—";
 
                   return (
-                    <tr key={g.base} className={`group/row hover:bg-ocean/[0.01] transition-colors ${isGroupSelected ? "bg-blush/[0.04]" : ""}`}>
+                    <tr key={script.id} className={`group/row hover:bg-ocean/[0.01] transition-colors ${isSelected ? "bg-blush/[0.04]" : ""}`}>
                       {/* Checkbox */}
                       <td className="pl-4 pr-1 py-4 align-top">
                         <input
                           type="checkbox"
-                          checked={isGroupSelected}
-                          onChange={() => toggleSelect(groupIds)}
+                          checked={isSelected}
+                          onChange={() => toggleSelect([script.id])}
                           className="h-3.5 w-3.5 rounded border-ocean/20 text-ocean accent-ocean cursor-pointer"
                         />
                       </td>
                       {/* Title + meta */}
                       <td className="px-4 py-4 align-top">
                         <div className="space-y-1.5">
-                          <p className="text-sm font-medium text-ocean/90 leading-snug">{g.base || primary.title || "Ohne Titel"}</p>
+                          <p className="text-sm font-medium text-ocean/90 leading-snug">{script.title || "Ohne Titel"}</p>
                           <div className="flex flex-wrap items-center gap-1.5">
-                            {primary.releasedAt ? (
+                            {script.releasedAt ? (
                               <span className="text-[9px] text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 font-medium">Freigegeben</span>
                             ) : (
                               <span className="text-[9px] text-ocean/55 bg-ocean/[0.04] border border-ocean/[0.08] rounded px-1.5 py-0.5 font-medium">Entwurf (intern)</span>
                             )}
-                            {(g.kurz?.clientEditedAt || g.lang?.clientEditedAt || g.single?.clientEditedAt) && (
+                            {script.clientEditedAt && (
                               <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 font-medium" title="Kunde hat das Skript im Portal bearbeitet">
                                 ✏️ Vom Kunden bearbeitet
                               </span>
                             )}
-                            {primary.source === "viral-script" && (
+                            {script.clickupCardId && (
+                              <a
+                                href={`https://app.clickup.com/t/${script.clickupCardId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded px-1.5 py-0.5 font-medium"
+                                title="Card in ClickUp öffnen"
+                              >
+                                📋 In ClickUp
+                              </a>
+                            )}
+                            {script.source === "viral-script" && (
                               <span className="text-[9px] text-purple-600 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.5 font-medium">Viral Script</span>
                             )}
-                            {primary.pillar && (
-                              <span className="text-[9px] text-blush-dark/60 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5">{primary.pillar}</span>
+                            {script.pillar && (
+                              <span className="text-[9px] text-blush-dark/60 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5">{script.pillar}</span>
                             )}
-                            {primary.contentType && (
-                              <span className="text-[9px] text-ocean/45">{primary.contentType}</span>
+                            {script.format && (
+                              <span className="text-[9px] text-ocean/50 rounded bg-ocean/[0.04] border border-ocean/[0.06] px-1.5 py-0.5">{script.format}</span>
+                            )}
+                            {script.contentType && (
+                              <span className="text-[9px] text-ocean/45">{script.contentType}</span>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Post Short */}
-                      <ScriptCell script={g.kurz || (g.single ? g.single : undefined)} />
+                      {/* Skript-Inhalt */}
+                      <ScriptCell script={script} />
 
-                      {/* Post Long */}
-                      <ScriptCell script={g.lang} />
+                      {/* Client feedback */}
+                      <td className="px-4 py-4 align-top">
+                        <FeedbackBadge variants={[script]} />
+                      </td>
 
                       {/* Status */}
                       <td className="px-4 py-4 align-top">
-                        <button onClick={cycleStatus} className="cursor-pointer">
-                          <Badge className={`rounded-md text-[10px] border ${statusColor(primary.status)} hover:opacity-80 transition-opacity`}>
-                            {STATUS_OPTIONS.find(o => o.value === primary.status)?.label || primary.status}
-                          </Badge>
-                        </button>
+                        <StatusPicker
+                          value={script.status}
+                          onChange={(next) => handleStatusChange([script.id], next)}
+                        />
                       </td>
 
                       {/* Date */}
@@ -470,25 +658,33 @@ export default function ClientScriptsPage() {
                       {/* Actions */}
                       <td className="px-4 py-4 align-top">
                         <div className="flex gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                          {primary.releasedAt ? (
+                          {script.releasedAt ? (
                             <button
-                              onClick={() => toggleRelease(groupIds, false)}
+                              onClick={() => toggleRelease([script.id], false)}
                               title="Freigabe zurückziehen"
                               className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-amber-600 hover:bg-amber-50 transition-colors">
                               <EyeOff className="h-3 w-3" />
                             </button>
                           ) : (
                             <button
-                              onClick={() => toggleRelease(groupIds, true)}
+                              onClick={() => toggleRelease([script.id], true)}
                               title="Für Kunden freigeben"
                               className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-green-600 hover:bg-green-50 transition-colors">
                               <Send className="h-3 w-3" />
                             </button>
                           )}
-                          <button onClick={() => openEdit(primary)} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-ocean/5 transition-colors">
+                          <SendToClickUpButton
+                            script={script}
+                            onSynced={(taskId) =>
+                              setScripts((prev) =>
+                                prev.map((s) => (s.id === script.id ? { ...s, clickupCardId: taskId } : s)),
+                              )
+                            }
+                          />
+                          <button onClick={() => openEdit(script)} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-ocean/5 transition-colors">
                             <Pencil className="h-3 w-3" />
                           </button>
-                          <button onClick={handleDeleteGroup} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors">
+                          <button onClick={handleDeleteRow} className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-red-500 hover:bg-red-50 transition-colors">
                             <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
@@ -542,6 +738,45 @@ export default function ClientScriptsPage() {
               <Textarea value={form.fullScript} onChange={(e) => setForm({ ...form, fullScript: e.target.value })}
                 rows={10} className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
             </div>
+
+            <div className="border-t border-ocean/[0.06] pt-4 space-y-3">
+              <p className="text-[11px] uppercase tracking-wider text-ocean/45 font-medium">Produktion (für Editor)</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-ocean/60">Text-Hook (On-Screen)</Label>
+                  <Input value={form.textHook} onChange={(e) => setForm({ ...form, textHook: e.target.value })}
+                    placeholder='z.B. „94 kg → 65 kg"' className="mt-1.5 rounded-xl border-ocean/[0.06] h-9 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs text-ocean/60">Visual-Hook</Label>
+                  <Input value={form.visualHook} onChange={(e) => setForm({ ...form, visualHook: e.target.value })}
+                    placeholder="z.B. Talking head + Spiegel-Cut" className="mt-1.5 rounded-xl border-ocean/[0.06] h-9 text-sm" />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs text-ocean/60">B-Roll / Aufnahme-Shots</Label>
+                <Textarea value={form.bRoll} onChange={(e) => setForm({ ...form, bRoll: e.target.value })}
+                  rows={3} placeholder="Eine Liste was als B-Roll gefilmt werden soll, eine Zeile pro Shot."
+                  className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
+              </div>
+
+              <div>
+                <Label className="text-xs text-ocean/60">Shot-List / Filmanweisungen</Label>
+                <Textarea value={form.shotList} onChange={(e) => setForm({ ...form, shotList: e.target.value })}
+                  rows={3} placeholder="Sekunden-Regie, Schnitte, Pacing-Hinweise."
+                  className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
+              </div>
+
+              <div>
+                <Label className="text-xs text-ocean/60">Videobeschreibung (Caption)</Label>
+                <Textarea value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })}
+                  rows={4} placeholder="Instagram-Caption mit Hashtags, Emojis, Folge-CTA."
+                  className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 justify-end pt-2">
               <button onClick={() => setDialogOpen(false)} className="text-xs text-ocean/60 hover:text-ocean">Abbrechen</button>
               <Button onClick={handleSave} className="h-9 px-5 rounded-xl bg-ocean hover:bg-ocean-light border-0 text-white text-xs">

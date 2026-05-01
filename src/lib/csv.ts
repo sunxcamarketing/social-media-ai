@@ -56,7 +56,7 @@ function mapVideo(r: Record<string, unknown>): Video {
   };
 }
 
-function mapScript(r: Record<string, unknown>): Script {
+export function mapScript(r: Record<string, unknown>): Script {
   return {
     id: (r.id as string) || "",
     clientId: (r.client_id as string) || "",
@@ -67,8 +67,12 @@ function mapScript(r: Record<string, unknown>): Script {
     hook: (r.hook as string) || "",
     hookPattern: (r.hook_pattern as string) || "",
     textHook: (r.text_hook as string) || "",
+    visualHook: (r.visual_hook as string) || "",
     body: (r.body as string) || "",
     cta: (r.cta as string) || "",
+    bRoll: (r.b_roll as string) || "",
+    caption: (r.caption as string) || "",
+    clickupCardId: (r.clickup_card_id as string) || null,
     status: (r.status as string) || "entwurf",
     source: (r.source as string) || "",
     shotList: (r.shot_list as string) || "",
@@ -118,6 +122,7 @@ const CONFIG_LIGHT_COLUMNS = [
   "voiceOnboarding",
   "language",
   "isOwner",
+  "clickupListId",
 ].join(",");
 
 export async function readConfigs(): Promise<Config[]> {
@@ -404,8 +409,11 @@ export async function writeScripts(scripts: Script[]) {
     hook: s.hook,
     hook_pattern: s.hookPattern || "",
     text_hook: s.textHook || "",
+    visual_hook: s.visualHook || "",
     body: s.body,
     cta: s.cta,
+    b_roll: s.bRoll || "",
+    caption: s.caption || "",
     status: s.status,
     source: s.source || "",
     shot_list: s.shotList || "",
@@ -414,6 +422,7 @@ export async function writeScripts(scripts: Script[]) {
     anchor_ref: s.anchorRef || "",
     cta_type: s.ctaType || "",
     funnel_stage: s.funnelStage || "",
+    clickup_card_id: s.clickupCardId || null,
     created_at: s.createdAt || null,
   }));
   const { error } = await supabase.from("scripts").upsert(rows, { onConflict: "id" });
