@@ -43,6 +43,7 @@ import { VOICE_BLOCK_ORDER } from "@/lib/types";
 import { VoiceAgent } from "@/components/voice-agent";
 import { OnboardingInterviewCard } from "@/components/voice/onboarding-interview-card";
 import { OnboardingInterviewView } from "@/components/voice/onboarding-interview-view";
+import { ProfileCompleteness } from "@/components/clients/profile-completeness";
 import { safeJsonParse } from "@/lib/safe-json";
 import { useGeneration } from "@/context/generation-context";
 import { useClientData } from "@/context/client-data-context";
@@ -167,6 +168,215 @@ function ClientAccessSection({ clientId }: { clientId: string }) {
     </div>
   );
 }
+
+interface FlatClickUpList {
+  id: string;
+  name: string;
+  path: string;
+  spaceName: string;
+  folderName?: string;
+}
+
+function ClickUpSection({ client, onSaved }: { client: Config; onSaved: () => void }) {
+  const [selectedId, setSelectedId] = useState(client.clickupListId || "");
+  const [lists, setLists] = useState<FlatClickUpList[] | null>(null);
+  const [loadingLists, setLoadingLists] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedId(client.clickupListId || "");
+  }, [client.id, client.clickupListId]);
+
+  // Load all available lists from ClickUp once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingLists(true);
+    fetch("/api/clickup/lists")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.ok) {
+          setLists(data.lists as FlatClickUpList[]);
+          setLoadError(null);
+        } else {
+          setLoadError(data.error || "Konnte Listen nicht laden");
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : "Konnte Listen nicht laden");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLists(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const selected = lists?.find((l) => l.id === selectedId);
+  const filtered = (lists || []).filter((l) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return l.path.toLowerCase().includes(q) || l.name.toLowerCase().includes(q);
+  });
+
+  const handleSelect = (list: FlatClickUpList) => {
+    setSelectedId(list.id);
+    setOpen(false);
+    setSearch("");
+  };
+
+  const handleSave = async () => {
+    if (!selectedId) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/configs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: client.id, clickupListId: selectedId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSaveError(data.error || `HTTP ${res.status}`);
+        return;
+      }
+      onSaved();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClear = async () => {
+    if (!confirm("ClickUp-Liste wirklich entfernen?")) return;
+    setSaving(true);
+    try {
+      await fetch("/api/configs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: client.id, clickupListId: "" }),
+      });
+      setSelectedId("");
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isConnected = !!client.clickupListId;
+  const isDirty = selectedId !== (client.clickupListId || "");
+
+  return (
+    <div className="glass rounded-2xl p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold flex items-center gap-2">
+          <span className="h-4 w-4 rounded bg-purple-500/20 text-purple-700 inline-flex items-center justify-center text-[10px] font-bold">C</span>
+          ClickUp-Liste für diesen Kunden
+        </h2>
+        {isConnected && (
+          <span className="text-[10px] text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5 font-medium">Verknüpft</span>
+        )}
+      </div>
+
+      <p className="text-xs text-ocean/60 leading-relaxed">
+        Wenn dieser Kunde ein Skript im Portal mit „Gefällt mir" abhakt, wird automatisch eine Card in der unten verlinkten ClickUp-Liste erstellt — mit dem kompletten Skript als Beschreibung. Editor sieht dort sofort was zu filmen ist.
+      </p>
+
+      <div className="space-y-2 relative">
+        <Label className="text-xs text-ocean/70">Liste auswählen</Label>
+
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          disabled={loadingLists || !!loadError}
+          className="w-full h-10 rounded-xl bg-warm-white border border-ocean/10 px-3 text-sm text-left flex items-center justify-between hover:border-ocean/20 disabled:opacity-60"
+        >
+          <span className={selected ? "text-ocean" : "text-ocean/40"}>
+            {loadingLists
+              ? "Listen werden geladen…"
+              : loadError
+              ? "Fehler beim Laden"
+              : selected
+              ? selected.path
+              : selectedId
+              ? `Unbekannte Liste (${selectedId})`
+              : "Liste wählen…"}
+          </span>
+          <span className="text-ocean/40 text-xs ml-2">▾</span>
+        </button>
+
+        {open && lists && (
+          <div className="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-auto rounded-xl bg-white border border-ocean/15 shadow-lg">
+            <div className="p-2 border-b border-ocean/[0.06] sticky top-0 bg-white">
+              <Input
+                autoFocus
+                placeholder="Suche…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 rounded-lg text-sm"
+              />
+            </div>
+            {filtered.length === 0 ? (
+              <p className="px-3 py-4 text-xs text-ocean/50">Keine Treffer</p>
+            ) : (
+              filtered.map((list) => (
+                <button
+                  key={list.id}
+                  type="button"
+                  onClick={() => handleSelect(list)}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-ocean/5 ${
+                    list.id === selectedId ? "bg-ocean/10 text-ocean" : "text-ocean/80"
+                  }`}
+                >
+                  {list.path}
+                </button>
+              ))
+            )}
+          </div>
+        )}
+
+        {loadError && (
+          <p className="text-[11px] text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            {loadError}. Prüfe ob <code className="font-mono">CLICKUP_API_TOKEN</code> korrekt gesetzt ist.
+          </p>
+        )}
+      </div>
+
+      {saveError && (
+        <p className="text-xs rounded-lg px-3 py-2 text-red-600 bg-red-50">
+          Speichern fehlgeschlagen: {saveError}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <Button
+          onClick={handleSave}
+          disabled={saving || !selectedId || !isDirty}
+          size="sm"
+          className="h-8 rounded-xl bg-ocean hover:bg-ocean-light text-white border-0 px-4 text-xs"
+        >
+          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Speichern"}
+        </Button>
+        {isConnected && (
+          <Button
+            onClick={handleClear}
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 ml-auto"
+          >
+            Verknüpfung entfernen
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -844,6 +1054,18 @@ function ClientInformationContent() {
         </div>
       )}
 
+      {/* Profile Completeness — what's filled, what's still open */}
+      <ProfileCompleteness
+        client={client}
+        lang={lang === "en" ? "en" : "de"}
+        onOpen={{
+          basic: openBasic,
+          brand: openBrand,
+          customer: openCustomer,
+          message: openMessage,
+        }}
+      />
+
       {/* Voice Profile Onboarding Card — only when incomplete */}
       {voiceIncomplete && (
         <div className="rounded-2xl border border-blush/30 bg-gradient-to-br from-blush-light/40 to-white p-5 flex items-center gap-4">
@@ -1021,6 +1243,9 @@ function ClientInformationContent() {
 
       {/* Kundenzugang */}
       <ClientAccessSection clientId={id} />
+
+      {/* ClickUp-Verbindung */}
+      <ClickUpSection client={client} onSaved={() => loadClient().then(setClient)} />
 
       {/* -- REORGANIZE PREVIEW -- */}
       <Dialog open={!!reorgPreview} onOpenChange={(open) => !open && setReorgPreview(null)}>
