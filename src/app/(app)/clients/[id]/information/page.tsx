@@ -37,6 +37,9 @@ import {
   Mic,
   Crown,
   Receipt,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import type { Config, VoiceOnboarding, VoiceBlockId, VoiceProfile } from "@/lib/types";
 import { VOICE_BLOCK_ORDER } from "@/lib/types";
@@ -382,6 +385,8 @@ function ClientInformationContent() {
   const [customerOpen, setCustomerOpen] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [playbookOpen, setPlaybookOpen] = useState(false);
+  const [playbookExpanded, setPlaybookExpanded] = useState<"avatar" | "playbook" | null>(null);
   const [saving, setSaving] = useState(false);
   // When user clicks "Ergänzen" on a specific missing field in ProfileCompleteness,
   // we scroll to + flash that field after the dialog opens.
@@ -389,7 +394,7 @@ function ClientInformationContent() {
 
   useEffect(() => {
     if (!focusField) return;
-    if (!basicOpen && !brandOpen && !customerOpen && !messageOpen && !billingOpen) return;
+    if (!basicOpen && !brandOpen && !customerOpen && !messageOpen && !billingOpen && !playbookOpen) return;
     const timer = setTimeout(() => {
       const el = document.getElementById(focusField);
       if (!el) return;
@@ -404,7 +409,7 @@ function ClientInformationContent() {
       return () => clearTimeout(cleanup);
     }, 120);
     return () => clearTimeout(timer);
-  }, [focusField, basicOpen, brandOpen, customerOpen, messageOpen, billingOpen]);
+  }, [focusField, basicOpen, brandOpen, customerOpen, messageOpen, billingOpen, playbookOpen]);
 
   // Forms
   const [basicForm, setBasicForm] = useState({
@@ -428,6 +433,10 @@ function ClientInformationContent() {
   const [messageForm, setMessageForm] = useState({
     brandingStatement: "",
     humanDifferentiation: "",
+  });
+  const [playbookForm, setPlaybookForm] = useState({
+    avatarDeepDive: "",
+    clientPlaybook: "",
   });
   const [billingForm, setBillingForm] = useState({
     billingName: "",
@@ -661,6 +670,17 @@ function ClientInformationContent() {
     setFocusField(fieldId ?? null);
   };
 
+  const openPlaybook = (fieldId?: string) => {
+    if (!client) return;
+    setPlaybookForm({
+      avatarDeepDive: client.avatarDeepDive || "",
+      clientPlaybook: client.clientPlaybook || "",
+    });
+    setSaveError(null);
+    setPlaybookOpen(true);
+    setFocusField(fieldId ?? null);
+  };
+
   const openBilling = (fieldId?: string) => {
     if (!client) return;
     setBillingForm({
@@ -707,6 +727,7 @@ function ClientInformationContent() {
   const brandEmpty = !client.brandFeeling && !client.brandProblem && !client.dreamCustomer;
   const customerEmpty = !client.customerProblems && !client.providerRole && !client.providerBeliefs && !client.providerStrengths && !client.authenticityZone;
   const messageEmpty = !client.brandingStatement && !client.humanDifferentiation;
+  const playbookEmpty = !client.avatarDeepDive && !client.clientPlaybook;
   const billingEmpty = !client.billingName && !client.billingStreet && !client.billingCity && !client.billingZip && !client.billingCountry && !client.billingCompany && !client.billingVatId && !client.billingEmail;
 
   const dateLocale = lang === "de" ? "de-DE" : "en-US";
@@ -1086,6 +1107,67 @@ function ClientInformationContent() {
             </div>
           )}
           <InfoRow label={t("label.humanDifferentiation")} value={client.humanDifferentiation} />
+        </div>
+      </SectionCard>
+
+      {/* Playbook & Avatar Deep Dive — Admin only, long-form Markdown */}
+      <SectionCard
+        icon={BookOpen}
+        iconColor="text-blush-dark"
+        title={lang === "en" ? "Playbook & Avatar (Admin)" : "Playbook & Avatar (Admin)"}
+        onEdit={() => openPlaybook()}
+        empty={playbookEmpty}
+        editLabel={t("common.edit")}
+        noInfoLabel={lang === "en"
+          ? "No playbook material yet. Paste long-form brand voice, copywriting rules, channel playbooks, avatar deep-dive — anything that doesn't fit into the structured fields above. All agents (Content Agent, Weekly Ideas, Voice Agent) read this."
+          : "Noch kein Playbook-Material. Hier kommt langes Markdown rein: Brand Voice, Copywriting-Regeln, Channel-Playbooks, Avatar Deep Dive — alles was nicht in die strukturierten Felder oben passt. Alle Agents (Content Agent, Weekly Ideas, Voice Agent) lesen das."}
+        addInfoLabel={lang === "en" ? "Add playbook" : "Playbook hinzufügen"}
+      >
+        <div className="space-y-3">
+          {client.avatarDeepDive && (
+            <button
+              onClick={() => setPlaybookExpanded(playbookExpanded === "avatar" ? null : "avatar")}
+              className="w-full text-left flex items-start gap-3 rounded-xl bg-gradient-to-br from-blush/10 to-amber-500/5 border border-blush/20 px-4 py-3 hover:border-blush/40 transition-colors"
+            >
+              {playbookExpanded === "avatar"
+                ? <ChevronDown className="h-4 w-4 text-blush-dark mt-0.5 shrink-0" />
+                : <ChevronRight className="h-4 w-4 text-blush-dark mt-0.5 shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-ocean/70 uppercase tracking-wider mb-1">
+                  {lang === "en" ? "Avatar Deep Dive" : "Avatar Deep Dive"}
+                </p>
+                {playbookExpanded === "avatar" ? (
+                  <pre className="text-xs leading-relaxed whitespace-pre-wrap font-sans text-ocean/85">{client.avatarDeepDive}</pre>
+                ) : (
+                  <p className="text-xs text-ocean/70">
+                    {client.avatarDeepDive.length.toLocaleString(lang === "en" ? "en-US" : "de-DE")} {lang === "en" ? "characters" : "Zeichen"} · {lang === "en" ? "click to expand" : "klicken zum Aufklappen"}
+                  </p>
+                )}
+              </div>
+            </button>
+          )}
+          {client.clientPlaybook && (
+            <button
+              onClick={() => setPlaybookExpanded(playbookExpanded === "playbook" ? null : "playbook")}
+              className="w-full text-left flex items-start gap-3 rounded-xl bg-gradient-to-br from-ocean/5 to-ocean/10 border border-ocean/15 px-4 py-3 hover:border-ocean/30 transition-colors"
+            >
+              {playbookExpanded === "playbook"
+                ? <ChevronDown className="h-4 w-4 text-ocean/70 mt-0.5 shrink-0" />
+                : <ChevronRight className="h-4 w-4 text-ocean/70 mt-0.5 shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-ocean/70 uppercase tracking-wider mb-1">
+                  {lang === "en" ? "Client Playbook" : "Client Playbook"}
+                </p>
+                {playbookExpanded === "playbook" ? (
+                  <pre className="text-xs leading-relaxed whitespace-pre-wrap font-sans text-ocean/85">{client.clientPlaybook}</pre>
+                ) : (
+                  <p className="text-xs text-ocean/70">
+                    {client.clientPlaybook.length.toLocaleString(lang === "en" ? "en-US" : "de-DE")} {lang === "en" ? "characters" : "Zeichen"} · {lang === "en" ? "click to expand" : "klicken zum Aufklappen"}
+                  </p>
+                )}
+              </div>
+            </button>
+          )}
         </div>
       </SectionCard>
 
@@ -1575,6 +1657,79 @@ function ClientInformationContent() {
             </div>
             <Button onClick={async () => { await savePartial(messageForm); setMessageOpen(false); }} disabled={saving}
               className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white">
+              {saving ? t("info.saving") : t("info.save")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Playbook & Avatar Dialog — long-form Markdown editors */}
+      <Dialog open={playbookOpen} onOpenChange={(v) => { if (!v) setPlaybookOpen(false); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] glass-strong rounded-2xl border-ocean/5 overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-blush-dark" />
+              {lang === "en" ? "Playbook & Avatar (Admin)" : "Playbook & Avatar (Admin)"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-5 pt-2 pr-2">
+            <p className="text-[11px] text-ocean/60 leading-relaxed">
+              {lang === "en"
+                ? "Markdown-format. Both fields are loaded into every agent context (Content Agent, Weekly Ideas, Voice Agent, Story Strategist). Keep them long and detailed — context is cheap, ambiguity is expensive."
+                : "Markdown-Format. Beide Felder werden in jeden Agent-Kontext geladen (Content Agent, Weekly Ideas, Voice Agent, Story Strategist). Lang und detailliert halten — Kontext kostet wenig, Mehrdeutigkeit kostet viel."}
+            </p>
+            <div id="field-avatarDeepDive">
+              <Label className="text-xs text-ocean/70">
+                {lang === "en" ? "Avatar Deep Dive" : "Avatar Deep Dive"}
+              </Label>
+              <p className="text-[11px] text-ocean/60 mt-0.5 mb-1.5">
+                {lang === "en"
+                  ? "Detailed customer persona — pain points, beliefs, objections, hooks. Goes beyond the structured Dream Customer JSON."
+                  : "Detaillierte Kundenpersona — Schmerzpunkte, Glaubenssätze, Einwände, Hooks. Geht über das strukturierte Dream Customer JSON hinaus."}
+              </p>
+              <Textarea
+                value={playbookForm.avatarDeepDive}
+                onChange={(e) => setPlaybookForm({ ...playbookForm, avatarDeepDive: e.target.value })}
+                rows={14}
+                className="mt-1.5 rounded-xl glass border-ocean/5 text-xs font-mono leading-relaxed"
+                placeholder={lang === "en"
+                  ? "# Avatar Name\n\n## Demographics\n...\n\n## Pain Points\n...\n\n## Beliefs & Objections\n..."
+                  : "# Avatar Name\n\n## Demografie\n...\n\n## Schmerzpunkte\n...\n\n## Glaubenssätze & Einwände\n..."}
+              />
+              <p className="text-[10px] text-ocean/45 mt-1 text-right">
+                {playbookForm.avatarDeepDive.length.toLocaleString(lang === "en" ? "en-US" : "de-DE")} {lang === "en" ? "chars" : "Zeichen"}
+              </p>
+            </div>
+            <div id="field-clientPlaybook">
+              <Label className="text-xs text-ocean/70">
+                {lang === "en" ? "Client Playbook" : "Client Playbook"}
+              </Label>
+              <p className="text-[11px] text-ocean/60 mt-0.5 mb-1.5">
+                {lang === "en"
+                  ? "Catch-all: brand voice details, copywriting rules, channel playbooks, marketing method, funnels, CI. One long Markdown doc."
+                  : "Catch-All: Brand-Voice-Details, Copywriting-Regeln, Channel-Playbooks, Marketing Method, Funnels, CI. Ein langes Markdown-Dokument."}
+              </p>
+              <Textarea
+                value={playbookForm.clientPlaybook}
+                onChange={(e) => setPlaybookForm({ ...playbookForm, clientPlaybook: e.target.value })}
+                rows={20}
+                className="mt-1.5 rounded-xl glass border-ocean/5 text-xs font-mono leading-relaxed"
+                placeholder={lang === "en"
+                  ? "# Brand Voice\n...\n\n# Copywriting Rules\n...\n\n# Channel Playbook\n...\n\n# Funnels\n..."
+                  : "# Brand Voice\n...\n\n# Copywriting-Regeln\n...\n\n# Channel-Playbook\n...\n\n# Funnels\n..."}
+              />
+              <p className="text-[10px] text-ocean/45 mt-1 text-right">
+                {playbookForm.clientPlaybook.length.toLocaleString(lang === "en" ? "en-US" : "de-DE")} {lang === "en" ? "chars" : "Zeichen"}
+              </p>
+            </div>
+            {saveError && (
+              <p className="text-xs text-red-500">{saveError}</p>
+            )}
+            <Button
+              onClick={async () => { await savePartial(playbookForm); setPlaybookOpen(false); }}
+              disabled={saving}
+              className="w-full rounded-xl h-11 bg-ocean hover:bg-ocean-light border-0 text-white"
+            >
               {saving ? t("info.saving") : t("info.save")}
             </Button>
           </div>

@@ -105,6 +105,8 @@ export function buildAllClientSections(config: ConfigRecord): string {
     ["ZIELGRUPPE", buildAudienceContext(config)],
     ["STRATEGIE", buildStrategyContext(config)],
     ["SOCIAL MEDIA", buildSocialContext(config)],
+    ["AVATAR DEEP DIVE", (config.avatarDeepDive || "").trim()],
+    ["CLIENT PLAYBOOK", (config.clientPlaybook || "").trim()],
   ];
   return sections
     .filter(([, content]) => content.length > 0)

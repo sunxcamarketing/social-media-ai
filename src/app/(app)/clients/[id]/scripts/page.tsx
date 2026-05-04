@@ -288,9 +288,6 @@ function ScriptCell({ script }: { script?: Script }) {
         {script.body && (
           <p className={`text-[13px] text-ocean/65 leading-relaxed whitespace-pre-wrap ${!expanded && isLong ? "line-clamp-4" : ""}`}>{script.body}</p>
         )}
-        {!script.hook && !script.cta && script.body && (
-          <p className={`text-[13px] text-ocean/65 leading-relaxed whitespace-pre-wrap ${!expanded && isLong ? "line-clamp-4" : ""}`}>{script.body}</p>
-        )}
         {script.cta && (
           <p className="text-[13px] text-green-700/70 leading-relaxed italic">{script.cta}</p>
         )}

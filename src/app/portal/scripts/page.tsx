@@ -12,6 +12,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Star,
 } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
@@ -50,7 +51,7 @@ type Tab = "scripts" | "ideas";
 type FeedbackStatus = "approved" | "rejected" | "revision_requested";
 
 export default function PortalScripts() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
   const [scripts, setScripts] = useState<Script[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -234,7 +235,26 @@ export default function PortalScripts() {
     }
   };
 
-  const sortedIdeas = [...ideas].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  // Starred first, then by createdAt desc within each group.
+  const sortedIdeas = [...ideas].sort((a, b) => {
+    const sa = a.starred ? 1 : 0;
+    const sb = b.starred ? 1 : 0;
+    if (sa !== sb) return sb - sa;
+    return (b.createdAt || "").localeCompare(a.createdAt || "");
+  });
+
+  const toggleStar = async (idea: Idea) => {
+    const next = !idea.starred;
+    setIdeas((prev) => prev.map((i) => (i.id === idea.id ? { ...i, starred: next } : i)));
+    const res = await fetch("/api/ideas", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: idea.id, starred: next }),
+    });
+    if (!res.ok) {
+      setIdeas((prev) => prev.map((i) => (i.id === idea.id ? { ...i, starred: !next } : i)));
+    }
+  };
   const items = tab === "scripts" ? scripts : ideas;
   const isEmpty = items.length === 0;
 
@@ -363,7 +383,7 @@ export default function PortalScripts() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
               {sortedIdeas.map((idea) => (
-                <div key={idea.id} className="group glass rounded-2xl p-5 space-y-3 card-hover">
+                <div key={idea.id} className={`group glass rounded-2xl p-5 space-y-3 card-hover ${idea.starred ? "ring-1 ring-amber-300/50" : ""}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                       <div className="h-8 w-8 rounded-xl bg-blush-light/50 flex items-center justify-center shrink-0 mt-0.5">
@@ -371,18 +391,30 @@ export default function PortalScripts() {
                       </div>
                       <p className="text-sm font-semibold text-ocean leading-snug break-words">{idea.title}</p>
                     </div>
-                    <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 shrink-0 items-start">
+                      <button
+                        onClick={() => toggleStar(idea)}
+                        title={idea.starred ? (lang === "en" ? "Remove favorite" : "Favorit entfernen") : (lang === "en" ? "Mark as favorite (top priority)" : "Als Favorit markieren (oberste Priorität)")}
+                        aria-label={idea.starred ? "Unstar idea" : "Star idea"}
+                        className={`h-7 w-7 flex items-center justify-center rounded-lg transition-colors ${
+                          idea.starred
+                            ? "text-amber-500 hover:bg-amber-50"
+                            : "text-ocean/40 hover:text-amber-500 hover:bg-amber-50"
+                        }`}
+                      >
+                        <Star className={`h-4 w-4 ${idea.starred ? "fill-amber-500" : ""}`} />
+                      </button>
                       <button
                         onClick={() => openEditIdea(idea)}
                         title="Bearbeiten"
-                        className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/60 hover:text-ocean hover:bg-ocean/[0.04]"
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/60 hover:text-ocean hover:bg-ocean/[0.04] opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
                       <button
                         onClick={() => deleteIdea(idea.id)}
                         title="Löschen"
-                        className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/60 hover:text-red-500 hover:bg-red-50"
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/60 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>

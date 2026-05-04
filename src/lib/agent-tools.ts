@@ -208,7 +208,9 @@ async function toolSaveScript(
   input: {
     title: string;
     short_script?: string;
+    short_cta?: string;
     long_script?: string;
+    long_cta?: string;
     body?: string;
     text_hook?: string;
     hook_pattern?: string;
@@ -224,19 +226,18 @@ async function toolSaveScript(
   const shortScript = input.short_script?.trim();
   const longScript = input.long_script?.trim();
   const rawBody = input.body?.trim();
+  const fallbackCta = input.cta?.trim() || "";
 
-  // Build the rows we need to insert. Short and long versions become SEPARATE
-  // rows with a length suffix in the title — previously they were squashed
-  // into one body string so the user couldn't distinguish them in the table.
-  type Row = { title: string; body: string };
+  // Each row keeps its own cta so the portal can render the green CTA line
+  // separately from the body. Old behaviour stuffed everything into `body`.
+  type Row = { title: string; body: string; cta: string };
   const rows: Row[] = [];
 
   if (rawBody) {
-    // Caller provided a fully formatted body — store as a single row.
-    rows.push({ title: baseTitle, body: rawBody });
+    rows.push({ title: baseTitle, body: rawBody, cta: fallbackCta });
   } else if (shortScript || longScript) {
-    if (shortScript) rows.push({ title: `${baseTitle} (Kurz)`, body: shortScript });
-    if (longScript) rows.push({ title: `${baseTitle} (Lang)`, body: longScript });
+    if (shortScript) rows.push({ title: `${baseTitle} (Kurz)`, body: shortScript, cta: input.short_cta?.trim() || fallbackCta });
+    if (longScript) rows.push({ title: `${baseTitle} (Lang)`, body: longScript, cta: input.long_cta?.trim() || fallbackCta });
   } else {
     return "Skript-Text fehlt. Übergib entweder body oder short_script + long_script.";
   }
@@ -259,7 +260,7 @@ async function toolSaveScript(
       hook_pattern: input.hook_pattern || "",
       text_hook: input.text_hook || "",
       body: row.body,
-      cta: input.cta || "",
+      cta: row.cta,
       status: "entwurf",
       source: "chat-agent-manual",
       shot_list: "",

@@ -44,6 +44,8 @@ export interface PipelineContext {
   lang: "de" | "en";
   clientContext: string;
   brandContext: string;
+  avatarDeepDive: string;
+  clientPlaybook: string;
   platformContext: string;
   primaryPlatform: PlatformId;
   // Strategy
@@ -103,6 +105,8 @@ export async function loadPipelineContext(configId: string): Promise<PipelineCon
 
   const clientContext = buildClientProfile(config as unknown as Record<string, string>);
   const brandContext = buildBrandContext(config as unknown as Record<string, string>);
+  const avatarDeepDive = (config.avatarDeepDive || "").trim();
+  const clientPlaybook = (config.clientPlaybook || "").trim();
   const clientName = config.name || config.configName || "Kunde";
 
   // Platform
@@ -268,7 +272,7 @@ export async function loadPipelineContext(configId: string): Promise<PipelineCon
 
   return {
     config, clientName, lang: (config.language === "en" ? "en" : "de"),
-    clientContext, brandContext, platformContext, primaryPlatform,
+    clientContext, brandContext, avatarDeepDive, clientPlaybook, platformContext, primaryPlatform,
     pillars, pillarNames, pillarBlock, pillarTypeMap, weekSchedule, activeDays, postsPerWeek, weekRng,
     allContentTypes, allFormats,
     auditBlock, ownPerformanceBlock, competitorHooksBlock, crossNicheBlock, ownTopVideos,

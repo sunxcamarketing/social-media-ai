@@ -83,6 +83,12 @@ export interface Config {
   voiceOnboarding?: string; // JSON: VoiceOnboarding — structured 8-block interview
   voiceNotes?: string; // Free-form notes about speaking style
   voiceExamples?: string; // Example texts in client's voice
+  // Long-form playbook material (Markdown). Loaded into every agent context.
+  // avatarDeepDive: detailed customer persona beyond dreamCustomer JSON.
+  // clientPlaybook: brand voice, copywriting rules, channel playbook,
+  // marketing method, funnels, CI — all consolidated as one Markdown doc.
+  avatarDeepDive?: string;
+  clientPlaybook?: string;
   scriptStructure: string; // JSON: ScriptStructureProfile
   googleDriveFolder: string;
   targetPlatforms?: string; // JSON: PlatformId[] e.g. '["instagram","tiktok"]'

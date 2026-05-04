@@ -70,6 +70,8 @@ function buildUserPrompt(
 
   if (ctx.clientContext) sections.push(`## CLIENT\n${ctx.clientContext}`);
   if (ctx.brandContext) sections.push(`## BRAND\n${ctx.brandContext}`);
+  if (ctx.avatarDeepDive) sections.push(`## AVATAR DEEP DIVE\n${ctx.avatarDeepDive}`);
+  if (ctx.clientPlaybook) sections.push(`## CLIENT PLAYBOOK\n${ctx.clientPlaybook}`);
   if (ctx.pillarBlock) sections.push(`## CONTENT PILLARS\n${ctx.pillarBlock}`);
 
   // Voice (lighter — ideas don't need to voice-match, scripts do)
