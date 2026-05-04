@@ -16,6 +16,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const clientId = String(body.clientId || "");
   const topic = String(body.topic || "").trim();
+  const styleGuideId =
+    typeof body.styleGuideId === "string" && body.styleGuideId.trim().length > 0
+      ? body.styleGuideId.trim()
+      : null;
 
   if (!clientId || !topic) {
     return Response.json({ error: "clientId und topic sind Pflicht" }, { status: 400 });
@@ -29,6 +33,7 @@ export async function POST(request: Request) {
         const result = await runCarouselReactPipeline({
           clientId,
           topic,
+          styleGuideId,
           onProgress: (ev) => sendEvent(controller, ev as unknown as Record<string, unknown>),
         });
 
@@ -44,6 +49,7 @@ export async function POST(request: Request) {
               handle: "",
               type: "react",
               tsx_code: result.tsxCode,
+              style_guide_id: styleGuideId,
               slide_count: 0, // unknown until rendered client-side
               meta: {
                 tokensIn: result.tokensIn,

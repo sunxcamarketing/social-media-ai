@@ -21,17 +21,22 @@ import { MODEL_SONNET } from "@/lib/models";
 import { buildPrompt } from "@prompts";
 import { readConfig } from "@/lib/csv";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
+import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
 
 export interface CarouselReactProgressEvent {
-  stage: "config" | "context" | "claude" | "sanitize" | "done" | "error";
-  status: "loading" | "done" | "error";
+  stage: "config" | "context" | "claude" | "text-delta" | "sanitize" | "done" | "error";
+  status: "loading" | "streaming" | "done" | "error";
   message?: string;
+  /** Token delta (text-delta stage only). Receivers append to a buffer and re-render. */
+  delta?: string;
   data?: Record<string, unknown>;
 }
 
 export interface CarouselReactInput {
   clientId: string;
   topic: string;
+  /** Optional saved style guide to apply (id from carousel_style_guides). */
+  styleGuideId?: string | null;
   onProgress?: (ev: CarouselReactProgressEvent) => void | Promise<void>;
 }
 
@@ -46,11 +51,42 @@ export interface CarouselReactResult {
 
 /**
  * Strip any non-code prose that Claude might have leaked before/after the TSX.
- * The prompt asks for ONLY the component, but we defensively clean:
- *   1. Leading/trailing markdown fences (```tsx ... ```, ``` ... ```)
- *   2. Any prefix/suffix outside the function block
- *   3. Stray `import` / `export default` statements
+ * Prose comes from style guides asking for "think first" steps, or from Claude
+ * adding a preamble. We keep top-level code (helpers, constants, components)
+ * because the new prompt explicitly allows the style guide to ship literal
+ * helpers like `Base`, `Counter`, `RED`, etc. before `function Carousel`.
  */
+/**
+ * Walk through a code prefix (everything before `function Carousel`) line by
+ * line. Keep lines that look like top-level JS (const/let/var/function/class
+ * declarations, comments, blank lines, JSDoc, lines inside an unclosed brace).
+ * Drop everything else (free-form prose from "think first" steps).
+ */
+function stripProseLines(prefix: string): string {
+  const out: string[] = [];
+  let depth = 0; // brace depth — keep continuation lines of a multi-line decl
+  for (const line of prefix.split("\n")) {
+    const t = line.trim();
+    const startsCode =
+      t === "" ||
+      t.startsWith("//") ||
+      t.startsWith("/*") ||
+      t.startsWith("*") ||
+      /^(?:const|let|var|function|class|async\s+function)\b/.test(t) ||
+      /^\}/.test(t);
+    if (depth > 0 || startsCode) {
+      out.push(line);
+      // Track brace depth so multi-line `function X() {` blocks stay intact
+      for (const ch of line) {
+        if (ch === "{") depth++;
+        else if (ch === "}") depth = Math.max(0, depth - 1);
+      }
+    }
+    // else: drop (prose line outside any code block)
+  }
+  return out.join("\n");
+}
+
 function sanitizeTsx(raw: string): string {
   let code = raw.trim();
 
@@ -61,10 +97,16 @@ function sanitizeTsx(raw: string): string {
     code = code.trim();
   }
 
-  // Drop any leading prose — find the first `function Carousel`
+  // Find `function Carousel` — there must be exactly one. Anything before it
+  // is either prose to strip OR top-level helpers/constants/components to
+  // keep. Heuristic: a line is "code" if it starts with const/let/var/function/
+  // class/// or is empty/whitespace. Otherwise it's prose.
   const funcStart = code.search(/\bfunction\s+Carousel\s*\(/);
   if (funcStart > 0) {
-    code = code.slice(funcStart);
+    const prefix = code.slice(0, funcStart);
+    const suffix = code.slice(funcStart);
+    const cleanPrefix = stripProseLines(prefix);
+    code = cleanPrefix + suffix;
   }
 
   // Drop `import ...` lines (not usable in our Babel-standalone sandbox)
@@ -109,11 +151,12 @@ export async function runCarouselReactPipeline(
     data: { name: config.configName || config.name, lang },
   });
 
-  // ── Load brand + voice context in parallel ─────────────────────
+  // ── Load brand + voice context (+ optional style guide) in parallel ─
   await emit({ stage: "context", status: "loading" });
-  const [clientContext, voiceProfile] = await Promise.all([
+  const [clientContext, voiceProfile, styleGuide] = await Promise.all([
     toolLoadClientContext(input.clientId),
     toolLoadVoiceProfile(input.clientId),
+    loadStyleGuideBlock(input.styleGuideId ?? null, lang),
   ]);
   await emit({
     stage: "context",
@@ -121,6 +164,7 @@ export async function runCarouselReactPipeline(
     data: {
       clientContextChars: clientContext.length,
       voiceProfileChars: voiceProfile.length,
+      styleGuideChars: styleGuide.length,
     },
   });
 
@@ -131,6 +175,7 @@ export async function runCarouselReactPipeline(
     {
       client_context: clientContext,
       voice_profile: voiceProfile,
+      style_guide: styleGuide,
     },
     lang,
   );
@@ -140,13 +185,22 @@ export async function runCarouselReactPipeline(
     : `Erstelle das Karussell jetzt. Thema:\n\n${input.topic}`;
 
   const anthropic = getAnthropicClient();
-  const response = await anthropic.messages.create({
+  const stream = anthropic.messages.stream({
     model: MODEL_SONNET,
     max_tokens: 16000,
-    thinking: { type: "enabled", budget_tokens: 8000 },
+    thinking: { type: "enabled", budget_tokens: 4000 },
     system: systemPrompt,
     messages: [{ role: "user", content: userMessage }],
   });
+
+  // Forward each text delta to the UI so the TSX appears live as Claude writes it.
+  // Thinking blocks don't emit through the 'text' event, so the first delta only
+  // arrives after the reasoning pass completes — that pause is the thinking budget.
+  stream.on("text", (delta) => {
+    void emit({ stage: "text-delta", status: "streaming", delta });
+  });
+
+  const response = await stream.finalMessage();
 
   // Collect text blocks (thinking blocks are not in response.content for extraction)
   const textBlocks = response.content.filter((b) => b.type === "text");

@@ -8,11 +8,22 @@ const FOLDER = "client-photos";
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB per file
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
-async function ensureBucket() {
-  const { error } = await supabase.storage.createBucket(BUCKET, { public: true });
-  if (error && !error.message.includes("already exists")) {
-    console.warn("[client-photos] bucket create failed:", error.message);
+async function ensureBucket(): Promise<{ ok: true } | { ok: false; error: string }> {
+  // List existing buckets first — createBucket on an existing public bucket
+  // can return "permission denied" instead of "already exists" depending on
+  // the service-role policy, which would mask the real state.
+  const list = await supabase.storage.listBuckets();
+  if (list.error) {
+    return { ok: false, error: `Storage list failed: ${list.error.message}` };
   }
+  const exists = (list.data || []).some((b) => b.name === BUCKET);
+  if (exists) return { ok: true };
+
+  const create = await supabase.storage.createBucket(BUCKET, { public: true });
+  if (create.error) {
+    return { ok: false, error: `Storage bucket "${BUCKET}" missing and could not be created: ${create.error.message}` };
+  }
+  return { ok: true };
 }
 
 function extFromMime(mime: string): string {
@@ -52,7 +63,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Unsupported type: ${file.type}` }, { status: 415 });
   }
 
-  await ensureBucket();
+  const bucketCheck = await ensureBucket();
+  if (!bucketCheck.ok) {
+    console.error("[client-photos]", bucketCheck.error);
+    return NextResponse.json({ error: bucketCheck.error }, { status: 500 });
+  }
 
   const id = uuid();
   const ext = extFromMime(file.type);
@@ -64,7 +79,7 @@ export async function POST(req: Request) {
     .upload(path, buffer, { contentType: file.type, upsert: false });
   if (upErr) {
     console.error("[client-photos] upload failed:", upErr.message);
-    return NextResponse.json({ error: upErr.message }, { status: 500 });
+    return NextResponse.json({ error: `Storage upload failed: ${upErr.message}` }, { status: 500 });
   }
 
   const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -87,7 +102,10 @@ export async function POST(req: Request) {
     console.error("[client-photos] db insert failed:", rowErr.message);
     // Clean up orphaned storage object
     await supabase.storage.from(BUCKET).remove([path]).catch(() => {});
-    return NextResponse.json({ error: rowErr.message }, { status: 500 });
+    const hint = rowErr.message.includes("does not exist") || rowErr.message.includes("relation")
+      ? ` — Tabelle "client_photos" fehlt vermutlich. Migration ausführen: supabase-migrations/2026-04-23-client-photos.sql`
+      : "";
+    return NextResponse.json({ error: `DB insert failed: ${rowErr.message}${hint}` }, { status: 500 });
   }
 
   return NextResponse.json(row);

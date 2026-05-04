@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     clientId: data.client_id,
     topic: data.topic,
     tsxCode: data.tsx_code,
+    styleGuideId: data.style_guide_id ?? null,
     meta: data.meta,
     createdAt: data.created_at,
     updatedAt: data.updated_at,

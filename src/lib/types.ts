@@ -218,6 +218,16 @@ export interface TopicPlanItem {
   reasoning?: string;   // strategic justification based on audit/performance data
 }
 
+export interface CarouselStyleGuide {
+  id: string;
+  /** NULL means the guide is global (usable for any client). */
+  clientId: string | null;
+  name: string;
+  prompt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Analysis {
   id: string;
   clientId: string;

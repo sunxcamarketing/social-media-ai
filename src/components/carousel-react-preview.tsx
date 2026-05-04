@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Loader2, AlertCircle, ChevronLeft, ChevronRight, Code2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -20,24 +20,89 @@ import { Button } from "@/components/ui/button";
  *   DOM access for PNG export. Admin-only tool; we trust Claude's output.
  */
 
-// ── Curated Google Fonts palette matching the generator prompt ─────────────
-const FONTS_HREF =
-  "https://fonts.googleapis.com/css2?" +
-  [
-    "family=Inter:wght@100..900",
-    "family=Plus+Jakarta+Sans:wght@200..800",
-    "family=Space+Grotesk:wght@300..700",
-    "family=DM+Sans:opsz,wght@9..40,100..1000",
-    "family=Playfair+Display:wght@400..900",
-    "family=Fraunces:opsz,wght@9..144,100..900",
-    "family=DM+Serif+Display",
-    "family=Instrument+Serif",
-    "family=Archivo:wght@100..900",
-    "family=Bricolage+Grotesque:opsz,wght@12..96,200..800",
-    "family=Unbounded:wght@200..900",
-    "family=JetBrains+Mono:wght@100..800",
-  ].join("&") +
-  "&display=swap";
+// ── Curated default Google Fonts palette ──────────────────────────────────
+// Always-loaded baseline. Matches the generator prompt's default palette.
+const DEFAULT_FONTS = [
+  "Inter:wght@100..900",
+  "Plus+Jakarta+Sans:wght@200..800",
+  "Space+Grotesk:wght@300..700",
+  "DM+Sans:opsz,wght@9..40,100..1000",
+  "Playfair+Display:wght@400..900",
+  "Fraunces:opsz,wght@9..144,100..900",
+  "DM+Serif+Display",
+  "Instrument+Serif",
+  "Archivo:wght@100..900",
+  "Bricolage+Grotesque:opsz,wght@12..96,200..800",
+  "Unbounded:wght@200..900",
+  "JetBrains+Mono:wght@100..800",
+];
+
+// Fonts that are referenced via `fontFamily: '"Foo"'` in the generated TSX
+// but aren't in the default palette get loaded dynamically. We only cover the
+// system-builtin fallbacks here (so they're skipped) — anything else gets a
+// best-effort Google Fonts request.
+const SYSTEM_FONT_TOKENS = new Set([
+  "serif",
+  "sans-serif",
+  "monospace",
+  "system-ui",
+  "ui-sans-serif",
+  "ui-serif",
+  "ui-monospace",
+  "ui-rounded",
+  "cursive",
+  "fantasy",
+  "math",
+  "emoji",
+  "fangsong",
+  "-apple-system",
+  "blinkmacsystemfont",
+  "segoe ui",
+  "roboto",
+  "helvetica",
+  "arial",
+  "sans",
+  "mono",
+]);
+
+/**
+ * Scan generated TSX for fontFamily declarations and return Google Fonts
+ * `family=Foo:wght@…` strings that aren't already in the default palette.
+ * Lets a style guide name any Google Font (e.g. "Manrope", "Söhne") and have
+ * it actually render in the preview.
+ */
+function extractExtraFonts(tsxCode: string): string[] {
+  const found = new Set<string>();
+  // Matches: fontFamily: '"Foo Bar", sans-serif'  /  fontFamily: "Foo Bar"
+  // Captures the FIRST quoted family inside the value.
+  const re = /fontFamily\s*:\s*['"]\s*['"]?([^'",]+)['"]?/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(tsxCode))) {
+    const name = m[1].trim().replace(/^["']|["']$/g, "").trim();
+    if (!name) continue;
+    if (SYSTEM_FONT_TOKENS.has(name.toLowerCase())) continue;
+    // Skip fonts already in the default palette (case-insensitive prefix match)
+    const lower = name.toLowerCase();
+    const inDefaults = DEFAULT_FONTS.some(
+      (d) => d.toLowerCase().split(":")[0].replace(/\+/g, " ") === lower,
+    );
+    if (inDefaults) continue;
+    found.add(name);
+  }
+  // Format each as a Google Fonts `family=` segment with the full weight range
+  return Array.from(found).map(
+    (name) => `${name.replace(/\s+/g, "+")}:wght@100..900`,
+  );
+}
+
+function buildFontsHref(tsxCode: string): string {
+  const families = [...DEFAULT_FONTS, ...extractExtraFonts(tsxCode)];
+  return (
+    "https://fonts.googleapis.com/css2?" +
+    families.map((f) => `family=${f}`).join("&") +
+    "&display=swap"
+  );
+}
 
 // React 19 removed UMD bundles — `/umd/react.production.min.js` returns 404 on
 // any version ≥ 19. The preview iframe is a visual sandbox (PNG export only),
@@ -64,29 +129,59 @@ function buildSrcDoc(tsxCode: string): string {
     .replace(/\$\{/g, "\\${")
     .replace(/<\/script/gi, "<\\/script");
 
+  const fontsHref = buildFontsHref(tsxCode);
   return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="${FONTS_HREF}" rel="stylesheet" />
+<link href="${fontsHref}" rel="stylesheet" />
 <script>window.__cdnErr = null;</script>
 <script src="${REACT_CDN}" onerror="window.__cdnErr='react'"></script>
 <script src="${REACT_DOM_CDN}" onerror="window.__cdnErr='react-dom'"></script>
 <script src="${BABEL_CDN}" onerror="window.__cdnErr='babel'"></script>
 <script src="${TAILWIND_CDN}" onerror="window.__cdnErr='tailwind'"></script>
 <style>
-  html, body { margin: 0; padding: 0; background: #fafafa; overflow: hidden; }
-  #root { display: flex; align-items: flex-start; justify-content: center; }
-  /* Defensive: when Claude picks a horizontal flex-row layout, slides without
-     explicit flex-shrink would collapse to 1/N of the container width. Force
-     real Instagram dimensions on every .slide regardless of parent layout. */
-  section.slide {
+  /* Carousels swipe HORIZONTALLY — slides side by side, scroll-snap on each.
+     Whatever wrapper Claude renders around the slides, we force it into a
+     flex-row layout via :has() so user can wheel/swipe sideways. */
+  html, body { margin: 0; padding: 0; background: #fafafa; }
+  html { overflow: hidden; }
+  body {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    width: 1080px; /* viewport width = one slide */
+    height: 1440px;
+  }
+  /* Hide scrollbars visually — host's slide-dots already show position. */
+  body::-webkit-scrollbar { width: 0; height: 0; }
+  body { scrollbar-width: none; }
+  #root {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    width: max-content;
+  }
+  /* Force the immediate parent of .slide elements (whatever wrapper Claude
+     rendered) into a horizontal flex-row layout. :has() lets us catch any
+     element that contains a .slide child without knowing the exact nesting. */
+  *:has(> .slide) {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    width: max-content !important;
+  }
+  /* Real Instagram slide dimensions, plus snap target for swiping. */
+  .slide {
     width: 1080px !important;
     height: 1440px !important;
     flex-shrink: 0 !important;
     box-sizing: border-box !important;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
   .__error {
     margin: 24px; padding: 20px; border-radius: 12px;
@@ -98,6 +193,18 @@ function buildSrcDoc(tsxCode: string): string {
 </head>
 <body>
 <div id="root"></div>
+<script>
+// Map vertical wheel input to horizontal scroll so desktop users can swipe
+// through the carousel with a normal mouse wheel. Trackpad horizontal
+// gestures already work natively because the body overflows on the X axis.
+window.addEventListener('wheel', function(e){
+  if (e.deltaY === 0) return;
+  // Don't hijack when the user is already scrolling horizontally
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  e.preventDefault();
+  document.body.scrollLeft += e.deltaY;
+}, { passive: false });
+</script>
 <script>
 (function(){
   function reportError(err) {
@@ -159,9 +266,12 @@ function buildSrcDoc(tsxCode: string): string {
       var root = window.ReactDOM.createRoot(document.getElementById('root'));
       root.render(window.React.createElement(Carousel));
 
-      // Give React a tick to actually commit, then measure slide count
+      // Give React a tick to actually commit, then measure slide count.
+      // Lenient: prefer .slide, but fall back to any <section> the component
+      // produced — Claude often skips the className convention when refining.
       requestAnimationFrame(function(){
-        var slides = document.querySelectorAll('section.slide');
+        var slides = document.querySelectorAll('.slide');
+        if (slides.length === 0) slides = document.querySelectorAll('section');
         window.parent.postMessage({ type: 'carousel-ready', slideCount: slides.length }, '*');
       });
     } catch (err) {
@@ -208,6 +318,16 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
     return () => ro.disconnect();
   }, []);
 
+  // Find slides inside the iframe with a lenient selector — Claude isn't always
+  // consistent about className="slide" on refines.
+  const findSlides = useCallback((): HTMLElement[] => {
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return [];
+    const withClass = Array.from(doc.querySelectorAll<HTMLElement>(".slide"));
+    if (withClass.length > 0) return withClass;
+    return Array.from(doc.querySelectorAll<HTMLElement>("section"));
+  }, []);
+
   // Listen for ready/error postMessages from the iframe
   useEffect(() => {
     const onMsg = (ev: MessageEvent) => {
@@ -215,10 +335,7 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
       if (ev.data.type === "carousel-ready") {
         setStatus("ready");
         setErrorMsg(null);
-        // Count slides once rendered
-        const doc = iframeRef.current?.contentDocument;
-        const slides = doc?.querySelectorAll("section.slide") || [];
-        setSlideCount(slides.length);
+        setSlideCount(findSlides().length);
       } else if (ev.data.type === "carousel-error") {
         setStatus("error");
         setErrorMsg(String(ev.data.message || "Unknown error"));
@@ -226,7 +343,7 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, []);
+  }, [findSlides]);
 
   // Reset status when the code changes
   const srcDoc = useMemo(() => {
@@ -264,9 +381,7 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
   };
 
   const scrollSlideIntoView = (idx: number) => {
-    const doc = iframeRef.current?.contentDocument;
-    if (!doc) return;
-    const slide = doc.querySelectorAll<HTMLElement>("section.slide")[idx];
+    const slide = findSlides()[idx];
     if (slide && typeof slide.scrollIntoView === "function") {
       slide.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
     }
@@ -274,22 +389,29 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
 
   const exportAll = async () => {
     if (status !== "ready") return;
-    const doc = iframeRef.current?.contentDocument;
-    if (!doc) return;
-    const slides = Array.from(doc.querySelectorAll<HTMLElement>("section.slide"));
+    const slides = findSlides();
     if (slides.length === 0) {
-      setErrorMsg("Keine Slides mit className='slide' gefunden — kann nicht exportieren");
+      setErrorMsg("Keine Slides gefunden — Karussell muss <section> oder className='slide' Elemente enthalten");
       return;
     }
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
 
     // Lazy-load html-to-image only when needed — ~40kb
     const { toPng } = await import("html-to-image");
 
     for (let i = 0; i < slides.length; i++) {
       setExporting(i);
+      const slide = slides[i];
+      // Carousels often hide non-active slides via display:none on the inline
+      // style. html-to-image can't rasterize a hidden element — temporarily
+      // force it visible, capture, then restore.
+      const originalDisplay = slide.style.display;
+      const wasHidden = originalDisplay === "none" || getComputedStyle(slide).display === "none";
+      if (wasHidden) slide.style.display = "flex";
       try {
         // Render at native 1080×1440 regardless of the on-screen scale.
-        const dataUrl = await toPng(slides[i], {
+        const dataUrl = await toPng(slide, {
           width: SLIDE_WIDTH,
           height: SLIDE_HEIGHT,
           pixelRatio: 2,
@@ -312,8 +434,10 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
       } catch (err) {
         console.error("[carousel-react-preview] export failed for slide", i, err);
         setErrorMsg(`Export fehlgeschlagen bei Slide ${i + 1}: ${(err as Error).message}`);
+        if (wasHidden) slide.style.display = originalDisplay;
         break;
       }
+      if (wasHidden) slide.style.display = originalDisplay;
     }
     setExporting(false);
   };
@@ -349,7 +473,7 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
           {status === "ready" && slideCount > 1 && (
             <div className="hidden sm:flex items-center gap-1 text-xs text-ocean/50">
               <ChevronLeft className="h-3 w-3" />
-              <span>Scroll im iFrame</span>
+              <span>Swipe / Wheel</span>
               <ChevronRight className="h-3 w-3" />
             </div>
           )}

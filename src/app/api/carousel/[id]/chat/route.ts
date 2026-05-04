@@ -8,6 +8,7 @@ import { buildPrompt, CAROUSEL_UPDATE_TOOL } from "@prompts";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 import { MODEL_SONNET } from "@/lib/models";
+import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
 
 export const maxDuration = 120;
 
@@ -67,7 +68,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Load current carousel state
   const { data: carousel, error: loadErr } = await supabase
     .from("carousels")
-    .select("id, run_id, client_id, tsx_code, chat_messages")
+    .select("id, run_id, client_id, tsx_code, chat_messages, style_guide_id")
     .eq("run_id", runId)
     .single();
 
@@ -105,10 +106,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq("run_id", runId);
 
   try {
-    // Build prompt with current TSX as context
-    const [clientContext, voiceProfile] = await Promise.all([
+    // Build prompt with current TSX + active style guide as context
+    const [clientContext, voiceProfile, styleGuide] = await Promise.all([
       toolLoadClientContext(carousel.client_id),
       toolLoadVoiceProfile(carousel.client_id),
+      loadStyleGuideBlock(carousel.style_guide_id ?? null, lang),
     ]);
 
     const systemPrompt = buildPrompt(
@@ -116,6 +118,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       {
         client_context: clientContext,
         voice_profile: voiceProfile,
+        style_guide: styleGuide,
         current_tsx: carousel.tsx_code || "(empty)",
       },
       lang,
@@ -133,7 +136,51 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!content) continue;
       claudeMessages.push({ role: m.role, content });
     }
-    claudeMessages.push({ role: "user", content: userText });
+
+    // Build the new user turn — text + freshly uploaded images (multimodal).
+    // We download each photo and pass it as base64 so we don't depend on
+    // Anthropic being able to reach our Supabase Storage URLs.
+    if (imageUrls.length === 0) {
+      claudeMessages.push({ role: "user", content: userText });
+    } else {
+      const fetched = await Promise.all(
+        imageUrls.map(async (url) => {
+          try {
+            const r = await fetch(url);
+            if (!r.ok) return null;
+            const ct = r.headers.get("content-type") || "image/jpeg";
+            const mediaType = (
+              ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(ct) ? ct : "image/jpeg"
+            ) as "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+            const buf = Buffer.from(await r.arrayBuffer());
+            return { url, mediaType, base64: buf.toString("base64") };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      const blocks: Anthropic.ContentBlockParam[] = [];
+      const usableUrls: string[] = [];
+      for (const item of fetched) {
+        if (!item) continue;
+        usableUrls.push(item.url);
+        blocks.push({
+          type: "image",
+          source: { type: "base64", media_type: item.mediaType, data: item.base64 },
+        });
+      }
+      // Append a text block listing the URLs so Claude can reference them
+      // literally in <img src="..."> tags inside the TSX it generates.
+      const photoNote = usableUrls.map((u) => `- ${u}`).join("\n");
+      const textBlock =
+        (userText ? userText + "\n\n" : "") +
+        (usableUrls.length > 0
+          ? `Hochgeladene Fotos — verwende diese URLs wörtlich in <img src="..."> Tags wenn du sie einbauen sollst:\n${photoNote}`
+          : "(Hinweis: Foto-Uploads konnten nicht geladen werden.)");
+      blocks.push({ type: "text", text: textBlock });
+      claudeMessages.push({ role: "user", content: blocks });
+    }
 
     const client = getAnthropicClient();
     const response = await client.messages.create({
