@@ -15,17 +15,20 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  let clientId = searchParams.get("clientId");
+  const clientId = searchParams.get("clientId");
 
-  // Clients can only see their own scripts — and only the ones admin has released.
-  if (user.role === "client") {
-    clientId = user.clientId;
-    if (!clientId) return NextResponse.json([]);
-    const scripts = await readScriptsByClient(clientId, { releasedOnly: true });
+  // Client-view applies to real clients AND admins viewing via impersonate
+  // ("Als Client ansehen"). Otherwise the impersonate preview lies — admin
+  // would see drafts the actual client never gets.
+  const isClientView = user.role === "client" || !!user.impersonating;
+  if (isClientView) {
+    const effectiveId = getEffectiveClientId(user);
+    if (!effectiveId) return NextResponse.json([]);
+    const scripts = await readScriptsByClient(effectiveId, { releasedOnly: true });
     return NextResponse.json(scripts);
   }
 
-  // Admin: full visibility, optionally scoped to one client.
+  // Admin (not impersonating): full visibility, optionally scoped to one client.
   const scripts = clientId ? await readScriptsByClient(clientId) : await readScripts();
   return NextResponse.json(scripts);
 }
