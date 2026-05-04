@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -330,6 +331,9 @@ export default function ClientScriptsPage() {
   const [client, setClient] = useState<Config | null>(null);
   const [scripts, setScripts] = useState<Script[]>([]);
   const [hasAudit, setHasAudit] = useState<boolean | null>(null);
+  // "<type>:<id>" → count of carousels generated from that source. Used to
+  // render the "🎨 N" reverse-link badge per script row.
+  const [carouselCounts, setCarouselCounts] = useState<Record<string, number>>({});
 
   // Saved scripts
   const [filterStatus, setFilterStatus] = useState("all");
@@ -351,6 +355,10 @@ export default function ClientScriptsPage() {
     loadScripts();
     loadClientCached(id).then(setClient);
     fetch(`/api/analyses?clientId=${id}`).then(r => r.json()).then((analyses: unknown[]) => setHasAudit(analyses.length > 0));
+    fetch(`/api/carousel/source-counts?clientId=${id}`)
+      .then(r => r.json())
+      .then((c: Record<string, number>) => setCarouselCounts(c || {}))
+      .catch(() => setCarouselCounts({}));
   }, [id, loadScripts]);
 
   // ── Saved scripts CRUD ──────────────────────────────────────────────────
@@ -626,6 +634,16 @@ export default function ClientScriptsPage() {
                             )}
                             {script.contentType && (
                               <span className="text-[9px] text-ocean/45">{script.contentType}</span>
+                            )}
+                            {(carouselCounts[`script:${script.id}`] || 0) > 0 && (
+                              <Link
+                                href={`/clients/${id}/karussell?source=script:${script.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[9px] text-blush-dark bg-blush/15 border border-blush/30 hover:bg-blush/25 rounded px-1.5 py-0.5 font-medium inline-flex items-center gap-1"
+                                title="Karussells, die aus diesem Skript entstanden"
+                              >
+                                🎨 {carouselCounts[`script:${script.id}`]}
+                              </Link>
                             )}
                           </div>
                         </div>

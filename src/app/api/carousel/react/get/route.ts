@@ -32,6 +32,8 @@ export async function GET(request: Request) {
     topic: data.topic,
     tsxCode: data.tsx_code,
     styleGuideId: data.style_guide_id ?? null,
+    sourceType: data.source_type ?? null,
+    sourceId: data.source_id ?? null,
     meta: data.meta,
     createdAt: data.created_at,
     updatedAt: data.updated_at,

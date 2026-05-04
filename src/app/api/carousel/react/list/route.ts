@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("carousels")
-    .select("id, run_id, topic, slide_count, meta, created_at, updated_at")
+    .select("id, run_id, topic, slide_count, meta, source_type, source_id, created_at, updated_at")
     .eq("client_id", clientId)
     .eq("type", "react")
     .order("created_at", { ascending: false });

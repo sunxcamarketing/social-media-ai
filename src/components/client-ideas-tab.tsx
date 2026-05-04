@@ -94,6 +94,7 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
   const [chatIdea, setChatIdea] = useState<Idea | null>(null);
   const [chatTranscript, setChatTranscript] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [carouselCounts, setCarouselCounts] = useState<Record<string, number>>({});
 
   // Open the develop-idea dialog. If the idea was extracted from a voice
   // session (sourceSessionId set), fetch that transcript first so the chat
@@ -120,6 +121,13 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
   };
 
   useEffect(() => { loadIdeas(); }, [clientId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetch(`/api/carousel/source-counts?clientId=${clientId}`)
+      .then((r) => r.json())
+      .then((c: Record<string, number>) => setCarouselCounts(c || {}))
+      .catch(() => setCarouselCounts({}));
+  }, [clientId]);
 
   const openNew = () => {
     setEditing(null);
@@ -339,6 +347,16 @@ export function ClientIdeasTab({ clientId }: { clientId: string }) {
                 <Badge variant="secondary" className="rounded-md text-[10px] bg-ocean/[0.02] border border-ocean/[0.06] text-ocean/60">
                   {idea.contentType}
                 </Badge>
+              )}
+              {(carouselCounts[`idea:${idea.id}`] || 0) > 0 && (
+                <a
+                  href={`/clients/${clientId}/karussell?source=idea:${idea.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-md text-[10px] px-1.5 py-0.5 bg-blush/15 border border-blush/30 text-blush-dark hover:bg-blush/25 inline-flex items-center gap-1"
+                  title="Karussells, die aus dieser Idee entstanden"
+                >
+                  🎨 {carouselCounts[`idea:${idea.id}`]}
+                </a>
               )}
             </div>
 

@@ -15,6 +15,8 @@ import {
 import { CarouselReactPreview } from "@/components/carousel-react-preview";
 import { CarouselChat } from "@/components/carousel-chat";
 import { CarouselStyleGuidePicker } from "@/components/carousel-style-guide-picker";
+import { ScriptIdeaPicker, type SourceSelection } from "@/components/script-idea-picker";
+import { FileText, Lightbulb, X } from "lucide-react";
 
 interface ProgressEvent {
   stage: string;
@@ -38,6 +40,8 @@ interface SavedReactCarousel {
   run_id: string;
   topic: string;
   meta: Record<string, unknown>;
+  source_type?: "script" | "idea" | null;
+  source_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +74,10 @@ export function CarouselReactMode({ clientId }: Props) {
   // Active style guide for THIS run — picker writes it, generate reads it.
   // After loading a saved carousel, pre-fills with whatever guide was used then.
   const [styleGuideId, setStyleGuideId] = useState<string | null>(null);
+  // Source link (script/idea) for the new carousel — set via the picker, sent
+  // to the API on generate, and shown back as a badge in the carousel library.
+  const [source, setSource] = useState<SourceSelection | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const [savedList, setSavedList] = useState<SavedReactCarousel[]>([]);
@@ -140,6 +148,8 @@ export function CarouselReactMode({ clientId }: Props) {
           clientId,
           topic: topicText.trim(),
           styleGuideId: styleGuideId ?? undefined,
+          sourceType: source?.type,
+          sourceId: source?.id,
         }),
         signal: ctrl.signal,
       });
@@ -201,9 +211,17 @@ export function CarouselReactMode({ clientId }: Props) {
     setCurrentRunId(null);
     setCurrentTopic("");
     setTopic("");
+    setSource(null);
     setError(null);
     setEvents([]);
     setHistoryOpen(false);
+  };
+
+  const handleSourceSelect = (sel: SourceSelection) => {
+    setSource(sel);
+    // Pre-fill topic with the source content. User can still edit before
+    // generating — the link to the source is preserved either way.
+    setTopic(sel.prefillText);
   };
 
   // Pipeline emits two events per stage (loading → done). Collapse to the
@@ -303,6 +321,9 @@ export function CarouselReactMode({ clientId }: Props) {
               generating={generating}
               stageEvents={stageEvents}
               error={error}
+              source={source}
+              onOpenPicker={() => setPickerOpen(true)}
+              onClearSource={() => setSource(null)}
             />
           )}
         </div>
@@ -318,6 +339,13 @@ export function CarouselReactMode({ clientId }: Props) {
           <PreviewEmptyState generating={generating} />
         )}
       </div>
+
+      <ScriptIdeaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        clientId={clientId}
+        onSelect={handleSourceSelect}
+      />
     </div>
   );
 }
@@ -332,6 +360,9 @@ interface TopicComposerProps {
   generating: boolean;
   stageEvents: ProgressEvent[];
   error: string | null;
+  source: SourceSelection | null;
+  onOpenPicker: () => void;
+  onClearSource: () => void;
 }
 
 function TopicComposer({
@@ -342,6 +373,9 @@ function TopicComposer({
   generating,
   stageEvents,
   error,
+  source,
+  onOpenPicker,
+  onClearSource,
 }: TopicComposerProps) {
   function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -398,6 +432,23 @@ function TopicComposer({
       </div>
 
       <div className="border-t border-ocean/[0.06] p-3 shrink-0">
+        {source && (
+          <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-blush-light/40 border border-blush/30 px-2.5 py-1.5 text-[11px] text-blush-dark">
+            {source.type === "script" ? <FileText className="h-3 w-3 shrink-0" /> : <Lightbulb className="h-3 w-3 shrink-0" />}
+            <span className="font-medium shrink-0">Quelle:</span>
+            <span className="truncate flex-1">{source.label}</span>
+            <button
+              onClick={onClearSource}
+              type="button"
+              disabled={generating}
+              className="text-blush-dark/60 hover:text-blush-dark disabled:opacity-50"
+              aria-label="Quelle entfernen"
+              title="Quelle entfernen"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
         <textarea
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
@@ -408,7 +459,18 @@ function TopicComposer({
           className="w-full resize-none rounded-lg border border-ocean/10 bg-warm-white px-3 py-2 text-sm text-ocean focus:outline-none focus:border-blush disabled:opacity-60"
         />
         <div className="mt-2 flex items-center gap-2">
-          <p className="text-[11px] text-ocean/40 mr-auto hidden sm:block">⌘+Enter zum Senden</p>
+          <button
+            onClick={onOpenPicker}
+            type="button"
+            disabled={generating}
+            className="inline-flex items-center gap-1.5 h-9 rounded-lg px-3 text-xs border border-ocean/10 text-ocean/65 hover:text-ocean hover:bg-ocean/[0.04] transition-colors disabled:opacity-50"
+            title="Skript oder Idee als Quelle wählen"
+          >
+            <FileText className="h-3 w-3" />
+            <span className="hidden sm:inline">Aus Skript / Idee</span>
+            <span className="sm:hidden">Quelle</span>
+          </button>
+          <p className="text-[11px] text-ocean/40 mr-auto hidden md:block">⌘+Enter zum Senden</p>
           {generating ? (
             <button
               onClick={onCancel}
@@ -536,9 +598,17 @@ function HistoryDropdown({
                       <div className="text-xs text-ocean line-clamp-2 leading-snug">
                         {c.topic || "Ohne Titel"}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-ocean/40 mt-0.5">
-                        <Clock className="h-2.5 w-2.5" />
-                        {date}
+                      <div className="flex items-center gap-2 text-[10px] text-ocean/40 mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" />
+                          {date}
+                        </span>
+                        {c.source_type && (
+                          <span className="flex items-center gap-1 text-blush-dark/70">
+                            {c.source_type === "script" ? <FileText className="h-2.5 w-2.5" /> : <Lightbulb className="h-2.5 w-2.5" />}
+                            {c.source_type === "script" ? "aus Skript" : "aus Idee"}
+                          </span>
+                        )}
                       </div>
                     </button>
                     <button
