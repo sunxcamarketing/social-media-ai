@@ -35,6 +35,6 @@ export {
   AGENT_UPDATE_PROFILE_TOOL,
 } from "./agent";
 
-export { CAROUSEL_UPDATE_TOOL } from "./carousel";
+export { CAROUSEL_UPDATE_TOOL, CAROUSEL_PATCH_TOOL } from "./carousel";
 export { STORY_STRATEGY_TOOL } from "./story";
 export { ENRICH_PROFILE_TOOL } from "./enrich";

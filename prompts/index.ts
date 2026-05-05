@@ -33,6 +33,7 @@ export {
   VOICE_AGENT_GEMINI_TOOLS,
   STORY_STRATEGY_TOOL,
   CAROUSEL_UPDATE_TOOL,
+  CAROUSEL_PATCH_TOOL,
 } from "./tools";
 
 // Types

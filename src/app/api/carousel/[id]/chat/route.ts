@@ -4,7 +4,7 @@ import { getAnthropicClient } from "@/lib/anthropic";
 import { supabase } from "@/lib/supabase";
 import { readConfig } from "@/lib/csv";
 import { getCurrentUser } from "@/lib/auth";
-import { buildPrompt, CAROUSEL_UPDATE_TOOL } from "@prompts";
+import { buildPrompt, CAROUSEL_UPDATE_TOOL, CAROUSEL_PATCH_TOOL } from "@prompts";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 import { MODEL_SONNET } from "@/lib/models";
@@ -13,6 +13,45 @@ import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
 export const maxDuration = 300;
 
 const MODEL = MODEL_SONNET;
+
+type Patch = { find?: string; replace?: string; replace_all?: boolean };
+
+// Apply a list of find/replace patches to TSX text. Strict by default —
+// `find` must be a unique substring or the patch is rejected, so Sonnet has
+// to provide enough surrounding context to disambiguate. `replace_all` is
+// the opt-in for "@handle in every slide footer" type changes. We bail on
+// the first failure rather than partially applying — better to ask the
+// model to retry the whole batch than ship a half-mutated carousel.
+function applyPatches(
+  existing: string,
+  patches: Patch[],
+): { tsx: string } | { error: string } {
+  if (!patches.length) return { error: "Keine Patches übergeben." };
+  let current = existing;
+  for (let i = 0; i < patches.length; i++) {
+    const p = patches[i];
+    const find = p.find ?? "";
+    const replace = p.replace ?? "";
+    if (!find) return { error: `Patch ${i + 1} hat keinen find-Text.` };
+    const preview = find.slice(0, 80) + (find.length > 80 ? "…" : "");
+    if (p.replace_all) {
+      if (!current.includes(find)) {
+        return { error: `Patch ${i + 1}: find-Text nicht gefunden ("${preview}").` };
+      }
+      current = current.split(find).join(replace);
+      continue;
+    }
+    const idx = current.indexOf(find);
+    if (idx === -1) {
+      return { error: `Patch ${i + 1}: find-Text nicht gefunden ("${preview}").` };
+    }
+    if (current.indexOf(find, idx + find.length) !== -1) {
+      return { error: `Patch ${i + 1}: find-Text mehrdeutig (mehrfach im Code) — gib mehr Kontext drumrum mit, oder nutze replace_all ("${preview}").` };
+    }
+    current = current.slice(0, idx) + replace + current.slice(idx + find.length);
+  }
+  return { tsx: current };
+}
 
 export interface CarouselChatMessage {
   role: "user" | "assistant";
@@ -187,7 +226,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       model: MODEL,
       max_tokens: 16000,
       system: systemPrompt,
-      tools: [CAROUSEL_UPDATE_TOOL],
+      tools: [CAROUSEL_PATCH_TOOL, CAROUSEL_UPDATE_TOOL],
       messages: claudeMessages,
     });
 
@@ -200,7 +239,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       initiator,
     });
 
-    // Parse Claude's output — either a tool_use (update) or text (question).
+    // Parse Claude's output — either a tool_use (update/patch) or text (question).
     const toolUse = response.content.find(b => b.type === "tool_use");
     const textBlocks = response.content.filter(b => b.type === "text");
     const replyText = textBlocks.map(b => (b.type === "text" ? b.text : "")).join("\n").trim();
@@ -209,7 +248,34 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     let assistantMessage: CarouselChatMessage;
     let newTsx: string | undefined;
 
-    if (toolUse && toolUse.type === "tool_use") {
+    if (toolUse && toolUse.type === "tool_use" && toolUse.name === "patch_carousel") {
+      // Server-side find/replace patches. Way faster than full rewrite because
+      // Sonnet only emits the diffs (tens of tokens) instead of the whole TSX
+      // (10k+ tokens). If a patch is ambiguous or its `find` text isn't in the
+      // current TSX, we surface that as a chat message instead of crashing —
+      // Sonnet sees the error in history and can adjust on retry.
+      const input = toolUse.input as {
+        patches?: Array<{ find?: string; replace?: string; replace_all?: boolean }>;
+        summary?: string;
+      };
+      const summary = (input.summary || "Karussell aktualisiert.").trim();
+      const patchResult = applyPatches(carousel.tsx_code || "", input.patches || []);
+      if ("error" in patchResult) {
+        assistantMessage = {
+          role: "assistant",
+          text: `Hatte ein Problem beim Anwenden des Patches: ${patchResult.error} — sag mir nochmal kurz wo genau es hin soll, oder ich mach den ganzen Code neu.`,
+          createdAt: assistantAt,
+        };
+      } else {
+        newTsx = patchResult.tsx;
+        assistantMessage = {
+          role: "assistant",
+          text: summary,
+          update: { summary, tsxChars: newTsx.length },
+          createdAt: assistantAt,
+        };
+      }
+    } else if (toolUse && toolUse.type === "tool_use" && toolUse.name === "update_carousel") {
       const input = toolUse.input as { tsx_code?: string; summary?: string };
       newTsx = (input.tsx_code || "").trim();
       const summary = (input.summary || "Karussell aktualisiert.").trim();
