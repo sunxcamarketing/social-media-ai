@@ -62,6 +62,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -69,6 +74,11 @@ export async function DELETE(request: Request) {
   const { supabase } = await import("@/lib/supabase");
   const { error } = await supabase.from("analyses").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Without this the next GET reads the stale cache and the row reappears
+  // until the TTL expires.
+  const { invalidateAnalysesCache } = await import("@/lib/csv");
+  invalidateAnalysesCache();
 
   return NextResponse.json({ ok: true });
 }

@@ -4,26 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Film, Sparkles, ArrowRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-
-interface StoryConcept {
-  hook?: string;
-  value_or_proof?: string;
-  cta?: string;
-}
+import type { StoryStrategyContent } from "@/components/story-strategy-detail";
 
 interface StrategyRow {
   id: string;
-  content: {
-    campaign_plan?: {
-      story_concepts?: StoryConcept[];
-    };
-  };
+  content: StoryStrategyContent;
   created_at: string;
 }
 
 interface StoryIdeasCardProps {
   clientId: string;
-  /** "admin" links to /clients/[id]/stories, "portal" links to /portal/stories (future). */
+  /** "admin" links to /clients/[id]/stories, "portal" links to /portal/stories. */
   mode: "admin" | "portal";
 }
 
@@ -40,10 +31,11 @@ export function StoryIdeasCard({ clientId, mode }: StoryIdeasCardProps) {
     return () => { alive = false; };
   }, [clientId]);
 
-  const latest = strategies?.[0];
-  const concepts = latest?.content?.campaign_plan?.story_concepts || [];
-  const preview = concepts.slice(0, 3);
-  const totalConcepts = strategies?.reduce((sum, s) => sum + (s.content?.campaign_plan?.story_concepts?.length || 0), 0) || 0;
+  // Only count strategies in the new shape (have a stories array).
+  const validStrategies = (strategies || []).filter(s => Array.isArray(s.content?.stories) && s.content.stories.length > 0);
+  const latest = validStrategies[0];
+  const previewTitles = validStrategies.slice(0, 3).map(s => s.content.title || "Strategie");
+  const total = validStrategies.length;
 
   const href = mode === "admin" ? `/clients/${clientId}/stories` : "/portal/stories";
 
@@ -59,16 +51,16 @@ export function StoryIdeasCard({ clientId, mode }: StoryIdeasCardProps) {
             <p className="text-[11px] text-ocean/55">{t("storyIdeas.subtitle")}</p>
           </div>
         </div>
-        {totalConcepts > 0 && (
+        {total > 0 && (
           <span className="text-[10px] border rounded-md px-1.5 py-0.5 font-medium bg-ocean/[0.04] text-ocean/60 border-ocean/[0.08] tabular-nums">
-            {totalConcepts}
+            {total}
           </span>
         )}
       </div>
 
       {strategies === null ? (
         <p className="text-sm text-ocean/40">{t("storyIdeas.loading")}</p>
-      ) : preview.length === 0 ? (
+      ) : !latest ? (
         <div>
           <p className="text-sm text-ocean/55 leading-relaxed">{t("storyIdeas.empty")}</p>
           <Link
@@ -83,10 +75,10 @@ export function StoryIdeasCard({ clientId, mode }: StoryIdeasCardProps) {
       ) : (
         <div>
           <ul className="space-y-2.5">
-            {preview.map((c, i) => (
+            {previewTitles.map((title, i) => (
               <li key={i} className="text-[13px] text-ocean/80 leading-snug line-clamp-2">
                 <span className="inline-block mr-1.5 text-ocean/35 tabular-nums text-[11px]">{i + 1}.</span>
-                {c.hook || "—"}
+                {title}
               </li>
             ))}
           </ul>

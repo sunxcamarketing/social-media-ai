@@ -280,6 +280,52 @@ async function toolSaveScript(
     : `Skript gespeichert: "${rows[0].title}" (id=${insertedIds[0]}). Zu finden im Skripte-Tab des Clients.`;
 }
 
+// ── Save Story Strategy Tool ──────────────────────────────────────────────
+// Speichert eine Sequenz von 3-7 Stories als persistierte Strategie. Erscheint
+// im Stories-Tab des Clients als visuelle Sequenz die er nachposten kann.
+
+async function toolSaveStoryStrategy(
+  clientId: string,
+  input: {
+    title: string;
+    goal: string;
+    stories: Array<{ label?: string; visual: string; text: string }>;
+  },
+): Promise<string> {
+  if (!input.title?.trim()) return "Titel fehlt.";
+  if (!input.goal?.trim()) return "Goal fehlt (z.B. 'Verkauf', 'Community').";
+  if (!Array.isArray(input.stories) || input.stories.length < 3) {
+    return "Mindestens 3 Stories nötig.";
+  }
+  if (input.stories.length > 7) {
+    return "Maximal 7 Stories pro Sequenz.";
+  }
+  for (const [i, s] of input.stories.entries()) {
+    if (!s.label?.trim()) return `Story ${i + 1}: label fehlt (z.B. 'Intro', 'Schmerzpunkt triggern').`;
+    if (!s.visual?.trim()) return `Story ${i + 1}: visual fehlt.`;
+    if (!s.text?.trim()) return `Story ${i + 1}: text fehlt.`;
+  }
+
+  const content = {
+    title: input.title.trim(),
+    goal: input.goal.trim(),
+    stories: input.stories.map(s => ({
+      label: (s.label || "").trim(),
+      visual: s.visual.trim(),
+      text: s.text.trim(),
+    })),
+  };
+
+  const { data, error } = await supabase
+    .from("story_strategies")
+    .insert({ client_id: clientId, content })
+    .select("id")
+    .single();
+
+  if (error) return `Fehler beim Speichern: ${error.message}`;
+  return `Story-Strategie "${content.title}" mit ${content.stories.length} Stories gespeichert (id=${data.id}). Im Stories-Tab des Clients sichtbar.`;
+}
+
 // ── check_competitors ──────────────────────────────────────────────────────
 
 export async function toolCheckCompetitors(
@@ -614,6 +660,8 @@ export async function executeAgentTool(
       return toolListIdeas(clientId, toolInput as { status?: string; query?: string });
     case "save_script":
       return toolSaveScript(clientId, toolInput as Parameters<typeof toolSaveScript>[1]);
+    case "save_story_strategy":
+      return toolSaveStoryStrategy(clientId, toolInput as Parameters<typeof toolSaveStoryStrategy>[1]);
     case "update_profile":
       return toolUpdateProfile(clientId, toolInput as { field_name: string; value: string });
     default:

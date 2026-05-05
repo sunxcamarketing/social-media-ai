@@ -172,6 +172,50 @@ export const AGENT_SAVE_SCRIPT_TOOL = {
   },
 };
 
+export const AGENT_SAVE_STORY_STRATEGY_TOOL = {
+  name: "save_story_strategy",
+  description: "Speichere eine Instagram Story-Strategie für den Client. Eine Strategie ist eine Sequenz von 3-7 Stories die nacheinander gepostet werden, um EIN konkretes Ziel zu erreichen (z.B. Verkauf, Community, Lead-Gen). Pro Story: visual in Layman-Sprache ('Du im Bild', 'Selfie', 'Kunde', 'Lifestyle-Foto', 'Screenshot') und text. KEIN Producer-Jargon. Erscheint im Stories-Tab als visuelle Sequenz.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      client_name: CLIENT_NAME_PROP,
+      title: {
+        type: "string",
+        description: "Sprechender Titel der Strategie, max 10 Wörter (z.B. 'Pitch für Authority Engine')",
+      },
+      goal: {
+        type: "string",
+        description: "Goal-Tag: 'Verkauf', 'Community', 'Lead-Gen', 'Authority', 'Engagement'",
+      },
+      stories: {
+        type: "array" as const,
+        minItems: 3,
+        maxItems: 7,
+        items: {
+          type: "object" as const,
+          properties: {
+            label: {
+              type: "string",
+              description: "Verb-basierter Step-Name für diese Story-Position, max 4 Wörter. Z.B. 'Intro', 'Schmerzpunkt triggern', 'Wunschbild zeigen', 'DM-Aufruf', 'Cliffhanger setzen'. Beschreibt was die Story tut, nicht ihr Inhalt.",
+            },
+            visual: {
+              type: "string",
+              description: "Was zu SEHEN ist, max 5 Wörter, einfache Sprache: 'Du im Bild', 'Selfie', 'Kunde', 'Lifestyle-Foto', 'Screenshot', 'Hand zeigt Handy', 'Text-Slide'",
+            },
+            text: {
+              type: "string",
+              description: "Konkretes Beispiel-Text für diese Story. Wird im UI als 'Beispiel:' gerendert — der Kunde versteht dass er anpassen darf. Konkret, im Tonfall des Clients, mit Namen/Zahlen/Szenen wo möglich.",
+            },
+          },
+          required: ["label", "visual", "text"],
+        },
+        description: "3-7 Stories nacheinander, jede mit verb-basiertem Label + Visual + konkretem Beispiel.",
+      },
+    },
+    required: ["title", "goal", "stories"],
+  },
+};
+
 export const AGENT_UPDATE_PROFILE_TOOL = {
   name: "update_profile",
   description: "Aktualisiere ein bestimmtes Feld im Client-Profil. Nutze das wenn der Client neue Infos über sich teilt und will dass du sie im Profil ergänzt.",

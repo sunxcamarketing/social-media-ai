@@ -23,11 +23,13 @@ import {
   Film,
   ShieldCheck,
   X,
+  Loader2,
 } from "lucide-react";
 import { useClientsCache, removeClientFromCache } from "@/hooks/use-clients-cache";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useI18n } from "@/lib/i18n";
 import { useMobileNav } from "@/components/mobile-nav-context";
+import { useGeneration } from "@/context/generation-context";
 
 interface NavLink {
   titleKey: string;
@@ -70,6 +72,11 @@ export function AppSidebar() {
   const clients = useClientsCache();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+
+  // Live generation status — show a spinner next to the relevant nav tab
+  // while a long-running task is in flight so the user has visual feedback
+  // even after navigating away from the originating page.
+  const { strategyGen, voiceProfileGen } = useGeneration();
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -257,6 +264,9 @@ export function AppSidebar() {
             <nav className="space-y-0.5">
               {CLIENT_TABS.filter((tab) => !tab.adminOnly || isAdmin).map((tab) => {
                 const isActive = activeTabKey === tab.path;
+                const isGenerating =
+                  (tab.path === "strategy" && strategyGen.get(activeClientId!)?.status === "running") ||
+                  (tab.path === "training" && voiceProfileGen.get(activeClientId!)?.status === "running");
                 return (
                   <Link
                     key={tab.path}
@@ -268,7 +278,10 @@ export function AppSidebar() {
                     }`}
                   >
                     <tab.icon className="h-4 w-4 shrink-0" />
-                    <span>{t(tab.titleKey)}</span>
+                    <span className="flex-1">{t(tab.titleKey)}</span>
+                    {isGenerating && (
+                      <Loader2 className={`h-3.5 w-3.5 shrink-0 animate-spin ${isActive ? "text-white/80" : "text-blush-dark"}`} />
+                    )}
                   </Link>
                 );
               })}

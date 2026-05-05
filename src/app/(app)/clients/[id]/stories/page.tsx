@@ -2,21 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Sparkles, Clock, Trash2, Film } from "lucide-react";
-import { PageHeader } from "@/components/ui/page-header";
-import { StoryStrategyDetail, type StoryStrategyContent } from "@/components/story-strategy-detail";
+import { Film, MessageCircle } from "lucide-react";
+import {
+  StoryStrategyDetail,
+  StoryStrategyListCard,
+  type StoryStrategyContent,
+} from "@/components/story-strategy-detail";
 
 interface StrategyRow {
   id: string;
   content: StoryStrategyContent;
   created_at: string;
 }
-
-const fmtDate = (iso: string) => new Date(iso).toLocaleString("de-DE", {
-  day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-});
-
-// ── Page ──────────────────────────────────────────────────────────────────
 
 export default function StoriesPage() {
   const params = useParams<{ id: string }>();
@@ -25,155 +22,88 @@ export default function StoriesPage() {
   const [strategies, setStrategies] = useState<StrategyRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/configs/${clientId}/story-strategies`);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setStrategies(data);
-        if (data.length > 0) setSelectedId(data[0].id);
-      }
+      const rows: StrategyRow[] = Array.isArray(data) ? data : [];
+      setStrategies(rows);
+      if (rows.length > 0 && !selectedId) setSelectedId(rows[0].id);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, [clientId]);
-
-  const handleGenerate = async () => {
-    setGenerating(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/configs/${clientId}/story-strategies`, { method: "POST" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unbekannter Fehler" }));
-        setError(err.error || "Generierung fehlgeschlagen");
-        return;
-      }
-      const saved = await res.json();
-      await load();
-      if (saved?.id) setSelectedId(saved.id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Netzwerkfehler");
-    } finally {
-      setGenerating(false);
-    }
-  };
+  useEffect(() => { load(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, [clientId]);
 
   const handleDelete = async (strategyId: string) => {
-    if (!confirm("Diese Strategie wirklich löschen?")) return;
     const res = await fetch(`/api/configs/${clientId}/story-strategies?strategyId=${strategyId}`, { method: "DELETE" });
     if (res.ok) {
-      await load();
       if (selectedId === strategyId) setSelectedId(null);
+      await load();
     }
   };
 
-  const selected = strategies.find(s => s.id === selectedId);
+  // Filter out legacy rows that don't match the new shape — they'd render empty.
+  const validStrategies = strategies.filter(s => s.content && Array.isArray(s.content.stories) && s.content.stories.length > 0);
+  const selected = validStrategies.find(s => s.id === selectedId) || validStrategies[0];
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-      <PageHeader
-        icon={Film}
-        eyebrow="Content"
-        title="Stories"
-        subtitle="Strategische Instagram Story Kampagnen"
-        actions={
-          strategies.length > 0 ? (
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={generating}
-              className="inline-flex items-center gap-2 rounded-lg bg-ocean text-white px-4 py-2 text-sm font-medium hover:bg-ocean-light disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Sparkles className="h-4 w-4" />
-              {generating ? "Generiere…" : "Neue Strategie"}
-            </button>
-          ) : null
-        }
-      />
-
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
+    <div className="p-4 sm:p-6 space-y-5">
       {loading ? (
         <p className="text-sm text-ocean/50">Lädt…</p>
-      ) : strategies.length === 0 ? (
-        <div className="rounded-2xl border border-ocean/10 bg-white p-8 text-center">
+      ) : validStrategies.length === 0 ? (
+        <div className="rounded-3xl border border-ocean/10 bg-white p-10 text-center max-w-2xl mx-auto">
           <Film className="h-8 w-8 text-ocean/30 mx-auto mb-3" />
           <h3 className="text-lg font-medium text-ocean mb-1">Noch keine Story-Strategie</h3>
-          <p className="text-sm text-ocean/60 mb-4">Generiere die erste strategische Story-Kampagne für diesen Client.</p>
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={generating}
-            className="inline-flex items-center gap-2 rounded-lg bg-ocean text-white px-4 py-2 text-sm font-medium hover:bg-ocean-light disabled:opacity-50"
-          >
-            <Sparkles className="h-4 w-4" />
-            {generating ? "Generiere…" : "Jetzt generieren"}
-          </button>
+          <p className="text-sm text-ocean/60 mb-1">
+            Story-Strategien werden im Content-Agent designed.
+          </p>
+          <p className="text-xs text-ocean/45 inline-flex items-center gap-1.5 mt-3">
+            <MessageCircle className="h-3.5 w-3.5" />
+            Sag dem Content-Agent z.B. „Bau Anna eine Story-Strategie für den Pitch der Authority Engine."
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
-          {/* History sidebar */}
-          <aside className="space-y-1.5 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto pr-1">
+        <>
+          {/* Strategien-Liste — horizontal scroll, kompakt oben */}
+          <div>
             <p className="text-[10px] font-medium text-ocean/40 uppercase tracking-wider mb-2 px-1">
-              Historie · {strategies.length}
+              Strategien · {validStrategies.length}
             </p>
-            {strategies.map(s => {
-              const active = selectedId === s.id;
-              return (
-                <div key={s.id} className="group relative">
-                  <button
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
+              {validStrategies.map((s) => (
+                <div key={s.id} className="shrink-0 w-[260px]">
+                  <StoryStrategyListCard
+                    content={s.content}
+                    active={selected?.id === s.id}
                     onClick={() => setSelectedId(s.id)}
-                    type="button"
-                    className={`w-full text-left rounded-xl p-3 transition-all ${
-                      active
-                        ? "bg-blush-light/60 ring-1 ring-blush-dark/20"
-                        : "bg-white border border-ocean/[0.06] hover:border-blush/30 hover:-translate-y-0.5"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-[10px] text-ocean/50 mb-1.5">
-                      <Clock className="h-2.5 w-2.5" />
-                      {fmtDate(s.created_at)}
-                    </div>
-                    <p className={`text-sm leading-snug line-clamp-2 pr-6 ${active ? "text-ocean font-medium" : "text-ocean/80"}`}>
-                      {s.content.campaign_plan?.objective || "Story-Strategie"}
-                    </p>
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
-                    className="absolute top-2.5 right-2.5 h-6 w-6 rounded-md flex items-center justify-center text-ocean/30 hover:text-red-500 hover:bg-white opacity-0 group-hover:opacity-100 transition-all"
-                    title="Löschen"
-                    type="button"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                    onDelete={() => handleDelete(s.id)}
+                  />
                 </div>
-              );
-            })}
-          </aside>
+              ))}
+            </div>
+          </div>
 
-          {/* Detail view */}
+          {/* Detail — volle Breite, Tiles können richtig atmen */}
           <div>
             {selected ? (
-              <StoryStrategyDetail content={selected.content} />
-            ) : (
-              <div className="rounded-2xl border border-ocean/[0.06] bg-white/60 p-10 text-center">
-                <p className="text-sm text-ocean/50">Wähle eine Strategie aus der Liste.</p>
-              </div>
-            )}
+              <StoryStrategyDetail
+                content={selected.content}
+                strategyId={selected.id}
+                clientId={clientId}
+                onContentUpdated={(next) => {
+                  setStrategies((prev) =>
+                    prev.map((s) => (s.id === selected.id ? { ...s, content: next } : s)),
+                  );
+                }}
+              />
+            ) : null}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
 }
-
