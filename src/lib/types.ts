@@ -191,6 +191,10 @@ export interface Script {
   clientFeedbackStatus?: "approved" | "rejected" | "revision_requested" | null;
   clientFeedbackText?: string | null;
   clientFeedbackAt?: string | null;
+  // Admin's optional reply when resolving client feedback. Visible to the
+  // client in the portal as a small "Aysun: …" note under the script.
+  adminResponse?: string | null;
+  adminResponseAt?: string | null;
   // Release flow (2026-04-30): NULL = admin-only draft, set = visible in portal
   releasedAt?: string | null;
   // Set whenever the client edits the script in the portal

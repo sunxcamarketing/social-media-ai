@@ -240,13 +240,35 @@ function SendToClickUpButton({
 
 // ── Script Cell (renders script content inside a table cell) ────────────────
 
-function ScriptCell({ script }: { script?: Script }) {
+function ScriptCell({ script, onResolved }: { script?: Script; onResolved?: () => void }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [resolveText, setResolveText] = useState("");
+  const [resolveSaving, setResolveSaving] = useState(false);
 
   if (!script) {
     return <td className="px-4 py-4 align-top text-xs text-ocean/25 italic">—</td>;
   }
+
+  const submitResolve = async () => {
+    if (resolveSaving) return;
+    setResolveSaving(true);
+    try {
+      const res = await fetch(`/api/scripts/${script.id}/feedback`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: null, text: resolveText.trim() }),
+      });
+      if (res.ok) {
+        setResolveOpen(false);
+        setResolveText("");
+        onResolved?.();
+      }
+    } finally {
+      setResolveSaving(false);
+    }
+  };
 
   const fullText = [script.hook, script.body, script.cta].filter(Boolean).join("\n\n");
   const isLong = (script.body || "").length > 200;
@@ -299,6 +321,22 @@ function ScriptCell({ script }: { script?: Script }) {
           <div className="rounded-lg border border-ocean/[0.06] bg-ocean/[0.02] p-2">
             <p className="text-[10px] uppercase tracking-wider text-ocean/45 font-medium mb-0.5">Client-Kommentar</p>
             <p className="text-[12px] text-ocean/75 leading-relaxed whitespace-pre-wrap break-words">{script.clientFeedbackText}</p>
+            {(fbStatus === "rejected" || fbStatus === "revision_requested") && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setResolveOpen(true); }}
+                className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-blush-dark/80 hover:text-blush-dark"
+              >
+                ✓ Antworten & Erledigt
+              </button>
+            )}
+          </div>
+        )}
+        {script.adminResponse && (
+          <div className="rounded-lg border border-green-200 bg-green-50/50 p-2">
+            <p className="text-[10px] uppercase tracking-wider text-green-700/70 font-medium mb-0.5">
+              Deine Antwort{script.adminResponseAt ? ` · ${script.adminResponseAt.slice(0, 10)}` : ""}
+            </p>
+            <p className="text-[12px] text-green-800/85 leading-relaxed whitespace-pre-wrap break-words">{script.adminResponse}</p>
           </div>
         )}
         <button
@@ -308,6 +346,39 @@ function ScriptCell({ script }: { script?: Script }) {
           {copied ? <><Check className="h-2.5 w-2.5 text-green-600" /> Kopiert</> : <><Copy className="h-2.5 w-2.5" /> Kopieren</>}
         </button>
       </div>
+
+      <Dialog open={resolveOpen} onOpenChange={(v) => { if (!v) { setResolveOpen(false); setResolveText(""); } }}>
+        <DialogContent className="max-w-md glass-strong rounded-2xl border-ocean/[0.06]" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Feedback erledigen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-xs text-ocean/60 leading-relaxed">
+              Optional: schreib dem Client kurz was du geändert hast. Die Antwort taucht im Portal als Notiz unter dem Skript auf. Leer lassen = einfach abhaken.
+            </p>
+            <Textarea
+              autoFocus
+              value={resolveText}
+              onChange={(e) => setResolveText(e.target.value)}
+              rows={4}
+              placeholder="z.B. Hab den CTA überarbeitet — schau dir die neue Version an."
+              className="rounded-xl glass border-ocean/[0.06] text-sm leading-relaxed"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setResolveOpen(false); setResolveText(""); }} className="rounded-xl">
+                Abbrechen
+              </Button>
+              <Button
+                onClick={submitResolve}
+                disabled={resolveSaving}
+                className="rounded-xl bg-ocean hover:bg-ocean-light border-0"
+              >
+                {resolveSaving ? "Speichere…" : "Erledigt"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </td>
   );
 }
@@ -650,7 +721,7 @@ export default function ClientScriptsPage() {
                       </td>
 
                       {/* Skript-Inhalt */}
-                      <ScriptCell script={script} />
+                      <ScriptCell script={script} onResolved={loadScripts} />
 
                       {/* Client feedback */}
                       <td className="px-4 py-4 align-top">

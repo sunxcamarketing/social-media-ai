@@ -358,6 +358,14 @@ export default function PortalScripts() {
                                 <p className="text-xs text-ocean/75 leading-relaxed whitespace-pre-wrap break-words">{fbText}</p>
                               </div>
                             )}
+                            {script.adminResponse && (
+                              <div className="rounded-lg border border-green-200 bg-green-50/60 p-3 mb-3">
+                                <p className="text-[10px] uppercase tracking-wider text-green-700/70 font-medium mb-1">
+                                  Antwort{script.adminResponseAt ? ` · ${new Date(script.adminResponseAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })}` : ""}
+                                </p>
+                                <p className="text-xs text-green-800/85 leading-relaxed whitespace-pre-wrap break-words">{script.adminResponse}</p>
+                              </div>
+                            )}
                             <ScriptDetailFields script={script} />
                           </td>
                         </tr>

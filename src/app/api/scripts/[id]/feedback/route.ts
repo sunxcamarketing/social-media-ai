@@ -48,7 +48,10 @@ export async function PATCH(
 
   // Auto-status flip: any client feedback bumps the script to "review" so
   // the admin sees it in the queue. Clearing feedback resets to "bereit"
-  // (the released-but-not-reviewed default).
+  // (the released-but-not-reviewed default). When the admin clears with an
+  // optional text, we persist that text as `admin_response` so the client
+  // sees a small "Aysun: …" note under the script. Client-initiated clears
+  // never write admin_response (no spoofing path).
   const patch: Record<string, unknown> = clearing
     ? {
         client_feedback_status: null,
@@ -62,6 +65,11 @@ export async function PATCH(
         client_feedback_at: new Date().toISOString(),
         status: "review",
       };
+
+  if (clearing && user.role === "admin") {
+    patch.admin_response = text || null;
+    patch.admin_response_at = text ? new Date().toISOString() : null;
+  }
 
   const { error: updErr } = await supabase.from("scripts").update(patch).eq("id", id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });

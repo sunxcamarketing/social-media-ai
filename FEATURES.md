@@ -54,6 +54,16 @@ UI-Anzeige für die neuen Felder: A) Detail-Expand pro Skript-Zeile, B) eigene S
 ### 🟢 S · ⏳ — Default-Status „Bereit" einstellbar pro Client
 Manche Kunden wollen jedes Skript vor Freigabe sehen → Default „Entwurf". Andere wollen direkt sehen → Default „Bereit". Heute: hardcoded „entwurf".
 
+### 🟡 M · ⏳ — Anhänge bei Ideen & Skripten speichern
+Bei Ideen UND Skripten sollen Anhänge mit gespeichert werden können — Bilder, PDFs, Screenshots, Voice-Memos, Referenz-Reels, Inspirations-Material. Heute: nur Text. Idee: Upload-Button im Idea-Card und Script-Card, Files landen in Supabase Storage / R2, gespeichert als URL-Liste am Datensatz. Use-Case: Kunde sammelt während der Woche Inspos auf dem Handy → wirft sie zur Idee dazu → beim Ausformulieren hat der Content Agent Kontext + Aysun sieht beim Filmen was visuell gemeint war.
+**Was gebaut werden muss:**
+- DB: `ideas.attachments` und `scripts.attachments` (JSONB-Array von `{url, name, mime, size}`)
+- Storage: Bucket-Setup (Supabase Storage am simpelsten, da schon dort)
+- Upload-UI: Drag&Drop + File-Picker im Idea/Script-Card-Detail
+- Preview-UI: Thumbnail-Grid für Bilder, Icon+Name für andere Dateien, Klick öffnet/lädt
+- Optional: Content Agent Tool um Anhänge bei Idea-Develop mitzulesen (für Bilder via Vision)
+**Aufwand:** M (4-6h) — Storage + UI + DB-Migration. Vision-Integration optional als L-Erweiterung.
+
 ---
 
 ## 🔌 Integrations

@@ -84,6 +84,8 @@ export function mapScript(r: Record<string, unknown>): Script {
     clientFeedbackStatus: (r.client_feedback_status as Script["clientFeedbackStatus"]) ?? null,
     clientFeedbackText: (r.client_feedback_text as string | null) ?? null,
     clientFeedbackAt: (r.client_feedback_at as string | null) ?? null,
+    adminResponse: (r.admin_response as string | null) ?? null,
+    adminResponseAt: (r.admin_response_at as string | null) ?? null,
     releasedAt: (r.released_at as string | null) ?? null,
     clientEditedAt: (r.client_edited_at as string | null) ?? null,
     createdAt: (r.created_at as string) || "",
