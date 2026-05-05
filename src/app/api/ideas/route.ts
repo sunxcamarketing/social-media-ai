@@ -53,8 +53,12 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   let clientId = searchParams.get("clientId");
 
-  if (user.role === "client") clientId = user.clientId;
-  else if (user.role === "admin") {
+  if (user.role === "client") {
+    clientId = user.clientId;
+  } else if (user.role === "admin" && !clientId) {
+    // No explicit ?clientId means admin is in /portal/* preview-mode — fall
+    // back to impersonate. With an explicit param (admin pages), honour it
+    // so a stale impersonate cookie can't leak another client's data.
     const effective = getEffectiveClientId(user);
     if (effective) clientId = effective;
   }

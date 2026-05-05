@@ -17,9 +17,17 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
 
-  // Client-view applies to real clients AND admins viewing via impersonate
-  // ("Als Client ansehen"). Otherwise the impersonate preview lies — admin
-  // would see drafts the actual client never gets.
+  // Admin pages always pass an explicit ?clientId — honour that over the
+  // impersonate cookie so admins viewing /clients/[X]/* never see another
+  // client's data just because they previously clicked "Als Y ansehen".
+  if (user.role === "admin" && clientId) {
+    const scripts = await readScriptsByClient(clientId);
+    return NextResponse.json(scripts);
+  }
+
+  // Real clients OR admins inside /portal/* (no clientId param): scope to
+  // the effective client and hide drafts so the preview matches what the
+  // client actually sees.
   const isClientView = user.role === "client" || !!user.impersonating;
   if (isClientView) {
     const effectiveId = getEffectiveClientId(user);
@@ -28,8 +36,8 @@ export async function GET(request: Request) {
     return NextResponse.json(scripts);
   }
 
-  // Admin (not impersonating): full visibility, optionally scoped to one client.
-  const scripts = clientId ? await readScriptsByClient(clientId) : await readScripts();
+  // Admin without clientId param and not impersonating: global view.
+  const scripts = await readScripts();
   return NextResponse.json(scripts);
 }
 

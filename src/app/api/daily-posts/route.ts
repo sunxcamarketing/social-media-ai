@@ -53,10 +53,13 @@ async function resolveScope(
     return { ok: true, clientId: user.clientId, userId: user.id };
   }
 
+  // Admin: prefer explicit clientId (admin pages always pass it). Falling
+  // back to impersonate when no param is present preserves the /portal/*
+  // preview flow without letting a stale cookie hijack admin reads/writes.
+  if (requestedClientId) return { ok: true, clientId: requestedClientId, userId: user.id };
   const effective = getEffectiveClientId(user);
   if (effective) return { ok: true, clientId: effective, userId: user.id };
-  if (!requestedClientId) return { ok: false, status: 400, error: "clientId required" };
-  return { ok: true, clientId: requestedClientId, userId: user.id };
+  return { ok: false, status: 400, error: "clientId required" };
 }
 
 export async function GET(request: Request) {

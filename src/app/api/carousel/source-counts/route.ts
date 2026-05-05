@@ -12,11 +12,17 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const requestedClientId = url.searchParams.get("clientId");
 
-  // Clients can only ever see their own data; admins can scope by query.
-  const isClientView = user.role === "client" || !!user.impersonating;
-  const clientId = isClientView
-    ? getEffectiveClientId(user)
-    : requestedClientId;
+  // Admin pages pass an explicit ?clientId — honour that over a stale
+  // impersonate cookie. Real clients (and admins on /portal/* without param)
+  // fall back to their effective client.
+  let clientId: string | null;
+  if (user.role === "admin" && requestedClientId) {
+    clientId = requestedClientId;
+  } else if (user.role === "client" || user.impersonating) {
+    clientId = getEffectiveClientId(user);
+  } else {
+    clientId = requestedClientId;
+  }
   if (!clientId) return Response.json({});
 
   const { data, error } = await supabase
