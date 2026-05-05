@@ -10,7 +10,7 @@ import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 import { MODEL_SONNET } from "@/lib/models";
 import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const MODEL = MODEL_SONNET;
 
