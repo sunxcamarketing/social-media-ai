@@ -55,6 +55,28 @@ const STATUS_OPTIONS = [
   { value: "review", label: "Review", color: "bg-amber-50 text-amber-700 border-amber-200" },
 ];
 
+// Form-sheet field — label column on the left, input column on the right.
+// Stacks on small viewports. Uses the dialog's full width on desktop.
+function DocField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 md:gap-8 items-start py-4 border-b border-ocean/[0.05] last:border-0">
+      <div className="pt-2">
+        <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-ocean">{label}</p>
+        {hint && <p className="text-[11px] text-ocean/45 mt-1 leading-snug">{hint}</p>}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
 function statusColor(s: string) {
   return STATUS_OPTIONS.find(o => o.value === s)?.color || "bg-ocean/[0.02] text-ocean/70 border-ocean/[0.06]";
 }
@@ -388,7 +410,7 @@ function ScriptCell({ script, onResolved }: { script?: Script; onResolved?: () =
 
 const emptyForm = {
   title: "", pillar: "", contentType: "", format: "",
-  hook: "", body: "", cta: "", status: "entwurf", fullScript: "",
+  hook: "", body: "", cta: "", status: "entwurf",
   textHook: "", visualHook: "", bRoll: "", shotList: "", caption: "",
 };
 
@@ -435,20 +457,15 @@ export default function ClientScriptsPage() {
   // ── Saved scripts CRUD ──────────────────────────────────────────────────
   const openEdit = (script: Script) => {
     setEditing(script);
-    // De-dup hook/cta from body — chat-saved scripts store hook as the
-    // first paragraph and body as the full text, so naively concatenating
-    // hook+body+cta produces the duplicated content the user reported.
-    const body = (script.body || "").trim();
-    const hook = (script.hook || "").trim();
-    const cta = (script.cta || "").trim();
-    const parts: string[] = [];
-    if (hook && !body.startsWith(hook)) parts.push(hook);
-    if (body) parts.push(body);
-    if (cta && !body.endsWith(cta)) parts.push(cta);
-    const fullScript = parts.join("\n\n");
     setForm({
-      title: script.title, pillar: script.pillar, contentType: script.contentType,
-      format: script.format, hook: "", body: "", cta: "", status: script.status, fullScript,
+      title: script.title || "",
+      pillar: script.pillar || "",
+      contentType: script.contentType || "",
+      format: script.format || "",
+      hook: script.hook || "",
+      body: script.body || "",
+      cta: script.cta || "",
+      status: script.status || "entwurf",
       textHook: script.textHook || "",
       visualHook: script.visualHook || "",
       bRoll: script.bRoll || "",
@@ -468,7 +485,7 @@ export default function ClientScriptsPage() {
     const payload = {
       title: form.title, pillar: form.pillar, contentType: form.contentType,
       format: form.format, status: form.status,
-      hook: "", body: form.fullScript, cta: "",
+      hook: form.hook, body: form.body, cta: form.cta,
       textHook: form.textHook,
       visualHook: form.visualHook,
       bRoll: form.bRoll,
@@ -636,7 +653,8 @@ export default function ClientScriptsPage() {
                       className="h-3.5 w-3.5 rounded border-ocean/20 text-ocean accent-ocean cursor-pointer"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[260px]">Titel</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[240px]">Titel</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[140px]">Format</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[120px]">Kunden-Feedback</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[100px]">Status</th>
@@ -700,12 +718,6 @@ export default function ClientScriptsPage() {
                             {script.pillar && (
                               <span className="text-[9px] text-blush-dark/60 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5">{script.pillar}</span>
                             )}
-                            {script.format && (
-                              <span className="text-[9px] text-ocean/50 rounded bg-ocean/[0.04] border border-ocean/[0.06] px-1.5 py-0.5">{script.format}</span>
-                            )}
-                            {script.contentType && (
-                              <span className="text-[9px] text-ocean/45">{script.contentType}</span>
-                            )}
                             {(carouselCounts[`script:${script.id}`] || 0) > 0 && (
                               <Link
                                 href={`/clients/${id}/karussell?source=script:${script.id}`}
@@ -718,6 +730,22 @@ export default function ClientScriptsPage() {
                             )}
                           </div>
                         </div>
+                      </td>
+
+                      {/* Format */}
+                      <td className="px-4 py-4 align-top">
+                        {script.format ? (
+                          <div className="space-y-1">
+                            <span className="inline-block text-[11px] font-medium text-ocean rounded-md bg-blush-light/40 border border-blush/30 px-2 py-0.5">
+                              {script.format}
+                            </span>
+                            {script.contentType && (
+                              <p className="text-[10px] text-ocean/45 leading-snug">{script.contentType}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-ocean/25 italic">—</span>
+                        )}
                       </td>
 
                       {/* Skript-Inhalt */}
@@ -790,85 +818,166 @@ export default function ClientScriptsPage() {
         )}
       </div>
 
-      {/* ── Edit Dialog ───────────────────────────────────────────────────── */}
+      {/* ── Edit Dialog — doc-style layout ──────────────────────────────── */}
       <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) setDialogOpen(false); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-ocean/[0.06]">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Skript bearbeiten" : "Neues Skript"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div>
-              <Label className="text-xs text-ocean/60">Titel</Label>
-              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="mt-1.5 rounded-xl border-ocean/[0.06] h-10 text-sm" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs text-ocean/60">Pillar</Label>
-                <Input value={form.pillar} onChange={(e) => setForm({ ...form, pillar: e.target.value })}
-                  className="mt-1.5 rounded-xl border-ocean/[0.06] h-9 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs text-ocean/60">Content-Type</Label>
-                <Input value={form.contentType} onChange={(e) => setForm({ ...form, contentType: e.target.value })}
-                  className="mt-1.5 rounded-xl border-ocean/[0.06] h-9 text-sm" />
-              </div>
-              <div>
-                <Label className="text-xs text-ocean/60">Format</Label>
-                <Input value={form.format} onChange={(e) => setForm({ ...form, format: e.target.value })}
-                  className="mt-1.5 rounded-xl border-ocean/[0.06] h-9 text-sm" />
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-ocean/60">Skript</Label>
-              <Textarea value={form.fullScript} onChange={(e) => setForm({ ...form, fullScript: e.target.value })}
-                rows={10} className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
-            </div>
-
-            <div className="border-t border-ocean/[0.06] pt-4 space-y-3">
-              <p className="text-[11px] uppercase tracking-wider text-ocean/45 font-medium">Produktion (für Editor)</p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-ocean/60">Text-Hook (On-Screen)</Label>
-                  <Input value={form.textHook} onChange={(e) => setForm({ ...form, textHook: e.target.value })}
-                    placeholder='z.B. „94 kg → 65 kg"' className="mt-1.5 rounded-xl border-ocean/[0.06] h-9 text-sm" />
-                </div>
-                <div>
-                  <Label className="text-xs text-ocean/60">Visual-Hook</Label>
-                  <Input value={form.visualHook} onChange={(e) => setForm({ ...form, visualHook: e.target.value })}
-                    placeholder="z.B. Talking head + Spiegel-Cut" className="mt-1.5 rounded-xl border-ocean/[0.06] h-9 text-sm" />
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs text-ocean/60">B-Roll / Aufnahme-Shots</Label>
-                <Textarea value={form.bRoll} onChange={(e) => setForm({ ...form, bRoll: e.target.value })}
-                  rows={3} placeholder="Eine Liste was als B-Roll gefilmt werden soll, eine Zeile pro Shot."
-                  className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
-              </div>
-
-              <div>
-                <Label className="text-xs text-ocean/60">Shot-List / Filmanweisungen</Label>
-                <Textarea value={form.shotList} onChange={(e) => setForm({ ...form, shotList: e.target.value })}
-                  rows={3} placeholder="Sekunden-Regie, Schnitte, Pacing-Hinweise."
-                  className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
-              </div>
-
-              <div>
-                <Label className="text-xs text-ocean/60">Videobeschreibung (Caption)</Label>
-                <Textarea value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })}
-                  rows={4} placeholder="Instagram-Caption mit Hashtags, Emojis, Folge-CTA."
-                  className="mt-1.5 rounded-xl border-ocean/[0.06] text-sm" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 justify-end pt-2">
-              <button onClick={() => setDialogOpen(false)} className="text-xs text-ocean/60 hover:text-ocean">Abbrechen</button>
+        <DialogContent
+          className="!max-w-[1200px] w-[95vw] max-h-[92vh] overflow-y-auto rounded-2xl border-ocean/[0.06] bg-warm-white p-0"
+          showCloseButton={false}
+        >
+          {/* Sticky header with title + actions */}
+          <div className="sticky top-0 z-10 bg-warm-white/95 backdrop-blur border-b border-ocean/[0.06] px-8 py-4 flex items-center justify-between gap-4">
+            <DialogHeader className="space-y-0">
+              <DialogTitle className="text-xs font-medium text-ocean/45 uppercase tracking-wider">
+                {editing ? "Skript bearbeiten" : "Neues Skript"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => setDialogOpen(false)} className="text-xs text-ocean/55 hover:text-ocean px-2">Abbrechen</button>
               <Button onClick={handleSave} className="h-9 px-5 rounded-xl bg-ocean hover:bg-ocean-light border-0 text-white text-xs">
                 Speichern
               </Button>
             </div>
+          </div>
+
+          {/* Doc-style body — wide form-sheet on desktop, label-left/input-right */}
+          <div className="px-12 py-10 max-w-[1100px] mx-auto">
+            {/* Title — large, like a doc heading */}
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="Skript-Titel"
+              className="w-full bg-transparent text-3xl font-semibold text-ocean leading-tight outline-none placeholder:text-ocean/25 focus:placeholder:text-ocean/15 mb-6"
+            />
+
+            {/* Meta row — compact pills */}
+            <div className="flex flex-wrap items-center gap-3 text-xs mb-6">
+              <div className="flex items-center gap-1.5">
+                <span className="text-ocean/40 uppercase text-[10px] tracking-wider">Status</span>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="bg-white border border-ocean/[0.08] rounded-md px-2 py-1 text-xs text-ocean focus:outline-none focus:border-ocean/30"
+                >
+                  {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-ocean/40 uppercase text-[10px] tracking-wider">Pillar</span>
+                <Input
+                  value={form.pillar}
+                  onChange={(e) => setForm({ ...form, pillar: e.target.value })}
+                  placeholder="—"
+                  className="h-7 w-32 rounded-md border-ocean/[0.08] bg-white text-xs"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-ocean/40 uppercase text-[10px] tracking-wider">Content-Type</span>
+                <Input
+                  value={form.contentType}
+                  onChange={(e) => setForm({ ...form, contentType: e.target.value })}
+                  placeholder="—"
+                  className="h-7 w-36 rounded-md border-ocean/[0.08] bg-white text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-ocean/[0.08]" />
+
+            {/* Doc-style fields */}
+            <DocField label="Format">
+              <Input
+                value={form.format}
+                onChange={(e) => setForm({ ...form, format: e.target.value })}
+                placeholder='z.B. Talking Head, Voiceover + B-Roll, Storytelling'
+                className="rounded-lg border-ocean/[0.08] h-10 text-sm bg-white"
+              />
+            </DocField>
+
+            <DocField label="Text Hook" hint="Was on-screen eingeblendet wird">
+              <Input
+                value={form.textHook}
+                onChange={(e) => setForm({ ...form, textHook: e.target.value })}
+                placeholder='z.B. „94 kg → 65 kg"'
+                className="rounded-lg border-ocean/[0.08] h-10 text-sm bg-white"
+              />
+            </DocField>
+
+            <DocField label="Visual Hook" hint="Was visuell zu sehen ist in den ersten Sekunden">
+              <Input
+                value={form.visualHook}
+                onChange={(e) => setForm({ ...form, visualHook: e.target.value })}
+                placeholder="z.B. Talking head + Spiegel-Cut"
+                className="rounded-lg border-ocean/[0.08] h-10 text-sm bg-white"
+              />
+            </DocField>
+
+            <DocField label="Audio Hook" hint="Erster gesprochener Satz">
+              <Textarea
+                value={form.hook}
+                onChange={(e) => setForm({ ...form, hook: e.target.value })}
+                rows={2}
+                placeholder='z.B. „Letzte Woche bot mir ein Makler 15 % Rendite."'
+                className="rounded-lg border-ocean/[0.08] text-sm leading-relaxed bg-white"
+              />
+            </DocField>
+
+            <DocField label="Skript" hint="Der Body — Hauptteil zwischen Hook und CTA">
+              <Textarea
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
+                rows={12}
+                placeholder="Skript-Text…"
+                className="rounded-lg border-ocean/[0.08] text-[15px] leading-relaxed bg-white"
+              />
+            </DocField>
+
+            <DocField label="CTA" hint="Schlussaufruf — was soll der Zuschauer tun">
+              <Textarea
+                value={form.cta}
+                onChange={(e) => setForm({ ...form, cta: e.target.value })}
+                rows={2}
+                placeholder='z.B. „Schreib REAL in die DMs für echte Netto-Renditen."'
+                className="rounded-lg border-ocean/[0.08] text-sm leading-relaxed bg-white"
+              />
+            </DocField>
+
+            <DocField label="Shot Liste" hint="Was der Kunde zusätzlich filmen muss — eine Zeile pro Shot. Leer lassen wenn nichts zusätzlich nötig.">
+              <Textarea
+                value={form.bRoll}
+                onChange={(e) => setForm({ ...form, bRoll: e.target.value })}
+                rows={4}
+                placeholder='z.B.&#10;Hände am Laptop, Trading-Chart auf dem Bildschirm&#10;Kaffee am Küchentisch, Schulterblick&#10;Spaziergang draußen, Sonnenuntergang'
+                className="rounded-lg border-ocean/[0.08] text-sm leading-relaxed bg-white"
+              />
+            </DocField>
+
+            <DocField label="Videobeschreibung" hint="Caption mit Hashtags, Emojis, Folge-CTA">
+              <Textarea
+                value={form.caption}
+                onChange={(e) => setForm({ ...form, caption: e.target.value })}
+                rows={4}
+                placeholder="Instagram-Caption…"
+                className="rounded-lg border-ocean/[0.08] text-sm leading-relaxed bg-white"
+              />
+            </DocField>
+
+            <details className="border-t border-ocean/[0.08] pt-5 group">
+              <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wider text-ocean/45 hover:text-ocean inline-flex items-center gap-1 list-none">
+                <span className="inline-block transition-transform group-open:rotate-90">▸</span>
+                Production Notes (für Editor)
+              </summary>
+              <div className="mt-4">
+                <DocField label="Schnitt & Pacing" hint="Sekunden-Regie, Schnitte, Pacing-Hinweise — nur für den Editor">
+                  <Textarea
+                    value={form.shotList}
+                    onChange={(e) => setForm({ ...form, shotList: e.target.value })}
+                    rows={3}
+                    className="rounded-lg border-ocean/[0.08] text-sm bg-white"
+                  />
+                </DocField>
+              </div>
+            </details>
           </div>
         </DialogContent>
       </Dialog>
