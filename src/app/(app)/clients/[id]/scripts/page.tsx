@@ -57,6 +57,11 @@ const STATUS_OPTIONS = [
 
 // Form-sheet field — label column on the left, input column on the right.
 // Stacks on small viewports. Uses the dialog's full width on desktop.
+//
+// `[&_textarea]:!field-sizing-fixed` overrides the Textarea component's
+// default `field-sizing-content` — without this the textarea shrinks to
+// fit its current content and pulls the dialog grid column with it,
+// which makes the whole modal jump narrower the moment you start typing.
 function DocField({
   label,
   hint,
@@ -72,7 +77,9 @@ function DocField({
         <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-ocean">{label}</p>
         {hint && <p className="text-[11px] text-ocean/45 mt-1 leading-snug">{hint}</p>}
       </div>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 [&_textarea]:!field-sizing-fixed [&_textarea]:w-full [&_input]:w-full">
+        {children}
+      </div>
     </div>
   );
 }
