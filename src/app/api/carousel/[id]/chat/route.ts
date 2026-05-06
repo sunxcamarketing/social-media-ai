@@ -4,11 +4,12 @@ import { getAnthropicClient } from "@/lib/anthropic";
 import { supabase } from "@/lib/supabase";
 import { readConfig } from "@/lib/csv";
 import { getCurrentUser } from "@/lib/auth";
-import { buildPrompt, CAROUSEL_UPDATE_TOOL, CAROUSEL_PATCH_TOOL } from "@prompts";
+import { buildPrompt, CAROUSEL_UPDATE_TOOL, CAROUSEL_UPDATE_SLIDES_TOOL, CAROUSEL_PATCH_TOOL } from "@prompts";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 import { MODEL_SONNET } from "@/lib/models";
 import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
+import { replaceSlides, findSlideBlocks } from "@/lib/carousel/slide-parser";
 
 export const maxDuration = 300;
 
@@ -226,7 +227,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       model: MODEL,
       max_tokens: 16000,
       system: systemPrompt,
-      tools: [CAROUSEL_PATCH_TOOL, CAROUSEL_UPDATE_TOOL],
+      tools: [CAROUSEL_PATCH_TOOL, CAROUSEL_UPDATE_SLIDES_TOOL, CAROUSEL_UPDATE_TOOL],
       messages: claudeMessages,
     });
 
@@ -249,11 +250,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     let newTsx: string | undefined;
 
     if (toolUse && toolUse.type === "tool_use" && toolUse.name === "patch_carousel") {
-      // Server-side find/replace patches. Way faster than full rewrite because
-      // Sonnet only emits the diffs (tens of tokens) instead of the whole TSX
-      // (10k+ tokens). If a patch is ambiguous or its `find` text isn't in the
-      // current TSX, we auto-fall-back to update_carousel so the user gets a
-      // result instead of an error message.
+      // Server-side find/replace patches — fastest path. If a patch is
+      // ambiguous or its `find` text isn't in the current TSX we don't surface
+      // an error: we auto-fall-back to update_slides which is server-enforced
+      // safe (other slides physically untouched).
       const input = toolUse.input as {
         patches?: Array<{ find?: string; replace?: string; replace_all?: boolean }>;
         summary?: string;
@@ -261,18 +261,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const summary = (input.summary || "Karussell aktualisiert.").trim();
       const patchResult = applyPatches(carousel.tsx_code || "", input.patches || []);
       if ("error" in patchResult) {
-        // Auto-fallback: ask the model to redo the change as a full rewrite,
-        // restricted to update_carousel only. This trades the patch's 5-10s
-        // for a 60s round-trip but gives a reliable result instead of asking
-        // the user to retry. Tradeoff: the model regenerates ALL slides which
-        // can produce subtle changes; we hedge with a strong "keep everything
-        // 1:1 except the requested change" instruction.
+        // Fallback to update_slides. The model only writes the slides it
+        // wants to change; the server keeps every other slide byte-for-byte.
+        // No drift on unaffected slides is structurally guaranteed.
+        const blocks = findSlideBlocks(carousel.tsx_code || "");
+        const slideCount = blocks.length;
         const retry = await client.messages.create({
           model: MODEL,
           max_tokens: 16000,
           system: systemPrompt,
-          tools: [CAROUSEL_UPDATE_TOOL],
-          tool_choice: { type: "tool", name: "update_carousel" },
+          tools: [CAROUSEL_UPDATE_SLIDES_TOOL],
+          tool_choice: { type: "tool", name: "update_slides" },
           messages: [
             ...claudeMessages,
             { role: "assistant", content: response.content },
@@ -282,7 +281,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
                 {
                   type: "tool_result",
                   tool_use_id: toolUse.id,
-                  content: `Patch fehlgeschlagen: ${patchResult.error}\n\nNutze jetzt update_carousel und schreib das KOMPLETTE TSX neu. WICHTIG: alle Slides die NICHT vom User-Request betroffen sind, übernimmst du BYTE-FÜR-BYTE 1:1 aus dem aktuellen Code (siehe System-Prompt). Ändere AUSSCHLIESSLICH was der User explizit angefragt hat. Keine "Verbesserungen", keine Wording-Tweaks an unbetroffenen Slides.`,
+                  content: `Patch fehlgeschlagen: ${patchResult.error}\n\nNutze update_slides — gib NUR die Slides zurück die wirklich geändert werden müssen. Das aktuelle Karussell hat ${slideCount} Slides (Indizes 0..${slideCount - 1}). Alle nicht zurückgegebenen Slides bleiben byte-für-byte original — du musst sie also nicht ausschreiben.`,
                   is_error: true,
                 },
               ],
@@ -297,23 +296,38 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           operation: "carousel_chat",
           initiator,
         });
-        const retryUse = retry.content.find((b) => b.type === "tool_use" && b.name === "update_carousel");
+        const retryUse = retry.content.find((b) => b.type === "tool_use" && b.name === "update_slides");
         if (retryUse && retryUse.type === "tool_use") {
-          const retryInput = retryUse.input as { tsx_code?: string; summary?: string };
-          newTsx = (retryInput.tsx_code || "").trim();
-          const retrySummary = (retryInput.summary || summary).trim();
-          assistantMessage = {
-            role: "assistant",
-            text: retrySummary,
-            update: { summary: retrySummary, tsxChars: newTsx.length },
-            createdAt: assistantAt,
+          const retryInput = retryUse.input as {
+            changes?: Array<{ slide_index?: number; tsx?: string }>;
+            summary?: string;
           };
+          const changes = (retryInput.changes || [])
+            .filter((c): c is { slide_index: number; tsx: string } =>
+              typeof c.slide_index === "number" && typeof c.tsx === "string",
+            )
+            .map((c) => ({ index: c.slide_index, tsx: c.tsx }));
+          const result = replaceSlides(carousel.tsx_code || "", changes);
+          if (result.ok) {
+            newTsx = result.tsx;
+            const retrySummary = (retryInput.summary || summary).trim();
+            assistantMessage = {
+              role: "assistant",
+              text: retrySummary,
+              update: { summary: retrySummary, tsxChars: newTsx.length },
+              createdAt: assistantAt,
+            };
+          } else {
+            assistantMessage = {
+              role: "assistant",
+              text: `Hatte ein Problem beim Anwenden: ${result.error} — sag mir nochmal kurz wo genau es hin soll.`,
+              createdAt: assistantAt,
+            };
+          }
         } else {
-          // Even the fallback didn't return a tool — surface the original error
-          // so the user knows what to retry.
           assistantMessage = {
             role: "assistant",
-            text: `Hatte ein Problem beim Anwenden des Patches: ${patchResult.error} — sag mir nochmal kurz wo genau es hin soll, oder ich mach den ganzen Code neu.`,
+            text: `Hatte ein Problem beim Anwenden des Patches: ${patchResult.error} — sag mir nochmal kurz wo genau es hin soll.`,
             createdAt: assistantAt,
           };
         }
@@ -323,6 +337,43 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           role: "assistant",
           text: summary,
           update: { summary, tsxChars: newTsx.length },
+          createdAt: assistantAt,
+        };
+      }
+    } else if (toolUse && toolUse.type === "tool_use" && toolUse.name === "update_slides") {
+      // Surgical slide replacement. The server splits the existing TSX, swaps
+      // ONLY the indices the model returns, and stitches the rest back
+      // byte-for-byte. Drift on un-targeted slides is impossible by
+      // construction — that's the whole point of this tool over update_carousel.
+      const input = toolUse.input as {
+        changes?: Array<{ slide_index?: number; tsx?: string }>;
+        summary?: string;
+      };
+      const summary = (input.summary || "Karussell aktualisiert.").trim();
+      const changes = (input.changes || [])
+        .filter((c): c is { slide_index: number; tsx: string } =>
+          typeof c.slide_index === "number" && typeof c.tsx === "string",
+        )
+        .map((c) => ({ index: c.slide_index, tsx: c.tsx }));
+      const result = replaceSlides(carousel.tsx_code || "", changes);
+      if (result.ok) {
+        newTsx = result.tsx;
+        const slidesLabel = result.replaced.length === 1
+          ? `Slide ${result.replaced[0] + 1}`
+          : `Slides ${result.replaced.map((i) => i + 1).join(", ")}`;
+        assistantMessage = {
+          role: "assistant",
+          text: summary,
+          update: {
+            summary: `${summary} (${slidesLabel} ersetzt — alle anderen 1:1 erhalten)`,
+            tsxChars: newTsx.length,
+          },
+          createdAt: assistantAt,
+        };
+      } else {
+        assistantMessage = {
+          role: "assistant",
+          text: `Hatte ein Problem: ${result.error} — sag mir nochmal kurz wo genau es hin soll.`,
           createdAt: assistantAt,
         };
       }

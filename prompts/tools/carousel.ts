@@ -27,6 +27,41 @@ export const CAROUSEL_UPDATE_TOOL = {
   },
 };
 
+export const CAROUSEL_UPDATE_SLIDES_TOOL = {
+  name: "update_slides",
+  description:
+    "Sicherer Default für nicht-triviale Edits. Du übergibst NUR die geänderten Slides als komplette `<section className=\"slide\">…</section>` Blöcke samt Slide-Index — alle anderen Slides bleiben SERVER-erzwungen byte-für-byte 1:1, du kannst sie gar nicht versehentlich ändern. Nutze das wenn der User einen Slide oder mehrere konkrete Slides umbauen will (Layout, kompletter Text, Bild einfügen, etc.) und alle anderen unangetastet bleiben sollen. Drei Slides ändern = 3 Einträge in `changes`. Bei reinen Mini-Edits (ein Wort, eine Farbe) trotzdem patch_carousel bevorzugen — schneller. Bei Slide-Anzahl-Änderung (hinzufügen/entfernen) oder Reihenfolge-Änderung: update_carousel.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      changes: {
+        type: "array" as const,
+        description: "Liste der zu ersetzenden Slides. Jeder Eintrag = ein Slide-Block.",
+        minItems: 1,
+        items: {
+          type: "object" as const,
+          properties: {
+            slide_index: {
+              type: "number" as const,
+              description: "0-basierter Index des Slides im aktuellen Karussell (0 = erste, 1 = zweite, …).",
+            },
+            tsx: {
+              type: "string" as const,
+              description: "Der KOMPLETTE neue `<section className=\"slide\" …>…</section>` Block für diese Slide. Mit allen inline styles und Children. KEINE Wrapping-Tags, KEIN function-Header, KEIN React.Fragment außenrum.",
+            },
+          },
+          required: ["slide_index", "tsx"],
+        },
+      },
+      summary: {
+        type: "string" as const,
+        description: "1-2 Sätze: was du an welchen Slides geändert hast. Wird dem User als Nachricht angezeigt.",
+      },
+    },
+    required: ["changes", "summary"],
+  },
+};
+
 export const CAROUSEL_PATCH_TOOL = {
   name: "patch_carousel",
   description: "Schnelle, lokale Änderungen am bestehenden TSX über find/replace. IMMER bevorzugen wenn die Änderung klein ist (einzelner Text, einzelne Klasse/Farbe, einzelnes Element löschen, kleines Element einfügen, ein Handle/Footer in alle Slides). Schreibst nur die geänderten Stellen statt der ganzen Datei → 5-10s Latenz statt 60-150s. Bei wirklich großen Umbauten (Layout-Restructuring, Slide-Anzahl ändern, mehrere Slides komplett neu) → update_carousel.",
