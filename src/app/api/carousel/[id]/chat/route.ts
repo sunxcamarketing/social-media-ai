@@ -252,8 +252,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       // Server-side find/replace patches. Way faster than full rewrite because
       // Sonnet only emits the diffs (tens of tokens) instead of the whole TSX
       // (10k+ tokens). If a patch is ambiguous or its `find` text isn't in the
-      // current TSX, we surface that as a chat message instead of crashing —
-      // Sonnet sees the error in history and can adjust on retry.
+      // current TSX, we auto-fall-back to update_carousel so the user gets a
+      // result instead of an error message.
       const input = toolUse.input as {
         patches?: Array<{ find?: string; replace?: string; replace_all?: boolean }>;
         summary?: string;
@@ -261,11 +261,62 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const summary = (input.summary || "Karussell aktualisiert.").trim();
       const patchResult = applyPatches(carousel.tsx_code || "", input.patches || []);
       if ("error" in patchResult) {
-        assistantMessage = {
-          role: "assistant",
-          text: `Hatte ein Problem beim Anwenden des Patches: ${patchResult.error} — sag mir nochmal kurz wo genau es hin soll, oder ich mach den ganzen Code neu.`,
-          createdAt: assistantAt,
-        };
+        // Auto-fallback: ask the model to redo the change as a full rewrite,
+        // restricted to update_carousel only. This trades the patch's 5-10s
+        // for a 60s round-trip but gives a reliable result instead of asking
+        // the user to retry. Tradeoff: the model regenerates ALL slides which
+        // can produce subtle changes; we hedge with a strong "keep everything
+        // 1:1 except the requested change" instruction.
+        const retry = await client.messages.create({
+          model: MODEL,
+          max_tokens: 16000,
+          system: systemPrompt,
+          tools: [CAROUSEL_UPDATE_TOOL],
+          tool_choice: { type: "tool", name: "update_carousel" },
+          messages: [
+            ...claudeMessages,
+            { role: "assistant", content: response.content },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: toolUse.id,
+                  content: `Patch fehlgeschlagen: ${patchResult.error}\n\nNutze jetzt update_carousel und schreib das KOMPLETTE TSX neu. WICHTIG: alle Slides die NICHT vom User-Request betroffen sind, übernimmst du BYTE-FÜR-BYTE 1:1 aus dem aktuellen Code (siehe System-Prompt). Ändere AUSSCHLIESSLICH was der User explizit angefragt hat. Keine "Verbesserungen", keine Wording-Tweaks an unbetroffenen Slides.`,
+                  is_error: true,
+                },
+              ],
+            },
+          ],
+        });
+        trackClaudeCost({
+          usage: retry.usage,
+          model: MODEL,
+          clientId: carousel.client_id,
+          userId,
+          operation: "carousel_chat",
+          initiator,
+        });
+        const retryUse = retry.content.find((b) => b.type === "tool_use" && b.name === "update_carousel");
+        if (retryUse && retryUse.type === "tool_use") {
+          const retryInput = retryUse.input as { tsx_code?: string; summary?: string };
+          newTsx = (retryInput.tsx_code || "").trim();
+          const retrySummary = (retryInput.summary || summary).trim();
+          assistantMessage = {
+            role: "assistant",
+            text: retrySummary,
+            update: { summary: retrySummary, tsxChars: newTsx.length },
+            createdAt: assistantAt,
+          };
+        } else {
+          // Even the fallback didn't return a tool — surface the original error
+          // so the user knows what to retry.
+          assistantMessage = {
+            role: "assistant",
+            text: `Hatte ein Problem beim Anwenden des Patches: ${patchResult.error} — sag mir nochmal kurz wo genau es hin soll, oder ich mach den ganzen Code neu.`,
+            createdAt: assistantAt,
+          };
+        }
       } else {
         newTsx = patchResult.tsx;
         assistantMessage = {
