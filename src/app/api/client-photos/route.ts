@@ -5,7 +5,7 @@ import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 
 const BUCKET = "images";
 const FOLDER = "client-photos";
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB per file
+const MAX_BYTES = 20 * 1024 * 1024; // 20 MB per file (after client-side compression most photos land well below)
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 async function ensureBucket(): Promise<{ ok: true } | { ok: false; error: string }> {

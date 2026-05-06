@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import imageCompression from "browser-image-compression";
 import {
   Send,
   Loader2,
@@ -37,7 +38,18 @@ interface PendingPhoto {
 }
 
 const MAX_PHOTOS = 6;
-const MAX_BYTES = 8 * 1024 * 1024; // mirror server limit
+// Anthropic's Vision API has a hard 5 MB / image limit; we target well below
+// that so a single carousel refine call with multiple photos stays under
+// total context budget too. Server cap stays at 20 MB as defence in depth.
+const MAX_BYTES = 20 * 1024 * 1024;
+const COMPRESS_THRESHOLD_BYTES = 1 * 1024 * 1024; // anything > 1 MB gets re-encoded
+const COMPRESS_OPTIONS = {
+  maxSizeMB: 3.5,           // hard cap below Anthropic's 5 MB
+  maxWidthOrHeight: 1920,    // Instagram shows max ~1080 wide; 1920 is more than enough
+  useWebWorker: true,
+  fileType: "image/jpeg" as const,
+  initialQuality: 0.8,
+};
 
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -107,17 +119,41 @@ export function CarouselChat({ runId, clientId, onTsxUpdate }: Props) {
   }, []);
 
   async function uploadPhoto(file: File, slot: number) {
-    if (file.size > MAX_BYTES) {
-      setPhotos((prev) => {
-        const next = [...prev];
-        if (next[slot]) next[slot] = { ...next[slot], uploading: false, error: "Datei zu groß" };
-        return next;
-      });
-      return;
-    }
     try {
+      // Compress big photos client-side. PNGs from KI-tools / DSLRs are often
+      // 8-15 MB which would blow Anthropic's 5 MB Vision-API limit (used by
+      // the carousel refine chat). We re-encode to JPEG, cap dimensions, and
+      // run a second pass with lower quality if still too big.
+      let toUpload = file;
+      if (file.type.startsWith("image/") && file.size > COMPRESS_THRESHOLD_BYTES) {
+        try {
+          toUpload = await imageCompression(file, COMPRESS_OPTIONS);
+          // Edge case: browser-image-compression can't always hit the target
+          // for very dense images. Second pass at lower quality if still
+          // dangerously close to Anthropic's 5 MB cap.
+          if (toUpload.size > 4 * 1024 * 1024) {
+            toUpload = await imageCompression(toUpload, { ...COMPRESS_OPTIONS, initialQuality: 0.65, maxSizeMB: 2 });
+          }
+        } catch {
+          toUpload = file;
+        }
+      }
+
+      if (toUpload.size > MAX_BYTES) {
+        setPhotos((prev) => {
+          const next = [...prev];
+          if (next[slot]) next[slot] = {
+            ...next[slot],
+            uploading: false,
+            error: `Foto ist ${(toUpload.size / 1024 / 1024).toFixed(1)} MB, max ${MAX_BYTES / 1024 / 1024} MB`,
+          };
+          return next;
+        });
+        return;
+      }
+
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", toUpload);
       fd.append("clientId", clientId);
       const res = await fetch("/api/client-photos", { method: "POST", body: fd });
       if (!res.ok) {

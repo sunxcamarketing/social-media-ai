@@ -25,7 +25,14 @@ import { sendEvent, sseResponse } from "@/lib/sse";
 import { readConfig } from "@/lib/csv";
 import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/lib/platforms";
 import { trackClaudeCost } from "@/lib/cost-tracking";
-import { MODEL_SONNET, AGENT_ITERATION_LIMIT } from "@/lib/models";
+import { MODEL_HAIKU, AGENT_ITERATION_LIMIT } from "@/lib/models";
+
+// Default chat model. Haiku 4.5 has the highest TPM rate-limit per tier
+// (50k vs 30k for Sonnet on Tier 1) and handles standard chat, story
+// strategy design, and tool-use loops well. Heavy script-writing prompts
+// can be routed to Sonnet later via conditional model selection if quality
+// drops on real usage.
+const CHAT_MODEL = MODEL_HAIKU;
 
 export const maxDuration = 300;
 
@@ -194,7 +201,7 @@ export async function POST(request: Request) {
 
         for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
           const response = await client.messages.create({
-            model: MODEL_SONNET,
+            model: CHAT_MODEL,
             max_tokens: 4096,
             system: cachedSystem,
             messages: currentMessages,
@@ -203,7 +210,7 @@ export async function POST(request: Request) {
 
           trackClaudeCost({
             usage: response.usage,
-            model: MODEL_SONNET,
+            model: CHAT_MODEL,
             clientId: scopedClientId,
             userId: user.id,
             operation: "chat",
