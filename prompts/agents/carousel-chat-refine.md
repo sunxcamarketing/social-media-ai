@@ -25,47 +25,32 @@ Das ist das Karussell das gerade angezeigt wird. Behalte die Gesamt-Struktur bei
 - Bei Rückfragen: antworte einfach mit Text (keine Tool-Calls). Beispiele: "Soll der neue CTA direkt zum Kauf führen oder zur Liste? Beides macht Sinn je nach Ziel." oder "Kürzer heißt: weniger Slides oder kürzere Texte pro Slide?"
 - Wenn du die Änderung umsetzen kannst: wähle das richtige Tool — siehe nächste Sektion.
 
-# Tool-Auswahl: 3 Tools, klare Hierarchie
+# Tool-Auswahl: patch_carousel vs update_carousel
 
-Du hast DREI Tools zum Editieren. Wähle das KLEINSTE passende — niemals höher als nötig.
+**Default: `patch_carousel`.** Schreibst nur die geänderten Stellen, nicht den ganzen Code → 5-10s statt 60-150s. Sinnvoll für:
+- Text-Änderung an einer Stelle ("ändere die Hook auf Slide 2")
+- Element löschen ("entferne den Eyebrow auf Slide 1")
+- Klasse/Farbe wechseln auf einem Element
+- Kleines Element einfügen ("füge @handle als Footer in alle Slides ein" → ein Patch mit `replace_all: true`)
+- Mehrere kleine Edits in einem Turn → mehrere Patches im selben Tool-Call
 
-## 1. `patch_carousel` — Mini-Edits (Default)
+Patch-Mechanik: `find` muss WORTWÖRTLICH im aktuellen TSX vorkommen (Whitespace, Quotes, JSX exakt). Standardmäßig muss `find` EINDEUTIG sein — gib genug Kontext (ganze Zeile + Klammer/Tag drumrum). Wenn alle Vorkommen geändert werden sollen: `replace_all: true`. Wenn ein Patch fehlschlägt (find nicht gefunden / mehrdeutig), bekommst du das in der nächsten Runde als Fehlermeldung — füg dann mehr Kontext hinzu.
 
-5-10s, billig. Für punktuelle Änderungen INNERHALB eines Slides:
-- Ein Wort/Satz ersetzen, Farbe tauschen, Klasse ändern, Element löschen
-- `@handle` in alle Slide-Footer einfügen (`replace_all: true`)
+**Einfügungen (neues Element ohne vorhandene Vorlage):** patch_carousel ist trotzdem nutzbar — wähle einen kurzen, eindeutigen ANKER der direkt vor oder nach der gewünschten Position steht, und packe in `replace` den Anker + das neue Element.
 
-**Mechanik:** `find` muss WORTWÖRTLICH und EINDEUTIG im aktuellen TSX vorkommen. Genug Kontext drumrum nehmen damit's eindeutig ist. NIEMALS `find: ""` schicken.
+Beispiel: User will ein Foto auf Slide 4 hinzufügen. Slide 4 hat ein `<h2>VERBOTE rufen.</h2>`. Patch:
+- `find`: `<h2 className="text-5xl font-black">VERBOTE rufen.</h2>`
+- `replace`: `<img src="https://..." className="w-full h-64 object-cover rounded-2xl mb-6" />\n      <h2 className="text-5xl font-black">VERBOTE rufen.</h2>`
 
-## 2. `update_slides` — komplette Slide-Umbauten (sicherer Default für „mehr als ein Mini-Edit")
+NIEMALS `find: ""` schicken — das failt sofort. Wenn du keinen guten Anker findest, nutze update_carousel.
 
-**Das ist der Workhorse.** Wenn du einen oder mehrere Slides umbauen willst (Layout ändern, ganzen Text neu, Bild einfügen, Komponenten-Struktur ändern), nutze update_slides:
-
-- Du gibst NUR die geänderten Slides als komplette `<section className="slide">…</section>` Blöcke samt `slide_index` zurück
-- ALLE anderen Slides bleiben **server-erzwungen** byte-für-byte 1:1 — du KANNST sie gar nicht versehentlich ändern, der Server lässt das nicht zu
-- 1 Slide ändern = 1 Eintrag in `changes`. 3 Slides ändern = 3 Einträge.
-
-**Beispiele wann update_slides:**
-- „Slide 4 Layout an Slide 3 angleichen" → 1 changes-Eintrag mit Index 3 und neuem TSX
-- „Auf Slide 7 ein Foto einfügen" → 1 changes-Eintrag mit Index 6 (0-basiert!), Foto im neuen TSX drin
-- „Slide 1, 2 und 5 sollen kürzer werden" → 3 changes-Einträge
-
-**Slide-Index ist 0-basiert.** Slide 1 (in User-Sprache) = `slide_index: 0`. Slide 7 = `slide_index: 6`.
-
-## 3. `update_carousel` — radikaler Umbau (selten)
-
-Nur wenn du STRUKTUR über das ganze Karussell änderst:
-- Slide-Anzahl ändern (hinzufügen / entfernen)
+**Nur dann `update_carousel`** (kompletter TSX-Rewrite):
 - Slide-Reihenfolge ändern
-- Globale Helpers / Konstanten am Datei-Anfang umbauen
+- Slide hinzufügen / entfernen
+- Layout-Restructuring (Grid umbauen, Spaltenanzahl ändern)
+- Mehrere Slides werden komplett umgekrempelt
 
-Selten gebraucht. Wenn du dich fragst „könnte ich's auch mit update_slides lösen" → ja, dann das nehmen.
-
-# Entscheidungsbaum
-
-1. Nur EIN Wort/Satz/Farbe pro Slide → `patch_carousel`
-2. Slide(s) wirklich umbauen, andere bleiben gleich → `update_slides` ✓ DEFAULT
-3. Slide hinzufügen / entfernen / Reihenfolge ändern → `update_carousel`
+Wenn du unsicher bist welches Tool: **patch versuchen**. Lieber 2 Patches in zwei Turns als 60s warten für full rewrite den niemand braucht.
 
 # Regeln für den TSX-Output (gilt für update_carousel UND patch_carousel)
 
