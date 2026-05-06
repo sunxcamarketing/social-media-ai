@@ -14,7 +14,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabase
     .from("api_costs")
-    .select("client_id, user_id, provider, operation, cost_usd, initiator, created_at")
+    .select("client_id, user_id, provider, model, operation, cost_usd, initiator, created_at")
     .gte("created_at", since);
 
   if (error) {
@@ -25,6 +25,7 @@ export async function GET(req: Request) {
     client_id: string | null;
     user_id: string | null;
     provider: string;
+    model: string | null;
     operation: string;
     cost_usd: number | string;
     initiator: "admin" | "client";
@@ -87,6 +88,33 @@ export async function GET(req: Request) {
     byProvider[row.provider] = (byProvider[row.provider] || 0) + cost;
   }
 
+  // Slim raw rows for the new dashboard — lets the client filter / cross-tab
+  // / chart without round-trips. Day-only timestamp keeps payload small.
+  const slimRows = rows.map((r) => ({
+    clientId: r.client_id || "__global__",
+    userId: r.user_id || null,
+    provider: r.provider,
+    model: r.model || "",
+    operation: r.operation,
+    initiator: r.initiator,
+    costUsd: Number(r.cost_usd),
+    day: r.created_at.slice(0, 10),
+  }));
+
+  // Pull every client name in one go so the dashboard can label rows without
+  // a separate /api/configs round-trip.
+  const clientLabels: Record<string, string> = {};
+  try {
+    const { data: configs } = await supabase
+      .from("configs")
+      .select("id, name, configName");
+    for (const c of (configs || []) as Array<{ id: string; name?: string; configName?: string }>) {
+      clientLabels[c.id] = c.configName || c.name || c.id.slice(0, 8);
+    }
+  } catch (e) {
+    console.warn("[costs] client label resolution failed:", e);
+  }
+
   return NextResponse.json({
     days,
     entryCount: rows.length,
@@ -98,5 +126,7 @@ export async function GET(req: Request) {
     byProvider,
     byAdminUser,
     userLabels,
+    rows: slimRows,
+    clientLabels,
   });
 }

@@ -10,6 +10,7 @@ import {
   Sparkles,
   Paperclip,
   X,
+  Trash2,
 } from "lucide-react";
 
 export interface CarouselChatMessage {
@@ -211,6 +212,22 @@ export function CarouselChat({ runId, clientId, onTsxUpdate }: Props) {
     });
   }
 
+  async function clearChat() {
+    if (status === "generating") return;
+    if (!confirm("Chat leeren? Das Karussell selbst bleibt unverändert — nur der Gesprächsverlauf wird zurückgesetzt.")) return;
+    try {
+      const res = await fetch(`/api/carousel/${runId}/chat`, { method: "DELETE" });
+      if (!res.ok) {
+        alert("Konnte Chat nicht leeren — versuch's gleich nochmal.");
+        return;
+      }
+      setMessages([]);
+      setStatus("idle");
+    } catch {
+      alert("Netzwerk-Fehler beim Chat-Reset.");
+    }
+  }
+
   async function send() {
     const text = input.trim();
     const readyUrls = photos.filter((p) => p.publicUrl).map((p) => p.publicUrl!);
@@ -305,6 +322,23 @@ export function CarouselChat({ runId, clientId, onTsxUpdate }: Props) {
       }}
       onDrop={onDrop}
     >
+      {/* Top bar — only when there's history to clear. Lets the user reset the
+          conversation without losing the carousel design. */}
+      {messages.length > 0 && (
+        <div className="flex items-center justify-end px-4 py-2 border-b border-ocean/[0.06] shrink-0">
+          <button
+            type="button"
+            onClick={clearChat}
+            disabled={status === "generating"}
+            className="inline-flex items-center gap-1.5 text-[11px] text-ocean/50 hover:text-blush-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Chat-Verlauf leeren — Karussell bleibt unverändert"
+          >
+            <Trash2 className="h-3 w-3" />
+            Chat leeren
+          </button>
+        </div>
+      )}
+
       <div
         ref={listRef}
         className={`flex-1 overflow-y-auto px-4 py-4 space-y-3 transition-colors ${

@@ -88,6 +88,29 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json(data);
 }
 
+// ── DELETE: clear chat history (and unstuck "generating" lock).
+// Carousel TSX is left untouched — only chat_messages and chat_status are reset.
+// Useful when the conversation is too long, has confused the model, or got
+// stuck mid-request and the user wants to start fresh without losing the design.
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { error } = await supabase
+    .from("carousels")
+    .update({
+      chat_messages: [],
+      chat_status: "idle",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("run_id", id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 // ── POST: append a user message, call Claude, update carousel or answer ─
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
