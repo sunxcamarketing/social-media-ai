@@ -839,8 +839,10 @@ export default function ClientScriptsPage() {
             </div>
           </div>
 
-          {/* Doc-style body — wide form-sheet on desktop, label-left/input-right */}
-          <div className="px-12 py-10 max-w-[1100px] mx-auto">
+          {/* Doc-style body — wide form-sheet on desktop, label-left/input-right.
+              No max-width here so the form spans the full dialog width and the
+              right column actually breathes. */}
+          <div className="px-12 py-10">
             {/* Title — large, like a doc heading */}
             <input
               type="text"
