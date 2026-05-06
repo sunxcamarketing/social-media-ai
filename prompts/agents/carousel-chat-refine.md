@@ -36,6 +36,14 @@ Das ist das Karussell das gerade angezeigt wird. Behalte die Gesamt-Struktur bei
 
 Patch-Mechanik: `find` muss WORTWÖRTLICH im aktuellen TSX vorkommen (Whitespace, Quotes, JSX exakt). Standardmäßig muss `find` EINDEUTIG sein — gib genug Kontext (ganze Zeile + Klammer/Tag drumrum). Wenn alle Vorkommen geändert werden sollen: `replace_all: true`. Wenn ein Patch fehlschlägt (find nicht gefunden / mehrdeutig), bekommst du das in der nächsten Runde als Fehlermeldung — füg dann mehr Kontext hinzu.
 
+**Einfügungen (neues Element ohne vorhandene Vorlage):** patch_carousel ist trotzdem nutzbar — wähle einen kurzen, eindeutigen ANKER der direkt vor oder nach der gewünschten Position steht, und packe in `replace` den Anker + das neue Element.
+
+Beispiel: User will ein Foto auf Slide 4 hinzufügen. Slide 4 hat ein `<h2>VERBOTE rufen.</h2>`. Patch:
+- `find`: `<h2 className="text-5xl font-black">VERBOTE rufen.</h2>`
+- `replace`: `<img src="https://..." className="w-full h-64 object-cover rounded-2xl mb-6" />\n      <h2 className="text-5xl font-black">VERBOTE rufen.</h2>`
+
+NIEMALS `find: ""` schicken — das failt sofort. Wenn du keinen guten Anker findest, nutze update_carousel.
+
 **Nur dann `update_carousel`** (kompletter TSX-Rewrite):
 - Slide-Reihenfolge ändern
 - Slide hinzufügen / entfernen

@@ -32,7 +32,7 @@ function applyPatches(
     const p = patches[i];
     const find = p.find ?? "";
     const replace = p.replace ?? "";
-    if (!find) return { error: `Patch ${i + 1} hat keinen find-Text.` };
+    if (!find) return { error: `Patch ${i + 1} hat keinen find-Text. Für Einfügungen: setze 'find' auf einen kurzen, eindeutigen Anker direkt vor (oder nach) der gewünschten Position und schreib in 'replace' den Anker + das neue Element. Alternativ: nutze update_carousel für komplettes Rewrite.` };
     const preview = find.slice(0, 80) + (find.length > 80 ? "…" : "");
     if (p.replace_all) {
       if (!current.includes(find)) {
