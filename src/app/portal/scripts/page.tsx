@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Copy,
@@ -52,13 +53,13 @@ type FeedbackStatus = "approved" | "rejected" | "revision_requested";
 
 export default function PortalScripts() {
   const { t, lang } = useI18n();
+  const router = useRouter();
   const { effectiveClientId, loading: authLoading } = usePortalClient();
   const [scripts, setScripts] = useState<Script[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<Tab>("scripts");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [feedbackDialog, setFeedbackDialog] = useState<{ scriptId: string; status: FeedbackStatus } | null>(null);
@@ -297,85 +298,106 @@ export default function PortalScripts() {
     >
       {tab === "scripts" ? (
         scripts.length > 0 ? (
-          <div className="rounded-xl border border-ocean/[0.06] overflow-hidden bg-white/50">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-ocean/[0.08] bg-ocean/[0.02]">
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[260px]">Titel</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[140px]">Mein Feedback</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[110px]">Datum</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ocean/[0.05]">
-                {scripts.map((script) => {
-                  const fb = (script.clientFeedbackStatus as FeedbackStatus | null) || null;
-                  const fbText = script.clientFeedbackText || "";
-                  const dateStr = script.createdAt
-                    ? new Date(script.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
-                    : "—";
-                  const isExpanded = expandedId === script.id;
+          <>
+            {/* ── Mobile: card list ────────────────────────────────────── */}
+            <div className="md:hidden space-y-2">
+              {scripts.map((script) => {
+                const fb = (script.clientFeedbackStatus as FeedbackStatus | null) || null;
+                const dateStr = script.createdAt
+                  ? new Date(script.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                  : "";
+                const fbLabel = fb === "approved" ? "Gefällt mir" : fb === "rejected" ? "Abgelehnt" : fb === "revision_requested" ? "Verbessern" : null;
+                const fbCls = fb === "approved" ? "bg-green-50 text-green-700 border-green-200"
+                  : fb === "rejected" ? "bg-red-50 text-red-600 border-red-200"
+                  : fb === "revision_requested" ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "";
+                return (
+                  <button
+                    key={script.id}
+                    onClick={() => router.push(`/portal/scripts/${script.id}`)}
+                    className="w-full text-left rounded-2xl border border-ocean/[0.06] bg-white/70 hover:bg-blush-light/20 active:bg-blush-light/30 transition-colors p-4 space-y-2.5"
+                  >
+                    <p className="text-base font-semibold text-ocean leading-snug break-words">
+                      {script.title || t("portal.scripts.untitled")}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {script.format && (
+                        <span className="text-[10px] text-ocean/65 rounded bg-blush-light/40 border border-blush/30 px-2 py-0.5 font-medium">{script.format}</span>
+                      )}
+                      {script.pillar && (
+                        <span className="text-[10px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-2 py-0.5">{script.pillar}</span>
+                      )}
+                      {fbLabel && (
+                        <span className={`text-[10px] border rounded px-2 py-0.5 font-medium ml-auto ${fbCls}`}>{fbLabel}</span>
+                      )}
+                    </div>
+                    {script.hook && (
+                      <p className="text-[13px] text-ocean/70 leading-relaxed line-clamp-2 break-words">{script.hook}</p>
+                    )}
+                    <p className="text-[10px] text-ocean/40">{dateStr}</p>
+                  </button>
+                );
+              })}
+            </div>
 
-                  return (
-                    <Fragment key={script.id}>
-                      <tr
-                        onClick={() => setExpandedId(isExpanded ? null : script.id)}
-                        className="hover:bg-ocean/[0.01] transition-colors cursor-pointer"
-                      >
-                        <td className="px-4 py-4 align-top">
-                          <div className="space-y-1.5">
-                            <p className="text-sm font-medium text-ocean/90 leading-snug break-words">{script.title || t("portal.scripts.untitled")}</p>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {script.pillar && (
-                                <span className="text-[9px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5 font-medium">{script.pillar}</span>
-                              )}
-                              {script.format && (
-                                <span className="text-[9px] text-ocean/50 rounded bg-ocean/[0.04] border border-ocean/[0.06] px-1.5 py-0.5">{script.format}</span>
-                              )}
+            {/* ── Desktop: existing table ──────────────────────────────── */}
+            <div className="hidden md:block rounded-xl border border-ocean/[0.06] overflow-hidden bg-white/50">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-ocean/[0.08] bg-ocean/[0.02]">
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[260px]">Titel</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[140px]">Mein Feedback</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[110px]">Datum</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ocean/[0.05]">
+                  {scripts.map((script) => {
+                    const fb = (script.clientFeedbackStatus as FeedbackStatus | null) || null;
+                    const dateStr = script.createdAt
+                      ? new Date(script.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                      : "—";
+
+                    return (
+                      <Fragment key={script.id}>
+                        <tr
+                          onClick={() => router.push(`/portal/scripts/${script.id}`)}
+                          className="hover:bg-ocean/[0.01] transition-colors cursor-pointer"
+                        >
+                          <td className="px-4 py-4 align-top">
+                            <div className="space-y-1.5">
+                              <p className="text-sm font-medium text-ocean/90 leading-snug break-words">{script.title || t("portal.scripts.untitled")}</p>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {script.pillar && (
+                                  <span className="text-[9px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-1.5 py-0.5 font-medium">{script.pillar}</span>
+                                )}
+                                {script.format && (
+                                  <span className="text-[9px] text-ocean/50 rounded bg-ocean/[0.04] border border-ocean/[0.06] px-1.5 py-0.5">{script.format}</span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <PortalScriptCell script={script} copiedId={copiedId} onCopy={copyScript} onEdit={openScriptEdit} />
-                        <td className="px-4 py-4 align-top">
-                          <FeedbackPicker
-                            status={fb}
-                            onApprove={() => approveScript(script)}
-                            onReject={() => openRejectScript(script)}
-                            onRevise={() => openRevisionScript(script)}
-                            onClear={() => applyFeedback(script.id, null)}
-                          />
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <span className="text-xs text-ocean/45 whitespace-nowrap">{dateStr}</span>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-4 bg-ocean/[0.015] border-t border-ocean/[0.04]">
-                            {fbText && (
-                              <div className="rounded-lg border border-ocean/[0.06] bg-white/60 p-3 mb-3">
-                                <p className="text-[10px] uppercase tracking-wider text-ocean/45 font-medium mb-1">Dein Feedback</p>
-                                <p className="text-xs text-ocean/75 leading-relaxed whitespace-pre-wrap break-words">{fbText}</p>
-                              </div>
-                            )}
-                            {script.adminResponse && (
-                              <div className="rounded-lg border border-green-200 bg-green-50/60 p-3 mb-3">
-                                <p className="text-[10px] uppercase tracking-wider text-green-700/70 font-medium mb-1">
-                                  Antwort{script.adminResponseAt ? ` · ${new Date(script.adminResponseAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })}` : ""}
-                                </p>
-                                <p className="text-xs text-green-800/85 leading-relaxed whitespace-pre-wrap break-words">{script.adminResponse}</p>
-                              </div>
-                            )}
-                            <ScriptDetailFields script={script} />
+                          </td>
+                          <PortalScriptCell script={script} copiedId={copiedId} onCopy={copyScript} onEdit={openScriptEdit} />
+                          <td className="px-4 py-4 align-top">
+                            <FeedbackPicker
+                              status={fb}
+                              onApprove={() => approveScript(script)}
+                              onReject={() => openRejectScript(script)}
+                              onRevise={() => openRevisionScript(script)}
+                              onClear={() => applyFeedback(script.id, null)}
+                            />
+                          </td>
+                          <td className="px-4 py-4 align-top">
+                            <span className="text-xs text-ocean/45 whitespace-nowrap">{dateStr}</span>
                           </td>
                         </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <div className="glass rounded-2xl p-8 text-center">
             <p className="text-sm text-ocean/50">{t("portal.scripts.empty")}</p>
