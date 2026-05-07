@@ -7,12 +7,17 @@ import { getCurrentUser } from "@/lib/auth";
 import { buildPrompt, CAROUSEL_UPDATE_TOOL, CAROUSEL_PATCH_TOOL } from "@prompts";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
-import { MODEL_SONNET } from "@/lib/models";
+import { MODEL_HAIKU } from "@/lib/models";
 import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
 
 export const maxDuration = 300;
 
-const MODEL = MODEL_SONNET;
+// Refine-Chat läuft auf Haiku 4.5 — 50k TPM auf Tier 1 (vs 30k Sonnet),
+// 3× günstiger, ~2× schneller. Reicht für die kleinen Edits die hier
+// laufen (Patches, Slide-Tweaks, Frage-Antwort). Die initiale Carousel-
+// Generierung in react-pipeline.ts bleibt auf Sonnet weil dort Code-
+// Qualität wichtiger ist als Speed.
+const MODEL = MODEL_HAIKU;
 
 type Patch = { find?: string; replace?: string; replace_all?: boolean };
 
