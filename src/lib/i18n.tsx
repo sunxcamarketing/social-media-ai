@@ -373,6 +373,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "creators.notFound": { de: "nicht auf Instagram gefunden", en: "not found on Instagram" },
   "creators.noData": { de: "Noch keine Daten —", en: "No data yet —" },
   "creators.clickScrape": { de: "Daten laden", en: "load data" },
+  "creators.scraping": { de: "Lade Daten…", en: "Loading data…" },
   "creators.scraped": { de: "Aktuell", en: "Up to date" },
   "creators.viewVideos": { de: "Videos ansehen", en: "View videos" },
   "creators.noCreators": { de: "Noch keine Creators", en: "No creators yet" },

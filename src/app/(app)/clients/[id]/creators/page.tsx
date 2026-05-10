@@ -542,11 +542,20 @@ export default function ClientCreatorsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 rounded-xl bg-black/20 border border-ocean/[0.06] p-3 text-center">
-                  <p className="text-[11px] text-ocean/60">
-                    {t("creators.noData")} <RefreshCw className="inline h-3 w-3" /> {t("creators.clickScrape")}
+                <button
+                  type="button"
+                  onClick={() => handleRefreshOne(creator.id)}
+                  disabled={isRefreshing}
+                  className="mt-4 w-full rounded-xl bg-ocean/[0.04] hover:bg-blush-light/40 border border-ocean/[0.08] hover:border-blush/30 p-3 text-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <p className="text-[11px] text-ocean/65 inline-flex items-center gap-1.5">
+                    {isRefreshing ? (
+                      <><Loader2 className="h-3 w-3 animate-spin" /> {t("creators.scraping") || "Lade Daten…"}</>
+                    ) : (
+                      <>{t("creators.noData")} <RefreshCw className="h-3 w-3" /> {t("creators.clickScrape")}</>
+                    )}
                   </p>
-                </div>
+                </button>
               )}
 
               <div className="mt-3 flex items-center justify-between">
