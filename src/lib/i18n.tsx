@@ -11,6 +11,7 @@ const translations: Record<string, { de: string; en: string }> = {
   "portal.dash.profile": { de: "Profil", en: "Profile" },
   "portalNav.scripts": { de: "Skripte", en: "Scripts" },
   "portalNav.stories": { de: "Stories", en: "Stories" },
+  "portalNav.carousel": { de: "Karussell", en: "Carousel" },
   "portalNav.strategy": { de: "Strategie", en: "Strategy" },
   "portalNav.ideas": { de: "Ideen", en: "Ideas" },
   "portalNav.audit": { de: "Audit", en: "Audit" },

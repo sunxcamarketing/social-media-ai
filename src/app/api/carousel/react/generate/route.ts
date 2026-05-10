@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 import { sendEvent, sseResponse } from "@/lib/sse";
 import { runCarouselReactPipeline } from "@/lib/carousel/react-pipeline";
 import { supabase } from "@/lib/supabase";
@@ -6,15 +6,20 @@ import { supabase } from "@/lib/supabase";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
-  try {
-    await requireAdmin();
-  } catch (err) {
-    if (err instanceof Response) return err;
-    throw err;
-  }
+  // Both admins and clients can generate now. Clients are quota-gated;
+  // admins are not. Clients can only generate for their own scope.
+  const user = await getCurrentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
-  const clientId = String(body.clientId || "");
+  let clientId = String(body.clientId || "");
+
+  // Client users: force scope to their own effective client, ignore body.
+  if (user.role === "client") {
+    const effective = getEffectiveClientId(user);
+    if (!effective) return Response.json({ error: "Kein Client-Scope" }, { status: 403 });
+    clientId = effective;
+  }
   const topic = String(body.topic || "").trim();
   const styleGuideId =
     typeof body.styleGuideId === "string" && body.styleGuideId.trim().length > 0
@@ -34,6 +39,37 @@ export async function POST(request: Request) {
 
   if (!clientId || !topic) {
     return Response.json({ error: "clientId und topic sind Pflicht" }, { status: 400 });
+  }
+
+  // Quota gate for client-initiated runs. Admins aren't quota-checked —
+  // they're paying the bill anyway. Quota counts carousels created since
+  // the start of the current calendar month. Default 10/month if no
+  // override is set on the config.
+  if (user.role === "client") {
+    const { data: cfg } = await supabase
+      .from("configs")
+      .select(`"carouselQuotaMonthly"`)
+      .eq("id", clientId)
+      .single();
+    const limit = cfg?.carouselQuotaMonthly ?? 10;
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const { count } = await supabase
+      .from("carousels")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId)
+      .gte("created_at", monthStart.toISOString());
+    const used = count || 0;
+    if (used >= limit) {
+      return Response.json(
+        {
+          error: `Du hast dein monatliches Limit erreicht (${used}/${limit} Karussells). Schreib deinem Manager wenn du mehr brauchst.`,
+          quota: { limit, used },
+        },
+        { status: 429 },
+      );
+    }
   }
 
   // Belt-and-suspenders: confirm the source row belongs to this client,

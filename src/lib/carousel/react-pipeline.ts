@@ -22,6 +22,7 @@ import { buildPrompt } from "@prompts";
 import { readConfig } from "@/lib/csv";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
 import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
+import { validateTsx } from "@/lib/carousel/validate-tsx";
 
 export interface CarouselReactProgressEvent {
   stage: "config" | "context" | "claude" | "text-delta" | "sanitize" | "done" | "error";
@@ -185,50 +186,85 @@ export async function runCarouselReactPipeline(
     : `Erstelle das Karussell jetzt. Thema:\n\n${input.topic}`;
 
   const anthropic = getAnthropicClient();
-  const stream = anthropic.messages.stream({
-    model: MODEL_SONNET,
-    max_tokens: 16000,
-    thinking: { type: "enabled", budget_tokens: 4000 },
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
-  });
 
-  // Forward each text delta to the UI so the TSX appears live as Claude writes it.
-  // Thinking blocks don't emit through the 'text' event, so the first delta only
-  // arrives after the reasoning pass completes — that pause is the thinking budget.
-  stream.on("text", (delta) => {
-    void emit({ stage: "text-delta", status: "streaming", delta });
-  });
+  // ── Generate + validate. One attempt, plus one auto-retry if the TSX
+  //    fails to parse. Saves the user from getting "Fehler beim Rendern"
+  //    for the most common Sonnet slip (unclosed helper components).
+  type Attempt = { tsx: string; tokensIn: number; tokensOut: number };
 
-  const response = await stream.finalMessage();
+  const runOne = async (extraInstruction: string | null): Promise<Attempt> => {
+    const messages: Array<{ role: "user"; content: string }> = [
+      { role: "user", content: userMessage },
+    ];
+    if (extraInstruction) {
+      messages.push({ role: "user", content: extraInstruction });
+    }
 
-  // Collect text blocks (thinking blocks are not in response.content for extraction)
-  const textBlocks = response.content.filter((b) => b.type === "text");
-  if (textBlocks.length === 0) throw new Error("Claude returned no text output");
-  const rawText = textBlocks
-    .map((b) => (b.type === "text" ? b.text : ""))
-    .join("\n")
-    .trim();
+    const stream = anthropic.messages.stream({
+      model: MODEL_SONNET,
+      max_tokens: 16000,
+      thinking: { type: "enabled", budget_tokens: 4000 },
+      system: systemPrompt,
+      messages,
+    });
+    stream.on("text", (delta) => {
+      void emit({ stage: "text-delta", status: "streaming", delta });
+    });
+    const response = await stream.finalMessage();
 
+    const textBlocks = response.content.filter((b) => b.type === "text");
+    if (textBlocks.length === 0) throw new Error("Claude returned no text output");
+    const rawText = textBlocks.map((b) => (b.type === "text" ? b.text : "")).join("\n").trim();
+
+    const sanitized = sanitizeTsx(rawText);
+    if (!sanitized.includes("function Carousel")) {
+      throw new Error(
+        "Generated output does not contain a Carousel function. First 500 chars:\n" +
+          rawText.slice(0, 500),
+      );
+    }
+    return {
+      tsx: sanitized,
+      tokensIn: response.usage.input_tokens,
+      tokensOut: response.usage.output_tokens,
+    };
+  };
+
+  // First attempt
+  let attempt = await runOne(null);
   await emit({
     stage: "claude",
     status: "done",
-    data: {
-      tokensIn: response.usage.input_tokens,
-      tokensOut: response.usage.output_tokens,
-      rawChars: rawText.length,
-    },
+    data: { tokensIn: attempt.tokensIn, tokensOut: attempt.tokensOut, rawChars: attempt.tsx.length },
   });
 
-  // ── Sanitize the output ────────────────────────────────────────
   await emit({ stage: "sanitize", status: "loading" });
-  const tsxCode = sanitizeTsx(rawText);
-  if (!tsxCode.includes("function Carousel")) {
-    throw new Error(
-      "Generated output does not contain a Carousel function. First 500 chars:\n" +
-        rawText.slice(0, 500),
-    );
+  let validation = validateTsx(attempt.tsx);
+  let totalTokensIn = attempt.tokensIn;
+  let totalTokensOut = attempt.tokensOut;
+
+  if (!validation.ok) {
+    // One auto-retry with explicit error feedback. This costs the user
+    // double on the rare cases Sonnet produces a syntax error, but
+    // saves them from manually clicking Auto-Repair.
+    console.warn("[carousel] first attempt invalid:", validation.error, "→ retrying");
+    const retryInstruction = lang === "en"
+      ? `Your previous TSX output had a syntax error: ${validation.error}\n\nRegenerate the FULL carousel from scratch. Make sure every helper component is closed with );  and the function ends with a closing }.`
+      : `Dein letzter TSX-Output hatte einen Syntax-Fehler: ${validation.error}\n\nGeneriere das KOMPLETTE Karussell nochmal von Grund auf. Achte darauf dass jede Helper-Komponente mit ); abgeschlossen ist und die function mit einem schließenden }. endet.`;
+
+    attempt = await runOne(retryInstruction);
+    totalTokensIn += attempt.tokensIn;
+    totalTokensOut += attempt.tokensOut;
+    validation = validateTsx(attempt.tsx);
+
+    if (!validation.ok) {
+      throw new Error(
+        `Carousel-Generierung produziert kaputten TSX-Code (auch nach Retry): ${validation.error}`,
+      );
+    }
   }
+
+  const tsxCode = attempt.tsx;
   await emit({
     stage: "sanitize",
     status: "done",
@@ -240,8 +276,8 @@ export async function runCarouselReactPipeline(
     tsxCode,
     topic: input.topic,
     clientId: input.clientId,
-    tokensIn: response.usage.input_tokens,
-    tokensOut: response.usage.output_tokens,
+    tokensIn: totalTokensIn,
+    tokensOut: totalTokensOut,
     durationMs,
   };
 

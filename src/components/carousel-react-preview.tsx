@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Loader2, AlertCircle, ChevronLeft, ChevronRight, Code2, X } from "lucide-react";
+import { Download, Loader2, AlertCircle, ChevronLeft, ChevronRight, Code2, X, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -289,9 +289,37 @@ interface Props {
   tsxCode: string;
   /** Used for filenames on PNG export. */
   topic?: string;
+  /** Required for the auto-repair button — without it the repair API
+   *  has no carousel to persist to. */
+  runId?: string;
+  /** Called with the repaired TSX so the parent component re-renders
+   *  the preview with the fixed code. */
+  onTsxUpdate?: (next: string) => void;
 }
 
-export function CarouselReactPreview({ tsxCode, topic }: Props) {
+export function CarouselReactPreview({ tsxCode, topic, runId, onTsxUpdate }: Props) {
+  const [repairing, setRepairing] = useState(false);
+  const [repairError, setRepairError] = useState<string | null>(null);
+
+  const repair = async () => {
+    if (!runId) return;
+    setRepairing(true);
+    setRepairError(null);
+    try {
+      const res = await fetch(`/api/carousel/${runId}/repair`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setRepairError(data.error || "Reparatur fehlgeschlagen");
+        return;
+      }
+      if (data.tsxCode && onTsxUpdate) onTsxUpdate(data.tsxCode);
+    } catch (err) {
+      setRepairError((err as Error).message);
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -508,10 +536,32 @@ export function CarouselReactPreview({ tsxCode, topic }: Props) {
         </div>
       </div>
 
-      {/* ── Error message ───────────────────────────────────────── */}
+      {/* ── Error message + auto-repair ─────────────────────────── */}
       {errorMsg && (
-        <div className="px-4 py-2 text-xs font-mono text-red-700 bg-red-50 border-b border-red-200 whitespace-pre-wrap break-all">
-          {errorMsg}
+        <div className="px-4 py-3 bg-red-50 border-b border-red-200 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-xs font-mono text-red-700 whitespace-pre-wrap break-all flex-1">
+              {errorMsg}
+            </div>
+            {runId && (
+              <Button
+                onClick={repair}
+                disabled={repairing}
+                size="sm"
+                className="shrink-0 gap-1.5 bg-ocean hover:bg-ocean-light text-white text-xs"
+                title="Sonnet repariert den Syntax-Fehler ohne Inhalts-Änderung"
+              >
+                {repairing ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Repariere…</>
+                ) : (
+                  <><Wrench className="h-3.5 w-3.5" /> Auto-Reparieren</>
+                )}
+              </Button>
+            )}
+          </div>
+          {repairError && (
+            <p className="text-[11px] text-red-600">Reparatur fehlgeschlagen: {repairError}</p>
+          )}
         </div>
       )}
 

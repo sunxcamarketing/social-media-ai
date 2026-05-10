@@ -332,7 +332,12 @@ export function CarouselReactMode({ clientId }: Props) {
       {/* ─────────────── RIGHT: Live preview panel ─────────────── */}
       <div className="min-w-0 rounded-2xl bg-white border border-ocean/[0.06] overflow-hidden flex flex-col">
         {hasCarousel ? (
-          <CarouselReactPreview tsxCode={tsxCode!} topic={currentTopic} />
+          <CarouselReactPreview
+            tsxCode={tsxCode!}
+            topic={currentTopic}
+            runId={currentRunId ?? undefined}
+            onTsxUpdate={setTsxCode}
+          />
         ) : streamingTsx ? (
           <StreamingCodeView tsxCode={streamingTsx} />
         ) : (

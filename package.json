@@ -14,9 +14,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@babel/parser": "^7.29.3",
     "@floating-ui/react-dom": "^2.1.8",
     "@google/genai": "^1.48.0",
     "@inngest/realtime": "^0.4.6",
+    "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.2",
     "browser-image-compression": "^2.0.2",

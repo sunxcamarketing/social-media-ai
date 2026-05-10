@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   FileText,
+  FileDown,
   Copy,
   Check,
   Lightbulb,
@@ -519,6 +520,32 @@ export default function ClientScriptsPage() {
     await deleteScriptIds(Array.from(selectedIds));
   };
 
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    if (selectedIds.size === 0 || exporting) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/configs/${id}/export-scripts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scriptIds: Array.from(selectedIds) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        alert(data.error || "Export fehlgeschlagen.");
+        return;
+      }
+      // Open the PDF in a fresh tab — most browsers render PDFs inline so
+      // the user can preview and decide whether to save / share / print.
+      window.open(data.url as string, "_blank", "noopener,noreferrer");
+      setSelectedIds(new Set());
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Netzwerk-Fehler beim Export.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Status change. Coupled with the release flag: setting status to "bereit"
   // or "review" makes the script visible in the client portal; "entwurf"
   // hides it again. ("review" appears automatically when the client leaves
@@ -628,10 +655,17 @@ export default function ClientScriptsPage() {
           </div>
           <div className="flex items-center gap-2">
             {selectedIds.size > 0 && (
-              <Button variant="ghost" onClick={handleBulkDelete}
-                className="rounded-xl h-9 gap-1.5 border border-red-200 text-xs text-red-500 hover:bg-red-50 hover:text-red-600">
-                <Trash2 className="h-3.5 w-3.5" /> {selectedIds.size} löschen
-              </Button>
+              <>
+                <Button variant="ghost" onClick={handleExport} disabled={exporting}
+                  className="rounded-xl h-9 gap-1.5 border border-ocean/[0.08] text-xs text-ocean/70 hover:bg-ocean/[0.04] hover:text-ocean disabled:opacity-50">
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                  {exporting ? "Erstelle PDF…" : `${selectedIds.size} als PDF exportieren`}
+                </Button>
+                <Button variant="ghost" onClick={handleBulkDelete}
+                  className="rounded-xl h-9 gap-1.5 border border-red-200 text-xs text-red-500 hover:bg-red-50 hover:text-red-600">
+                  <Trash2 className="h-3.5 w-3.5" /> {selectedIds.size} löschen
+                </Button>
+              </>
             )}
             <Button variant="ghost" onClick={openNew}
               className="rounded-xl h-9 gap-1.5 border border-ocean/[0.06] text-xs text-ocean/60">

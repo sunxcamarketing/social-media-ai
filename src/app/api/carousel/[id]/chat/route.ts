@@ -3,12 +3,13 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient } from "@/lib/anthropic";
 import { supabase } from "@/lib/supabase";
 import { readConfig } from "@/lib/csv";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 import { buildPrompt, CAROUSEL_UPDATE_TOOL, CAROUSEL_PATCH_TOOL } from "@prompts";
 import { toolLoadClientContext, toolLoadVoiceProfile } from "@/lib/agent-tools";
 import { trackClaudeCost, type Initiator } from "@/lib/cost-tracking";
 import { MODEL_HAIKU } from "@/lib/models";
 import { loadStyleGuideBlock } from "@/lib/carousel/style-guide";
+import { validateTsx } from "@/lib/carousel/validate-tsx";
 
 export const maxDuration = 300;
 
@@ -141,6 +142,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (loadErr || !carousel) {
     return NextResponse.json({ error: "Carousel not found" }, { status: 404 });
+  }
+
+  // Clients can only refine carousels that belong to their own scope.
+  const isClientView = user.role === "client" || !!user.impersonating;
+  if (isClientView) {
+    const effective = getEffectiveClientId(user);
+    if (effective !== carousel.client_id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   const config = await readConfig(carousel.client_id);
@@ -371,6 +381,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         text: replyText || "(Keine Antwort erhalten — bitte noch einmal versuchen.)",
         createdAt: assistantAt,
       };
+    }
+
+    // Validate the new TSX before persisting — broken syntax would render
+    // as "Fehler beim Rendern" in the preview. If it doesn't parse, we
+    // keep the previous valid TSX in the DB and surface the error in the
+    // chat so the user (and Sonnet on the next turn) can react.
+    if (newTsx) {
+      const validation = validateTsx(newTsx);
+      if (!validation.ok) {
+        newTsx = undefined; // don't persist broken code
+        assistantMessage = {
+          role: "assistant",
+          text: `Mein letzter Output hatte einen Syntax-Fehler (${validation.error}) und wurde verworfen — der Carousel-Stand davor ist erhalten. Sag mir nochmal kurz was geändert werden soll, dann mach ich's mit einem cleanen Patch.`,
+          createdAt: assistantAt,
+        };
+      }
     }
 
     const finalMessages = [...existingMessages, userMessage, assistantMessage];

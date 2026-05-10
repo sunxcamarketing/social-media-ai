@@ -1,13 +1,9 @@
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
-  try {
-    await requireAdmin();
-  } catch (err) {
-    if (err instanceof Response) return err;
-    throw err;
-  }
+  const user = await getCurrentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(request.url);
   const runId = url.searchParams.get("runId");
@@ -24,6 +20,15 @@ export async function GET(request: Request) {
 
   if (error || !data) {
     return Response.json({ error: error?.message || "Not found" }, { status: 404 });
+  }
+
+  // Ownership: clients (and impersonate-admins) only see their own.
+  const isClientView = user.role === "client" || !!user.impersonating;
+  if (isClientView) {
+    const effective = getEffectiveClientId(user);
+    if (effective !== data.client_id) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   return Response.json({

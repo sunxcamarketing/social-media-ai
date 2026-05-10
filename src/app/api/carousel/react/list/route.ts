@@ -1,19 +1,20 @@
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
-  try {
-    await requireAdmin();
-  } catch (err) {
-    if (err instanceof Response) return err;
-    throw err;
-  }
+  const user = await getCurrentUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(request.url);
-  const clientId = url.searchParams.get("clientId");
-  if (!clientId) {
-    return Response.json({ error: "clientId required" }, { status: 400 });
+  let clientId = url.searchParams.get("clientId");
+
+  // Clients (and admins viewing via impersonate) are scoped to their own
+  // effective client. Real admins use the query param.
+  const isClientView = user.role === "client" || !!user.impersonating;
+  if (isClientView) {
+    clientId = getEffectiveClientId(user);
   }
+  if (!clientId) return Response.json({ error: "clientId required" }, { status: 400 });
 
   const { data, error } = await supabase
     .from("carousels")

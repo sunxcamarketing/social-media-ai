@@ -114,6 +114,9 @@ export interface Config {
   billingCountry?: string;
   billingVatId?: string;
   billingEmail?: string;
+  /** Monthly carousel-generation quota for client portal access. Default 10
+   *  if unset. Admins are not quota-checked. */
+  carouselQuotaMonthly?: number;
 }
 
 export interface Creator {

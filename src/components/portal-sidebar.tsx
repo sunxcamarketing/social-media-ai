@@ -8,6 +8,7 @@ import {
   Film,
   Mic,
   LayoutDashboard,
+  LayoutGrid,
   X,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -26,6 +27,7 @@ const PORTAL_TABS: PortalTab[] = [
   { titleKey: "portalNav.strategy", href: "/portal/strategy", icon: BarChart2 },
   { titleKey: "portalNav.scripts", href: "/portal/scripts", icon: FileText },
   { titleKey: "portalNav.stories", href: "/portal/stories", icon: Film },
+  { titleKey: "portalNav.carousel", href: "/portal/karussell", icon: LayoutGrid },
   { titleKey: "portalNav.voice", href: "/portal/voice", icon: Mic },
 ];
 
