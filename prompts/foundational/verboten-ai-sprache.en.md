@@ -1,4 +1,4 @@
-FORBIDDEN — Typical AI Language
+FORBIDDEN: Typical AI Language
 If you write any of these phrases, the script has failed.
 No synonyms or slight variations either.
 
@@ -152,7 +152,7 @@ INSTEAD: Concrete. Specific. The way a real person would actually talk.
 
 ## 13. Em-dashes / en-dashes
 - NO em-dashes (—) or en-dashes (–) as a stylistic device. Huge AI tell.
-- NOT: "Weight loss — but done right." or "Your body — your temple."
+- NOT: "Weight loss: but done right." or "Your body: your temple."
 - Write normal sentences. Period. New sentence.
 
 ## 14. "Delve into" / "Dive into" / "Unpack"
@@ -197,11 +197,11 @@ INSTEAD: Concrete. Specific. The way a real person would actually talk.
 - Empty authority. Just make the claim.
 
 ## 21. "Not just X, but Y" rhetorical structure
-- "This isn't just about losing weight — it's about reclaiming your life."
+- "This isn't just about losing weight: it's about reclaiming your life."
 - "It's not just a habit, it's a lifestyle."
 - The "not just X, but Y" contrast is the #1 AI sentence pattern. Avoid entirely.
 
 ## 22. "— and here's why"
-- "X is broken — and here's why."
-- "This matters — and I'll tell you why."
+- "X is broken: and here's why."
+- "This matters: and I'll tell you why."
 - Just tell them why. Don't announce that you're about to.

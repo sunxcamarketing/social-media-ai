@@ -6,4 +6,4 @@ ANTI-AI-CHECKLISTE (nach dem Schreiben prüfen):
 5. Endet ein Absatz mit einer "großen Erkenntnis"? → konkreter machen oder streichen.
 6. Gibt es eine rhetorische Einwort-Frage wie "Das Ergebnis?"? → sofort löschen.
 7. Steht jeder Satz auf seiner eigenen Zeile? → Sätze zu Absätzen zusammenfügen.
-8. **STRG+F nach „—" und „–" — kommen Em-/En-Dashes (Gedankenstriche) vor?** → SOFORT ersetzen. Punkt + neuer Satz, oder Komma. NIE Gedankenstrich als Stilmittel. Auch nicht ein einziges Mal. Das ist DER offensichtlichste AI-Tell.
+8. **STRG+F nach „—" und „–": kommen Em-/En-Dashes (Gedankenstriche) vor?** → SOFORT ersetzen. Punkt + neuer Satz, oder Komma. NIE Gedankenstrich als Stilmittel. Auch nicht ein einziges Mal. Das ist DER offensichtlichste AI-Tell.

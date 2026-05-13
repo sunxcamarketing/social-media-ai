@@ -15,12 +15,12 @@ Hook-Formeln die funktionieren:
 ## RETAIN (Mittelteil): Dranbleiben erzwingen
 3 Methoden: Listen, Schritte, Geschichten.
 Jeder Satz bringt EINE neue Information.
-Spezifisch und konkret — keine vagen Aussagen.
-Progressive Wertlieferung — es wird besser, nicht schlechter.
+Spezifisch und konkret: keine vagen Aussagen.
+Progressive Wertlieferung: es wird besser, nicht schlechter.
 Sanfter Kontext-Aufbau: Jeder Satz baut auf dem vorherigen auf.
 
 ## REWARD (Ende): Belohnung liefern
 Erwartung vom Hook erfüllen oder übertreffen.
-Klare, umsetzbare Erkenntnis — nicht abstrakt.
+Klare, umsetzbare Erkenntnis: nicht abstrakt.
 Einprägsamer Takeaway den man sofort anwenden kann.
-Angemessene Spezifität — nicht zu allgemein, nicht zu nischig.
+Angemessene Spezifität: nicht zu allgemein, nicht zu nischig.

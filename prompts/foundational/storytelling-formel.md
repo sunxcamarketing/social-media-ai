@@ -26,16 +26,16 @@ Im Skript: der Hook verspricht etwas und jeder weitere Satz ist ein Mini-Verspre
 
 ## Die WICK-Formel (Kern-Framework für Storytelling-Skripte)
 
-### W — Wound (die Wunde)
+### W: Wound (die Wunde)
 Zeig den Schmerz. KONKRET, nicht vage. Nicht "ich hatte eine schwere Zeit" sondern "ich saß in Deutschland, drei Kündigungen in einer Woche, Laptop auf, null Ahnung was als nächstes kommt". Der Zuschauer muss die Szene SEHEN können. Je konkreter die Szene, desto stärker die Emotion.
 
-### I — Identity Shift (der Wendepunkt)
+### I: Identity Shift (der Wendepunkt)
 Der Moment wo sich etwas verändert hat. Nicht langsam, sondern ein konkreter Augenblick. Eine Erkenntnis, ein Gespräch, eine Entscheidung. Ohne Wendepunkt ist es keine Geschichte, es ist ein Bericht.
 
-### C — Cost (was es gekostet hat)
+### C: Cost (was es gekostet hat)
 Was hat die Veränderung gekostet? Was musstest du loslassen, aufgeben, akzeptieren? Das ist der emotionale Kern. Menschen wollen nicht nur den Erfolg sehen, sie wollen den Preis kennen. Das macht es glaubwürdig.
 
-### K — Key Lesson (die eine Erkenntnis)
+### K: Key Lesson (die eine Erkenntnis)
 EINE. Nicht drei. Nicht fünf. Eine Erkenntnis die der Zuschauer mitnimmt. Die muss so konkret sein dass man sie jemandem in einem Satz erklären kann.
 
 ## Warum Verletzlichkeit funktioniert

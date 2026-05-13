@@ -15,12 +15,12 @@ Hook formulas that work:
 ## RETAIN (Middle): Force them to stay
 3 methods: Lists, Steps, Stories.
 Every sentence delivers ONE new piece of information.
-Specific and concrete — no vague statements.
-Progressive value delivery — it gets better, not worse.
+Specific and concrete: no vague statements.
+Progressive value delivery: it gets better, not worse.
 Smooth context build: Each sentence builds on the previous one.
 
 ## REWARD (End): Deliver the payoff
 Meet or exceed the expectation set by the hook.
-Clear, actionable insight — not abstract.
+Clear, actionable insight: not abstract.
 Memorable takeaway that can be applied immediately.
-Appropriate specificity — not too general, not too niche.
+Appropriate specificity: not too general, not too niche.

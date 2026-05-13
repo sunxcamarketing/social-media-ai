@@ -243,25 +243,22 @@ async function toolSaveScript(
 
   if (!scriptText) return "Skript-Text fehlt. Übergib `script` (Hook + Body) und `cta`.";
 
-  // Anti-AI gate: em-dash / en-dash as stylistic device is the most obvious
-  // AI tell. Reject so the agent rewrites with periods or commas instead.
-  // Matches typographic dashes only — regular hyphens "-" are fine.
-  const dashMatch = /[—–]/.exec(`${scriptText}\n${ctaText}\n${input.text_hook || ""}\n${input.title}`);
-  if (dashMatch) {
-    return (
-      `Skript abgelehnt: enthält einen Gedankenstrich ("${dashMatch[0]}"). ` +
-      `Em-/En-Dashes sind als Stilmittel verboten (siehe verboten-ai-sprache §13 + anti-ai-checkliste #8). ` +
-      `Schreib die betroffenen Stellen um — entweder Punkt + neuer Satz oder Komma. ` +
-      `Dann save_script nochmal aufrufen.`
-    );
-  }
+  // Anti-AI safety net: strip em/en-dashes (the most obvious AI tell) before
+  // persisting. The Hard Rules + Schärfe-Check tell the agent never to use
+  // them, but LLMs slip — this guarantees the saved script is always clean.
+  // Collapses surrounding whitespace into a single comma, so "X — Y" → "X, Y".
+  const stripDashes = (s: string) => s.replace(/\s*[—–]\s*/g, ", ");
+  const cleanTitle = stripDashes(input.title.trim());
+  const cleanTextHook = stripDashes(input.text_hook || "");
+  const cleanScript = stripDashes(scriptText);
+  const cleanCta = stripDashes(ctaText);
 
   const id = uuid();
   const today = new Date().toISOString().split("T")[0];
   const { error } = await supabase.from("scripts").insert({
     id,
     client_id: clientId,
-    title: input.title.trim(),
+    title: cleanTitle,
     pillar: input.pillar || "",
     content_type: input.content_type || "",
     format: input.format || "",
@@ -270,9 +267,9 @@ async function toolSaveScript(
     // + cta) to render the same text twice.
     hook: "",
     hook_pattern: input.hook_pattern || "",
-    text_hook: input.text_hook || "",
-    body: scriptText,
-    cta: ctaText,
+    text_hook: cleanTextHook,
+    body: cleanScript,
+    cta: cleanCta,
     status: "entwurf",
     source: "chat-agent-manual",
     shot_list: "",
@@ -286,7 +283,7 @@ async function toolSaveScript(
   if (error) return `Fehler beim Speichern: ${error.message}`;
 
   const lengthSuffix = input.durationSeconds ? ` (${input.durationSeconds}s)` : "";
-  return `Skript gespeichert: "${input.title.trim()}"${lengthSuffix} (id=${id}). Zu finden im Skripte-Tab des Clients.`;
+  return `Skript gespeichert: "${cleanTitle}"${lengthSuffix} (id=${id}). Zu finden im Skripte-Tab des Clients.`;
 }
 
 // ── Save Story Strategy Tool ──────────────────────────────────────────────

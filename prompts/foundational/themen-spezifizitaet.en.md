@@ -2,10 +2,10 @@ TOPIC SPECIFICITY (STRICT):
 
 Every title MUST contain at least one of these four SPECIFICITY ANCHORS:
 
-1. **CONCRETE NUMBER** — a dollar amount, percentage, timeframe, count (2%, $60,000, 7 months, 4 a.m.)
-2. **NAMED ENEMY/TOOL/PERSON** — a specific thing you could Google (Stop-Loss on Crypto.com, TradingView indicator X, Ray Dalio's mistake)
-3. **NON-OBVIOUS CLAIM** — a statement the viewer didn't know or would push back on ("The most expensive trading mistake isn't X — it's Y...")
-4. **SCENE INSTEAD OF ABSTRACTION** — a concrete moment / place / dialogue ("The conversation with my accountant where I realized...")
+1. **CONCRETE NUMBER**: a dollar amount, percentage, timeframe, count (2%, $60,000, 7 months, 4 a.m.)
+2. **NAMED ENEMY/TOOL/PERSON**: a specific thing you could Google (Stop-Loss on Crypto.com, TradingView indicator X, Ray Dalio's mistake)
+3. **NON-OBVIOUS CLAIM**: a statement the viewer didn't know or would push back on ("The most expensive trading mistake isn't X: it's Y...")
+4. **SCENE INSTEAD OF ABSTRACTION**: a concrete moment / place / dialogue ("The conversation with my accountant where I realized...")
 
 A title without at least ONE of these anchors is automatically REJECTED.
 
@@ -38,7 +38,7 @@ A title without at least ONE of these anchors is automatically REJECTED.
 
 # REJECT LIST (automatically reject if title matches)
 
-These title patterns are banned — they sound like 2020 motivational-bro content:
+These title patterns are banned: they sound like 2020 motivational-bro content:
 - "Why a/the/this [abstract term] [verb]s you" without a number or named anchor
 - "How to spot X in Y steps..." / "X signs that..." without a unique twist
 - "From $X to $Y in one day/week" without a specific timeframe + mechanism
@@ -48,7 +48,7 @@ These title patterns are banned — they sound like 2020 motivational-bro conten
 
 # POLITICS, NOT PREACHING
 
-Every title should have an ENEMY. Not "motivate you" — "stand against something":
+Every title should have an ENEMY. Not "motivate you": "stand against something":
 - Against a false belief pattern
 - Against a competitor / guru / method
 - Against your own old version

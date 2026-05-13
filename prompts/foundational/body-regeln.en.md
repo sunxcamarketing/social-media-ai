@@ -1,10 +1,10 @@
-BODY — The part that forces the viewer to stay.
+BODY: The part that forces the viewer to stay.
 
 STRUCTURE:
 - Each paragraph = ONE new thought. No repetition. No rephrasing.
-- The body PAYS OFF the open loop from the hook. The viewer expected something — deliver it.
+- The body PAYS OFF the open loop from the hook. The viewer expected something: deliver it.
 - Every 15 seconds, a micro pattern interrupt: a surprising number, a counterexample, a rhetorical question, a shift in perspective.
-- Progressive value — it gets BETTER, not worse. Save the best point for last.
+- Progressive value: it gets BETTER, not worse. Save the best point for last.
 
 ENERGY MANAGEMENT:
 - Vary the pace. Don't keep everything at the same speed. Short sentence. Then a longer one that explains it.

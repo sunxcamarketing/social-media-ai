@@ -2,10 +2,10 @@ THEMEN-SPEZIFIZITÄT (STRIKT):
 
 Jeder Titel MUSS mindestens einen dieser vier SPEZIFITÄTS-ANKER enthalten:
 
-1. **KONKRETE ZAHL** — ein Geld-Betrag, Prozent, Zeitraum, Anzahl (2%, 60.000€, 7 Monate, 4 Uhr morgens)
-2. **BENANNTER GEGNER/TOOL/PERSON** — ein konkretes Objekt das man googlen könnte (Stop-Loss bei Crypto.com, TradingView-Indikator XY, Ray Dalio's Fehler)
-3. **NICHT-OFFENSICHTLICHE THESE** — eine Aussage die der Zuschauer bisher nicht wusste oder bei der er widersprechen will ("Der teuerste Trading-Fehler ist nicht XY sondern…")
-4. **SZENE STATT ABSTRAKTION** — ein konkreter Moment/Ort/Dialog ("Das Gespräch mit meinem Steuerberater bei dem ich realisierte…")
+1. **KONKRETE ZAHL**: ein Geld-Betrag, Prozent, Zeitraum, Anzahl (2%, 60.000€, 7 Monate, 4 Uhr morgens)
+2. **BENANNTER GEGNER/TOOL/PERSON**: ein konkretes Objekt das man googlen könnte (Stop-Loss bei Crypto.com, TradingView-Indikator XY, Ray Dalio's Fehler)
+3. **NICHT-OFFENSICHTLICHE THESE**: eine Aussage die der Zuschauer bisher nicht wusste oder bei der er widersprechen will ("Der teuerste Trading-Fehler ist nicht XY sondern…")
+4. **SZENE STATT ABSTRAKTION**: ein konkreter Moment/Ort/Dialog ("Das Gespräch mit meinem Steuerberater bei dem ich realisierte…")
 
 Ein Titel ohne mindestens EINEN dieser Anker ist automatisch ABGELEHNT.
 
@@ -38,7 +38,7 @@ Ein Titel ohne mindestens EINEN dieser Anker ist automatisch ABGELEHNT.
 
 # REJECT-LISTE (automatisch ablehnen wenn Titel matched)
 
-Diese Titel-Muster sind verboten — sie klingen wie 2020-Motivations-Bro-Content:
+Diese Titel-Muster sind verboten: sie klingen wie 2020-Motivations-Bro-Content:
 - "Warum ein/die/das [abstrakter Begriff] dich [verb]" ohne Zahl oder benannten Anker
 - "So erkennst du in X Schritten…" / "X Zeichen dass…" ohne besonderen Dreh
 - "Von [Zahl]€ zu [Zahl]€ an einem Tag/in einer Woche" ohne konkreten Zeitrahmen + Mechanismus

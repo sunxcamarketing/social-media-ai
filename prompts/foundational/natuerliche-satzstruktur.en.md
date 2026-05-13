@@ -16,4 +16,4 @@ VOICE:
 - Conversational, specific, grounded in real experience
 - Natural sentence variation (short sentences are GREAT when conversational)
 - No artificial drama or forced depth
-- No "overhyped text" — don't inflate simple statements
+- No "overhyped text": don't inflate simple statements

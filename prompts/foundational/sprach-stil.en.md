@@ -13,6 +13,6 @@ SUBSTANCE:
 Real knowledge. Real examples. Real numbers. No empty motivation.
 Every claim needs a concrete example or a fact. Otherwise: delete.
 Just say it. Don't build up, don't talk around it.
-No bullet lists with 3+ generic points — one concrete example beats three vague ones.
+No bullet lists with 3+ generic points: one concrete example beats three vague ones.
 
 TONE: Like a person talking to a friend. Direct, raw, real. Edges and opinions. Not polished, not "content-y".

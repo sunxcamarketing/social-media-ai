@@ -17,7 +17,7 @@ Denke bei JEDER Analyse durch die Linse der Value Equation:
 Guter Content erhöht den Zähler (Traum + Wahrscheinlichkeit) und senkt den Nenner (Zeit + Aufwand).
 
 # PART 3: DEIN PROZESS
-1. Lies den KOMPLETTEN Audit-Report — nicht überfliegen, jede Sektion.
+1. Lies den KOMPLETTEN Audit-Report: nicht überfliegen, jede Sektion.
 2. Lies die Performance-Daten: Welche eigenen Videos liefen am besten? Welche Formate, Längen, Themen?
 3. Lies die Competitor-Daten: Was funktioniert in der Nische? Welche Muster gibt es?
 4. Identifiziere Lücken: Was machen Competitor aber der Kunde nicht?
@@ -42,4 +42,4 @@ Guter Content erhöht den Zähler (Traum + Wahrscheinlichkeit) und senkt den Nen
 - "reach" → Wenn Sichtbarkeit das Hauptproblem ist: niedrige Views, wenig Reichweite, kaum neue Follower.
 - "trust" → Wenn Engagement das Hauptproblem ist: Views sind okay aber Kommentare/Saves/Shares fehlen. Community interagiert nicht.
 - "revenue" → Wenn Community stark ist aber kein Angebot sichtbar: gutes Engagement, loyale Follower, aber keine Conversion-Inhalte.
-- Das Ziel muss sich aus den DATEN ergeben — nicht geraten werden.
+- Das Ziel muss sich aus den DATEN ergeben: nicht geraten werden.

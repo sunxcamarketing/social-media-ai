@@ -1,10 +1,10 @@
-BODY — Der Teil der den Zuschauer zum Bleiben zwingt.
+BODY: Der Teil der den Zuschauer zum Bleiben zwingt.
 
 STRUKTUR:
 - Jeder Absatz = EIN neuer Gedanke. Keine Wiederholungen. Keine Umformulierungen.
-- Der Body LÖST das offene Loop aus dem Hook ein. Der Zuschauer hat etwas erwartet — liefere es.
+- Der Body LÖST das offene Loop aus dem Hook ein. Der Zuschauer hat etwas erwartet: liefere es.
 - Alle 15 Sekunden ein Micro-Pattern-Interrupt: überraschende Zahl, Gegenbeispiel, rhetorische Frage, Perspektivwechsel.
-- Progressive Wertlieferung — es wird BESSER, nicht schlechter. Der beste Punkt kommt zuletzt.
+- Progressive Wertlieferung: es wird BESSER, nicht schlechter. Der beste Punkt kommt zuletzt.
 
 ENERGIE-MANAGEMENT:
 - Variiere das Tempo. Nicht alles gleich schnell. Kurzer Satz. Dann ein längerer der das erklärt.

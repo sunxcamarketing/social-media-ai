@@ -16,4 +16,4 @@ STIMME:
 - Konversationell, spezifisch, geerdet in echter Erfahrung
 - Natürliche Satzvariation (kurze Sätze sind SUPER wenn konversationell)
 - Kein künstliches Drama oder erzwungene Tiefgründigkeit
-- Kein "overhyped text" — kein Aufblasen von simplen Aussagen
+- Kein "overhyped text": kein Aufblasen von simplen Aussagen

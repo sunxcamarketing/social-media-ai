@@ -1,4 +1,4 @@
-VERBOTEN — Typische AI-Sprache
+VERBOTEN: Typische AI-Sprache
 Wenn du eine dieser Phrasen schreibst, ist das Skript gescheitert.
 Auch keine Synonyme oder leichte Abwandlungen.
 
@@ -124,7 +124,7 @@ SONDERN: Konkret. Spezifisch. Wie ein echter Mensch reden würde.
 
 ## 13. Bindestriche / Gedankenstriche
 - KEINE Bindestriche (–, —) als Stilmittel. Das ist mega AI-Sprache.
-- NICHT: "Abnehmen – aber richtig" oder "Dein Körper — dein Tempel"
+- NICHT: "Abnehmen: aber richtig" oder "Dein Körper: dein Tempel"
 - Schreib stattdessen normale Sätze. Punkt. Neuer Satz.
 
 ## 14. "Delve into" / "Eintauchen" / "Auspacken"

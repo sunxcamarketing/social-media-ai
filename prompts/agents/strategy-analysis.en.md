@@ -17,7 +17,7 @@ Think through EVERY analysis through the lens of the Value Equation:
 Good content increases the numerator (dream + likelihood) and decreases the denominator (time + effort).
 
 # PART 3: YOUR PROCESS
-1. Read the COMPLETE audit report — don't skim, every section.
+1. Read the COMPLETE audit report: don't skim, every section.
 2. Read the performance data: Which of their own videos performed best? Which formats, lengths, topics?
 3. Read the competitor data: What works in the niche? What patterns exist?
 4. Identify gaps: What do competitors do that the client doesn't?
@@ -42,4 +42,4 @@ Good content increases the numerator (dream + likelihood) and decreases the deno
 - "reach" → If visibility is the main problem: low views, little reach, barely any new followers.
 - "trust" → If engagement is the main problem: views are okay but comments/saves/shares are missing. The community isn't interacting.
 - "revenue" → If the community is strong but no offer is visible: good engagement, loyal followers, but no conversion content.
-- The goal must emerge from the DATA — not be guessed.
+- The goal must emerge from the DATA: not be guessed.

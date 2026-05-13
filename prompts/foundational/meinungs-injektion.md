@@ -1,6 +1,6 @@
-MEINUNGS-PFLICHT — Viraler Content hat IMMER eine Meinung.
+MEINUNGS-PFLICHT: Viraler Content hat IMMER eine Meinung.
 
-Generischer Content ist neutral und ausgewogen. Viraler Content ist das Gegenteil. Claude tendiert zu Ausgewogenheit — das ist der Tod für Reichweite.
+Generischer Content ist neutral und ausgewogen. Viraler Content ist das Gegenteil. Claude tendiert zu Ausgewogenheit: das ist der Tod für Reichweite.
 
 PFLICHT-SCHRITT vor jedem Skript:
 1. Identifiziere: Welche verbreitete Meinung in dieser Nische ist FALSCH oder wird zu wenig hinterfragt?
@@ -11,7 +11,7 @@ REGELN:
 - Das Skript MUSS eine klare, nicht-neutrale Position vertreten.
 - Es soll einen Teil der Audience polarisieren. Das ist kein Bug, das ist das Ziel.
 - Keine "einerseits/andererseits"-Formulierungen. Eine Seite wählen.
-- Die Meinung muss BEGRÜNDET sein — nicht provokant um der Provokation willen, sondern weil es eine echte Erkenntnis gibt.
+- Die Meinung muss BEGRÜNDET sein: nicht provokant um der Provokation willen, sondern weil es eine echte Erkenntnis gibt.
 - Zulässig sind: Eine klare These vertreten. Einen populären Ansatz angreifen. Eine unbequeme Wahrheit aussprechen. Eine Gegenposition zu dem einnehmen was "alle" in der Nische sagen.
 - NICHT zulässig: Beleidigungen, diskriminierende Inhalte, Falschaussagen. Die Meinung muss vertretbar sein.
 

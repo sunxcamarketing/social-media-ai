@@ -27,6 +27,14 @@ import { buildPlatformContext, parseTargetPlatforms, DEFAULT_PLATFORM } from "@/
 import { trackClaudeCost } from "@/lib/cost-tracking";
 import { MODEL_HAIKU, AGENT_ITERATION_LIMIT } from "@/lib/models";
 
+// Hard-strip em/en-dashes from any assistant text before it reaches the user.
+// The Content Agent is told never to use them (Hard Rules + anti-ai-checkliste),
+// but LLMs slip — this is the deterministic safety net. Collapses surrounding
+// whitespace into a single comma so "X — Y" becomes "X, Y".
+function stripDashes(text: string): string {
+  return text.replace(/\s*[—–]\s*/g, ", ");
+}
+
 // Default chat model. Haiku 4.5 has the highest TPM rate-limit per tier
 // (50k vs 30k for Sonnet on Tier 1) and handles standard chat, story
 // strategy design, and tool-use loops well. Heavy script-writing prompts
@@ -228,7 +236,7 @@ export async function POST(request: Request) {
               .map(b => b.text)
               .join("");
             if (fullText) {
-              sendEvent(controller, { type: "text", text: fullText });
+              sendEvent(controller, { type: "text", text: stripDashes(fullText) });
             }
             break;
           }
@@ -239,7 +247,7 @@ export async function POST(request: Request) {
             .map(b => b.text)
             .join("");
           if (preToolText) {
-            sendEvent(controller, { type: "text", text: preToolText });
+            sendEvent(controller, { type: "text", text: stripDashes(preToolText) });
           }
 
           // Execute tools IN PARALLEL — major speed-up when the agent fans out

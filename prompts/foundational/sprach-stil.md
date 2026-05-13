@@ -12,6 +12,6 @@ SUBSTANZ:
 Echtes Wissen. Echte Beispiele. Echte Zahlen. Keine leeren Motivationssprüche.
 Jede Aussage braucht ein konkretes Beispiel oder einen Fakt. Sonst löschen.
 Direkt sagen. Nicht aufbauen, nicht drumherum reden.
-Keine Aufzählungen mit 3+ generischen Punkten — lieber 1 konkretes Beispiel.
+Keine Aufzählungen mit 3+ generischen Punkten: lieber 1 konkretes Beispiel.
 
 Ton: Wie ein Mensch zu einem Freund. Direkt, rau, echt. Ecken und Kanten.
