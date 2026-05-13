@@ -243,25 +243,63 @@ export async function runCarouselReactPipeline(
   let totalTokensIn = attempt.tokensIn;
   let totalTokensOut = attempt.tokensOut;
 
-  if (!validation.ok) {
-    // One auto-retry with explicit error feedback. This costs the user
-    // double on the rare cases Sonnet produces a syntax error, but
-    // saves them from manually clicking Auto-Repair.
-    console.warn("[carousel] first attempt invalid:", validation.error, "→ retrying");
+  // Up to two auto-retries on parse failure. The retry hands the broken code
+  // back to Claude with the failing line excerpted — "regenerate from scratch"
+  // (the prior strategy) tended to reproduce the same bug because the prompt
+  // hadn't changed. Targeted fix asks Claude to keep what worked and patch
+  // only the broken region.
+  let retries = 0;
+  while (!validation.ok && retries < 2) {
+    retries++;
+    console.warn(`[carousel] attempt ${retries} invalid:`, validation.error, "→ retrying");
+
+    const failLine = (validation as { line?: number }).line;
+    const lines = attempt.tsx.split("\n");
+    const excerpt = failLine && failLine > 0
+      ? lines
+          .slice(Math.max(0, failLine - 6), Math.min(lines.length, failLine + 4))
+          .map((ln, i) => {
+            const realLineNo = Math.max(1, failLine - 5) + i;
+            const marker = realLineNo === failLine ? " >>> " : "     ";
+            return `${marker}${String(realLineNo).padStart(4)} | ${ln}`;
+          })
+          .join("\n")
+      : null;
+
     const retryInstruction = lang === "en"
-      ? `Your previous TSX output had a syntax error: ${validation.error}\n\nRegenerate the FULL carousel from scratch. Make sure every helper component is closed with );  and the function ends with a closing }.`
-      : `Dein letzter TSX-Output hatte einen Syntax-Fehler: ${validation.error}\n\nGeneriere das KOMPLETTE Karussell nochmal von Grund auf. Achte darauf dass jede Helper-Komponente mit ); abgeschlossen ist und die function mit einem schließenden }. endet.`;
+      ? [
+          `Your previous TSX output failed to parse: ${validation.error}`,
+          excerpt ? `\nFailing region:\n\`\`\`\n${excerpt}\n\`\`\`` : "",
+          `\nFix the syntax error and output the COMPLETE corrected carousel. Common causes:`,
+          `- Missing comma between object/array items`,
+          `- Helper component started with \`const Foo = (props) => (\` but never closed with \`);\``,
+          `- Unclosed JSX tag inside a slide`,
+          `- Typographic quote (" or ") used inside a "..." string`,
+          `- Output truncated mid-expression`,
+          `\nIf the previous attempt was nearly correct, keep the working slides and only patch the broken region. Output the FULL working TSX, no markdown fences.`,
+        ].filter(Boolean).join("\n")
+      : [
+          `Dein letzter TSX-Output ließ sich nicht parsen: ${validation.error}`,
+          excerpt ? `\nFehlerhafte Stelle:\n\`\`\`\n${excerpt}\n\`\`\`` : "",
+          `\nFix den Syntax-Fehler und gib den KOMPLETTEN korrigierten Karussell-Code zurück. Häufige Ursachen:`,
+          `- Fehlendes Komma zwischen Objekt-/Array-Items`,
+          `- Helper-Komponente begonnen mit \`const Foo = (props) => (\` aber nie mit \`);\` geschlossen`,
+          `- Nicht geschlossenes JSX-Tag in einem Slide`,
+          `- Typografisches Anführungszeichen (" oder ") innerhalb eines "..."-Strings`,
+          `- Output mitten im Ausdruck abgeschnitten`,
+          `\nWenn der letzte Versuch fast richtig war, behalte die funktionierenden Slides und fix nur die kaputte Stelle. Output: vollständiger funktionierender TSX-Code, keine Markdown-Fences.`,
+        ].filter(Boolean).join("\n");
 
     attempt = await runOne(retryInstruction);
     totalTokensIn += attempt.tokensIn;
     totalTokensOut += attempt.tokensOut;
     validation = validateTsx(attempt.tsx);
+  }
 
-    if (!validation.ok) {
-      throw new Error(
-        `Carousel-Generierung produziert kaputten TSX-Code (auch nach Retry): ${validation.error}`,
-      );
-    }
+  if (!validation.ok) {
+    throw new Error(
+      `Carousel-Generierung produziert kaputten TSX-Code (auch nach ${retries} Retries): ${validation.error}. Versuch's nochmal — manchmal hilft ein leicht anderer Prompt.`,
+    );
   }
 
   const tsxCode = attempt.tsx;
