@@ -71,7 +71,7 @@ function buildChatSeed(idea: Idea, voiceTranscript?: string): string {
 
   parts.push(
     ``,
-    `Schreib mir daraus ein Skript in zwei Versionen (kurz 30-40 Sek + lang 60+ Sek). Bleib bei meinem Winkel, erfinde keinen neuen. Wenn etwas unklar ist, frag vorher. Wenn das Skript fertig ist, frag ob du es unter "Skripte" speichern sollst.`,
+    `Schreib mir daraus EIN Skript in der Länge die das Audit empfiehlt (oder 45 Sek wenn keine Audit-Vorgabe). Bleib bei meinem Winkel, erfinde keinen neuen. Wenn etwas unklar ist, frag vorher. Wenn das Skript fertig ist, frag ob du es unter "Skripte" speichern sollst.`,
   );
   return parts.join("\n");
 }

@@ -217,7 +217,7 @@ function buildIdeaChatSeed(idea: WeekIdea): string {
   if (idea.emotion) parts.push(``, `**Emotion:** ${idea.emotion}`);
   parts.push(
     ``,
-    `Schreib mir daraus ein Skript in zwei Versionen (kurz 30-40 Sek + lang 60+ Sek). Bleib beim Winkel, erfinde keinen neuen. Wenn das Skript fertig ist, frag ob du es unter "Skripte" speichern sollst.`,
+    `Schreib mir daraus EIN Skript in der Länge die das Audit empfiehlt (oder 45 Sek wenn keine Audit-Vorgabe). Bleib beim Winkel, erfinde keinen neuen. Wenn das Skript fertig ist, frag ob du es unter "Skripte" speichern sollst.`,
   );
   return parts.join("\n");
 }

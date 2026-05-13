@@ -243,6 +243,19 @@ async function toolSaveScript(
 
   if (!scriptText) return "Skript-Text fehlt. Übergib `script` (Hook + Body) und `cta`.";
 
+  // Anti-AI gate: em-dash / en-dash as stylistic device is the most obvious
+  // AI tell. Reject so the agent rewrites with periods or commas instead.
+  // Matches typographic dashes only — regular hyphens "-" are fine.
+  const dashMatch = /[—–]/.exec(`${scriptText}\n${ctaText}\n${input.text_hook || ""}\n${input.title}`);
+  if (dashMatch) {
+    return (
+      `Skript abgelehnt: enthält einen Gedankenstrich ("${dashMatch[0]}"). ` +
+      `Em-/En-Dashes sind als Stilmittel verboten (siehe verboten-ai-sprache §13 + anti-ai-checkliste #8). ` +
+      `Schreib die betroffenen Stellen um — entweder Punkt + neuer Satz oder Komma. ` +
+      `Dann save_script nochmal aufrufen.`
+    );
+  }
+
   const id = uuid();
   const today = new Date().toISOString().split("T")[0];
   const { error } = await supabase.from("scripts").insert({
