@@ -28,7 +28,11 @@ interface ChatInputProps {
 }
 
 const ACCEPTED_TYPES = "image/png,image/jpeg,image/webp,image/gif,application/pdf";
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+// Vercel serverless functions cap request bodies at ~4.5MB. Base64 adds ~37%
+// overhead and the JSON wrapping adds a bit more, so the effective binary
+// ceiling is around 3.2MB. We keep the headroom for the JSON payload and
+// compress images down before upload (see compressImageIfNeeded).
+const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB final binary size
 
 const fileToDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -37,6 +41,52 @@ const fileToDataUrl = (file: File): Promise<string> =>
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+
+/**
+ * Downsize images > MAX_FILE_SIZE by re-encoding through a canvas. Keeps
+ * aspect ratio; targets 1920px max edge which is plenty for the agent's
+ * vision input. Returns the original file untouched if it's already small
+ * enough or not an image. PDFs we don't compress — user has to bring them
+ * pre-shrunk.
+ */
+async function compressImageIfNeeded(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  if (file.size <= MAX_FILE_SIZE) return file;
+
+  const blobUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = blobUrl;
+    });
+
+    const MAX_EDGE = 1920;
+    const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    if (!blob) return file;
+
+    const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], newName, { type: "image/jpeg" });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
+}
 
 export function ChatInput({
   value,
@@ -87,22 +137,28 @@ export function ChatInput({
     if (!files || !onAttachmentsChange) return;
     setUploadError(null);
     const newAttachments: ChatAttachment[] = [];
-    for (const file of Array.from(files)) {
+    for (const rawFile of Array.from(files)) {
+      const file = await compressImageIfNeeded(rawFile);
       if (file.size > MAX_FILE_SIZE) {
-        setUploadError(`${file.name} ist größer als 20MB`);
+        const mb = (file.size / 1024 / 1024).toFixed(1);
+        setUploadError(
+          file.type === "application/pdf"
+            ? `PDF "${rawFile.name}" ist ${mb} MB — max 3 MB möglich. Versuch ein kleineres oder splitte das PDF.`
+            : `${rawFile.name} ist ${mb} MB — max 3 MB möglich.`,
+        );
         continue;
       }
       try {
         const data = await fileToDataUrl(file);
         newAttachments.push({
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          name: file.name,
+          name: rawFile.name,
           mediaType: file.type,
           sizeBytes: file.size,
           data,
         });
       } catch {
-        setUploadError(`Konnte ${file.name} nicht lesen`);
+        setUploadError(`Konnte ${rawFile.name} nicht lesen`);
       }
     }
     if (newAttachments.length > 0) {

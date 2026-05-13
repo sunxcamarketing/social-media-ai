@@ -145,7 +145,12 @@ export function ContentAgentChat({
         signal: abort.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error(`API error: ${res.status}`);
+      if (!res.ok || !res.body) {
+        // 413 = body too large (most often: attachment too big for Vercel's
+        // 4.5MB limit). Surface that explicitly instead of generic "Verbindungsfehler".
+        if (res.status === 413) throw new Error("Datei zu groß für direkten Upload (max ~3 MB).");
+        throw new Error(`API error: ${res.status}`);
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -198,12 +203,18 @@ export function ContentAgentChat({
         }
       }
     } catch (err) {
-      if ((err as Error).name !== "AbortError") {
+      const e = err as Error;
+      if (e.name !== "AbortError") {
+        // Forward the specific message when we have one (e.g. "Datei zu groß…"),
+        // fall back to the generic connection error otherwise.
+        const friendly = e.message && !e.message.startsWith("API error")
+          ? `*${e.message}*`
+          : t("chat.connectionError");
         setMessages((prev) => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === "assistant" && !last.content)
-            updated[updated.length - 1] = { ...last, content: t("chat.connectionError") };
+            updated[updated.length - 1] = { ...last, content: friendly };
           return updated;
         });
       }
