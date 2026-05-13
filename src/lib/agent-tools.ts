@@ -207,6 +207,12 @@ async function toolSaveScript(
   clientId: string,
   input: {
     title: string;
+    script?: string;
+    cta?: string;
+    durationSeconds?: number;
+    // Legacy fields — still accepted so older cached prompts don't break.
+    // When these arrive we collapse them into a single script: prefer the
+    // long version (closer to typical audit recommendations).
     short_script?: string;
     short_cta?: string;
     long_script?: string;
@@ -217,67 +223,57 @@ async function toolSaveScript(
     pillar?: string;
     content_type?: string;
     format?: string;
-    cta?: string;
   },
 ): Promise<string> {
   if (!input.title?.trim()) return "Titel fehlt. Gib einen kurzen Titel mit.";
 
-  const baseTitle = input.title.trim();
-  const shortScript = input.short_script?.trim();
-  const longScript = input.long_script?.trim();
-  const rawBody = input.body?.trim();
-  const fallbackCta = input.cta?.trim() || "";
+  // Resolve script + cta from the new schema, falling back through legacy
+  // shapes so old prompt-cached agents don't crash mid-deploy.
+  const scriptText =
+    input.script?.trim() ||
+    input.long_script?.trim() ||
+    input.short_script?.trim() ||
+    input.body?.trim() ||
+    "";
+  const ctaText =
+    input.cta?.trim() ||
+    input.long_cta?.trim() ||
+    input.short_cta?.trim() ||
+    "";
 
-  // Each row keeps its own cta so the portal can render the green CTA line
-  // separately from the body. Old behaviour stuffed everything into `body`.
-  type Row = { title: string; body: string; cta: string };
-  const rows: Row[] = [];
+  if (!scriptText) return "Skript-Text fehlt. Übergib `script` (Hook + Body) und `cta`.";
 
-  if (rawBody) {
-    rows.push({ title: baseTitle, body: rawBody, cta: fallbackCta });
-  } else if (shortScript || longScript) {
-    if (shortScript) rows.push({ title: `${baseTitle} (Kurz)`, body: shortScript, cta: input.short_cta?.trim() || fallbackCta });
-    if (longScript) rows.push({ title: `${baseTitle} (Lang)`, body: longScript, cta: input.long_cta?.trim() || fallbackCta });
-  } else {
-    return "Skript-Text fehlt. Übergib entweder body oder short_script + long_script.";
-  }
-
+  const id = uuid();
   const today = new Date().toISOString().split("T")[0];
-  const insertedIds: string[] = [];
-  for (const row of rows) {
-    const id = uuid();
-    const { error } = await supabase.from("scripts").insert({
-      id,
-      client_id: clientId,
-      title: row.title,
-      pillar: input.pillar || "",
-      content_type: input.content_type || "",
-      format: input.format || "",
-      // hook stays empty — the first paragraph is already in `body`. Storing
-      // it in both fields caused the edit dialog (which combines hook + body
-      // + cta) to render the same text twice.
-      hook: "",
-      hook_pattern: input.hook_pattern || "",
-      text_hook: input.text_hook || "",
-      body: row.body,
-      cta: row.cta,
-      status: "entwurf",
-      source: "chat-agent-manual",
-      shot_list: "",
-      pattern_type: "",
-      post_type: "",
-      anchor_ref: "",
-      cta_type: "",
-      funnel_stage: "",
-      created_at: today,
-    });
-    if (error) return `Fehler beim Speichern: ${error.message}`;
-    insertedIds.push(id);
-  }
+  const { error } = await supabase.from("scripts").insert({
+    id,
+    client_id: clientId,
+    title: input.title.trim(),
+    pillar: input.pillar || "",
+    content_type: input.content_type || "",
+    format: input.format || "",
+    // hook stays empty — the first paragraph is already in `body`. Storing
+    // it in both fields caused the edit dialog (which combines hook + body
+    // + cta) to render the same text twice.
+    hook: "",
+    hook_pattern: input.hook_pattern || "",
+    text_hook: input.text_hook || "",
+    body: scriptText,
+    cta: ctaText,
+    status: "entwurf",
+    source: "chat-agent-manual",
+    shot_list: "",
+    pattern_type: "",
+    post_type: "",
+    anchor_ref: "",
+    cta_type: "",
+    funnel_stage: "",
+    created_at: today,
+  });
+  if (error) return `Fehler beim Speichern: ${error.message}`;
 
-  return rows.length === 2
-    ? `Beide Versionen gespeichert als zwei Skripte: "${rows[0].title}" und "${rows[1].title}". Im Skripte-Tab.`
-    : `Skript gespeichert: "${rows[0].title}" (id=${insertedIds[0]}). Zu finden im Skripte-Tab des Clients.`;
+  const lengthSuffix = input.durationSeconds ? ` (${input.durationSeconds}s)` : "";
+  return `Skript gespeichert: "${input.title.trim()}"${lengthSuffix} (id=${id}). Zu finden im Skripte-Tab des Clients.`;
 }
 
 // ── Save Story Strategy Tool ──────────────────────────────────────────────
@@ -330,10 +326,30 @@ async function toolSaveStoryStrategy(
 
 export async function toolCheckCompetitors(
   clientId: string,
-  input: { limit?: number },
+  input: { limit?: number; videoId?: string },
 ): Promise<string> {
   const config = await readConfig(clientId);
   if (!config) return "Client nicht gefunden.";
+
+  // If a specific video ID is requested, return full detail for that one.
+  // This lets the agent pull complete analysis + concepts when it's about
+  // to base a script on a specific viral video.
+  if (input.videoId) {
+    const { readVideo } = await import("@/lib/csv");
+    const v = await readVideo(input.videoId);
+    if (!v) return `Video mit ID "${input.videoId}" nicht gefunden.`;
+    const parts = [
+      `@${v.creator} · ${fmt(v.views)} Views · ${fmt(v.likes)} Likes · ${v.datePosted?.slice(0, 10) || "?"}${v.durationSeconds ? ` · Dauer: ${fmtDuration(v.durationSeconds)}` : ""}`,
+      `Link: ${v.link}`,
+      "",
+      "VOLLE VIDEO-ANALYSE:",
+      v.analysis || "(keine Analyse)",
+      "",
+      "ADAPTIERTE KONZEPTE FÜR DEINEN CLIENT:",
+      v.newConcepts || "(keine adaptierten Konzepte)",
+    ];
+    return parts.join("\n");
+  }
 
   const allVideos = await readVideosList(config.configName);
   const videos = allVideos
@@ -343,19 +359,24 @@ export async function toolCheckCompetitors(
 
   if (videos.length === 0) return "Keine Competitor-Videos analysiert.";
 
+  // Bumped truncation: 200 → 1000 chars on newConcepts so the agent can
+  // actually use the adapted ideas as a script scaffold. Plus include the
+  // video ID so the agent can call back with `videoId` for the full pull.
   return `${videos.length} Top Competitor-Videos:\n\n${videos.map((v, i) => {
-    const parts = [`[${i + 1}] @${v.creator} · ${fmt(v.views)} Views · ${fmt(v.likes)} Likes · ${v.datePosted?.slice(0, 10) || "?"}`];
+    const parts = [`[${i + 1}] @${v.creator} · ${fmt(v.views)} Views · ${fmt(v.likes)} Likes · ${v.datePosted?.slice(0, 10) || "?"}  [id: ${v.id}]`];
     if (v.durationSeconds) parts.push(`Dauer: ${fmtDuration(v.durationSeconds)}`);
     if (v.analysis) {
-      // Extract hook from analysis
       const hookMatch = v.analysis.match(/HOOK[\s:]+([^\n]+)/i);
-      if (hookMatch) parts.push(`Hook: ${hookMatch[1].slice(0, 150)}`);
+      if (hookMatch) parts.push(`Hook: ${hookMatch[1].slice(0, 200)}`);
       const conceptMatch = v.analysis.match(/CONCEPT[\s:]+([^\n]+)/i);
-      if (conceptMatch) parts.push(`Konzept: ${conceptMatch[1].slice(0, 150)}`);
+      if (conceptMatch) parts.push(`Konzept: ${conceptMatch[1].slice(0, 200)}`);
     }
-    if (v.newConcepts) parts.push(`Adaptierte Ideen: ${v.newConcepts.slice(0, 200)}`);
+    if (v.newConcepts) {
+      const adapted = v.newConcepts.slice(0, 1000);
+      parts.push(`Adaptierte Ideen: ${adapted}${v.newConcepts.length > 1000 ? "..." : ""}`);
+    }
     return parts.join("\n");
-  }).join("\n\n")}`;
+  }).join("\n\n")}\n\nWenn du eines dieser Konzepte als Skript-Gerüst willst, ruf check_competitors mit videoId="..." auf für volle Analyse + alle adaptierten Ideen.`;
 }
 
 // ── search_web ────────────────────────────────────────────────────────────
@@ -660,7 +681,7 @@ export async function executeAgentTool(
     case "load_audit":
       return toolLoadAudit(clientId);
     case "check_competitors":
-      return toolCheckCompetitors(clientId, toolInput as { limit?: number });
+      return toolCheckCompetitors(clientId, toolInput as { limit?: number; videoId?: string });
     case "research_trends":
       return toolResearchTrends(clientId, toolInput as { niche?: string });
     case "check_learnings":

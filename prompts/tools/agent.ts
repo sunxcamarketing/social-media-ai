@@ -72,12 +72,13 @@ export const AGENT_LOAD_AUDIT_TOOL = {
 
 export const AGENT_CHECK_COMPETITORS_TOOL = {
   name: "check_competitors",
-  description: "Lade analysierte Competitor-Videos mit Hooks, Views und Konzepten",
+  description: "Lade analysierte Competitor-Videos. Zwei Modi: (1) ohne videoId = Liste der Top-Videos mit Kurz-Snippets von Hook/Konzept/Adaptierten Ideen (jeweils gekürzt). (2) mit videoId = VOLLE Analyse + alle adaptierten Konzepte für genau dieses Video — nutze das wenn du ein Skript auf einem viralen Template aufbauen willst.",
   input_schema: {
     type: "object" as const,
     properties: {
       client_name: CLIENT_NAME_PROP,
-      limit: { type: "number" as const, description: "Maximale Anzahl Videos (default 10)" },
+      limit: { type: "number" as const, description: "Maximale Anzahl Videos in der Listen-Ansicht (default 10). Wird ignoriert wenn videoId gesetzt ist." },
+      videoId: { type: "string" as const, description: "Optional: ID eines spezifischen Videos. Wenn gesetzt → volle Analyse + alle adaptierten Konzepte für dieses Video. Die IDs stehen in der Listen-Ansicht hinter '[id: ...]'." },
     },
     required: [] as string[],
   },
@@ -151,25 +152,22 @@ export const AGENT_LIST_IDEAS_TOOL = {
 
 export const AGENT_SAVE_SCRIPT_TOOL = {
   name: "save_script",
-  description: "Speichere ein fertiges Skript direkt in den Skripte-Tab des Clients (NICHT nur als Idee). Nutze das nachdem du ein Skript im Chat ausgeschrieben hast und der User es behalten will, oder wenn der User selbst einen Skript-Text liefert und sagt 'speicher das'. WICHTIG: EINEN einzigen Tool-Call mit short_script UND long_script — das speichert automatisch zwei separate Skript-Einträge (mit Suffix '(Kurz)' / '(Lang)' im Titel). Nicht das Tool zweimal aufrufen.",
+  description: "Speichere ein fertiges Skript direkt in den Skripte-Tab des Clients. EINE Version pro Tool-Call. Nutze das nachdem du ein Skript im Chat ausgeschrieben hast und der User es behalten will, oder wenn der User selbst einen Skript-Text liefert und sagt 'speicher das'.",
   input_schema: {
     type: "object" as const,
     properties: {
       client_name: CLIENT_NAME_PROP,
       title: { type: "string" as const, description: "Skript-Titel (max 10 Wörter)" },
-      short_script: { type: "string" as const, description: "Kurzversion 30-40 Sek — NUR Hook + Body, OHNE den CTA-Schlusssatz. Den CTA in 'short_cta' separat übergeben. (Ohne '── KURZ ──'-Marker, reiner Text inkl. Absätze.)" },
-      short_cta: { type: "string" as const, description: "Call-to-Action der Kurzversion — der konkrete Schlussaufruf (1-2 Sätze, z.B. 'Schreib REAL in die DMs für…'). PFLICHT wenn short_script gesetzt ist." },
-      long_script: { type: "string" as const, description: "Langversion 60+ Sek — NUR Hook + Body, OHNE den CTA-Schlusssatz. Den CTA in 'long_cta' separat übergeben. (Ohne '── LANG ──'-Marker, reiner Text inkl. Absätze.)" },
-      long_cta: { type: "string" as const, description: "Call-to-Action der Langversion — der konkrete Schlussaufruf (1-2 Sätze). PFLICHT wenn long_script gesetzt ist." },
-      body: { type: "string" as const, description: "Alternative zu short_script/long_script: vollständiger Body mit beiden Versionen bereits formatiert. Nur nutzen wenn du den Rohtext 1:1 übernehmen sollst." },
+      script: { type: "string" as const, description: "Das Skript selbst — Hook + Body, OHNE den CTA-Schlusssatz. Den CTA in 'cta' separat übergeben. Reiner Text inklusive Absätze." },
+      cta: { type: "string" as const, description: "Call-to-Action — der konkrete Schlussaufruf (1-2 Sätze, z.B. 'Schreib REAL in die DMs für…'). Wird in der UI farblich hervorgehoben." },
+      durationSeconds: { type: "number" as const, description: "Tatsächliche Länge des Skripts in Sekunden (z.B. 30, 45, 60, 90). Default-Vorgabe steht in der Audit-Längen-Empfehlung; User-Wunsch hat Vorrang." },
       text_hook: { type: "string" as const, description: "Text-Hook der auf dem Screen eingeblendet wird (ein kurzer Satz)" },
       hook_pattern: { type: "string" as const, description: "Optional: Hook-Muster (z.B. Kontrast, Provokation, Neugier)" },
       pillar: { type: "string" as const, description: "Optional: Content-Pillar" },
       content_type: { type: "string" as const, description: "Optional: Content-Typ (Storytelling, Education, ...)" },
       format: { type: "string" as const, description: "Optional: Format (Reel, Talking Head, ...)" },
-      cta: { type: "string" as const, description: "Fallback-CTA wenn nur eine Version gespeichert wird (body-Variante). Bei short_script/long_script bitte short_cta/long_cta nutzen." },
     },
-    required: ["title"] as string[],
+    required: ["title", "script", "cta"] as string[],
   },
 };
 

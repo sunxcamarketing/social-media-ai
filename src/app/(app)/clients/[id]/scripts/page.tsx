@@ -30,6 +30,8 @@ import {
   Wrench,
   ExternalLink,
   Loader2,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 import { useClientData } from "@/context/client-data-context";
@@ -404,6 +406,7 @@ export default function ClientScriptsPage() {
 
   // Saved scripts
   const [filterStatus, setFilterStatus] = useState("all");
+  const [archiveView, setArchiveView] = useState<"active" | "archive">("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Script | null>(null);
   const [editForm, setEditForm] = useState<ScriptEditForm>(EMPTY_SCRIPT_FORM);
@@ -560,6 +563,18 @@ export default function ClientScriptsPage() {
     );
   };
 
+  // Mark a script as done (archived_at = NOW) or restore it (archived_at = NULL).
+  // Optimistic — row disappears from the active view instantly.
+  const toggleArchive = async (id: string, archive: boolean) => {
+    const ts = archive ? new Date().toISOString() : null;
+    setScripts((prev) => prev.map((s) => (s.id === id ? { ...s, archivedAt: ts } : s)));
+    await fetch(`/api/scripts/${id}/archive`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: archive }),
+    });
+  };
+
   const toggleSelect = (ids: string[]) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -570,7 +585,13 @@ export default function ClientScriptsPage() {
     });
   };
 
-  const filtered = useMemo(() => filterStatus === "all" ? scripts : scripts.filter(s => s.status === filterStatus), [scripts, filterStatus]);
+  const filtered = useMemo(() => {
+    const byArchive = scripts.filter((s) =>
+      archiveView === "archive" ? !!s.archivedAt : !s.archivedAt,
+    );
+    return filterStatus === "all" ? byArchive : byArchive.filter((s) => s.status === filterStatus);
+  }, [scripts, filterStatus, archiveView]);
+  const archiveCount = useMemo(() => scripts.filter((s) => !!s.archivedAt).length, [scripts]);
   const allScriptIds = useMemo(() => filtered.map(s => s.id), [filtered]);
   const allSelected = allScriptIds.length > 0 && allScriptIds.every(id => selectedIds.has(id));
 
@@ -606,7 +627,24 @@ export default function ClientScriptsPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
-            {[{ value: "all", label: "Alle" }, ...STATUS_OPTIONS].map((s) => (
+            <div className="flex gap-1 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] p-1 mr-2">
+              <button
+                onClick={() => setArchiveView("active")}
+                className={`rounded-lg px-3 py-1 text-[12px] font-medium transition-all ${
+                  archiveView === "active" ? "bg-warm-white text-ocean" : "text-ocean/55 hover:text-ocean"
+                }`}>
+                Aktiv
+              </button>
+              <button
+                onClick={() => setArchiveView("archive")}
+                className={`rounded-lg px-3 py-1 text-[12px] font-medium transition-all inline-flex items-center gap-1.5 ${
+                  archiveView === "archive" ? "bg-warm-white text-ocean" : "text-ocean/55 hover:text-ocean"
+                }`}>
+                <Archive className="h-3 w-3" /> Archiv
+                {archiveCount > 0 && <span className="text-[10px] text-ocean/45">({archiveCount})</span>}
+              </button>
+            </div>
+            {archiveView === "active" && [{ value: "all", label: "Alle" }, ...STATUS_OPTIONS].map((s) => (
               <button key={s.value} onClick={() => setFilterStatus(s.value)}
                 className={`rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all ${
                   filterStatus === s.value
@@ -657,6 +695,7 @@ export default function ClientScriptsPage() {
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[120px]">Kunden-Feedback</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[100px]">Status</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[80px]">Erledigt</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[100px]">Datum</th>
                   <th className="px-4 py-3 w-[80px]"></th>
                 </tr>
@@ -761,6 +800,18 @@ export default function ClientScriptsPage() {
                           value={script.status}
                           onChange={(next) => handleStatusChange([script.id], next)}
                         />
+                      </td>
+
+                      {/* Erledigt — archive checkbox */}
+                      <td className="px-4 py-4 align-top text-center">
+                        <label className="inline-flex items-center justify-center cursor-pointer" title={script.archivedAt ? "Zurückholen — Skript wieder in der Übersicht zeigen" : "Als erledigt markieren — verschwindet aus der Übersicht"}>
+                          <input
+                            type="checkbox"
+                            checked={!!script.archivedAt}
+                            onChange={() => toggleArchive(script.id, !script.archivedAt)}
+                            className="h-4 w-4 rounded border-ocean/30 text-green-600 accent-green-600 cursor-pointer"
+                          />
+                        </label>
                       </td>
 
                       {/* Date */}

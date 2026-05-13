@@ -14,6 +14,8 @@ import {
   Pencil,
   Trash2,
   Star,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
@@ -61,6 +63,7 @@ export default function PortalScripts() {
   const [loading, setLoading] = useState(true);
 
   const [tab, setTab] = useState<Tab>("scripts");
+  const [archiveView, setArchiveView] = useState<"active" | "archive">("active");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [feedbackDialog, setFeedbackDialog] = useState<{ scriptId: string; status: FeedbackStatus } | null>(null);
@@ -266,14 +269,32 @@ export default function PortalScripts() {
       setIdeas((prev) => prev.map((i) => (i.id === idea.id ? { ...i, starred: !next } : i)));
     }
   };
-  const items = tab === "scripts" ? scripts : ideas;
+
+  // Mark a script as done (archived_at = NOW) or restore it (archived_at = NULL).
+  // Optimistic — the row disappears from the active view instantly.
+  const toggleArchive = async (script: Script, archive: boolean) => {
+    const ts = archive ? new Date().toISOString() : null;
+    setScripts((prev) => prev.map((s) => (s.id === script.id ? { ...s, archivedAt: ts } : s)));
+    const res = await fetch(`/api/scripts/${script.id}/archive`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: archive }),
+    });
+    if (!res.ok) {
+      setScripts((prev) => prev.map((s) => (s.id === script.id ? { ...s, archivedAt: script.archivedAt ?? null } : s)));
+    }
+  };
+
+  const visibleScripts = scripts.filter((s) => (archiveView === "archive" ? !!s.archivedAt : !s.archivedAt));
+  const archiveCount = scripts.filter((s) => !!s.archivedAt).length;
+  const items = tab === "scripts" ? visibleScripts : ideas;
   const isEmpty = items.length === 0;
 
   return (
     <PortalShell
       icon={FileText}
       title={t("portal.dash.scripts")}
-      subtitle={tab === "scripts" ? t("portal.scripts.countScripts", { count: scripts.length }) : t("portal.scripts.countIdeas", { count: ideas.length })}
+      subtitle={tab === "scripts" ? t("portal.scripts.countScripts", { count: visibleScripts.length }) : t("portal.scripts.countIdeas", { count: ideas.length })}
       loading={authLoading || loading}
       isEmpty={isEmpty && tab === "scripts"}
       emptyMessage={t("portal.scripts.empty")}
@@ -298,6 +319,28 @@ export default function PortalScripts() {
             </button>
           </div>
 
+          {tab === "scripts" && (
+            <div className="flex gap-1 rounded-xl bg-ocean/[0.02] border border-ocean/[0.06] p-1 w-fit">
+              <button
+                onClick={() => setArchiveView("active")}
+                className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all ${
+                  archiveView === "active" ? "bg-warm-white text-ocean" : "text-ocean/55 hover:text-ocean"
+                }`}
+              >
+                {t("portal.scripts.viewActive")}
+              </button>
+              <button
+                onClick={() => setArchiveView("archive")}
+                className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all inline-flex items-center gap-1.5 ${
+                  archiveView === "archive" ? "bg-warm-white text-ocean" : "text-ocean/55 hover:text-ocean"
+                }`}
+              >
+                <Archive className="h-3 w-3" /> {t("portal.scripts.viewArchive")}
+                {archiveCount > 0 && <span className="text-[10px] text-ocean/45">({archiveCount})</span>}
+              </button>
+            </div>
+          )}
+
           {tab === "ideas" && (
             <Button onClick={openNewIdea} className="rounded-xl bg-ocean hover:bg-ocean-light border-0 gap-1.5 h-9">
               <Plus className="h-4 w-4" /> {t("portal.scripts.newIdea")}
@@ -307,11 +350,11 @@ export default function PortalScripts() {
       }
     >
       {tab === "scripts" ? (
-        scripts.length > 0 ? (
+        visibleScripts.length > 0 ? (
           <>
             {/* ── Mobile: card list ────────────────────────────────────── */}
             <div className="md:hidden space-y-2">
-              {scripts.map((script) => {
+              {visibleScripts.map((script) => {
                 const fb = (script.clientFeedbackStatus as FeedbackStatus | null) || null;
                 const dateStr = script.createdAt
                   ? new Date(script.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
@@ -359,10 +402,11 @@ export default function PortalScripts() {
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[140px]">Mein Feedback</th>
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[110px]">Datum</th>
+                    <th className="px-4 py-3 w-[44px]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ocean/[0.05]">
-                  {scripts.map((script) => {
+                  {visibleScripts.map((script) => {
                     const fb = (script.clientFeedbackStatus as FeedbackStatus | null) || null;
                     const dateStr = script.createdAt
                       ? new Date(script.createdAt).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
@@ -400,6 +444,25 @@ export default function PortalScripts() {
                           <td className="px-4 py-4 align-top">
                             <span className="text-xs text-ocean/45 whitespace-nowrap">{dateStr}</span>
                           </td>
+                          <td className="px-2 py-4 align-top">
+                            {script.archivedAt ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleArchive(script, false); }}
+                                title={t("portal.scripts.restore")}
+                                className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-ocean/5 transition-colors"
+                              >
+                                <ArchiveRestore className="h-3 w-3" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleArchive(script, true); }}
+                                title={t("portal.scripts.markDone")}
+                                className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-green-600 hover:bg-green-50 transition-colors"
+                              >
+                                <Check className="h-3 w-3" />
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       </Fragment>
                     );
@@ -410,7 +473,9 @@ export default function PortalScripts() {
           </>
         ) : (
           <div className="glass rounded-2xl p-8 text-center">
-            <p className="text-sm text-ocean/50">{t("portal.scripts.empty")}</p>
+            <p className="text-sm text-ocean/50">
+              {archiveView === "archive" ? t("portal.scripts.viewArchive") + " — leer" : t("portal.scripts.empty")}
+            </p>
           </div>
         )
       ) : (

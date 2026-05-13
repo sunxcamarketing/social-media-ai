@@ -708,6 +708,10 @@ const translations: Record<string, { de: string; en: string }> = {
   "portal.scripts.editHook": { de: "Hook (gesprochen)", en: "Hook (spoken)" },
   "portal.scripts.editBody": { de: "Body", en: "Body" },
   "portal.scripts.editCta": { de: "Call to Action", en: "Call to Action" },
+  "portal.scripts.viewActive": { de: "Aktiv", en: "Active" },
+  "portal.scripts.viewArchive": { de: "Archiv", en: "Archive" },
+  "portal.scripts.markDone": { de: "Als erledigt markieren", en: "Mark as done" },
+  "portal.scripts.restore": { de: "Aus dem Archiv zurückholen", en: "Restore from archive" },
 
   // ── Portal Strategy ──────────────────────────────────────────────────────
   "portal.strategy.empty": { de: "Noch keine Strategie erstellt.", en: "No strategy created yet." },

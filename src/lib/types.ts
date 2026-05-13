@@ -202,6 +202,8 @@ export interface Script {
   releasedAt?: string | null;
   // Set whenever the client edits the script in the portal
   clientEditedAt?: string | null;
+  // Archive flow (2026-05-13): NULL = active, set = in archive view, hidden from main table
+  archivedAt?: string | null;
   // ClickUp integration: task id of the editor card once auto-created.
   // Used for idempotent updates on re-trigger.
   clickupCardId?: string | null;
