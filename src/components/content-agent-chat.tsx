@@ -238,6 +238,11 @@ export function ContentAgentChat({
       ? "-mx-4 sm:-mx-6 md:-mx-8 -mt-6 md:-mt-8 -mb-6 md:-mb-8 flex flex-col"
       : "flex flex-col h-full";
   const containerStyle = layout === "fullscreen" ? { height: "calc(100vh - 3.5rem)" } : undefined;
+  // Embedded mode runs inside a wide dialog (e.g. DevelopIdeaDialog at 1400px).
+  // The fullscreen sidebar chat keeps the narrower reading column (max-w-3xl)
+  // so long messages stay legible; embedded uses the full dialog width minus
+  // some padding so we don't leave a giant empty gutter on the left.
+  const contentMaxWidth = layout === "embedded" ? "max-w-5xl" : "max-w-3xl";
 
   return (
     <div className={containerClass} style={containerStyle}>
@@ -300,7 +305,7 @@ export function ContentAgentChat({
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5">
+          <div className={`${contentMaxWidth} mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5`}>
             <AnimatePresence initial={false}>
               {messages.map((msg) => (
                 <motion.div
@@ -406,7 +411,7 @@ export function ContentAgentChat({
 
       {hasMessages && (
         <div className="shrink-0 px-4 sm:px-6 pt-3 pb-4 sm:pb-6 bg-gradient-to-t from-white via-white to-white/80">
-          <div className="max-w-3xl mx-auto">
+          <div className={`${contentMaxWidth} mx-auto`}>
             <ChatInput
               value={input}
               onChange={setInput}
