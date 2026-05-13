@@ -5,9 +5,14 @@ import { readScripts, readScriptsByClient } from "@/lib/csv";
 import { getCurrentUser, getEffectiveClientId } from "@/lib/auth";
 import { saveScriptEmbedding } from "@/lib/embeddings";
 
-// Fields a client may edit on a released script via the portal. Anything else
-// (pillar, post_type, status, source, …) is admin-only.
-const CLIENT_EDITABLE_FIELDS = ["title", "textHook", "hook", "body", "cta"] as const;
+// Fields a client may edit on a released script via the portal. Mirrors the
+// shared ScriptEditDialog so admin and client see the same editable surface.
+// Admin-only metadata (post_type, source, hookPattern, anchorRef, …) stays out.
+const CLIENT_EDITABLE_FIELDS = [
+  "title", "pillar", "contentType", "format", "status",
+  "hook", "body", "cta",
+  "textHook", "visualHook", "bRoll", "shotList", "caption",
+] as const;
 type ClientEditableField = (typeof CLIENT_EDITABLE_FIELDS)[number];
 
 export async function GET(request: Request) {
@@ -127,10 +132,18 @@ export async function PUT(request: Request) {
     const allowed: Record<string, unknown> = {};
     const fieldMap: Record<ClientEditableField, string> = {
       title: "title",
-      textHook: "text_hook",
+      pillar: "pillar",
+      contentType: "content_type",
+      format: "format",
+      status: "status",
       hook: "hook",
       body: "body",
       cta: "cta",
+      textHook: "text_hook",
+      visualHook: "visual_hook",
+      bRoll: "b_roll",
+      shotList: "shot_list",
+      caption: "caption",
     };
     for (const f of CLIENT_EDITABLE_FIELDS) {
       const dbCol = fieldMap[f];

@@ -136,13 +136,14 @@ export const AGENT_SAVE_IDEA_TOOL = {
 
 export const AGENT_LIST_IDEAS_TOOL = {
   name: "list_ideas",
-  description: "Liste alle gespeicherten Video-Ideen des Clients. Nutze das wenn der User auf eine bestehende Idee zurückgreifen will ('zeig mir meine Ideen', 'ich will die Idee von letzter Woche ausformulieren'). Optional nach Status filtern (idea, in-progress, done).",
+  description: "Liste alle gespeicherten Video-Ideen des Clients. Nutze das wenn der User auf eine bestehende Idee zurückgreifen will ('zeig mir meine Ideen', 'ich will die Idee von letzter Woche ausformulieren', 'die mit Stern', 'die markierten'). Output: jede Idee mit ★-Marker wenn favorisiert, Status, Titel, Content-Type, Description bis 500 Zeichen, ID. Starred-Ideen sind im Output immer oben sortiert.",
   input_schema: {
     type: "object" as const,
     properties: {
       client_name: CLIENT_NAME_PROP,
       status: { type: "string" as const, description: "Optional: Status-Filter (idea, in-progress, done). Leer lassen für alle." },
       query: { type: "string" as const, description: "Optional: Stichwortsuche in Titel oder Beschreibung." },
+      starred: { type: "boolean" as const, description: "Optional: true → nur favorisierte/mit Stern markierte Ideen zurückgeben. Nutze das wenn der User von 'markierten', 'mit Stern', 'favorisierten' oder 'gespeicherten Favoriten' redet." },
     },
     required: [] as string[],
   },

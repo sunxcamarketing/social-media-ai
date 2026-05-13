@@ -552,11 +552,11 @@ function normalizeTitle(s: string): string {
 
 async function toolListIdeas(
   clientId: string,
-  input: { status?: string; query?: string },
+  input: { status?: string; query?: string; starred?: boolean },
 ): Promise<string> {
   const { data, error } = await supabase
     .from("ideas")
-    .select("id, title, description, content_type, status, created_at")
+    .select("id, title, description, content_type, status, starred, created_at")
     .eq("client_id", clientId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -565,6 +565,7 @@ async function toolListIdeas(
 
   let ideas = data;
   if (input.status) ideas = ideas.filter(i => i.status === input.status);
+  if (input.starred === true) ideas = ideas.filter(i => i.starred === true);
   if (input.query) {
     const q = input.query.toLowerCase();
     ideas = ideas.filter(i =>
@@ -574,12 +575,22 @@ async function toolListIdeas(
   }
   if (ideas.length === 0) return "Keine Ideen gefunden die dem Filter entsprechen.";
 
+  // Sort starred first so the agent sees favorites at the top even without filter
+  ideas.sort((a, b) => Number(b.starred ?? 0) - Number(a.starred ?? 0));
+
   const lines = ideas.map(i => {
+    const star = i.starred ? "★ " : "  ";
     const desc = (i.description || "").replace(/\s+/g, " ").trim();
-    const descShort = desc.length > 180 ? desc.slice(0, 180) + "..." : desc;
-    return `- [${i.status}] "${i.title}"${i.content_type ? ` (${i.content_type})` : ""} — ${descShort || "(keine Beschreibung)"}  [id: ${i.id}]`;
+    // Cap at 500 chars — enough to convey angle/intent without truncating substance.
+    // Briefs from the weekly pipeline are typically 200-400 chars.
+    const descShort = desc.length > 500 ? desc.slice(0, 500) + "..." : desc;
+    return `- ${star}[${i.status}] "${i.title}"${i.content_type ? ` (${i.content_type})` : ""} — ${descShort || "(keine Beschreibung)"}  [id: ${i.id}]`;
   });
-  return `Ideen (${ideas.length}):\n${lines.join("\n")}`;
+  const starredCount = ideas.filter(i => i.starred).length;
+  const header = starredCount > 0
+    ? `Ideen (${ideas.length}, davon ${starredCount} mit Stern markiert):`
+    : `Ideen (${ideas.length}):`;
+  return `${header}\n${lines.join("\n")}`;
 }
 
 // ── Update Profile Tool ───────────────────────────────────────────────────
@@ -657,7 +668,7 @@ export async function executeAgentTool(
     case "save_idea":
       return toolSaveIdea(clientId, toolInput as { title: string; description: string; content_type?: string; source_session_id?: string });
     case "list_ideas":
-      return toolListIdeas(clientId, toolInput as { status?: string; query?: string });
+      return toolListIdeas(clientId, toolInput as { status?: string; query?: string; starred?: boolean });
     case "save_script":
       return toolSaveScript(clientId, toolInput as Parameters<typeof toolSaveScript>[1]);
     case "save_story_strategy":
