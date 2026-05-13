@@ -15,7 +15,6 @@ import {
   Trash2,
   Star,
   Archive,
-  ArchiveRestore,
 } from "lucide-react";
 import { usePortalClient } from "../use-portal-client";
 import { PortalShell } from "@/components/portal-shell";
@@ -365,30 +364,42 @@ export default function PortalScripts() {
                   : fb === "revision_requested" ? "bg-amber-50 text-amber-700 border-amber-200"
                   : "";
                 return (
-                  <button
-                    key={script.id}
-                    onClick={() => router.push(`/portal/scripts/${script.id}`)}
-                    className="w-full text-left rounded-2xl border border-ocean/[0.06] bg-white/70 hover:bg-blush-light/20 active:bg-blush-light/30 transition-colors p-4 space-y-2.5"
-                  >
-                    <p className="text-base font-semibold text-ocean leading-snug break-words">
-                      {script.title || t("portal.scripts.untitled")}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {script.format && (
-                        <span className="text-[10px] text-ocean/65 rounded bg-blush-light/40 border border-blush/30 px-2 py-0.5 font-medium">{script.format}</span>
+                  <div key={script.id} className="relative">
+                    <button
+                      onClick={() => router.push(`/portal/scripts/${script.id}`)}
+                      className="w-full text-left rounded-2xl border border-ocean/[0.06] bg-white/70 hover:bg-blush-light/20 active:bg-blush-light/30 transition-colors p-4 pr-12 space-y-2.5"
+                    >
+                      <p className="text-base font-semibold text-ocean leading-snug break-words">
+                        {script.title || t("portal.scripts.untitled")}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {script.format && (
+                          <span className="text-[10px] text-ocean/65 rounded bg-blush-light/40 border border-blush/30 px-2 py-0.5 font-medium">{script.format}</span>
+                        )}
+                        {script.pillar && (
+                          <span className="text-[10px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-2 py-0.5">{script.pillar}</span>
+                        )}
+                        {fbLabel && (
+                          <span className={`text-[10px] border rounded px-2 py-0.5 font-medium ml-auto ${fbCls}`}>{fbLabel}</span>
+                        )}
+                      </div>
+                      {script.hook && (
+                        <p className="text-[13px] text-ocean/70 leading-relaxed line-clamp-2 break-words">{script.hook}</p>
                       )}
-                      {script.pillar && (
-                        <span className="text-[10px] text-blush-dark/70 rounded bg-blush/15 border border-blush/25 px-2 py-0.5">{script.pillar}</span>
-                      )}
-                      {fbLabel && (
-                        <span className={`text-[10px] border rounded px-2 py-0.5 font-medium ml-auto ${fbCls}`}>{fbLabel}</span>
-                      )}
-                    </div>
-                    {script.hook && (
-                      <p className="text-[13px] text-ocean/70 leading-relaxed line-clamp-2 break-words">{script.hook}</p>
-                    )}
-                    <p className="text-[10px] text-ocean/40">{dateStr}</p>
-                  </button>
+                      <p className="text-[10px] text-ocean/40">{dateStr}</p>
+                    </button>
+                    <label
+                      className="absolute top-3 right-3 inline-flex items-center justify-center h-8 w-8 rounded-lg cursor-pointer"
+                      title={script.archivedAt ? t("portal.scripts.restore") : t("portal.scripts.markDone")}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!script.archivedAt}
+                        onChange={() => toggleArchive(script, !script.archivedAt)}
+                        className="h-5 w-5 rounded border-ocean/30 text-green-600 accent-green-600 cursor-pointer"
+                      />
+                    </label>
+                  </div>
                 );
               })}
             </div>
@@ -401,8 +412,8 @@ export default function PortalScripts() {
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[260px]">Titel</th>
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50">Skript</th>
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[140px]">Mein Feedback</th>
+                    <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[80px]">Erledigt</th>
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ocean/50 w-[110px]">Datum</th>
-                    <th className="px-4 py-3 w-[44px]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ocean/[0.05]">
@@ -441,27 +452,23 @@ export default function PortalScripts() {
                               onClear={() => applyFeedback(script.id, null)}
                             />
                           </td>
+                          <td className="px-4 py-4 align-top text-center">
+                            <label
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center justify-center cursor-pointer"
+                              title={script.archivedAt ? t("portal.scripts.restore") : t("portal.scripts.markDone")}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!script.archivedAt}
+                                onChange={() => toggleArchive(script, !script.archivedAt)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-4 w-4 rounded border-ocean/30 text-green-600 accent-green-600 cursor-pointer"
+                              />
+                            </label>
+                          </td>
                           <td className="px-4 py-4 align-top">
                             <span className="text-xs text-ocean/45 whitespace-nowrap">{dateStr}</span>
-                          </td>
-                          <td className="px-2 py-4 align-top">
-                            {script.archivedAt ? (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); toggleArchive(script, false); }}
-                                title={t("portal.scripts.restore")}
-                                className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-ocean hover:bg-ocean/5 transition-colors"
-                              >
-                                <ArchiveRestore className="h-3 w-3" />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); toggleArchive(script, true); }}
-                                title={t("portal.scripts.markDone")}
-                                className="h-7 w-7 flex items-center justify-center rounded-lg text-ocean/40 hover:text-green-600 hover:bg-green-50 transition-colors"
-                              >
-                                <Check className="h-3 w-3" />
-                              </button>
-                            )}
                           </td>
                         </tr>
                       </Fragment>

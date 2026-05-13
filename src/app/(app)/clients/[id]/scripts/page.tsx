@@ -31,7 +31,6 @@ import {
   ExternalLink,
   Loader2,
   Archive,
-  ArchiveRestore,
 } from "lucide-react";
 import type { Script, Config } from "@/lib/types";
 import { useClientData } from "@/context/client-data-context";
