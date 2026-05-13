@@ -43,7 +43,7 @@ export function DevelopIdeaDialog({
 }: DevelopIdeaDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-w-[1400px] w-[95vw] h-[92vh] p-0 glass-strong rounded-2xl border-ocean/[0.06] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[1400px] w-[95vw] h-[92vh] p-0 glass-strong rounded-2xl border-ocean/[0.06] overflow-hidden flex flex-col">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-ocean/[0.06] shrink-0">
           <DialogTitle className="flex items-start gap-2 text-left">
             <Lightbulb className="h-4 w-4 text-blush-dark mt-1 shrink-0" />
