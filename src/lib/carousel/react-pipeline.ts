@@ -51,13 +51,6 @@ export interface CarouselReactResult {
 }
 
 /**
- * Strip any non-code prose that Claude might have leaked before/after the TSX.
- * Prose comes from style guides asking for "think first" steps, or from Claude
- * adding a preamble. We keep top-level code (helpers, constants, components)
- * because the new prompt explicitly allows the style guide to ship literal
- * helpers like `Base`, `Counter`, `RED`, etc. before `function Carousel`.
- */
-/**
  * Walk through a code prefix (everything before `function Carousel`) line by
  * line. Keep lines that look like top-level JS (const/let/var/function/class
  * declarations, comments, blank lines, JSDoc, lines inside an unclosed brace).
@@ -90,17 +83,20 @@ function stripProseLines(prefix: string): string {
 
 /**
  * If the output contains more than one `function Carousel(...)` declaration,
- * keep only the first by brace-walking from its opening `{` to its matching
- * close. Without this, duplicate `const COLORS = {...}` redeclarations from
- * the second variant break the parser at line ~13 every time.
+ * keep ONLY THE LAST one (plus the helpers immediately above it). We pick the
+ * last because Sonnet psychologically frames the final variant as the "real"
+ * answer when it leaks multiple drafts — earlier ones are often draft layouts
+ * or truncated halfway. We brace-walk through the second-to-last function to
+ * find where its body ends, and discard everything up to and including that
+ * point. The result: helpers redeclared right before the last `function
+ * Carousel` plus the function itself.
  */
-function keepOnlyFirstCarousel(code: string): string {
+function keepLastCarousel(code: string): string {
   const matches = [...code.matchAll(/\bfunction\s+Carousel\s*\(/g)];
   if (matches.length <= 1) return code;
 
-  const firstStart = matches[0].index!;
-  // Find the `{` that opens the function body (skip past the param list).
-  const parenEnd = code.indexOf(")", firstStart);
+  const secondToLast = matches[matches.length - 2];
+  const parenEnd = code.indexOf(")", secondToLast.index!);
   if (parenEnd < 0) return code;
   const openBrace = code.indexOf("{", parenEnd);
   if (openBrace < 0) return code;
@@ -111,7 +107,7 @@ function keepOnlyFirstCarousel(code: string): string {
     if (ch === "{") depth++;
     else if (ch === "}") {
       depth--;
-      if (depth === 0) return code.slice(0, i + 1);
+      if (depth === 0) return code.slice(i + 1).trimStart();
     }
   }
   return code;
@@ -141,11 +137,14 @@ function sanitizeTsx(raw: string): string {
 
   // If Claude emitted MULTIPLE carousel variants concatenated (thinking-mode
   // side effect: it sometimes ships 2-3 alternative versions back-to-back),
-  // keep only the first. We find the first `function Carousel(`, brace-walk
-  // to its closing `}`, and drop everything after. Naive brace counting is
-  // "good enough" — JSX braces are balanced; string-literal braces are rare
-  // in this output style.
-  code = keepOnlyFirstCarousel(code);
+  // keep only the LAST one — that's what Sonnet treats as its final answer
+  // when it leaks earlier drafts. Telemetry: when this fires, log so we can
+  // measure how often it's needed and reconsider if it exceeds ~5% of runs.
+  const carouselCount = (code.match(/\bfunction\s+Carousel\s*\(/g) || []).length;
+  if (carouselCount > 1) {
+    console.warn(`[carousel] sanitizer: ${carouselCount} variants in output → keeping last`);
+    code = keepLastCarousel(code);
+  }
 
   // Drop `import ...` lines (not usable in our Babel-standalone sandbox)
   code = code.replace(/^\s*import\s+[^\n]+\n?/gm, "");
