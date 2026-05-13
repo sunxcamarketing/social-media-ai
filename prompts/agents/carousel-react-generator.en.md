@@ -11,7 +11,7 @@ You build an Instagram carousel as a self-contained React component. The result 
 These are the only rules you can't break, no matter what the Style Guide says — otherwise the host can't render or PNG-export the carousel.
 
 1. **Output is pure JSX code** — no markdown, no fences, no explanation before/after.
-2. **Output contains exactly one** `function Carousel()` that returns a single root `<div>`.
+2. **Output contains EXACTLY ONE** `function Carousel()` that returns a single root `<div>`. **No variants, no alternatives, no "Version 2"** — if you explored multiple layouts in your thinking, output ONLY the final version. Never paste two or three complete carousels back-to-back — that produces duplicate `const` declarations and the parser breaks instantly.
 3. **Top-level before `function Carousel`** is allowed for constants (`const RED = ...`), helper functions (`function Base() {}`), and auxiliary components — these are passed through bit-exact. If the Style Guide provides them, paste them literally.
 4. **Each slide** is a `<section className="slide" style={{ width: 1080, height: 1440, ... }}>` as a **direct child** of the root div. `className="slide"` + the literal `width: 1080, height: 1440` are required — that's how the host finds the slides for PNG export. Don't nest slides in extra wrapper divs between root and `.slide`.
 5. **No imports, no exports.** React + ReactDOM are loaded as globals. `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`, `useReducer`, `Fragment` work as locals (without the `React.` prefix too).

@@ -88,6 +88,35 @@ function stripProseLines(prefix: string): string {
   return out.join("\n");
 }
 
+/**
+ * If the output contains more than one `function Carousel(...)` declaration,
+ * keep only the first by brace-walking from its opening `{` to its matching
+ * close. Without this, duplicate `const COLORS = {...}` redeclarations from
+ * the second variant break the parser at line ~13 every time.
+ */
+function keepOnlyFirstCarousel(code: string): string {
+  const matches = [...code.matchAll(/\bfunction\s+Carousel\s*\(/g)];
+  if (matches.length <= 1) return code;
+
+  const firstStart = matches[0].index!;
+  // Find the `{` that opens the function body (skip past the param list).
+  const parenEnd = code.indexOf(")", firstStart);
+  if (parenEnd < 0) return code;
+  const openBrace = code.indexOf("{", parenEnd);
+  if (openBrace < 0) return code;
+
+  let depth = 0;
+  for (let i = openBrace; i < code.length; i++) {
+    const ch = code[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return code.slice(0, i + 1);
+    }
+  }
+  return code;
+}
+
 function sanitizeTsx(raw: string): string {
   let code = raw.trim();
 
@@ -109,6 +138,14 @@ function sanitizeTsx(raw: string): string {
     const cleanPrefix = stripProseLines(prefix);
     code = cleanPrefix + suffix;
   }
+
+  // If Claude emitted MULTIPLE carousel variants concatenated (thinking-mode
+  // side effect: it sometimes ships 2-3 alternative versions back-to-back),
+  // keep only the first. We find the first `function Carousel(`, brace-walk
+  // to its closing `}`, and drop everything after. Naive brace counting is
+  // "good enough" — JSX braces are balanced; string-literal braces are rare
+  // in this output style.
+  code = keepOnlyFirstCarousel(code);
 
   // Drop `import ...` lines (not usable in our Babel-standalone sandbox)
   code = code.replace(/^\s*import\s+[^\n]+\n?/gm, "");
