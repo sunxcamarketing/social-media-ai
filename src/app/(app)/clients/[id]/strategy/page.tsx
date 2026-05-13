@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -78,7 +79,7 @@ const TYPE_COLORS: Record<string, string> = {
 interface StructuredSubTopic { title: string; angle: string; }
 interface Pillar { name: string; why?: string; subTopics: string | StructuredSubTopic[]; }
 // Edit form uses string-only subTopics
-interface PillarForm { name: string; subTopics: string; }
+interface PillarForm { name: string; subTopics: string; why?: string; }
 interface DaySlot { type: string; format: string; pillar?: string; reason?: string; }
 type WeeklyStructure = Record<string, DaySlot>;
 
@@ -187,7 +188,7 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
   };
   const addPillar = () => {
     if (form.pillars.length >= 5) return;
-    setForm({ ...form, pillars: [...form.pillars, { name: "", subTopics: "" } as PillarForm] });
+    setForm({ ...form, pillars: [...form.pillars, { name: "", subTopics: "", why: "" } as PillarForm] });
   };
   const removePillar = (i: number) => setForm({ ...form, pillars: form.pillars.filter((_, idx) => idx !== i) });
   const setDay = (day: string, field: keyof DaySlot, val: string) =>
@@ -231,11 +232,17 @@ function StrategyEditDialog({ open, onClose, initial, onSave, contentTypes, form
             <div className="space-y-2">
               {form.pillars.map((pillar, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Input value={pillar.name} onChange={(e) => setPillar(i, "name", e.target.value)}
-                      placeholder="Pillar-Name" className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
-                    <Input value={pillar.subTopics} onChange={(e) => setPillar(i, "subTopics", e.target.value)}
-                      placeholder={t("strategyEdit.subTopics")} className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
+                  <div className="flex-1 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Input value={pillar.name} onChange={(e) => setPillar(i, "name", e.target.value)}
+                        placeholder="Pillar-Name" className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
+                      <Input value={pillar.subTopics} onChange={(e) => setPillar(i, "subTopics", e.target.value)}
+                        placeholder={t("strategyEdit.subTopics")} className="rounded-xl glass border-ocean/[0.06] h-10 text-sm" />
+                    </div>
+                    <Textarea value={pillar.why || ""} onChange={(e) => setPillar(i, "why", e.target.value)}
+                      placeholder="Warum dieser Pillar? (strategische Begründung)"
+                      rows={3}
+                      className="rounded-xl glass border-ocean/[0.06] text-sm" />
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => removePillar(i)}
                     className="h-10 w-10 p-0 rounded-xl text-ocean hover:text-red-500 shrink-0">
@@ -635,7 +642,7 @@ export default function ClientStrategyPage() {
       subTopics: Array.isArray(p.subTopics)
         ? p.subTopics.map((st: StructuredSubTopic) => st.title).join(", ")
         : p.subTopics,
-    })) : [{ name: "", subTopics: "" }],
+    })) : [{ name: "", subTopics: "", why: "" }],
     weekly: Object.fromEntries(activeDays.map((d) => [d, weekly[d] || { type: "", format: "" }])),
   };
 
